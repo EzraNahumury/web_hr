@@ -4,12 +4,18 @@ import { useEffect, useMemo, useState } from "react";
 import type { EmployeeListItem, LookupOption } from "@/lib/employees";
 
 type Lookups = {
+  units: LookupOption[];
   roles: LookupOption[];
-  divisions: LookupOption[];
   departments: LookupOption[];
+  divisions: LookupOption[];
+  subDivisions: LookupOption[];
+  placements: LookupOption[];
   recapGroups: LookupOption[];
   banks: LookupOption[];
   workStatuses: LookupOption[];
+  dataStatuses: LookupOption[];
+  genders: LookupOption[];
+  religions: LookupOption[];
 };
 
 type Stats = {
@@ -24,24 +30,32 @@ type Props = {
   stats: Stats;
 };
 
-type ToastState = {
-  type: "success" | "error";
-  title: string;
-  description: string;
-} | null;
-
 type FormState = {
   name: string;
   nip: string;
   email: string;
   password: string;
+  unit: string;
   role: string;
-  division: string;
   department: string;
+  division: string;
+  subDivision: string;
+  placement: string;
   recapGroup: string;
   bank: string;
   accountNumber: string;
-  workStatus: "tetap" | "kontrak" | "freelance" | "magang" | "resign";
+  gender: "" | "laki-laki" | "perempuan";
+  birthPlace: string;
+  birthDate: string;
+  nik: string;
+  religion: string;
+  addressKtp: string;
+  addressCurrent: string;
+  phoneNumber: string;
+  ktpPhoto: string;
+  employmentStatus: "training" | "tetap" | "kontrak" | "freelance";
+  workStatus: "training" | "tetap" | "kontrak" | "freelance";
+  dataStatus: "aktif" | "nonaktif";
   contractDate: string;
   contractEndDate: string;
   annualRaise: string;
@@ -53,13 +67,27 @@ const emptyForm: FormState = {
   nip: "",
   email: "",
   password: "",
+  unit: "",
   role: "",
-  division: "",
   department: "",
+  division: "",
+  subDivision: "",
+  placement: "",
   recapGroup: "",
-  bank: "BCA",
+  bank: "",
   accountNumber: "",
+  gender: "",
+  birthPlace: "",
+  birthDate: "",
+  nik: "",
+  religion: "",
+  addressKtp: "",
+  addressCurrent: "",
+  phoneNumber: "",
+  ktpPhoto: "",
+  employmentStatus: "kontrak",
   workStatus: "kontrak",
+  dataStatus: "aktif",
   contractDate: "",
   contractEndDate: "",
   annualRaise: "0",
@@ -67,22 +95,83 @@ const emptyForm: FormState = {
 };
 
 const inputClassName =
-  "h-12 w-full rounded-2xl border border-[#ead7ce] bg-white px-4 text-[#2d1b18] outline-none shadow-[0_1px_2px_rgba(15,23,42,0.03)] placeholder:text-[#b1948d] focus:border-[#c8716d] focus:bg-white focus:shadow-[0_0_0_4px_rgba(200,113,109,0.12)]";
+  "h-12 w-full rounded-2xl border border-[#ead7ce] bg-white px-4 text-[#2d1b18] outline-none placeholder:text-[#b1948d] focus:border-[#c8716d] focus:shadow-[0_0_0_4px_rgba(200,113,109,0.12)]";
+const selectClassName =
+  `${inputClassName} appearance-none bg-[url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23845b52' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")] bg-[length:18px_18px] bg-[right_1rem_center] bg-no-repeat pr-11`;
+const textareaClassName =
+  "min-h-[108px] w-full rounded-2xl border border-[#ead7ce] bg-white px-4 py-3 text-[#2d1b18] outline-none placeholder:text-[#b1948d] focus:border-[#c8716d] focus:shadow-[0_0_0_4px_rgba(200,113,109,0.12)]";
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="space-y-2.5">
-      <span className="text-[13px] font-semibold tracking-[-0.01em] text-[#6f5a54]">
-        {label}
-      </span>
+      <span className="text-[13px] font-semibold text-[#6f5a54]">{label}</span>
       {children}
     </label>
+  );
+}
+
+function sanitizeCurrencyInput(value: string) {
+  return value.replace(/[^\d]/g, "");
+}
+
+function formatRupiahInput(value: string) {
+  const digits = sanitizeCurrencyInput(value);
+  return digits ? Number(digits).toLocaleString("id-ID") : "";
+}
+
+function formatStatus(status: EmployeeListItem["employmentStatus"]) {
+  if (status === "training") return "Training";
+  if (status === "tetap") return "Tetap";
+  if (status === "kontrak") return "Kontrak";
+  if (status === "freelance") return "Freelance";
+  return status;
+}
+
+function EditIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+function DeleteIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="M19 6l-1 14H6L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+    </svg>
+  );
+}
+
+function SpinnerIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 animate-spin" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" className="opacity-25" />
+      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
   );
 }
 
@@ -92,13 +181,27 @@ function toFormState(employee: EmployeeListItem): FormState {
     nip: employee.nip,
     email: employee.email,
     password: "",
+    unit: employee.unit ?? "",
     role: employee.role,
-    division: employee.division,
     department: employee.department,
+    division: employee.division,
+    subDivision: employee.subDivision ?? "",
+    placement: employee.placement ?? "",
     recapGroup: employee.recapGroup ?? "",
     bank: employee.bank ?? "BCA",
     accountNumber: employee.accountNumber ?? "",
+    gender: employee.gender ?? "",
+    birthPlace: employee.birthPlace ?? "",
+    birthDate: employee.birthDate ?? "",
+    nik: employee.nik ?? "",
+    religion: employee.religion ?? "",
+    addressKtp: employee.addressKtp ?? "",
+    addressCurrent: employee.addressCurrent ?? "",
+    phoneNumber: employee.phoneNumber ?? "",
+    ktpPhoto: employee.ktpPhoto ?? "",
+    employmentStatus: employee.employmentStatus,
     workStatus: employee.workStatus,
+    dataStatus: employee.dataStatus,
     contractDate: employee.contractDate ?? "",
     contractEndDate: employee.contractEndDate ?? "",
     annualRaise: employee.annualRaise.replace(/\./g, "").replace(",", "."),
@@ -106,71 +209,34 @@ function toFormState(employee: EmployeeListItem): FormState {
   };
 }
 
-function formatStatus(status: EmployeeListItem["workStatus"]) {
-  if (status === "tetap") return "Tetap";
-  if (status === "kontrak") return "Kontrak";
-  if (status === "freelance") return "Freelance";
-  if (status === "magang") return "Magang";
-  return "Resign";
-}
-
-function sanitizeCurrencyInput(value: string) {
-  return value.replace(/[^\d]/g, "");
-}
-
-function formatRupiahInput(value: string) {
-  const digits = sanitizeCurrencyInput(value);
-
-  if (!digits) {
-    return "";
-  }
-
-  return Number(digits).toLocaleString("id-ID");
-}
-
-export default function AdminEmployeesManager({
-  initialEmployees,
-  lookups,
-  stats,
-}: Props) {
+export default function AdminEmployeesManager({ initialEmployees, lookups, stats }: Props) {
   const [employees, setEmployees] = useState(initialEmployees);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [ktpFile, setKtpFile] = useState<File | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
-  const [message, setMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [toast, setToast] = useState<ToastState>(null);
+  const [toast, setToast] = useState<{ title: string; description: string; type: "success" | "error" } | null>(null);
 
   useEffect(() => {
-    if (!toast) {
-      return undefined;
-    }
-
-    const timeout = window.setTimeout(() => {
-      setToast(null);
-    }, 3200);
-
+    if (!toast) return;
+    const timeout = window.setTimeout(() => setToast(null), 3000);
     return () => window.clearTimeout(timeout);
   }, [toast]);
 
   const filteredEmployees = useMemo(() => {
     const keyword = search.trim().toLowerCase();
-
-    if (!keyword) {
-      return employees;
-    }
-
+    if (!keyword) return employees;
     return employees.filter((employee) =>
       [
         employee.name,
         employee.nip,
-        employee.email,
+        employee.unit ?? "",
         employee.role,
-        employee.division,
         employee.department,
-        employee.recapGroup ?? "",
+        employee.division,
+        employee.subDivision ?? "",
       ]
         .join(" ")
         .toLowerCase()
@@ -181,89 +247,84 @@ export default function AdminEmployeesManager({
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => {
       const next = { ...current, [key]: value };
-
-      if (key === "workStatus" && value === "tetap") {
+      if ((key === "employmentStatus" || key === "workStatus") && value === "tetap") {
         next.contractEndDate = "";
       }
-
       return next;
     });
   }
 
   function resetForm() {
     setForm(emptyForm);
+    setKtpFile(null);
     setEditingId(null);
-    setMessage("");
-    setErrorMessage("");
-  }
-
-  function notify(type: "success" | "error", title: string, description: string) {
-    setToast({ type, title, description });
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
-    setMessage("");
-    setErrorMessage("");
-    const isEditing = Boolean(editingId);
-
     try {
-      const response = await fetch(
-        editingId ? `/api/admin/employees/${editingId}` : "/api/admin/employees",
-        {
-          method: editingId ? "PUT" : "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ...form,
-            recapGroup: form.recapGroup || null,
-            bank: form.bank || null,
-            accountNumber: form.accountNumber || null,
-            contractDate: form.contractDate || null,
-            contractEndDate: form.contractEndDate || null,
-            annualRaise: Number(sanitizeCurrencyInput(form.annualRaise) || 0),
-          }),
-        },
-      );
+      const formData = new FormData();
 
-      const result = (await response.json()) as {
-        message?: string;
-        employee?: EmployeeListItem;
-      };
+      formData.append("name", form.name);
+      formData.append("nip", form.nip);
+      formData.append("email", form.email);
+      formData.append("password", form.password);
+      formData.append("unit", form.unit);
+      formData.append("role", form.role);
+      formData.append("department", form.department);
+      formData.append("division", form.division);
+      formData.append("subDivision", form.subDivision);
+      formData.append("placement", form.placement);
+      formData.append("recapGroup", form.recapGroup);
+      formData.append("bank", form.bank);
+      formData.append("accountNumber", form.accountNumber);
+      formData.append("gender", form.gender);
+      formData.append("birthPlace", form.birthPlace);
+      formData.append("birthDate", form.birthDate);
+      formData.append("nik", form.nik);
+      formData.append("religion", form.religion);
+      formData.append("addressKtp", form.addressKtp);
+      formData.append("addressCurrent", form.addressCurrent);
+      formData.append("phoneNumber", form.phoneNumber);
+      formData.append("ktpPhoto", form.ktpPhoto);
+      formData.append("employmentStatus", form.employmentStatus);
+      formData.append("workStatus", form.workStatus);
+      formData.append("dataStatus", form.dataStatus);
+      formData.append("contractDate", form.contractDate);
+      formData.append("contractEndDate", form.contractEndDate);
+      formData.append("annualRaise", String(Number(sanitizeCurrencyInput(form.annualRaise) || 0)));
+      formData.append("userActive", String(form.userActive));
 
+      if (ktpFile) {
+        formData.append("ktpFile", ktpFile);
+      }
+
+      const response = await fetch(editingId ? `/api/admin/employees/${editingId}` : "/api/admin/employees", {
+        method: editingId ? "PUT" : "POST",
+        body: formData,
+      });
+      const result = (await response.json()) as { message?: string; employee?: EmployeeListItem };
       if (!response.ok || !result.employee) {
         throw new Error(result.message || "Gagal menyimpan data karyawan.");
       }
-
-      setEmployees((current) => {
-        if (editingId) {
-          return current.map((employee) =>
-            employee.id === editingId ? result.employee! : employee,
-          );
-        }
-
-        return [result.employee!, ...current];
-      });
-
-      const successMessage =
-        result.message ||
-        (isEditing
-          ? "Data karyawan berhasil diperbarui."
-          : "Data karyawan berhasil ditambahkan.");
-      setMessage(successMessage);
-      notify(
-        "success",
-        isEditing ? "Perubahan tersimpan" : "Karyawan ditambahkan",
-        successMessage,
+      setEmployees((current) =>
+        editingId
+          ? current.map((employee) => (employee.id === editingId ? result.employee! : employee))
+          : [result.employee!, ...current],
       );
+      setToast({
+        type: "success",
+        title: editingId ? "Perubahan tersimpan" : "Karyawan ditambahkan",
+        description: result.message || "Data berhasil disimpan.",
+      });
       resetForm();
     } catch (error) {
-      const nextError =
-        error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan data.";
-      setErrorMessage(nextError);
-      notify("error", "Simpan gagal", nextError);
+      setToast({
+        type: "error",
+        title: "Simpan gagal",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan data.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -272,47 +333,31 @@ export default function AdminEmployeesManager({
   function handleEdit(employee: EmployeeListItem) {
     setEditingId(employee.id);
     setForm(toFormState(employee));
-    setMessage("");
-    setErrorMessage("");
+    setKtpFile(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function handleDelete(employee: EmployeeListItem) {
-    const confirmed = window.confirm(`Hapus ${employee.name} (${employee.nip})?`);
-
-    if (!confirmed) {
-      return;
-    }
-
+    if (!window.confirm(`Hapus ${employee.name} (${employee.nip})?`)) return;
     setDeletingId(employee.id);
-    setMessage("");
-    setErrorMessage("");
-
     try {
-      const response = await fetch(`/api/admin/employees/${employee.id}`, {
-        method: "DELETE",
-      });
-
+      const response = await fetch(`/api/admin/employees/${employee.id}`, { method: "DELETE" });
       const result = (await response.json()) as { message?: string };
-
       if (!response.ok) {
         throw new Error(result.message || "Gagal menghapus data karyawan.");
       }
-
       setEmployees((current) => current.filter((item) => item.id !== employee.id));
-
-      if (editingId === employee.id) {
-        resetForm();
-      }
-
-      const successMessage = result.message || "Data karyawan berhasil dihapus.";
-      setMessage(successMessage);
-      notify("success", "Karyawan dihapus", successMessage);
+      setToast({
+        type: "success",
+        title: "Karyawan dihapus",
+        description: result.message || "Data berhasil dihapus.",
+      });
     } catch (error) {
-      const nextError =
-        error instanceof Error ? error.message : "Terjadi kesalahan saat menghapus data.";
-      setErrorMessage(nextError);
-      notify("error", "Hapus gagal", nextError);
+      setToast({
+        type: "error",
+        title: "Hapus gagal",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan saat menghapus data.",
+      });
     } finally {
       setDeletingId(null);
     }
@@ -321,523 +366,200 @@ export default function AdminEmployeesManager({
   return (
     <div className="space-y-6">
       {toast ? (
-        <div className="pointer-events-none fixed right-6 top-24 z-50 max-w-sm">
-          <div
-            className={[
-              "rounded-[22px] border px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.14)] backdrop-blur",
-              toast.type === "success"
-                ? "border-emerald-200 bg-white text-[#163127]"
-                : "border-rose-200 bg-white text-[#4a161b]",
-            ].join(" ")}
-          >
-            <div className="flex items-start gap-3">
-              <div
-                className={[
-                  "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl",
-                  toast.type === "success"
-                    ? "bg-emerald-50 text-emerald-600"
-                    : "bg-rose-50 text-rose-600",
-                ].join(" ")}
-              >
-                {toast.type === "success" ? (
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className="h-4 w-4"
-                    aria-hidden="true"
-                  >
-                    <path d="m5 13 4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                ) : (
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className="h-4 w-4"
-                    aria-hidden="true"
-                  >
-                    <path d="M12 8v4" strokeLinecap="round" />
-                    <path d="M12 16h.01" strokeLinecap="round" />
-                    <path
-                      d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold">{toast.title}</p>
-                <p className="mt-1 text-sm leading-6 text-[#7a6059]">
-                  {toast.description}
-                </p>
-              </div>
-            </div>
-          </div>
+        <div className="fixed right-6 top-24 z-50 max-w-sm rounded-[22px] border bg-white px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.14)]">
+          <p className="text-sm font-semibold text-[#241716]">{toast.title}</p>
+          <p className="mt-1 text-sm text-[#7a6059]">{toast.description}</p>
         </div>
       ) : null}
 
       <section className="grid gap-4 md:grid-cols-3">
-        <article className="rounded-[28px] border border-[#ead7ce] bg-white/82 p-5 shadow-[0_18px_40px_rgba(96,45,34,0.06)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#a16f63]">
-            Total Karyawan
-          </p>
-          <p className="mt-3 text-4xl font-semibold tracking-[-0.05em] text-[#241716]">
-            {employees.length || stats.totalEmployees}
-          </p>
-          <p className="mt-2 text-sm text-[#7a6059]">Data login dan profil kerja.</p>
+        <article className="rounded-[28px] border border-[#ead7ce] bg-white p-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#a16f63]">Total Karyawan</p>
+          <p className="mt-3 text-4xl font-semibold text-[#241716]">{employees.length || stats.totalEmployees}</p>
         </article>
-
-        <article className="rounded-[28px] border border-[#ead7ce] bg-white/82 p-5 shadow-[0_18px_40px_rgba(96,45,34,0.06)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#a16f63]">
-            Karyawan Kontrak
-          </p>
-          <p className="mt-3 text-4xl font-semibold tracking-[-0.05em] text-[#241716]">
-            {stats.totalContract}
-          </p>
-          <p className="mt-2 text-sm text-[#7a6059]">Relevan untuk potongan kontrak.</p>
+        <article className="rounded-[28px] border border-[#ead7ce] bg-white p-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#a16f63]">Karyawan Kontrak</p>
+          <p className="mt-3 text-4xl font-semibold text-[#241716]">{stats.totalContract}</p>
         </article>
-
-        <article className="rounded-[28px] border border-[#ead7ce] bg-[linear-gradient(135deg,#8f1d22_0%,#bb5148_100%)] p-5 text-white shadow-[0_22px_50px_rgba(143,29,34,0.2)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">
-            Pinjaman Aktif
-          </p>
-          <p className="mt-3 text-4xl font-semibold tracking-[-0.05em]">
-            {stats.activeLoans}
-          </p>
-          <p className="mt-2 text-sm text-white/78">
-            Terkait potongan payroll bulanan.
-          </p>
+        <article className="rounded-[28px] border border-[#ead7ce] bg-[linear-gradient(135deg,#8f1d22_0%,#bb5148_100%)] p-5 text-white">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">Pinjaman Aktif</p>
+          <p className="mt-3 text-4xl font-semibold">{stats.activeLoans}</p>
         </article>
       </section>
 
-      <div className="grid gap-6 2xl:grid-cols-[520px,minmax(0,1fr)]">
-        <section className="overflow-hidden rounded-[32px] border border-[#ead7ce] bg-[linear-gradient(180deg,#fffdfc_0%,#fff6f2_100%)] shadow-[0_20px_60px_rgba(96,45,34,0.08)]">
-          <div className="border-b border-[#eddad1] bg-[radial-gradient(circle_at_top_left,_rgba(239,68,68,0.08),_transparent_36%),linear-gradient(180deg,#fffaf8_0%,#fff6f2_100%)] px-6 py-6">
+      <div className="grid gap-6 2xl:grid-cols-[680px,minmax(0,1fr)]">
+        <section className="overflow-hidden rounded-[32px] border border-[#ead7ce] bg-[linear-gradient(180deg,#fffdfc_0%,#fff6f2_100%)]">
+          <div className="border-b border-[#eddad1] px-6 py-6">
             <div className="inline-flex rounded-full border border-[#f0d8d1] bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.26em] text-[#a16f63]">
               Form Data Karyawan
             </div>
-            <h3 className="mt-4 text-2xl font-semibold tracking-[-0.04em] text-[#241716]">
+            <h3 className="mt-4 text-2xl font-semibold text-[#241716]">
               {editingId ? "Edit Karyawan" : "Tambah Karyawan"}
             </h3>
-            <p className="mt-2 text-sm leading-7 text-[#7a6059]">
-              Semua data login karyawan dan data payroll diinput oleh admin dari sini.
-            </p>
           </div>
 
           <form className="space-y-6 px-6 py-6" onSubmit={handleSubmit}>
-            <div className="grid gap-4">
-              <div className="rounded-[28px] border border-[#efdfd8] bg-white/90 p-5 shadow-[0_10px_30px_rgba(96,45,34,0.05)]">
-                <div className="mb-5">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#a16f63]">
-                    Akun Login
-                  </p>
-                  <p className="mt-1 text-sm text-[#7a6059]">
-                    Informasi dasar yang dipakai karyawan untuk masuk ke sistem.
-                  </p>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Field label="Nama">
-                    <input
-                      value={form.name}
-                      onChange={(event) => updateField("name", event.target.value)}
-                      className={inputClassName}
-                      placeholder="Nama lengkap"
-                      required
-                    />
-                  </Field>
-
-                  <Field label="NIP / No Karyawan">
-                    <input
-                      value={form.nip}
-                      onChange={(event) => updateField("nip", event.target.value)}
-                      className={inputClassName}
-                      placeholder="KRY-2026-001"
-                      required
-                    />
-                  </Field>
-                </div>
-
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <Field label="Email">
-                    <input
-                      type="email"
-                      value={form.email}
-                      onChange={(event) => updateField("email", event.target.value)}
-                      className={inputClassName}
-                      placeholder="nama@company.local"
-                      required
-                    />
-                  </Field>
-
-                  <Field label={editingId ? "Password Baru (opsional)" : "Password"}>
-                    <input
-                      type="text"
-                      value={form.password}
-                      onChange={(event) => updateField("password", event.target.value)}
-                      className={inputClassName}
-                      placeholder={editingId ? "Kosongkan jika tidak diubah" : "Password login"}
-                      required={!editingId}
-                    />
-                  </Field>
-                </div>
-              </div>
-
-              <div className="rounded-[28px] border border-[#efdfd8] bg-white/90 p-5 shadow-[0_10px_30px_rgba(96,45,34,0.05)]">
-                <div className="mb-5">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#a16f63]">
-                    Struktur Kerja
-                  </p>
-                  <p className="mt-1 text-sm text-[#7a6059]">
-                    Posisi, divisi, departemen, dan rekapan kerja karyawan.
-                  </p>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  <Field label="Jabatan">
-                    <input
-                      list="roles-list"
-                      value={form.role}
-                      onChange={(event) => updateField("role", event.target.value)}
-                      className={inputClassName}
-                      placeholder="Staff Admin"
-                      required
-                    />
-                  </Field>
-
-                  <Field label="Divisi">
-                    <input
-                      list="divisions-list"
-                      value={form.division}
-                      onChange={(event) => updateField("division", event.target.value)}
-                      className={inputClassName}
-                      placeholder="Operasional"
-                      required
-                    />
-                  </Field>
-
-                  <Field label="Departemen">
-                    <select
-                      value={form.department}
-                      onChange={(event) => updateField("department", event.target.value)}
-                      className={inputClassName}
-                      required
-                    >
-                      <option value="">Pilih departemen</option>
-                      {lookups.departments.map((item) => (
-                        <option key={item.value} value={item.value}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                </div>
-
-                <div className="mt-4 grid gap-4 md:grid-cols-3">
-                  <Field label="Pembagian Rekapan">
-                    <select
-                      value={form.recapGroup}
-                      onChange={(event) => updateField("recapGroup", event.target.value)}
-                      className={inputClassName}
-                    >
-                      <option value="">Pilih pembagian rekapan</option>
-                      {lookups.recapGroups.map((item) => (
-                        <option key={item.value} value={item.value}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-
-                  <Field label="Bank">
-                    <input value={form.bank} className={inputClassName} readOnly />
-                  </Field>
-
-                  <Field label="No Rekening">
-                    <input
-                      value={form.accountNumber}
-                      onChange={(event) => updateField("accountNumber", event.target.value)}
-                      className={inputClassName}
-                      placeholder="1234567890"
-                    />
-                  </Field>
-                </div>
-              </div>
-
-              <div className="rounded-[28px] border border-[#efdfd8] bg-white/90 p-5 shadow-[0_10px_30px_rgba(96,45,34,0.05)]">
-                <div className="mb-5">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#a16f63]">
-                    Kontrak & Payroll
-                  </p>
-                  <p className="mt-1 text-sm text-[#7a6059]">
-                    Data status kerja, periode kontrak, dan kenaikan tahunan.
-                  </p>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  <Field label="Status Kerja">
-                    <select
-                      value={form.workStatus}
-                      onChange={(event) =>
-                        updateField("workStatus", event.target.value as FormState["workStatus"])
-                      }
-                      className={inputClassName}
-                    >
-                      {lookups.workStatuses.map((item) => (
-                        <option key={item.value} value={item.value}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-
-                  <Field label="Tanggal Kontrak">
-                    <input
-                      type="date"
-                      value={form.contractDate}
-                      onChange={(event) => updateField("contractDate", event.target.value)}
-                      className={inputClassName}
-                    />
-                  </Field>
-
-                  <Field label="Tanggal Selesai Kontrak">
-                    <input
-                      type="date"
-                      value={form.contractEndDate}
-                      onChange={(event) => updateField("contractEndDate", event.target.value)}
-                      className={inputClassName}
-                      disabled={form.workStatus === "tetap"}
-                    />
-                  </Field>
-
-                  <Field label="Kenaikan Tiap Tahun">
-                    <input
-                      value={form.annualRaise}
-                      onChange={(event) =>
-                        updateField("annualRaise", formatRupiahInput(event.target.value))
-                      }
-                      className={inputClassName}
-                      inputMode="numeric"
-                      placeholder="500.000"
-                    />
-                  </Field>
-                </div>
-              </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Nama"><input value={form.name} onChange={(event) => updateField("name", event.target.value)} className={inputClassName} required /></Field>
+              <Field label="NIP / No Karyawan"><input value={form.nip} onChange={(event) => updateField("nip", event.target.value)} className={inputClassName} required /></Field>
+              <Field label="Email"><input type="email" value={form.email} onChange={(event) => updateField("email", event.target.value)} className={inputClassName} required /></Field>
+              <Field label={editingId ? "Password Baru (opsional)" : "Password"}><input type="text" value={form.password} onChange={(event) => updateField("password", event.target.value)} className={inputClassName} required={!editingId} /></Field>
             </div>
 
-            <label className="flex items-center gap-3 rounded-2xl border border-[#ead7ce] bg-white px-4 py-3 text-sm font-medium text-[#5f4a45] shadow-[0_8px_24px_rgba(96,45,34,0.04)]">
-              <input
-                type="checkbox"
-                checked={form.userActive}
-                onChange={(event) => updateField("userActive", event.target.checked)}
-                className="h-4 w-4 rounded border-[#c8716d] text-[#8f1d22] focus:ring-[#c8716d]"
-              />
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <Field label="Unit"><select value={form.unit} onChange={(event) => updateField("unit", event.target.value)} className={selectClassName}><option value="">Pilih unit</option>{lookups.units.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+              <Field label="Jabatan"><select value={form.role} onChange={(event) => updateField("role", event.target.value)} className={selectClassName} required><option value="">Pilih jabatan</option>{lookups.roles.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+              <Field label="Departemen"><select value={form.department} onChange={(event) => updateField("department", event.target.value)} className={selectClassName} required><option value="">Pilih departemen</option>{lookups.departments.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+              <Field label="Divisi"><select value={form.division} onChange={(event) => updateField("division", event.target.value)} className={selectClassName} required><option value="">Pilih divisi</option>{lookups.divisions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+              <Field label="Sub Divisi"><select value={form.subDivision} onChange={(event) => updateField("subDivision", event.target.value)} className={selectClassName}><option value="">Pilih sub divisi</option>{lookups.subDivisions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+              <Field label="Penempatan"><select value={form.placement} onChange={(event) => updateField("placement", event.target.value)} className={selectClassName}><option value="">Pilih penempatan</option>{lookups.placements.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+              <Field label="Pembagian Rekapan"><select value={form.recapGroup} onChange={(event) => updateField("recapGroup", event.target.value)} className={selectClassName}><option value="">Pilih pembagian rekapan</option>{lookups.recapGroups.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+              <Field label="Bank"><input value={form.bank} onChange={(event) => updateField("bank", event.target.value)} className={inputClassName} placeholder="Nama bank" /></Field>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <Field label="No Rekening"><input value={form.accountNumber} onChange={(event) => updateField("accountNumber", event.target.value)} className={inputClassName} /></Field>
+              <Field label="Jenis Kelamin"><select value={form.gender} onChange={(event) => updateField("gender", event.target.value as FormState["gender"])} className={selectClassName}><option value="">Pilih jenis kelamin</option>{lookups.genders.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+              <Field label="Tempat Lahir"><input value={form.birthPlace} onChange={(event) => updateField("birthPlace", event.target.value)} className={inputClassName} /></Field>
+              <Field label="Tanggal Lahir"><input type="date" value={form.birthDate} onChange={(event) => updateField("birthDate", event.target.value)} className={inputClassName} /></Field>
+              <Field label="NIK"><input value={form.nik} onChange={(event) => updateField("nik", event.target.value)} className={inputClassName} /></Field>
+              <Field label="Agama"><input list="religions-list" value={form.religion} onChange={(event) => updateField("religion", event.target.value)} className={inputClassName} /></Field>
+              <Field label="Nomor Telepon"><input value={form.phoneNumber} onChange={(event) => updateField("phoneNumber", event.target.value)} className={inputClassName} /></Field>
+              <Field label="Foto KTP">
+                <div className="space-y-3">
+                  <label className="flex h-12 cursor-pointer items-center justify-between rounded-2xl border border-[#ead7ce] bg-white px-3.5 transition hover:border-[#d2b0a5]">
+                    <span className="inline-flex h-9 items-center rounded-xl bg-[#8f1d22] px-4 text-sm font-semibold text-white">
+                      Pilih File
+                    </span>
+                    <span className="ml-3 truncate text-sm text-[#7d635c]">
+                      {ktpFile ? ktpFile.name : form.ktpPhoto ? "Gunakan file tersimpan" : "Belum ada file dipilih"}
+                    </span>
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.webp,.pdf"
+                      onChange={(event) => setKtpFile(event.target.files?.[0] ?? null)}
+                      className="hidden"
+                    />
+                  </label>
+                  {form.ktpPhoto ? (
+                    <p className="text-xs text-[#7d635c]">
+                      File tersimpan:{" "}
+                      <a href={form.ktpPhoto} target="_blank" className="font-semibold text-[#8f1d22] underline" rel="noreferrer">
+                        lihat file
+                      </a>
+                    </p>
+                  ) : null}
+                </div>
+              </Field>
+            </div>
+
+            <div className="grid gap-4">
+              <Field label="Alamat KTP"><textarea value={form.addressKtp} onChange={(event) => updateField("addressKtp", event.target.value)} className={textareaClassName} /></Field>
+              <Field label="Alamat Rumah / Kost"><textarea value={form.addressCurrent} onChange={(event) => updateField("addressCurrent", event.target.value)} className={textareaClassName} /></Field>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <Field label="Status Kepegawaian"><select value={form.employmentStatus} onChange={(event) => updateField("employmentStatus", event.target.value as FormState["employmentStatus"])} className={selectClassName}>{lookups.workStatuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+              <Field label="Status Kerja"><select value={form.workStatus} onChange={(event) => updateField("workStatus", event.target.value as FormState["workStatus"])} className={selectClassName}>{lookups.workStatuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+              <Field label="Status Data"><select value={form.dataStatus} onChange={(event) => updateField("dataStatus", event.target.value as FormState["dataStatus"])} className={selectClassName}>{lookups.dataStatuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+              <Field label="Kenaikan Tiap Tahun"><input value={form.annualRaise} onChange={(event) => updateField("annualRaise", formatRupiahInput(event.target.value))} className={inputClassName} inputMode="numeric" /></Field>
+              <Field label="Tanggal Kontrak"><input type="date" value={form.contractDate} onChange={(event) => updateField("contractDate", event.target.value)} className={inputClassName} /></Field>
+              <Field label="Tanggal Selesai Kontrak"><input type="date" value={form.contractEndDate} onChange={(event) => updateField("contractEndDate", event.target.value)} className={inputClassName} disabled={form.employmentStatus === "tetap" || form.workStatus === "tetap"} /></Field>
+            </div>
+
+            <label className="flex items-center gap-3 rounded-2xl border border-[#ead7ce] bg-white px-4 py-3 text-sm font-medium text-[#5f4a45]">
+              <input type="checkbox" checked={form.userActive} onChange={(event) => updateField("userActive", event.target.checked)} className="h-4 w-4 rounded border-[#c8716d] text-[#8f1d22] focus:ring-[#c8716d]" />
               Akun karyawan aktif
             </label>
 
-            {message ? (
-              <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                {message}
-              </p>
-            ) : null}
-
-            {errorMessage ? (
-              <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                {errorMessage}
-              </p>
-            ) : null}
-
-            <div className="flex flex-wrap gap-3 pt-2">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#8f1d22] px-6 text-sm font-semibold text-white shadow-[0_18px_34px_rgba(143,29,34,0.24)] hover:-translate-y-0.5 hover:bg-[#7b171d] disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {isSubmitting
-                  ? "Menyimpan..."
-                  : editingId
-                    ? "Simpan Perubahan"
-                    : "Tambah Karyawan"}
+            <div className="flex flex-wrap gap-3">
+              <button type="submit" disabled={isSubmitting} className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#8f1d22] px-6 text-sm font-semibold text-white">
+                {isSubmitting ? "Menyimpan..." : editingId ? "Simpan Perubahan" : "Tambah Karyawan"}
               </button>
-
-              <button
-                type="button"
-                onClick={resetForm}
-                className="inline-flex h-12 items-center justify-center rounded-2xl border border-[#e7d4cb] bg-white px-6 text-sm font-semibold text-[#3b2622] hover:border-[#ca7771] hover:text-[#8f1d22]"
-              >
+              <button type="button" onClick={resetForm} className="inline-flex h-12 items-center justify-center rounded-2xl border border-[#e7d4cb] bg-white px-6 text-sm font-semibold text-[#3b2622]">
                 Reset Form
               </button>
             </div>
-
-            <datalist id="roles-list">
-              {lookups.roles.map((item) => (
-                <option key={item.value} value={item.value} />
-              ))}
-            </datalist>
-            <datalist id="divisions-list">
-              {lookups.divisions.map((item) => (
-                <option key={item.value} value={item.value} />
-              ))}
-            </datalist>
+            <datalist id="religions-list">{lookups.religions.map((item) => <option key={item.value} value={item.value} />)}</datalist>
           </form>
         </section>
 
-        <section className="overflow-hidden rounded-[32px] border border-[#ead7ce] bg-white shadow-[0_20px_60px_rgba(96,45,34,0.08)]">
+        <section className="overflow-hidden rounded-[32px] border border-[#ead7ce] bg-white">
           <div className="border-b border-[#eddad1] px-6 py-5">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.26em] text-[#a16f63]">
                   Tabel Data Karyawan
                 </p>
-                <h3 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-[#241716]">
-                  Format Sesuai Rekap Admin
+                <h3 className="mt-3 text-2xl font-semibold text-[#241716]">
+                  Schema Baru
                 </h3>
-                <p className="mt-2 text-sm leading-7 text-[#7a6059]">
-                  Menampilkan data login, struktur kerja, kontrak, dan rekening
-                  karyawan untuk kebutuhan admin dan payroll.
-                </p>
               </div>
-
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Cari nama, NIP, email, divisi..."
-                className={`${inputClassName} xl:max-w-sm`}
-              />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama, NIP, unit, jabatan..." className={`${inputClassName} xl:max-w-sm`} />
             </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-[1200px] border-collapse text-left">
+            <table className="min-w-[1600px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-[#efe0d8] bg-[#fff8f4] text-xs uppercase tracking-[0.2em] text-[#9e7467]">
                   <th className="px-6 py-4 font-semibold">Nama</th>
                   <th className="px-6 py-4 font-semibold">NIP</th>
-                  <th className="px-6 py-4 font-semibold">Email</th>
-                  <th className="px-6 py-4 font-semibold">Password</th>
+                  <th className="px-6 py-4 font-semibold">Unit</th>
                   <th className="px-6 py-4 font-semibold">Jabatan</th>
-                  <th className="px-6 py-4 font-semibold">Divisi</th>
                   <th className="px-6 py-4 font-semibold">Departemen</th>
-                  <th className="px-6 py-4 font-semibold">Pembagian Rekapan</th>
+                  <th className="px-6 py-4 font-semibold">Divisi</th>
+                  <th className="px-6 py-4 font-semibold">Sub Divisi</th>
+                  <th className="px-6 py-4 font-semibold">Penempatan</th>
+                  <th className="px-6 py-4 font-semibold">Status</th>
                   <th className="px-6 py-4 font-semibold">Bank</th>
                   <th className="px-6 py-4 font-semibold">No Rekening</th>
-                  <th className="px-6 py-4 font-semibold">Status Kerja</th>
-                  <th className="px-6 py-4 font-semibold">Mulai Kontrak</th>
-                  <th className="px-6 py-4 font-semibold">Selesai Kontrak</th>
+                  <th className="px-6 py-4 font-semibold">TTL</th>
+                  <th className="px-6 py-4 font-semibold">NIK</th>
+                  <th className="px-6 py-4 font-semibold">Telepon</th>
                   <th className="px-6 py-4 font-semibold">Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredEmployees.length ? (
                   filteredEmployees.map((employee) => (
-                    <tr
-                      key={employee.id}
-                      className="border-b border-[#f1e5de] text-sm text-[#513d39] hover:bg-[#fffaf7]"
-                    >
+                    <tr key={employee.id} className="border-b border-[#f1e5de] text-sm text-[#513d39] hover:bg-[#fffaf7]">
                       <td className="px-6 py-5 font-semibold text-[#241716]">{employee.name}</td>
                       <td className="px-6 py-5">{employee.nip}</td>
-                      <td className="px-6 py-5">{employee.email}</td>
-                      <td className="px-6 py-5 text-[#9a7a72]">{employee.passwordLabel}</td>
+                      <td className="px-6 py-5">{employee.unit || "-"}</td>
                       <td className="px-6 py-5">{employee.role}</td>
-                      <td className="px-6 py-5">{employee.division}</td>
                       <td className="px-6 py-5">{employee.department}</td>
-                      <td className="px-6 py-5">{employee.recapGroup || "-"}</td>
+                      <td className="px-6 py-5">{employee.division}</td>
+                      <td className="px-6 py-5">{employee.subDivision || "-"}</td>
+                      <td className="px-6 py-5">{employee.placement || "-"}</td>
+                      <td className="px-6 py-5">{formatStatus(employee.employmentStatus)}</td>
                       <td className="px-6 py-5">{employee.bank || "-"}</td>
                       <td className="px-6 py-5">{employee.accountNumber || "-"}</td>
                       <td className="px-6 py-5">
-                        <span className="rounded-full border border-[#edd8cf] bg-[#fff7f2] px-3 py-1 text-xs font-medium text-[#785f58]">
-                          {formatStatus(employee.workStatus)}
-                        </span>
+                        {[employee.birthPlace, employee.birthDate].filter(Boolean).join(", ") || "-"}
                       </td>
-                      <td className="px-6 py-5">{employee.contractDate || "-"}</td>
-                      <td className="px-6 py-5">{employee.contractEndDate || "-"}</td>
+                      <td className="px-6 py-5">{employee.nik || "-"}</td>
+                      <td className="px-6 py-5">{employee.phoneNumber || "-"}</td>
                       <td className="px-6 py-5">
                         <div className="flex gap-2">
                           <button
                             type="button"
-                            aria-label={`Edit ${employee.name}`}
-                            title={`Edit ${employee.name}`}
                             onClick={() => handleEdit(employee)}
-                            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#e8d5cc] bg-white text-[#3c2824] hover:border-[#c8736d] hover:text-[#8f1d22]"
+                            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#e8d5cc] bg-white text-[#3c2824] transition hover:border-[#d6bbb0] hover:bg-[#fff7f2] hover:text-[#8f1d22]"
+                            aria-label={`Edit ${employee.name}`}
+                            title="Edit"
                           >
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.8"
-                              className="h-4 w-4"
-                              aria-hidden="true"
-                            >
-                              <path
-                                d="M4 20h4l10-10a2.12 2.12 0 0 0-3-3L5 17v3Z"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                              <path d="m13.5 6.5 4 4" strokeLinecap="round" />
-                            </svg>
+                            <EditIcon />
                           </button>
                           <button
                             type="button"
-                            aria-label={`Hapus ${employee.name}`}
-                            title={`Hapus ${employee.name}`}
                             onClick={() => handleDelete(employee)}
                             disabled={deletingId === employee.id}
-                            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-70"
+                            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            aria-label={`Hapus ${employee.name}`}
+                            title="Hapus"
                           >
-                            {deletingId === employee.id ? (
-                              <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                className="h-4 w-4 animate-spin"
-                                aria-hidden="true"
-                              >
-                                <circle
-                                  cx="12"
-                                  cy="12"
-                                  r="9"
-                                  stroke="currentColor"
-                                  strokeWidth="1.8"
-                                  strokeOpacity="0.25"
-                                />
-                                <path
-                                  d="M21 12a9 9 0 0 0-9-9"
-                                  stroke="currentColor"
-                                  strokeWidth="1.8"
-                                  strokeLinecap="round"
-                                />
-                              </svg>
-                            ) : (
-                              <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.8"
-                                className="h-4 w-4"
-                                aria-hidden="true"
-                              >
-                                <path
-                                  d="M3 6h18"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                                <path
-                                  d="M8 6V4h8v2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                                <path
-                                  d="M19 6l-1 14H6L5 6"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                                <path d="M10 11v6" strokeLinecap="round" />
-                                <path d="M14 11v6" strokeLinecap="round" />
-                              </svg>
-                            )}
+                            {deletingId === employee.id ? <SpinnerIcon /> : <DeleteIcon />}
                           </button>
                         </div>
                       </td>
@@ -845,13 +567,8 @@ export default function AdminEmployeesManager({
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={14} className="px-6 py-16 text-center">
-                      <p className="text-base font-semibold text-[#3b2723]">
-                        Belum ada data yang cocok
-                      </p>
-                      <p className="mt-2 text-sm text-[#8a6f68]">
-                        Coba ubah pencarian atau tambahkan karyawan baru.
-                      </p>
+                    <td colSpan={15} className="px-6 py-16 text-center text-[#8a6f68]">
+                      Belum ada data yang cocok.
                     </td>
                   </tr>
                 )}

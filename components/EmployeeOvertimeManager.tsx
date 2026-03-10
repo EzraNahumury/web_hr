@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState, useTransition } from "react";
+import { FormEvent, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 type OvertimeRow = {
@@ -39,6 +39,7 @@ export default function EmployeeOvertimeManager({ employeeId, rows }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [selectedFileName, setSelectedFileName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [form, setForm] = useState({
     tanggal: "",
     jamMulai: "",
@@ -97,6 +98,9 @@ export default function EmployeeOvertimeManager({ employeeId, rows }: Props) {
       });
       setBuktiFile(null);
       setSelectedFileName("");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       router.refresh();
     });
   }
@@ -156,6 +160,7 @@ export default function EmployeeOvertimeManager({ employeeId, rows }: Props) {
             <span className="text-sm font-semibold text-[#2f1f1d]">Bukti Lembur</span>
             <div className="rounded-2xl border border-[#e4d4cc] bg-[#fffaf7] p-4">
               <input
+                ref={fileInputRef}
                 type="file"
                 accept=".jpg,.jpeg,.png,.webp,.pdf"
                 onChange={(event) => {

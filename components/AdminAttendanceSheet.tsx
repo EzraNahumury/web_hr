@@ -38,6 +38,7 @@ function AttendanceDetailModal({
     return null;
   }
 
+  const isSick = selected.detail.code === "S" || selected.detail.status === "sakit";
   const mapInput =
     selected.detail.latitudeIn !== null && selected.detail.longitudeIn !== null
       ? `${selected.detail.latitudeIn},${selected.detail.longitudeIn}`
@@ -78,29 +79,45 @@ function AttendanceDetailModal({
         <div className="grid gap-6 px-6 py-6 lg:grid-cols-2">
           <div className="space-y-4">
             <div>
-              <p className="text-sm font-semibold text-[#3c2824]">Foto Selfie Masuk</p>
+              <p className="text-sm font-semibold text-[#3c2824]">
+                {isSick ? "Surat / Bukti Sakit" : "Foto Selfie Masuk"}
+              </p>
               <div className="mt-3 overflow-hidden rounded-[22px] border border-[#ead7ce] bg-[#f8f3ef]">
                 {selected.detail.photoIn ? (
-                  <Image
-                    src={selected.detail.photoIn}
-                    alt="Foto selfie masuk"
-                    width={720}
-                    height={900}
-                    unoptimized
-                    className="h-[280px] w-full object-cover"
-                  />
+                  /\.(pdf)$/i.test(selected.detail.photoIn) ? (
+                    <iframe
+                      title="Bukti sakit"
+                      src={selected.detail.photoIn}
+                      className="h-[280px] w-full border-0"
+                    />
+                  ) : (
+                    <Image
+                      src={selected.detail.photoIn}
+                      alt={isSick ? "Bukti sakit" : "Foto selfie masuk"}
+                      width={720}
+                      height={900}
+                      unoptimized
+                      className="h-[280px] w-full object-cover"
+                    />
+                  )
                 ) : (
                   <div className="flex h-[280px] items-center justify-center text-sm text-[#8a6f68]">
-                    Foto masuk belum tersedia.
+                    {isSick ? "Bukti sakit belum tersedia." : "Foto masuk belum tersedia."}
                   </div>
                 )}
               </div>
             </div>
 
             <div>
-              <p className="text-sm font-semibold text-[#3c2824]">Foto Selfie Pulang</p>
+              <p className="text-sm font-semibold text-[#3c2824]">
+                {isSick ? "Catatan Sakit" : "Foto Selfie Pulang"}
+              </p>
               <div className="mt-3 overflow-hidden rounded-[22px] border border-[#ead7ce] bg-[#f8f3ef]">
-                {selected.detail.photoOut ? (
+                {isSick ? (
+                  <div className="flex min-h-[280px] items-start justify-start p-5 text-sm leading-7 text-[#7a6059]">
+                    {selected.detail.note || "Catatan sakit belum diisi."}
+                  </div>
+                ) : selected.detail.photoOut ? (
                   <Image
                     src={selected.detail.photoOut}
                     alt="Foto selfie pulang"
@@ -122,6 +139,9 @@ function AttendanceDetailModal({
             <div className="rounded-[22px] border border-[#ead7ce] bg-[#fff8f4] p-4 text-sm text-[#7a6059]">
               <p>Jam masuk: {selected.detail.timeIn || "-"}</p>
               <p className="mt-2">Jam pulang: {selected.detail.timeOut || "-"}</p>
+              {isSick ? (
+                <p className="mt-4">Keterangan: {selected.detail.note || "-"}</p>
+              ) : null}
               <p className="mt-4">Latitude masuk: {selected.detail.latitudeIn ?? "-"}</p>
               <p className="mt-2">Longitude masuk: {selected.detail.longitudeIn ?? "-"}</p>
               <p className="mt-4">Latitude pulang: {selected.detail.latitudeOut ?? "-"}</p>

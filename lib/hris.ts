@@ -42,6 +42,7 @@ type AttendanceRow = RowDataPacket & {
   longitude_masuk: number | null;
   latitude_pulang: number | null;
   longitude_pulang: number | null;
+  keterangan: string | null;
 };
 
 export type AttendanceDayDetail = {
@@ -56,6 +57,7 @@ export type AttendanceDayDetail = {
   longitudeIn: number | null;
   latitudeOut: number | null;
   longitudeOut: number | null;
+  note: string | null;
 };
 
 type AttendanceSheetRow = {
@@ -138,7 +140,8 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         a.latitude_masuk,
         a.longitude_masuk,
         a.latitude_pulang,
-        a.longitude_pulang
+        a.longitude_pulang,
+        a.keterangan
       FROM karyawan k
       INNER JOIN users u ON u.id = k.user_id
       LEFT JOIN absensi a
@@ -191,6 +194,7 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         longitudeIn: row.longitude_masuk,
         latitudeOut: row.latitude_pulang,
         longitudeOut: row.longitude_pulang,
+        note: row.keterangan,
       };
     }
   }

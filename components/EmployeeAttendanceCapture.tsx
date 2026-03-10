@@ -50,6 +50,9 @@ export default function EmployeeAttendanceCapture({
   const [locationMessage, setLocationMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [checkInStatus, setCheckInStatus] = useState<"hadir" | "sakit">("hadir");
+  const [sickFile, setSickFile] = useState<File | null>(null);
+  const [sickNote, setSickNote] = useState("");
 
   const stopLocationTracking = useCallback(() => {
     if (watchIdRef.current !== null) {
@@ -235,13 +238,25 @@ export default function EmployeeAttendanceCapture({
   }
 
   function submitAttendance() {
-    if (!photoDataUrl) {
-      setErrorMessage("Ambil selfie terlebih dahulu.");
+    if (isCheckIn && checkInStatus === "sakit" && !sickFile) {
+      setErrorMessage("Upload bukti sakit terlebih dahulu.");
       return;
     }
 
-    if (!location) {
-      setErrorMessage("Lokasi belum tersedia.");
+    if (!isCheckIn || checkInStatus === "hadir") {
+      if (!photoDataUrl) {
+        setErrorMessage("Ambil selfie terlebih dahulu.");
+        return;
+      }
+
+      if (!location) {
+        setErrorMessage("Lokasi belum tersedia.");
+        return;
+      }
+    }
+
+    if (!photoDataUrl && (!isCheckIn || checkInStatus === "hadir")) {
+      setErrorMessage("Ambil selfie terlebih dahulu.");
       return;
     }
 
@@ -254,17 +269,37 @@ export default function EmployeeAttendanceCapture({
           ? "/api/employee/attendance/check-in"
           : "/api/employee/attendance/check-out";
 
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          photoDataUrl,
-          latitude: location.latitude,
-          longitude: location.longitude,
-        }),
-      });
+      const response =
+        mode === "check-in"
+          ? await (async () => {
+              const formData = new FormData();
+              formData.append("status", checkInStatus);
+              formData.append("keterangan", sickNote);
+
+              if (checkInStatus === "hadir") {
+                formData.append("photoDataUrl", photoDataUrl ?? "");
+                formData.append("latitude", String(location?.latitude ?? ""));
+                formData.append("longitude", String(location?.longitude ?? ""));
+              } else if (sickFile) {
+                formData.append("sickProof", sickFile);
+              }
+
+              return fetch(endpoint, {
+                method: "POST",
+                body: formData,
+              });
+            })()
+          : await fetch(endpoint, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                photoDataUrl,
+                latitude: location?.latitude,
+                longitude: location?.longitude,
+              }),
+            });
 
       const result = (await response.json()) as { message?: string };
 
@@ -275,9 +310,17 @@ export default function EmployeeAttendanceCapture({
 
       setSuccessMessage(
         mode === "check-in"
-          ? "Presensi masuk berhasil disimpan."
+          ? checkInStatus === "sakit"
+            ? "Laporan sakit berhasil dikirim."
+            : "Presensi masuk berhasil disimpan."
           : "Presensi pulang berhasil disimpan.",
       );
+      if (mode === "check-in") {
+        setCheckInStatus("hadir");
+        setSickFile(null);
+        setSickNote("");
+        setPhotoDataUrl(null);
+      }
       router.refresh();
     });
   }
@@ -312,8 +355,39 @@ export default function EmployeeAttendanceCapture({
           ) : null}
 
           <div className="mt-6">
+            {isCheckIn ? (
+              <div className="mb-5 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setCheckInStatus("hadir")}
+                  className={
+                    checkInStatus === "hadir"
+                      ? "rounded-2xl border border-[#c8716d] bg-[#fff3ef] px-4 py-3 text-left text-sm font-semibold text-[#8f1d22]"
+                      : "rounded-2xl border border-[#ead7ce] bg-white px-4 py-3 text-left text-sm font-semibold text-[#4b3230]"
+                  }
+                >
+                  Hadir
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCheckInStatus("sakit")}
+                  className={
+                    checkInStatus === "sakit"
+                      ? "rounded-2xl border border-[#c8716d] bg-[#fff3ef] px-4 py-3 text-left text-sm font-semibold text-[#8f1d22]"
+                      : "rounded-2xl border border-[#ead7ce] bg-white px-4 py-3 text-left text-sm font-semibold text-[#4b3230]"
+                  }
+                >
+                  Sakit
+                </button>
+              </div>
+            ) : null}
+
             <div className="mx-auto max-w-[360px] overflow-hidden rounded-[28px] border border-[#ead7ce] bg-[#fff8f4]">
-              {!photoDataUrl ? (
+              {isCheckIn && checkInStatus === "sakit" ? (
+                <div className="flex aspect-[4/5] items-center justify-center px-6 text-center text-sm text-[#7a6059]">
+                  Untuk status sakit, upload bukti sakit. Selfie tidak diwajibkan.
+                </div>
+              ) : !photoDataUrl ? (
                 <video
                   ref={videoRef}
                   autoPlay
@@ -337,13 +411,15 @@ export default function EmployeeAttendanceCapture({
           <canvas ref={canvasRef} className="hidden" />
 
           <div className="mt-5 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={captureSelfie}
-              className="rounded-2xl bg-[#8f1d22] px-5 py-3 text-sm font-semibold text-white"
-            >
-              {photoDataUrl ? "Ambil Ulang Selfie" : "Ambil Selfie"}
-            </button>
+            {!isCheckIn || checkInStatus === "hadir" ? (
+              <button
+                type="button"
+                onClick={captureSelfie}
+                className="rounded-2xl bg-[#8f1d22] px-5 py-3 text-sm font-semibold text-white"
+              >
+                {photoDataUrl ? "Ambil Ulang Selfie" : "Ambil Selfie"}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={submitAttendance}
@@ -353,10 +429,44 @@ export default function EmployeeAttendanceCapture({
               {isPending
                 ? "Menyimpan..."
                 : isCheckIn
-                  ? "Kirim Presensi Masuk"
+                  ? checkInStatus === "sakit"
+                    ? "Kirim Laporan Sakit"
+                    : "Kirim Presensi Masuk"
                   : "Kirim Presensi Pulang"}
             </button>
           </div>
+
+          {isCheckIn && checkInStatus === "sakit" ? (
+            <div className="mt-5 space-y-4 rounded-[28px] border border-[#ead7ce] bg-[#fff8f4] p-4">
+              <div>
+                <p className="text-sm font-semibold text-[#2f1f1d]">Upload Bukti Sakit</p>
+                <label className="mt-3 flex h-12 cursor-pointer items-center justify-between rounded-2xl border border-[#ead7ce] bg-white px-3.5 transition hover:border-[#d2b0a5]">
+                  <span className="inline-flex h-9 items-center rounded-xl bg-[#8f1d22] px-4 text-sm font-semibold text-white">
+                    Pilih File
+                  </span>
+                  <span className="ml-3 truncate text-sm text-[#7d635c]">
+                    {sickFile ? sickFile.name : "Belum ada file dipilih"}
+                  </span>
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.webp,.pdf"
+                    onChange={(event) => setSickFile(event.target.files?.[0] ?? null)}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#2f1f1d]">Keterangan</p>
+                <textarea
+                  value={sickNote}
+                  onChange={(event) => setSickNote(event.target.value)}
+                  rows={3}
+                  placeholder="Contoh: demam tinggi, istirahat di rumah."
+                  className="mt-3 w-full rounded-2xl border border-[#ead7ce] bg-white px-4 py-3 text-sm text-[#241716] outline-none focus:border-[#c8716d]"
+                />
+              </div>
+            </div>
+          ) : null}
         </section>
 
         <section className="space-y-4">

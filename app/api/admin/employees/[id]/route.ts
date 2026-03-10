@@ -1,6 +1,18 @@
 import { NextResponse } from "next/server";
 import { getCurrentAdminSession } from "@/lib/auth";
-import { deleteEmployee, getEmployeeById, updateEmployee } from "@/lib/employees";
+import {
+  deleteEmployee,
+  EMPLOYEE_DEPARTMENTS,
+  EMPLOYEE_DIVISIONS,
+  EMPLOYEE_PLACEMENTS,
+  EMPLOYEE_ROLES,
+  EMPLOYEE_SUB_DIVISIONS,
+  EMPLOYEE_UNITS,
+  EMPLOYEE_WORK_STATUSES,
+  getEmployeeById,
+  updateEmployee,
+} from "@/lib/employees";
+import { saveUploadedFile } from "@/lib/uploads";
 
 function normalizeText(value: unknown) {
   if (typeof value !== "string") {
@@ -20,10 +32,17 @@ function validatePayload(body: Record<string, unknown>) {
   const nip = normalizeText(body.nip);
   const name = normalizeText(body.name);
   const email = normalizeText(body.email)?.toLowerCase() ?? null;
+  const unit = normalizeText(body.unit);
   const role = normalizeText(body.role);
+  const subDivision = normalizeText(body.subDivision);
+  const placement = normalizeText(body.placement);
   const division = normalizeText(body.division);
   const department = normalizeText(body.department);
+  const gender: "laki-laki" | "perempuan" | null =
+    body.gender === "laki-laki" || body.gender === "perempuan" ? body.gender : null;
+  const employmentStatus = body.employmentStatus;
   const workStatus = body.workStatus;
+  const dataStatus = body.dataStatus;
 
   if (!nip || !name || !email || !role || !division || !department) {
     return {
@@ -32,8 +51,46 @@ function validatePayload(body: Record<string, unknown>) {
     };
   }
 
-  if (!["tetap", "kontrak", "freelance", "magang", "resign"].includes(String(workStatus))) {
+  if (unit && !EMPLOYEE_UNITS.includes(unit as (typeof EMPLOYEE_UNITS)[number])) {
+    return { error: "Unit tidak valid." };
+  }
+
+  if (!EMPLOYEE_ROLES.includes(role as (typeof EMPLOYEE_ROLES)[number])) {
+    return { error: "Jabatan tidak valid." };
+  }
+
+  if (!EMPLOYEE_DEPARTMENTS.includes(department as (typeof EMPLOYEE_DEPARTMENTS)[number])) {
+    return { error: "Departemen tidak valid." };
+  }
+
+  if (!EMPLOYEE_DIVISIONS.includes(division as (typeof EMPLOYEE_DIVISIONS)[number])) {
+    return { error: "Divisi tidak valid." };
+  }
+
+  if (
+    subDivision &&
+    !EMPLOYEE_SUB_DIVISIONS.includes(subDivision as (typeof EMPLOYEE_SUB_DIVISIONS)[number])
+  ) {
+    return { error: "Sub divisi tidak valid." };
+  }
+
+  if (
+    placement &&
+    !EMPLOYEE_PLACEMENTS.includes(placement as (typeof EMPLOYEE_PLACEMENTS)[number])
+  ) {
+    return { error: "Penempatan tidak valid." };
+  }
+
+  if (!EMPLOYEE_WORK_STATUSES.includes(String(workStatus) as (typeof EMPLOYEE_WORK_STATUSES)[number])) {
     return { error: "Status kerja tidak valid." };
+  }
+
+  if (!EMPLOYEE_WORK_STATUSES.includes(String(employmentStatus) as (typeof EMPLOYEE_WORK_STATUSES)[number])) {
+    return { error: "Status kepegawaian tidak valid." };
+  }
+
+  if (!["aktif", "nonaktif"].includes(String(dataStatus))) {
+    return { error: "Status data tidak valid." };
   }
 
   return {
@@ -42,17 +99,31 @@ function validatePayload(body: Record<string, unknown>) {
       nip,
       email,
       password: normalizeText(body.password),
+      unit,
       role,
+      subDivision,
+      placement,
       division,
       department,
       recapGroup: normalizeText(body.recapGroup),
-      bank: "BCA",
+      bank: normalizeText(body.bank),
       accountNumber: normalizeText(body.accountNumber),
-      workStatus: workStatus as "tetap" | "kontrak" | "freelance" | "magang" | "resign",
+      gender,
+      birthPlace: normalizeText(body.birthPlace),
+      birthDate: normalizeText(body.birthDate),
+      nik: normalizeText(body.nik),
+      religion: normalizeText(body.religion),
+      addressKtp: normalizeText(body.addressKtp),
+      addressCurrent: normalizeText(body.addressCurrent),
+      phoneNumber: normalizeText(body.phoneNumber),
+      ktpPhoto: normalizeText(body.ktpPhoto),
+      employmentStatus: employmentStatus as "training" | "tetap" | "kontrak" | "freelance",
+      workStatus: workStatus as "training" | "tetap" | "kontrak" | "freelance",
+      dataStatus: dataStatus as "aktif" | "nonaktif",
       contractDate: normalizeText(body.contractDate),
       contractEndDate: normalizeText(body.contractEndDate),
       annualRaise: Number(body.annualRaise ?? 0) || 0,
-      userActive: body.userActive === false ? false : true,
+      userActive: body.userActive === "false" ? false : true,
     },
   };
 }
@@ -93,14 +164,22 @@ export async function PUT(
       );
     }
 
-    const body = (await request.json()) as Record<string, unknown>;
+    const formData = await request.formData();
+    const ktpFile = formData.get("ktpFile");
+    const body = Object.fromEntries(formData.entries()) as Record<string, unknown>;
     const result = validatePayload(body);
 
     if ("error" in result) {
       return NextResponse.json({ message: result.error }, { status: 400 });
     }
 
-    const employee = await updateEmployee(id, result.payload);
+    const employee = await updateEmployee(id, {
+      ...result.payload,
+      ktpPhoto:
+        ktpFile instanceof File && ktpFile.size > 0
+          ? await saveUploadedFile(ktpFile, "ktp")
+          : result.payload.ktpPhoto,
+    });
 
     return NextResponse.json({
       message: "Data karyawan berhasil diperbarui.",
