@@ -1,8 +1,10 @@
 import EmployeeShell from "@/components/EmployeeShell";
-import { getEmployeeByEmail, getEmployeeContract } from "@/lib/hris";
+import { requireEmployeeSession } from "@/lib/auth";
+import { getEmployeeByUserId, getEmployeeContract } from "@/lib/hris";
 
 export default async function EmployeeContractPage() {
-  const employee = await getEmployeeByEmail("rina.saputri@company.local");
+  const session = await requireEmployeeSession();
+  const employee = await getEmployeeByUserId(session.userId);
   if (!employee) return <main className="p-10">Data karyawan tidak ditemukan.</main>;
   const rows = await getEmployeeContract(employee.id);
 

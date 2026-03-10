@@ -8,10 +8,46 @@ import GridScan from "@/components/GridScan";
 export default function Home() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("ezra.kristanto@ti.ukdw.ac.id");
-  const [password, setPassword] = useState("ftiukdw2022");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [locationStatus, setLocationStatus] = useState("");
+
+  async function requestLoginLocation() {
+    if (!navigator.geolocation) {
+      return;
+    }
+
+    setLocationStatus("Meminta izin lokasi...");
+
+    await new Promise<void>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          sessionStorage.setItem(
+            "web_hr_last_location",
+            JSON.stringify({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy,
+              capturedAt: Date.now(),
+            }),
+          );
+          setLocationStatus("Izin lokasi diizinkan.");
+          resolve();
+        },
+        () => {
+          setLocationStatus("Izin lokasi ditolak.");
+          reject(new Error("Izin lokasi dibutuhkan untuk presensi karyawan."));
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 20000,
+          maximumAge: 0,
+        },
+      );
+    });
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -19,7 +55,7 @@ export default function Home() {
     setErrorMessage("");
 
     try {
-      const response = await fetch("/api/admin/login", {
+      const response = await fetch("/api/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -27,13 +63,21 @@ export default function Home() {
         body: JSON.stringify({ email, password }),
       });
 
-      const result = (await response.json()) as { message?: string };
+      const result = (await response.json()) as {
+        message?: string;
+        redirectTo?: string;
+        role?: "admin" | "karyawan";
+      };
 
       if (!response.ok) {
         throw new Error(result.message || "Login gagal.");
       }
 
-      router.push("/admin");
+      if (result.role === "karyawan") {
+        await requestLoginLocation();
+      }
+
+      router.push(result.redirectTo || "/");
       router.refresh();
     } catch (error) {
       const message =
@@ -87,7 +131,7 @@ export default function Home() {
               Login
             </h1>
             <p className="text-sm leading-7 text-white/68">
-              Masuk untuk melanjutkan ke portal karyawan.
+              Login admin atau karyawan menggunakan email dan password yang tersimpan di sistem.
             </p>
           </div>
 
@@ -208,6 +252,12 @@ export default function Home() {
             {errorMessage ? (
               <p className="rounded-2xl border border-red-400/20 bg-red-500/12 px-4 py-3 text-sm text-red-100">
                 {errorMessage}
+              </p>
+            ) : null}
+
+            {locationStatus ? (
+              <p className="rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-sm text-white/78">
+                {locationStatus}
               </p>
             ) : null}
           </form>

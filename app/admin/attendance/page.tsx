@@ -1,4 +1,5 @@
 import AdminShell from "@/components/AdminShell";
+import AdminAttendanceSheet from "@/components/AdminAttendanceSheet";
 import { requireAdminSession } from "@/lib/auth";
 import { getAttendanceSheet } from "@/lib/hris";
 import Link from "next/link";
@@ -140,47 +141,7 @@ export default async function AdminAttendancePage({
             </div>
           </div>
         </div>
-
-        <div className="overflow-x-auto">
-          <table className="min-w-[1800px] border-collapse text-left text-sm">
-            <thead>
-              <tr className="border-b border-[#efe0d8] bg-[#fff8f4] text-xs uppercase tracking-[0.18em] text-[#9e7467]">
-                <th className="px-4 py-4">Nama</th>
-                <th className="px-4 py-4">NIP</th>
-                <th className="px-4 py-4">Jabatan</th>
-                <th className="px-4 py-4">Divisi</th>
-                <th className="px-4 py-4">Departemen</th>
-                <th className="px-4 py-4">Email</th>
-                <th className="px-4 py-4">Password</th>
-                {sheet.days.map((day) => (
-                  <th key={day} className="px-3 py-4 text-center">
-                    {day}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {sheet.rows.map((row) => (
-                <tr key={row.employeeId} className="border-b border-[#f1e5de] text-[#513d39]">
-                  <td className="px-4 py-4 font-semibold text-[#241716]">{row.name}</td>
-                  <td className="px-4 py-4">{row.nip}</td>
-                  <td className="px-4 py-4">{row.role}</td>
-                  <td className="px-4 py-4">{row.division}</td>
-                  <td className="px-4 py-4">{row.department}</td>
-                  <td className="px-4 py-4">{row.email}</td>
-                  <td className="px-4 py-4 text-[#9a7a72]">{row.passwordLabel}</td>
-                  {sheet.days.map((day) => (
-                    <td key={day} className="px-3 py-4 text-center font-medium">
-                      <span className="inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fff4ee] px-2 py-1 text-xs">
-                        {row.daily[day] || "-"}
-                      </span>
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <AdminAttendanceSheet days={sheet.days} rows={sheet.rows} />
       </div>
     </AdminShell>
   );

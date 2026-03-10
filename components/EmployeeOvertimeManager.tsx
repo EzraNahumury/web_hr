@@ -38,12 +38,13 @@ export default function EmployeeOvertimeManager({ employeeId, rows }: Props) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [selectedFileName, setSelectedFileName] = useState("");
   const [form, setForm] = useState({
     tanggal: "",
     jamMulai: "",
     jamSelesai: "",
-    buktiLembur: "",
   });
+  const [buktiFile, setBuktiFile] = useState<File | null>(null);
 
   const estimatedHours = useMemo(() => {
     if (!form.tanggal || !form.jamMulai || !form.jamSelesai) {
@@ -67,18 +68,18 @@ export default function EmployeeOvertimeManager({ employeeId, rows }: Props) {
     setSuccess(null);
 
     startTransition(async () => {
+      const formData = new FormData();
+      formData.append("karyawanId", String(employeeId));
+      formData.append("tanggal", form.tanggal);
+      formData.append("jamMulai", form.jamMulai);
+      formData.append("jamSelesai", form.jamSelesai);
+      if (buktiFile) {
+        formData.append("buktiLembur", buktiFile);
+      }
+
       const response = await fetch("/api/employee/overtime", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          karyawanId: employeeId,
-          tanggal: form.tanggal,
-          jamMulai: form.jamMulai,
-          jamSelesai: form.jamSelesai,
-          buktiLembur: form.buktiLembur.trim() || null,
-        }),
+        body: formData,
       });
 
       const result = await response.json();
@@ -93,8 +94,9 @@ export default function EmployeeOvertimeManager({ employeeId, rows }: Props) {
         tanggal: "",
         jamMulai: "",
         jamSelesai: "",
-        buktiLembur: "",
       });
+      setBuktiFile(null);
+      setSelectedFileName("");
       router.refresh();
     });
   }
@@ -152,15 +154,21 @@ export default function EmployeeOvertimeManager({ employeeId, rows }: Props) {
 
           <label className="space-y-2 md:col-span-2">
             <span className="text-sm font-semibold text-[#2f1f1d]">Bukti Lembur</span>
-            <input
-              type="text"
-              value={form.buktiLembur}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, buktiLembur: event.target.value }))
-              }
-              placeholder="Contoh: screenshot_lembur_01.png"
-              className="h-12 w-full rounded-2xl border border-[#e4d4cc] bg-[#fffaf7] px-4 text-sm text-[#241716] outline-none transition focus:border-[#c65e61]"
-            />
+            <div className="rounded-2xl border border-[#e4d4cc] bg-[#fffaf7] p-4">
+              <input
+                type="file"
+                accept=".jpg,.jpeg,.png,.webp,.pdf"
+                onChange={(event) => {
+                  const nextFile = event.target.files?.[0] ?? null;
+                  setBuktiFile(nextFile);
+                  setSelectedFileName(nextFile?.name ?? "");
+                }}
+                className="block w-full text-sm text-[#241716] file:mr-4 file:rounded-xl file:border-0 file:bg-[#8f1d22] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+              />
+              <p className="mt-3 text-sm text-[#7a6059]">
+                {selectedFileName || "Upload screenshot atau bukti lembur yang disetujui atasan."}
+              </p>
+            </div>
           </label>
 
           <div className="rounded-2xl border border-[#ead7ce] bg-[#fff7f3] px-4 py-3 text-sm text-[#7a6059]">

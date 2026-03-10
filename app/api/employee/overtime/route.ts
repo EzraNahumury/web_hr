@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ResultSetHeader, RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
+import { saveUploadedFile } from "@/lib/uploads";
 
 function toDateTimeString(date: string, time: string) {
   return `${date} ${time}:00`;
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => null);
+  const formData = await request.formData().catch(() => null);
 
-  const karyawanId = Number(body?.karyawanId);
-  const tanggal = typeof body?.tanggal === "string" ? body.tanggal : "";
-  const jamMulai = typeof body?.jamMulai === "string" ? body.jamMulai : "";
-  const jamSelesai = typeof body?.jamSelesai === "string" ? body.jamSelesai : "";
-  const buktiLembur =
-    typeof body?.buktiLembur === "string" && body.buktiLembur.trim()
-      ? body.buktiLembur.trim()
-      : null;
+  const karyawanId = Number(formData?.get("karyawanId"));
+  const tanggal = typeof formData?.get("tanggal") === "string" ? String(formData.get("tanggal")) : "";
+  const jamMulai =
+    typeof formData?.get("jamMulai") === "string" ? String(formData.get("jamMulai")) : "";
+  const jamSelesai =
+    typeof formData?.get("jamSelesai") === "string" ? String(formData.get("jamSelesai")) : "";
+  const buktiFile = formData?.get("buktiLembur");
 
   if (!Number.isInteger(karyawanId) || karyawanId <= 0) {
     return NextResponse.json({ error: "Karyawan tidak valid." }, { status: 400 });
@@ -45,6 +45,11 @@ export async function POST(request: NextRequest) {
   if (!employeeRows[0]) {
     return NextResponse.json({ error: "Data karyawan tidak ditemukan." }, { status: 404 });
   }
+
+  const buktiLembur =
+    buktiFile instanceof File && buktiFile.size > 0
+      ? await saveUploadedFile(buktiFile, "overtime")
+      : null;
 
   await pool.query<ResultSetHeader>(
     `

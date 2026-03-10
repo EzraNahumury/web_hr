@@ -105,13 +105,13 @@ export default function AdminShell({
   children,
 }: Props) {
   return (
-    <main className="min-h-screen bg-[#eef2f7] text-[#0f172a]">
-      <section className="flex min-h-screen flex-col xl:flex-row">
-        <aside className="relative w-full overflow-hidden bg-[linear-gradient(180deg,#08112d_0%,#091533_52%,#071126_100%)] text-white xl:min-h-screen xl:w-[252px] xl:flex-none">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(98,86,255,0.16),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(0,195,255,0.08),transparent_22%)]" />
-          <div className="relative flex h-full flex-col px-5 py-6">
+    <main className="min-h-screen bg-[#f5f2f1] text-[#141414]">
+      <section className="min-h-screen xl:pl-[252px]">
+        <aside className="relative w-full overflow-hidden bg-[linear-gradient(180deg,#090909_0%,#111111_55%,#1a0608_100%)] text-white xl:fixed xl:inset-y-0 xl:left-0 xl:z-30 xl:h-screen xl:w-[252px] xl:flex-none">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(220,38,38,0.28),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(239,68,68,0.14),transparent_26%)]" />
+          <div className="relative flex h-full flex-col px-5 py-6 xl:overflow-y-auto">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#5b4fff_0%,#4a6fff_100%)] shadow-[0_16px_32px_rgba(91,79,255,0.32)]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#ef4444_0%,#991b1b_100%)] shadow-[0_16px_32px_rgba(185,28,28,0.35)]">
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
@@ -130,7 +130,7 @@ export default function AdminShell({
                 <p className="text-base font-semibold tracking-[-0.03em]">
                   HR Admin
                 </p>
-                <p className="text-xs text-[#92a0c5]">AYRES Payroll System</p>
+                <p className="text-xs text-[#c6b1b4]">AYRES Payroll System</p>
               </div>
             </div>
 
@@ -144,12 +144,12 @@ export default function AdminShell({
                       key={item.label}
                       className="flex items-center gap-3 rounded-2xl px-3 py-2.5 opacity-50"
                     >
-                      <GridIcon />
+                        <GridIcon />
                       <div>
-                        <p className="text-sm font-semibold text-[#d9e2ff]">
+                        <p className="text-sm font-semibold text-[#f4dddd]">
                           {item.label}
                         </p>
-                        <p className="mt-0.5 text-[11px] text-[#7f91bc]">
+                        <p className="mt-0.5 text-[11px] text-[#b08b91]">
                           {item.description}
                         </p>
                       </div>
@@ -159,12 +159,12 @@ export default function AdminShell({
 
                 return (
                   <Link
-                    key={item.label}
-                    href={item.href}
-                    className={
+                  key={item.label}
+                  href={item.href}
+                  className={
                       active
-                        ? "flex items-center gap-3 rounded-2xl bg-[linear-gradient(135deg,#5b4fff_0%,#4a6fff_100%)] px-3 py-2.5 text-white shadow-[0_16px_30px_rgba(76,91,255,0.34)]"
-                        : "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-[#dfe7ff] transition hover:bg-white/5"
+                        ? "flex items-center gap-3 rounded-2xl bg-[linear-gradient(135deg,#ef4444_0%,#b91c1c_100%)] px-3 py-2.5 text-white shadow-[0_16px_30px_rgba(185,28,28,0.34)]"
+                        : "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-[#f7eaea] transition hover:bg-white/5"
                     }
                   >
                     <GridIcon active={active} />
@@ -173,8 +173,8 @@ export default function AdminShell({
                       <p
                         className={
                           active
-                            ? "mt-0.5 text-[11px] text-white/72"
-                            : "mt-0.5 text-[11px] text-[#7f91bc]"
+                            ? "mt-0.5 text-[11px] text-white/78"
+                            : "mt-0.5 text-[11px] text-[#b08b91]"
                         }
                       >
                         {item.description}
@@ -185,30 +185,27 @@ export default function AdminShell({
               })}
             </nav>
 
-            <div className="mt-auto space-y-3 border-t border-white/10 pt-5">
+            <div className="mt-auto border-t border-white/10 pt-5">
               <div className="rounded-2xl border border-white/8 bg-white/5 p-4 backdrop-blur">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7f91bc]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#b08b91]">
                   Admin Aktif
                 </p>
                 <p className="mt-3 text-sm font-semibold text-white">
                   {adminName}
                 </p>
-                <p className="mt-1 break-all text-xs text-[#9baad0]">
+                <p className="mt-1 break-all text-xs text-[#d6bfc2]">
                   {adminEmail}
                 </p>
-              </div>
-              <div className="[&_button]:h-11 [&_button]:w-full [&_button]:rounded-2xl [&_button]:border [&_button]:border-white/10 [&_button]:bg-white/6 [&_button]:text-sm [&_button]:font-semibold [&_button]:text-white [&_button]:transition hover:[&_button]:bg-white/10">
-                <LogoutButton />
               </div>
             </div>
           </div>
         </aside>
 
-        <section className="min-h-screen flex-1 bg-[#f3f5f9]">
-          <header className="sticky top-0 z-20 border-b border-[#dbe2ee] bg-[#f8fafc]/95 px-6 py-4 backdrop-blur sm:px-8">
+        <section className="min-h-screen bg-[#f6f3f2]">
+          <header className="sticky top-0 z-20 border-b border-[#ead9d6] bg-[#fbf8f7]/95 px-6 py-4 backdrop-blur sm:px-8">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-4">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#d8e0ef] bg-white text-[#5b6680]">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#ead9d6] bg-white text-[#7b4a4f]">
                   <svg
                     viewBox="0 0 24 24"
                     fill="none"
@@ -223,35 +220,20 @@ export default function AdminShell({
                   </svg>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#8a96ad]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#a3767b]">
                     Admin Workspace
                   </p>
-                  <h1 className="mt-1 text-[1.8rem] font-semibold tracking-[-0.04em] text-[#162033]">
+                  <h1 className="mt-1 text-[1.8rem] font-semibold tracking-[-0.04em] text-[#1b1314]">
                     {title}
                   </h1>
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                <div className="rounded-full border border-[#dbe3f1] bg-white px-4 py-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8a96ad]">
-                    Database
-                  </p>
-                  <p className="mt-1 text-xs font-semibold text-[#1f2a3d]">
-                    hris_payroll_app
-                  </p>
-                </div>
-                <div className="rounded-full border border-[#dbe3f1] bg-white px-4 py-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8a96ad]">
-                    Session
-                  </p>
-                  <p className="mt-1 text-xs font-semibold text-[#1f2a3d]">
-                    Admin aktif
-                  </p>
-                </div>
+              <div className="[&_button]:h-11 [&_button]:rounded-full [&_button]:border [&_button]:border-[#ead9d6] [&_button]:bg-white [&_button]:px-5 [&_button]:text-sm [&_button]:font-semibold [&_button]:text-[#1b1314] [&_button]:shadow-none hover:[&_button]:border-[#d9b8b2] hover:[&_button]:bg-[#fff4f3]">
+                <LogoutButton />
               </div>
             </div>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-[#66748f]">
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-[#7d5b60]">
               {description}
             </p>
           </header>

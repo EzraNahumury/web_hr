@@ -34,6 +34,28 @@ type AttendanceRow = RowDataPacket & {
   attendance_date: string | null;
   status_absensi: string | null;
   kode_absensi: string | null;
+  jam_masuk: string | null;
+  jam_pulang: string | null;
+  foto_masuk: string | null;
+  foto_pulang: string | null;
+  latitude_masuk: number | null;
+  longitude_masuk: number | null;
+  latitude_pulang: number | null;
+  longitude_pulang: number | null;
+};
+
+export type AttendanceDayDetail = {
+  code: string;
+  date: string;
+  status: string | null;
+  timeIn: string | null;
+  timeOut: string | null;
+  photoIn: string | null;
+  photoOut: string | null;
+  latitudeIn: number | null;
+  longitudeIn: number | null;
+  latitudeOut: number | null;
+  longitudeOut: number | null;
 };
 
 type AttendanceSheetRow = {
@@ -45,7 +67,7 @@ type AttendanceSheetRow = {
   department: string;
   email: string;
   passwordLabel: string;
-  daily: Record<number, string>;
+  daily: Record<number, AttendanceDayDetail>;
 };
 
 type AttendanceSheetOptions = {
@@ -56,20 +78,37 @@ type AttendanceSheetOptions = {
 };
 
 function mapAttendanceCode(status: string | null, code: string | null) {
-  if (code) return code;
+  if (code) {
+    switch (code) {
+      case "H":
+      case "S":
+      case "X":
+      case "SX":
+        return code;
+      case "M":
+        return "H";
+      case "SH":
+        return "SX";
+      case "A":
+      case "I":
+      case "L":
+        return "X";
+      default:
+        return code;
+    }
+  }
+
   switch (status) {
     case "hadir":
-      return "M";
+      return "H";
     case "sakit":
       return "S";
     case "izin":
-      return "I";
-    case "libur":
-      return "L";
-    case "setengah_hari":
-      return "SH";
     case "alfa":
-      return "A";
+    case "libur":
+      return "X";
+    case "setengah_hari":
+      return "SX";
     default:
       return "";
   }
@@ -91,7 +130,15 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         u.email,
         DATE_FORMAT(a.tanggal, '%Y-%m-%d') AS attendance_date,
         a.status_absensi,
-        a.kode_absensi
+        a.kode_absensi,
+        DATE_FORMAT(a.jam_masuk, '%H:%i') AS jam_masuk,
+        DATE_FORMAT(a.jam_pulang, '%H:%i') AS jam_pulang,
+        a.foto_masuk,
+        a.foto_pulang,
+        a.latitude_masuk,
+        a.longitude_masuk,
+        a.latitude_pulang,
+        a.longitude_pulang
       FROM karyawan k
       INNER JOIN users u ON u.id = k.user_id
       LEFT JOIN absensi a
@@ -132,10 +179,19 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
 
     if (row.attendance_date) {
       const day = Number(row.attendance_date.split("-")[2]);
-      byEmployee.get(row.employee_id)!.daily[day] = mapAttendanceCode(
-        row.status_absensi,
-        row.kode_absensi,
-      );
+      byEmployee.get(row.employee_id)!.daily[day] = {
+        code: mapAttendanceCode(row.status_absensi, row.kode_absensi),
+        date: row.attendance_date,
+        status: row.status_absensi,
+        timeIn: row.jam_masuk,
+        timeOut: row.jam_pulang,
+        photoIn: row.foto_masuk,
+        photoOut: row.foto_pulang,
+        latitudeIn: row.latitude_masuk,
+        longitudeIn: row.longitude_masuk,
+        latitudeOut: row.latitude_pulang,
+        longitudeOut: row.longitude_pulang,
+      };
     }
   }
 
@@ -435,6 +491,7 @@ export async function listPayslipDistribution() {
 
 type EmployeeCardRow = RowDataPacket & {
   id: number;
+  user_id?: number;
   nama: string;
   no_karyawan: string;
   jabatan: string;
@@ -458,6 +515,27 @@ export async function getEmployeeByEmail(email: string) {
       LIMIT 1
     `,
     [email],
+  );
+
+  return rows[0] ?? null;
+}
+
+export async function getEmployeeByUserId(userId: number) {
+  const [rows] = await pool.query<EmployeeCardRow[]>(
+    `
+      SELECT
+        k.id,
+        k.user_id,
+        k.nama,
+        k.no_karyawan,
+        k.jabatan,
+        k.divisi,
+        k.departemen
+      FROM karyawan k
+      WHERE k.user_id = ?
+      LIMIT 1
+    `,
+    [userId],
   );
 
   return rows[0] ?? null;
@@ -488,6 +566,13 @@ type EmployeeAttendanceHistoryRow = RowDataPacket & {
   jam_pulang: string | null;
   status_absensi: string;
   terlambat_menit: number;
+};
+
+type EmployeeTodayAttendanceRow = RowDataPacket & {
+  tanggal: string;
+  jam_masuk: string | null;
+  jam_pulang: string | null;
+  status_absensi: string | null;
 };
 
 export async function getEmployeeOverview(employeeId: number) {
@@ -536,6 +621,35 @@ export async function getEmployeeAttendanceHistory(employeeId: number) {
   );
 
   return rows;
+}
+
+export async function getEmployeeTodayAttendance(employeeId: number) {
+  const [rows] = await pool.query<EmployeeTodayAttendanceRow[]>(
+    `
+      SELECT
+        DATE_FORMAT(tanggal, '%d %b %Y') AS tanggal,
+        DATE_FORMAT(jam_masuk, '%H:%i') AS jam_masuk,
+        DATE_FORMAT(jam_pulang, '%H:%i') AS jam_pulang,
+        status_absensi
+      FROM absensi
+      WHERE karyawan_id = ? AND tanggal = CURDATE()
+      LIMIT 1
+    `,
+    [employeeId],
+  );
+
+  const row = rows[0];
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    tanggal: row.tanggal,
+    jamMasuk: row.jam_masuk,
+    jamPulang: row.jam_pulang,
+    statusAbsensi: row.status_absensi,
+  };
 }
 
 export async function getEmployeeOvertime(employeeId: number) {

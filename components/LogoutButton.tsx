@@ -11,7 +11,7 @@ export default function LogoutButton() {
     setIsSubmitting(true);
 
     try {
-      await fetch("/api/admin/logout", {
+      await fetch("/api/logout", {
         method: "POST",
       });
     } finally {

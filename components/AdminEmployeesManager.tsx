@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { EmployeeListItem, LookupOption } from "@/lib/employees";
 
 type Lookups = {
@@ -23,6 +23,12 @@ type Props = {
   lookups: Lookups;
   stats: Stats;
 };
+
+type ToastState = {
+  type: "success" | "error";
+  title: string;
+  description: string;
+} | null;
 
 type FormState = {
   name: string;
@@ -61,7 +67,7 @@ const emptyForm: FormState = {
 };
 
 const inputClassName =
-  "h-12 w-full rounded-2xl border border-[#ead7ce] bg-[#fffdfa] px-4 text-[#2d1b18] outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] placeholder:text-[#b1948d] focus:border-[#c8716d] focus:bg-white focus:shadow-[0_0_0_4px_rgba(200,113,109,0.12)]";
+  "h-12 w-full rounded-2xl border border-[#ead7ce] bg-white px-4 text-[#2d1b18] outline-none shadow-[0_1px_2px_rgba(15,23,42,0.03)] placeholder:text-[#b1948d] focus:border-[#c8716d] focus:bg-white focus:shadow-[0_0_0_4px_rgba(200,113,109,0.12)]";
 
 function Field({
   label,
@@ -71,8 +77,10 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="space-y-2">
-      <span className="text-sm font-medium text-[#6f5a54]">{label}</span>
+    <label className="space-y-2.5">
+      <span className="text-[13px] font-semibold tracking-[-0.01em] text-[#6f5a54]">
+        {label}
+      </span>
       {children}
     </label>
   );
@@ -133,6 +141,19 @@ export default function AdminEmployeesManager({
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [toast, setToast] = useState<ToastState>(null);
+
+  useEffect(() => {
+    if (!toast) {
+      return undefined;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setToast(null);
+    }, 3200);
+
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
 
   const filteredEmployees = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -158,7 +179,15 @@ export default function AdminEmployeesManager({
   }, [employees, search]);
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm((current) => ({ ...current, [key]: value }));
+    setForm((current) => {
+      const next = { ...current, [key]: value };
+
+      if (key === "workStatus" && value === "tetap") {
+        next.contractEndDate = "";
+      }
+
+      return next;
+    });
   }
 
   function resetForm() {
@@ -168,11 +197,16 @@ export default function AdminEmployeesManager({
     setErrorMessage("");
   }
 
+  function notify(type: "success" | "error", title: string, description: string) {
+    setToast({ type, title, description });
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
     setMessage("");
     setErrorMessage("");
+    const isEditing = Boolean(editingId);
 
     try {
       const response = await fetch(
@@ -213,12 +247,23 @@ export default function AdminEmployeesManager({
         return [result.employee!, ...current];
       });
 
-      setMessage(result.message || "Data karyawan berhasil disimpan.");
+      const successMessage =
+        result.message ||
+        (isEditing
+          ? "Data karyawan berhasil diperbarui."
+          : "Data karyawan berhasil ditambahkan.");
+      setMessage(successMessage);
+      notify(
+        "success",
+        isEditing ? "Perubahan tersimpan" : "Karyawan ditambahkan",
+        successMessage,
+      );
       resetForm();
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan data.",
-      );
+      const nextError =
+        error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan data.";
+      setErrorMessage(nextError);
+      notify("error", "Simpan gagal", nextError);
     } finally {
       setIsSubmitting(false);
     }
@@ -260,11 +305,14 @@ export default function AdminEmployeesManager({
         resetForm();
       }
 
-      setMessage(result.message || "Data karyawan berhasil dihapus.");
+      const successMessage = result.message || "Data karyawan berhasil dihapus.";
+      setMessage(successMessage);
+      notify("success", "Karyawan dihapus", successMessage);
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Terjadi kesalahan saat menghapus data.",
-      );
+      const nextError =
+        error instanceof Error ? error.message : "Terjadi kesalahan saat menghapus data.";
+      setErrorMessage(nextError);
+      notify("error", "Hapus gagal", nextError);
     } finally {
       setDeletingId(null);
     }
@@ -272,6 +320,66 @@ export default function AdminEmployeesManager({
 
   return (
     <div className="space-y-6">
+      {toast ? (
+        <div className="pointer-events-none fixed right-6 top-24 z-50 max-w-sm">
+          <div
+            className={[
+              "rounded-[22px] border px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.14)] backdrop-blur",
+              toast.type === "success"
+                ? "border-emerald-200 bg-white text-[#163127]"
+                : "border-rose-200 bg-white text-[#4a161b]",
+            ].join(" ")}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className={[
+                  "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl",
+                  toast.type === "success"
+                    ? "bg-emerald-50 text-emerald-600"
+                    : "bg-rose-50 text-rose-600",
+                ].join(" ")}
+              >
+                {toast.type === "success" ? (
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="h-4 w-4"
+                    aria-hidden="true"
+                  >
+                    <path d="m5 13 4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                ) : (
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="h-4 w-4"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 8v4" strokeLinecap="round" />
+                    <path d="M12 16h.01" strokeLinecap="round" />
+                    <path
+                      d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">{toast.title}</p>
+                <p className="mt-1 text-sm leading-6 text-[#7a6059]">
+                  {toast.description}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <section className="grid gap-4 md:grid-cols-3">
         <article className="rounded-[28px] border border-[#ead7ce] bg-white/82 p-5 shadow-[0_18px_40px_rgba(96,45,34,0.06)]">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#a16f63]">
@@ -307,12 +415,12 @@ export default function AdminEmployeesManager({
       </section>
 
       <div className="grid gap-6 2xl:grid-cols-[520px,minmax(0,1fr)]">
-        <section className="overflow-hidden rounded-[32px] border border-[#ead7ce] bg-[linear-gradient(180deg,#fffaf7_0%,#fff4ee_100%)] shadow-[0_20px_60px_rgba(96,45,34,0.08)]">
-          <div className="border-b border-[#eddad1] px-6 py-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.26em] text-[#a16f63]">
+        <section className="overflow-hidden rounded-[32px] border border-[#ead7ce] bg-[linear-gradient(180deg,#fffdfc_0%,#fff6f2_100%)] shadow-[0_20px_60px_rgba(96,45,34,0.08)]">
+          <div className="border-b border-[#eddad1] bg-[radial-gradient(circle_at_top_left,_rgba(239,68,68,0.08),_transparent_36%),linear-gradient(180deg,#fffaf8_0%,#fff6f2_100%)] px-6 py-6">
+            <div className="inline-flex rounded-full border border-[#f0d8d1] bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.26em] text-[#a16f63]">
               Form Data Karyawan
-            </p>
-            <h3 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-[#241716]">
+            </div>
+            <h3 className="mt-4 text-2xl font-semibold tracking-[-0.04em] text-[#241716]">
               {editingId ? "Edit Karyawan" : "Tambah Karyawan"}
             </h3>
             <p className="mt-2 text-sm leading-7 text-[#7a6059]">
@@ -320,176 +428,208 @@ export default function AdminEmployeesManager({
             </p>
           </div>
 
-          <form className="space-y-5 px-6 py-6" onSubmit={handleSubmit}>
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Nama">
-                <input
-                  value={form.name}
-                  onChange={(event) => updateField("name", event.target.value)}
-                  className={inputClassName}
-                  placeholder="Nama lengkap"
-                  required
-                />
-              </Field>
+          <form className="space-y-6 px-6 py-6" onSubmit={handleSubmit}>
+            <div className="grid gap-4">
+              <div className="rounded-[28px] border border-[#efdfd8] bg-white/90 p-5 shadow-[0_10px_30px_rgba(96,45,34,0.05)]">
+                <div className="mb-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#a16f63]">
+                    Akun Login
+                  </p>
+                  <p className="mt-1 text-sm text-[#7a6059]">
+                    Informasi dasar yang dipakai karyawan untuk masuk ke sistem.
+                  </p>
+                </div>
 
-              <Field label="NIP / No Karyawan">
-                <input
-                  value={form.nip}
-                  onChange={(event) => updateField("nip", event.target.value)}
-                  className={inputClassName}
-                  placeholder="KRY-2026-001"
-                  required
-                />
-              </Field>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Nama">
+                    <input
+                      value={form.name}
+                      onChange={(event) => updateField("name", event.target.value)}
+                      className={inputClassName}
+                      placeholder="Nama lengkap"
+                      required
+                    />
+                  </Field>
+
+                  <Field label="NIP / No Karyawan">
+                    <input
+                      value={form.nip}
+                      onChange={(event) => updateField("nip", event.target.value)}
+                      className={inputClassName}
+                      placeholder="KRY-2026-001"
+                      required
+                    />
+                  </Field>
+                </div>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <Field label="Email">
+                    <input
+                      type="email"
+                      value={form.email}
+                      onChange={(event) => updateField("email", event.target.value)}
+                      className={inputClassName}
+                      placeholder="nama@company.local"
+                      required
+                    />
+                  </Field>
+
+                  <Field label={editingId ? "Password Baru (opsional)" : "Password"}>
+                    <input
+                      type="text"
+                      value={form.password}
+                      onChange={(event) => updateField("password", event.target.value)}
+                      className={inputClassName}
+                      placeholder={editingId ? "Kosongkan jika tidak diubah" : "Password login"}
+                      required={!editingId}
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              <div className="rounded-[28px] border border-[#efdfd8] bg-white/90 p-5 shadow-[0_10px_30px_rgba(96,45,34,0.05)]">
+                <div className="mb-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#a16f63]">
+                    Struktur Kerja
+                  </p>
+                  <p className="mt-1 text-sm text-[#7a6059]">
+                    Posisi, divisi, departemen, dan rekapan kerja karyawan.
+                  </p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  <Field label="Jabatan">
+                    <input
+                      list="roles-list"
+                      value={form.role}
+                      onChange={(event) => updateField("role", event.target.value)}
+                      className={inputClassName}
+                      placeholder="Staff Admin"
+                      required
+                    />
+                  </Field>
+
+                  <Field label="Divisi">
+                    <input
+                      list="divisions-list"
+                      value={form.division}
+                      onChange={(event) => updateField("division", event.target.value)}
+                      className={inputClassName}
+                      placeholder="Operasional"
+                      required
+                    />
+                  </Field>
+
+                  <Field label="Departemen">
+                    <select
+                      value={form.department}
+                      onChange={(event) => updateField("department", event.target.value)}
+                      className={inputClassName}
+                      required
+                    >
+                      <option value="">Pilih departemen</option>
+                      {lookups.departments.map((item) => (
+                        <option key={item.value} value={item.value}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-3">
+                  <Field label="Pembagian Rekapan">
+                    <select
+                      value={form.recapGroup}
+                      onChange={(event) => updateField("recapGroup", event.target.value)}
+                      className={inputClassName}
+                    >
+                      <option value="">Pilih pembagian rekapan</option>
+                      {lookups.recapGroups.map((item) => (
+                        <option key={item.value} value={item.value}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+
+                  <Field label="Bank">
+                    <input value={form.bank} className={inputClassName} readOnly />
+                  </Field>
+
+                  <Field label="No Rekening">
+                    <input
+                      value={form.accountNumber}
+                      onChange={(event) => updateField("accountNumber", event.target.value)}
+                      className={inputClassName}
+                      placeholder="1234567890"
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              <div className="rounded-[28px] border border-[#efdfd8] bg-white/90 p-5 shadow-[0_10px_30px_rgba(96,45,34,0.05)]">
+                <div className="mb-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#a16f63]">
+                    Kontrak & Payroll
+                  </p>
+                  <p className="mt-1 text-sm text-[#7a6059]">
+                    Data status kerja, periode kontrak, dan kenaikan tahunan.
+                  </p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <Field label="Status Kerja">
+                    <select
+                      value={form.workStatus}
+                      onChange={(event) =>
+                        updateField("workStatus", event.target.value as FormState["workStatus"])
+                      }
+                      className={inputClassName}
+                    >
+                      {lookups.workStatuses.map((item) => (
+                        <option key={item.value} value={item.value}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+
+                  <Field label="Tanggal Kontrak">
+                    <input
+                      type="date"
+                      value={form.contractDate}
+                      onChange={(event) => updateField("contractDate", event.target.value)}
+                      className={inputClassName}
+                    />
+                  </Field>
+
+                  <Field label="Tanggal Selesai Kontrak">
+                    <input
+                      type="date"
+                      value={form.contractEndDate}
+                      onChange={(event) => updateField("contractEndDate", event.target.value)}
+                      className={inputClassName}
+                      disabled={form.workStatus === "tetap"}
+                    />
+                  </Field>
+
+                  <Field label="Kenaikan Tiap Tahun">
+                    <input
+                      value={form.annualRaise}
+                      onChange={(event) =>
+                        updateField("annualRaise", formatRupiahInput(event.target.value))
+                      }
+                      className={inputClassName}
+                      inputMode="numeric"
+                      placeholder="500.000"
+                    />
+                  </Field>
+                </div>
+              </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Email">
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(event) => updateField("email", event.target.value)}
-                  className={inputClassName}
-                  placeholder="nama@company.local"
-                  required
-                />
-              </Field>
-
-              <Field label={editingId ? "Password Baru (opsional)" : "Password"}>
-                <input
-                  type="text"
-                  value={form.password}
-                  onChange={(event) => updateField("password", event.target.value)}
-                  className={inputClassName}
-                  placeholder={editingId ? "Kosongkan jika tidak diubah" : "Password login"}
-                  required={!editingId}
-                />
-              </Field>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <Field label="Jabatan">
-                <input
-                  list="roles-list"
-                  value={form.role}
-                  onChange={(event) => updateField("role", event.target.value)}
-                  className={inputClassName}
-                  placeholder="Staff Admin"
-                  required
-                />
-              </Field>
-
-              <Field label="Divisi">
-                <input
-                  list="divisions-list"
-                  value={form.division}
-                  onChange={(event) => updateField("division", event.target.value)}
-                  className={inputClassName}
-                  placeholder="Operasional"
-                  required
-                />
-              </Field>
-
-              <Field label="Departemen">
-                <select
-                  value={form.department}
-                  onChange={(event) => updateField("department", event.target.value)}
-                  className={inputClassName}
-                  required
-                >
-                  <option value="">Pilih departemen</option>
-                  {lookups.departments.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              <Field label="Pembagian Rekapan">
-                <select
-                  value={form.recapGroup}
-                  onChange={(event) => updateField("recapGroup", event.target.value)}
-                  className={inputClassName}
-                >
-                  <option value="">Pilih pembagian rekapan</option>
-                  {lookups.recapGroups.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-
-              <Field label="Bank">
-                <input
-                  value={form.bank}
-                  className={inputClassName}
-                  readOnly
-                />
-              </Field>
-
-              <Field label="No Rekening">
-                <input
-                  value={form.accountNumber}
-                  onChange={(event) => updateField("accountNumber", event.target.value)}
-                  className={inputClassName}
-                  placeholder="1234567890"
-                />
-              </Field>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              <Field label="Status Kerja">
-                <select
-                  value={form.workStatus}
-                  onChange={(event) =>
-                    updateField("workStatus", event.target.value as FormState["workStatus"])
-                  }
-                  className={inputClassName}
-                >
-                  {lookups.workStatuses.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-
-              <Field label="Tanggal Kontrak">
-                <input
-                  type="date"
-                  value={form.contractDate}
-                  onChange={(event) => updateField("contractDate", event.target.value)}
-                  className={inputClassName}
-                />
-              </Field>
-
-              <Field label="Tanggal Selesai Kontrak">
-                <input
-                  type="date"
-                  value={form.contractEndDate}
-                  onChange={(event) => updateField("contractEndDate", event.target.value)}
-                  className={inputClassName}
-                />
-              </Field>
-
-              <Field label="Kenaikan Tiap Tahun">
-                <input
-                  value={form.annualRaise}
-                  onChange={(event) =>
-                    updateField("annualRaise", formatRupiahInput(event.target.value))
-                  }
-                  className={inputClassName}
-                  inputMode="numeric"
-                  placeholder="500.000"
-                />
-              </Field>
-            </div>
-
-            <label className="flex items-center gap-3 rounded-2xl border border-[#ead7ce] bg-white/80 px-4 py-3 text-sm font-medium text-[#5f4a45]">
+            <label className="flex items-center gap-3 rounded-2xl border border-[#ead7ce] bg-white px-4 py-3 text-sm font-medium text-[#5f4a45] shadow-[0_8px_24px_rgba(96,45,34,0.04)]">
               <input
                 type="checkbox"
                 checked={form.userActive}
@@ -619,18 +759,85 @@ export default function AdminEmployeesManager({
                         <div className="flex gap-2">
                           <button
                             type="button"
+                            aria-label={`Edit ${employee.name}`}
+                            title={`Edit ${employee.name}`}
                             onClick={() => handleEdit(employee)}
-                            className="rounded-2xl border border-[#e8d5cc] bg-white px-4 py-2 text-xs font-semibold text-[#3c2824] hover:border-[#c8736d] hover:text-[#8f1d22]"
+                            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#e8d5cc] bg-white text-[#3c2824] hover:border-[#c8736d] hover:text-[#8f1d22]"
                           >
-                            Edit
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              className="h-4 w-4"
+                              aria-hidden="true"
+                            >
+                              <path
+                                d="M4 20h4l10-10a2.12 2.12 0 0 0-3-3L5 17v3Z"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <path d="m13.5 6.5 4 4" strokeLinecap="round" />
+                            </svg>
                           </button>
                           <button
                             type="button"
+                            aria-label={`Hapus ${employee.name}`}
+                            title={`Hapus ${employee.name}`}
                             onClick={() => handleDelete(employee)}
                             disabled={deletingId === employee.id}
-                            className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-70"
+                            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-70"
                           >
-                            {deletingId === employee.id ? "Menghapus..." : "Hapus"}
+                            {deletingId === employee.id ? (
+                              <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                className="h-4 w-4 animate-spin"
+                                aria-hidden="true"
+                              >
+                                <circle
+                                  cx="12"
+                                  cy="12"
+                                  r="9"
+                                  stroke="currentColor"
+                                  strokeWidth="1.8"
+                                  strokeOpacity="0.25"
+                                />
+                                <path
+                                  d="M21 12a9 9 0 0 0-9-9"
+                                  stroke="currentColor"
+                                  strokeWidth="1.8"
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                            ) : (
+                              <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                                className="h-4 w-4"
+                                aria-hidden="true"
+                              >
+                                <path
+                                  d="M3 6h18"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                                <path
+                                  d="M8 6V4h8v2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                                <path
+                                  d="M19 6l-1 14H6L5 6"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                                <path d="M10 11v6" strokeLinecap="round" />
+                                <path d="M14 11v6" strokeLinecap="round" />
+                              </svg>
+                            )}
                           </button>
                         </div>
                       </td>

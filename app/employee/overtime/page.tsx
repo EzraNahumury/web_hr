@@ -1,9 +1,11 @@
 import EmployeeShell from "@/components/EmployeeShell";
 import EmployeeOvertimeManager from "@/components/EmployeeOvertimeManager";
-import { getEmployeeByEmail, getEmployeeOvertime } from "@/lib/hris";
+import { requireEmployeeSession } from "@/lib/auth";
+import { getEmployeeByUserId, getEmployeeOvertime } from "@/lib/hris";
 
 export default async function EmployeeOvertimePage() {
-  const employee = await getEmployeeByEmail("rina.saputri@company.local");
+  const session = await requireEmployeeSession();
+  const employee = await getEmployeeByUserId(session.userId);
 
   if (!employee) {
     return <main className="p-10">Data karyawan tidak ditemukan.</main>;

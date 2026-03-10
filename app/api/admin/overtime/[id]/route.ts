@@ -28,12 +28,19 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   const [existingRows] = await pool.query<RowDataPacket[]>(
-    "SELECT id FROM lembur WHERE id = ? LIMIT 1",
+    "SELECT id, status_approval FROM lembur WHERE id = ? LIMIT 1",
     [overtimeId],
   );
 
   if (!existingRows[0]) {
     return NextResponse.json({ error: "Data lembur tidak ditemukan." }, { status: 404 });
+  }
+
+  if (existingRows[0].status_approval !== "pending") {
+    return NextResponse.json(
+      { error: "Approval lembur sudah final dan tidak bisa diubah lagi." },
+      { status: 409 },
+    );
   }
 
   await pool.query<ResultSetHeader>(
