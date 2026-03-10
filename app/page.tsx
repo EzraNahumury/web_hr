@@ -1,11 +1,48 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 import GridScan from "@/components/GridScan";
 
 export default function Home() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("ezra.kristanto@ti.ukdw.ac.id");
+  const [password, setPassword] = useState("ftiukdw2022");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setErrorMessage("");
+
+    try {
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const result = (await response.json()) as { message?: string };
+
+      if (!response.ok) {
+        throw new Error(result.message || "Login gagal.");
+      }
+
+      router.push("/admin");
+      router.refresh();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Terjadi kesalahan saat login.";
+      setErrorMessage(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#050505] px-4 py-10 sm:px-6">
@@ -54,7 +91,7 @@ export default function Home() {
             </p>
           </div>
 
-          <form className="mt-8 space-y-5">
+          <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium text-white/82">
                 Email kerja
@@ -63,6 +100,9 @@ export default function Home() {
                 id="email"
                 type="email"
                 placeholder="nama@kayres.co.id"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                autoComplete="email"
                 className="h-14 w-full rounded-2xl border border-white/14 bg-black/18 px-4 text-white outline-none placeholder:text-white/35 focus:border-red-400/70 focus:bg-black/24 focus:shadow-[0_0_0_4px_rgba(239,68,68,0.14)]"
               />
             </div>
@@ -84,6 +124,9 @@ export default function Home() {
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="Masukkan password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  autoComplete="current-password"
                   className="h-14 w-full rounded-2xl border border-white/14 bg-black/18 px-4 pr-14 text-white outline-none placeholder:text-white/35 focus:border-red-400/70 focus:bg-black/24 focus:shadow-[0_0_0_4px_rgba(239,68,68,0.14)]"
                 />
                 <button
@@ -156,10 +199,17 @@ export default function Home() {
 
             <button
               type="submit"
+              disabled={isSubmitting}
               className="flex h-14 w-full items-center justify-center rounded-2xl bg-white text-sm font-semibold text-slate-950 shadow-[0_16px_32px_rgba(255,255,255,0.16)] hover:-translate-y-0.5 hover:bg-red-50"
             >
-              Log In
+              {isSubmitting ? "Memproses..." : "Log In"}
             </button>
+
+            {errorMessage ? (
+              <p className="rounded-2xl border border-red-400/20 bg-red-500/12 px-4 py-3 text-sm text-red-100">
+                {errorMessage}
+              </p>
+            ) : null}
           </form>
 
           <p className="mt-7 text-center text-sm text-white/62">
