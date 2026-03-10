@@ -12,6 +12,7 @@ type AttendanceRow = RowDataPacket & {
   id: number;
   jam_masuk: Date | null;
   jam_pulang: Date | null;
+  status_absensi: string | null;
 };
 
 export async function POST(request: Request) {
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
     const [attendanceRows] = await pool.query<AttendanceRow[]>(
       `
         SELECT id, jam_masuk, jam_pulang
+             , status_absensi
         FROM absensi
         WHERE karyawan_id = ? AND tanggal = ?
         LIMIT 1
@@ -60,6 +62,13 @@ export async function POST(request: Request) {
     );
 
     const attendance = attendanceRows[0];
+
+    if (attendance?.status_absensi === "sakit") {
+      return NextResponse.json(
+        { message: "Status sakit hari ini sudah tercatat. Presensi pulang tidak diperlukan." },
+        { status: 409 },
+      );
+    }
 
     if (!attendance?.jam_masuk) {
       return NextResponse.json(

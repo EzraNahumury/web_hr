@@ -17,6 +17,7 @@ type EmployeeRow = RowDataPacket & {
 type AttendanceRow = RowDataPacket & {
   id: number;
   jam_masuk: Date | null;
+  status_absensi: string | null;
 };
 
 export async function POST(request: Request) {
@@ -74,13 +75,18 @@ export async function POST(request: Request) {
     const currentTime = attendanceDateTime.split(" ")[1];
 
     const [existingRows] = await pool.query<AttendanceRow[]>(
-      "SELECT id, jam_masuk FROM absensi WHERE karyawan_id = ? AND tanggal = ? LIMIT 1",
+      "SELECT id, jam_masuk, status_absensi FROM absensi WHERE karyawan_id = ? AND tanggal = ? LIMIT 1",
       [employee.id, attendanceDate],
     );
 
-    if (existingRows[0]?.jam_masuk) {
+    if (existingRows[0]) {
       return NextResponse.json(
-        { message: "Presensi masuk hari ini sudah tercatat." },
+        {
+          message:
+            existingRows[0].status_absensi === "sakit"
+              ? "Laporan sakit hari ini sudah tercatat. Presensi masuk tidak bisa dilakukan lagi."
+              : "Presensi hari ini sudah tercatat dan tidak bisa diubah lagi.",
+        },
         { status: 409 },
       );
     }
@@ -96,66 +102,36 @@ export async function POST(request: Request) {
     const attendanceLatitude = status === "sakit" ? null : latitude;
     const attendanceLongitude = status === "sakit" ? null : longitude;
 
-    if (existingRows[0]) {
-      await pool.query(
-        `
-          UPDATE absensi
-          SET
-            jam_masuk = ?,
-            status_absensi = ?,
-            kode_absensi = ?,
-            foto_masuk = ?,
-            latitude_masuk = ?,
-            longitude_masuk = ?,
-            terlambat_menit = ?,
-            setengah_hari = 0,
-            keterangan = ?
-          WHERE id = ?
-        `,
-        [
-          attendanceTime,
-          attendanceStatus,
-          attendanceCode,
-          photoPath,
-          attendanceLatitude,
-          attendanceLongitude,
-          lateMinutes,
-          keterangan,
-          existingRows[0].id,
-        ],
-      );
-    } else {
-      await pool.query(
-        `
-          INSERT INTO absensi (
-            karyawan_id,
-            tanggal,
-            jam_masuk,
-            status_absensi,
-            kode_absensi,
-            foto_masuk,
-            latitude_masuk,
-            longitude_masuk,
-            terlambat_menit,
-            setengah_hari,
-            lembur_jam,
-            keterangan
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)
-        `,
-        [
-          employee.id,
-          attendanceDate,
-          attendanceTime,
-          attendanceStatus,
-          attendanceCode,
-          photoPath,
-          attendanceLatitude,
-          attendanceLongitude,
-          lateMinutes,
-          keterangan,
-        ],
-      );
-    }
+    await pool.query(
+      `
+        INSERT INTO absensi (
+          karyawan_id,
+          tanggal,
+          jam_masuk,
+          status_absensi,
+          kode_absensi,
+          foto_masuk,
+          latitude_masuk,
+          longitude_masuk,
+          terlambat_menit,
+          setengah_hari,
+          lembur_jam,
+          keterangan
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)
+      `,
+      [
+        employee.id,
+        attendanceDate,
+        attendanceTime,
+        attendanceStatus,
+        attendanceCode,
+        photoPath,
+        attendanceLatitude,
+        attendanceLongitude,
+        lateMinutes,
+        keterangan,
+      ],
+    );
 
     return NextResponse.json({
       message:
