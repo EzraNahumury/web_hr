@@ -1,15 +1,41 @@
 import AdminPayrollSummaryManager from "@/components/AdminPayrollSummaryManager";
 import AdminShell from "@/components/AdminShell";
 import { requireAdminSession } from "@/lib/auth";
-import { getPayrollOmzetPeriod, listPayrollEmployeeOptions } from "@/lib/payroll-admin";
+import {
+  getPayrollOmzetPeriod,
+  listPayrollEmployeeOptions,
+  listPayrollPeriods,
+} from "@/lib/payroll-admin";
 import { getAdminPayrollSummarySheet } from "@/lib/payroll-summary";
 
-export default async function AdminPayrollSummaryPage() {
+function parsePositiveInt(value: string | string[] | undefined) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+export default async function AdminPayrollSummaryPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const admin = await requireAdminSession();
-  const [sheet, employeeOptions, omzetPeriod] = await Promise.all([
-    getAdminPayrollSummarySheet(),
+  const resolvedSearchParams = (await searchParams) ?? {};
+  const month = parsePositiveInt(resolvedSearchParams.month);
+  const year = parsePositiveInt(resolvedSearchParams.year);
+  const period = {
+    month: month ?? undefined,
+    year: year ?? undefined,
+  };
+
+  const [sheet, employeeOptions, omzetPeriod, periodOptions] = await Promise.all([
+    getAdminPayrollSummarySheet(period),
     listPayrollEmployeeOptions(),
-    getPayrollOmzetPeriod(),
+    getPayrollOmzetPeriod(period),
+    listPayrollPeriods(),
   ]);
 
   return (
@@ -20,7 +46,12 @@ export default async function AdminPayrollSummaryPage() {
       adminEmail={admin.email}
       currentPath="/admin/payroll-summary"
     >
-      <AdminPayrollSummaryManager sheet={sheet} employeeOptions={employeeOptions} omzetPeriod={omzetPeriod} />
+      <AdminPayrollSummaryManager
+        sheet={sheet}
+        employeeOptions={employeeOptions}
+        omzetPeriod={omzetPeriod}
+        periodOptions={periodOptions}
+      />
     </AdminShell>
   );
 }

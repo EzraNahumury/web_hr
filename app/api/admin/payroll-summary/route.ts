@@ -12,6 +12,22 @@ function parseCurrency(value: unknown) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
+function parsePositiveInt(value: unknown) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function getRequestedPeriod(body: Record<string, unknown>) {
+  const month = parsePositiveInt(body.month);
+  const year = parsePositiveInt(body.year);
+
+  if (month === null || year === null || month > 12) {
+    return { error: "Periode payroll tidak valid." };
+  }
+
+  return { period: { month, year } };
+}
+
 function validatePayrollPayload(body: Record<string, unknown>) {
   const employeeId = Number(body.employeeId);
 
@@ -72,6 +88,12 @@ export async function POST(request: Request) {
 
   try {
     const body = (await request.json()) as Record<string, unknown>;
+    const periodResult = getRequestedPeriod(body);
+
+    if ("error" in periodResult) {
+      return NextResponse.json({ message: periodResult.error }, { status: 400 });
+    }
+
     const action = body.action === "save_omzet" ? "save_omzet" : "save_payroll";
 
     if (action === "save_omzet") {
@@ -81,7 +103,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ message: result.error }, { status: 400 });
       }
 
-      const saved = await upsertPayrollPeriodOmzet(result.totalOmzet);
+      const saved = await upsertPayrollPeriodOmzet(result.totalOmzet, periodResult.period);
 
       return NextResponse.json({
         message: saved.isUpdate
@@ -97,7 +119,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: result.error }, { status: 400 });
     }
 
-    const saved = await upsertPayrollFromForm(result.payload);
+    const saved = await upsertPayrollFromForm(result.payload, periodResult.period);
 
     return NextResponse.json({
       message: `Payroll ${saved.employeeName} untuk periode ${saved.periodMonth}/${saved.periodYear} berhasil disimpan.`,

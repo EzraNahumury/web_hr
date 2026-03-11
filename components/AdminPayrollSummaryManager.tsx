@@ -3,13 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
-import type { PayrollEmployeeOption, PayrollOmzetPeriod } from "@/lib/payroll-admin";
-import type { AdminPayrollSummarySheet } from "@/lib/payroll-summary";
+import type { PayrollEmployeeOption, PayrollOmzetPeriod, PayrollPeriodOption } from "@/lib/payroll-admin";
+import type { AdminPayrollSummarySheet, AdminPayrollSummarySheetRow } from "@/lib/payroll-summary";
 
 type Props = {
   sheet: AdminPayrollSummarySheet | null;
   employeeOptions: PayrollEmployeeOption[];
   omzetPeriod: PayrollOmzetPeriod;
+  periodOptions: PayrollPeriodOption[];
 };
 
 type FormState = {
@@ -25,24 +26,15 @@ type FormState = {
   uangTransport: string;
 };
 
-const inputClassName =
-  "h-12 w-full rounded-2xl border border-[#d5e9ea] bg-white px-4 text-[#173033] outline-none placeholder:text-[#87a6a8] focus:border-[#19d7df] focus:shadow-[0_0_0_4px_rgba(25,215,223,0.16)]";
-const selectClassName =
-  `${inputClassName} appearance-none bg-[url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23055a61' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")] bg-[length:18px_18px] bg-[right_1rem_center] bg-no-repeat pr-11`;
+const inputClassName = "h-12 w-full rounded-2xl border border-[#d5e9ea] bg-white px-4 text-[#173033] outline-none placeholder:text-[#87a6a8] focus:border-[#19d7df] focus:shadow-[0_0_0_4px_rgba(25,215,223,0.16)]";
+const selectClassName = `${inputClassName} appearance-none bg-[url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23055a61' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")] bg-[length:18px_18px] bg-[right_1rem_center] bg-no-repeat pr-11`;
 
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(value);
+  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
 }
 
 function formatNumber(value: number) {
-  return new Intl.NumberFormat("id-ID", {
-    minimumFractionDigits: Number.isInteger(value) ? 0 : 1,
-    maximumFractionDigits: 2,
-  }).format(value);
+  return new Intl.NumberFormat("id-ID", { minimumFractionDigits: Number.isInteger(value) ? 0 : 1, maximumFractionDigits: 2 }).format(value);
 }
 
 function digitsOnly(value: string) {
@@ -59,86 +51,111 @@ function parseNumber(value: string) {
   return digits ? Number(digits) : 0;
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="space-y-2">
-      <span className="text-[13px] font-semibold text-[#466668]">{label}</span>
-      {children}
-    </label>
-  );
+function emptyForm(employeeId = ""): FormState {
+  return { employeeId, gajiPerDay: "", tunjanganJabatan: "", uangMakan: "", subsidi: "", uangKerajinan: "", bpjs: "", bonusPerforma: "", insentif: "", uangTransport: "" };
 }
 
-export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omzetPeriod }: Props) {
+function formatFormValue(value: number) {
+  return value > 0 ? formatNumericInput(String(value)) : "";
+}
+
+function buildFormFromRow(row: AdminPayrollSummarySheetRow): FormState {
+  return {
+    employeeId: String(row.employeeId),
+    gajiPerDay: formatFormValue(row.inputGajiPerDay),
+    tunjanganJabatan: formatFormValue(row.inputTunjanganJabatan),
+    uangMakan: formatFormValue(row.inputUangMakan),
+    subsidi: formatFormValue(row.inputSubsidi),
+    uangKerajinan: formatFormValue(row.inputUangKerajinan),
+    bpjs: formatFormValue(row.inputBpjs),
+    bonusPerforma: formatFormValue(row.inputBonusPerforma),
+    insentif: formatFormValue(row.inputInsentif),
+    uangTransport: formatFormValue(row.inputUangTransport),
+  };
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <label className="space-y-2"><span className="text-[13px] font-semibold text-[#466668]">{label}</span>{children}</label>;
+}
+
+export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omzetPeriod, periodOptions }: Props) {
   const router = useRouter();
   const [isPayrollPending, startPayrollTransition] = useTransition();
   const [isOmzetPending, startOmzetTransition] = useTransition();
+  const [isDeletePending, startDeleteTransition] = useTransition();
+  const [editingPayrollId, setEditingPayrollId] = useState<number | null>(null);
   const [payrollMessage, setPayrollMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [omzetMessage, setOmzetMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState(`${omzetPeriod.periodYear}-${String(omzetPeriod.periodMonth).padStart(2, "0")}`);
   const [totalOmzet, setTotalOmzet] = useState(formatNumericInput(String(omzetPeriod.totalOmzet)));
-  const [form, setForm] = useState<FormState>({
-    employeeId: employeeOptions[0] ? String(employeeOptions[0].employeeId) : "",
-    gajiPerDay: "",
-    tunjanganJabatan: "",
-    uangMakan: "",
-    subsidi: "",
-    uangKerajinan: "",
-    bpjs: "",
-    bonusPerforma: "",
-    insentif: "",
-    uangTransport: "",
-  });
+  const [form, setForm] = useState<FormState>(emptyForm(employeeOptions[0] ? String(employeeOptions[0].employeeId) : ""));
 
-  const selectedEmployee = useMemo(
-    () => employeeOptions.find((employee) => employee.employeeId === Number(form.employeeId)) ?? null,
-    [employeeOptions, form.employeeId],
-  );
+  const [periodYear, periodMonth] = useMemo(() => {
+    const [year, month] = selectedPeriod.split("-");
+    return [Number(year), Number(month)];
+  }, [selectedPeriod]);
 
+  const selectedEmployee = useMemo(() => employeeOptions.find((employee) => employee.employeeId === Number(form.employeeId)) ?? null, [employeeOptions, form.employeeId]);
   const isSales = selectedEmployee?.isSales ?? false;
-  const omzetBonus = omzetPeriod.bonusOmzet;
-  const isOmzetLocked = omzetPeriod.isLocked;
+  const omzetBonus = parseNumber(totalOmzet) * 0.005;
+  const displayedRange = sheet?.rangeLabel ?? `Periode ${periodOptions.find((item) => `${item.year}-${String(item.month).padStart(2, "0")}` === selectedPeriod)?.label ?? "aktif"}`;
 
   function updateField(key: keyof FormState, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function resetForm(nextEmployeeId?: string) {
+    setEditingPayrollId(null);
+    setForm(emptyForm(nextEmployeeId ?? ""));
+  }
+
+  function handlePeriodChange(value: string) {
+    setSelectedPeriod(value);
+    setEditingPayrollId(null);
+    setPayrollMessage(null);
+    setOmzetMessage(null);
+    const [year, month] = value.split("-");
+    router.push(`/admin/payroll-summary?month=${month}&year=${year}`);
+  }
+
+  function handleEditRow(row: AdminPayrollSummarySheetRow) {
+    setEditingPayrollId(row.id);
+    setPayrollMessage(null);
+    setForm(buildFormFromRow(row));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function handleDeleteRow(payrollId: number) {
+    const targetRow = sheet?.rows.find((row) => row.id === payrollId);
+    if (!targetRow || !window.confirm(`Hapus payroll ${targetRow.name} untuk periode ini?`)) return;
+    startDeleteTransition(async () => {
+      try {
+        const response = await fetch(`/api/admin/payroll-summary/${payrollId}`, { method: "DELETE" });
+        const result = (await response.json()) as { message?: string };
+        if (!response.ok) throw new Error(result.message || "Gagal menghapus payroll.");
+        if (editingPayrollId === payrollId) resetForm();
+        setPayrollMessage({ type: "success", text: result.message || "Payroll berhasil dihapus." });
+        router.refresh();
+      } catch (error) {
+        setPayrollMessage({ type: "error", text: error instanceof Error ? error.message : "Terjadi kesalahan saat menghapus payroll." });
+      }
+    });
+  }
+
   async function handlePayrollSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPayrollMessage(null);
-
-    const payload = {
-      action: "save_payroll",
-      employeeId: Number(form.employeeId),
-      gajiPerDay: parseNumber(form.gajiPerDay),
-      tunjanganJabatan: parseNumber(form.tunjanganJabatan),
-      uangMakan: parseNumber(form.uangMakan),
-      subsidi: parseNumber(form.subsidi),
-      uangKerajinan: parseNumber(form.uangKerajinan),
-      bpjs: parseNumber(form.bpjs),
-      bonusPerforma: parseNumber(form.bonusPerforma),
-      insentif: parseNumber(form.insentif),
-      uangTransport: parseNumber(form.uangTransport),
-    };
-
+    const payload = { action: "save_payroll", month: periodMonth, year: periodYear, employeeId: Number(form.employeeId), gajiPerDay: parseNumber(form.gajiPerDay), tunjanganJabatan: parseNumber(form.tunjanganJabatan), uangMakan: parseNumber(form.uangMakan), subsidi: parseNumber(form.subsidi), uangKerajinan: parseNumber(form.uangKerajinan), bpjs: parseNumber(form.bpjs), bonusPerforma: parseNumber(form.bonusPerforma), insentif: parseNumber(form.insentif), uangTransport: parseNumber(form.uangTransport) };
     startPayrollTransition(async () => {
       try {
-        const response = await fetch("/api/admin/payroll-summary", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        const response = await fetch("/api/admin/payroll-summary", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
         const result = (await response.json()) as { message?: string };
-
-        if (!response.ok) {
-          throw new Error(result.message || "Gagal menyimpan payroll.");
-        }
-
+        if (!response.ok) throw new Error(result.message || "Gagal menyimpan payroll.");
+        resetForm();
         setPayrollMessage({ type: "success", text: result.message || "Payroll berhasil disimpan." });
         router.refresh();
       } catch (error) {
-        setPayrollMessage({
-          type: "error",
-          text: error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan payroll.",
-        });
+        setPayrollMessage({ type: "error", text: error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan payroll." });
       }
     });
   }
@@ -146,36 +163,32 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
   async function handleOmzetSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setOmzetMessage(null);
-
     startOmzetTransition(async () => {
       try {
-        const response = await fetch("/api/admin/payroll-summary", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "save_omzet",
-            totalOmzet: parseNumber(totalOmzet),
-          }),
-        });
+        const response = await fetch("/api/admin/payroll-summary", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "save_omzet", month: periodMonth, year: periodYear, totalOmzet: parseNumber(totalOmzet) }) });
         const result = (await response.json()) as { message?: string };
-
-        if (!response.ok) {
-          throw new Error(result.message || "Gagal menyimpan total omzet.");
-        }
-
+        if (!response.ok) throw new Error(result.message || "Gagal menyimpan total omzet.");
         setOmzetMessage({ type: "success", text: result.message || "Total omzet berhasil disimpan." });
         router.refresh();
       } catch (error) {
-        setOmzetMessage({
-          type: "error",
-          text: error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan total omzet.",
-        });
+        setOmzetMessage({ type: "error", text: error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan total omzet." });
       }
     });
   }
 
   return (
     <div className="space-y-5">
+      <section className="rounded-[28px] border border-[#ead7ce] bg-white p-5">
+        <div className="grid gap-4 md:grid-cols-[minmax(0,280px)_180px] md:items-end md:justify-between">
+          <Field label="Periode History Payroll">
+            <select value={selectedPeriod} onChange={(event) => handlePeriodChange(event.target.value)} className={selectClassName}>
+              {periodOptions.map((option) => <option key={`${option.year}-${option.month}`} value={`${option.year}-${String(option.month).padStart(2, "0")}`}>{option.label}</option>)}
+            </select>
+          </Field>
+          <div className="rounded-[22px] bg-[#f5fbfb] px-4 py-3 text-sm text-[#47696b]">Cek histori payroll dan omzet per bulan langsung dari dropdown periode.</div>
+        </div>
+      </section>
+
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <form onSubmit={handlePayrollSubmit} className="rounded-[32px] border border-[#cfeaec] bg-[linear-gradient(180deg,#f9ffff_0%,#f2fcfc_100%)] p-6">
           <div className="flex items-start justify-between gap-4">
@@ -184,30 +197,18 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
               <h2 className="mt-3 text-2xl font-semibold text-[#123336]">Form Payroll Admin</h2>
               <p className="mt-2 text-sm text-[#628083]">Pilih nama karyawan, lalu isi komponen payroll per karyawan.</p>
             </div>
-            <div className={`rounded-full px-3 py-1 text-xs font-semibold ${isSales ? "bg-[#fff1d8] text-[#8a5d00]" : "bg-[#dff7f8] text-[#0b6670]"}`}>
-              {isSales ? "Sales" : "Non Sales"}
-            </div>
+            <div className={`rounded-full px-3 py-1 text-xs font-semibold ${isSales ? "bg-[#fff1d8] text-[#8a5d00]" : "bg-[#dff7f8] text-[#0b6670]"}`}>{isSales ? "Sales" : "Non Sales"}</div>
           </div>
 
           <div className="mt-6 space-y-5">
             <Field label="Nama Karyawan">
               <select value={form.employeeId} onChange={(event) => updateField("employeeId", event.target.value)} className={selectClassName} required>
                 <option value="">Pilih karyawan</option>
-                {employeeOptions.map((employee) => (
-                  <option key={employee.employeeId} value={employee.employeeId}>
-                    {employee.name} - {employee.role}
-                  </option>
-                ))}
+                {employeeOptions.map((employee) => <option key={employee.employeeId} value={employee.employeeId}>{employee.name} - {employee.role}</option>)}
               </select>
             </Field>
 
-            {selectedEmployee ? (
-              <div className="mt-1 rounded-[24px] border border-[#d5e9ea] bg-white px-5 py-5 text-sm text-[#35585b]">
-                <p className="font-semibold text-[#19393d]">{selectedEmployee.name}</p>
-                <p className="mt-2">{selectedEmployee.role} | {selectedEmployee.division} | {selectedEmployee.department}</p>
-                <p className="mt-2">Pembagian rekapan: {selectedEmployee.recapGroup}</p>
-              </div>
-            ) : null}
+            {selectedEmployee ? <div className="mt-1 rounded-[24px] border border-[#d5e9ea] bg-white px-5 py-5 text-sm text-[#35585b]"><p className="font-semibold text-[#19393d]">{selectedEmployee.name}</p><p className="mt-2">{selectedEmployee.role} | {selectedEmployee.division} | {selectedEmployee.department}</p><p className="mt-2">Pembagian rekapan: {selectedEmployee.recapGroup}</p></div> : null}
 
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Gaji Pokok Perhari / Perjam"><input value={form.gajiPerDay} onChange={(event) => updateField("gajiPerDay", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
@@ -216,27 +217,16 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
               <Field label="Subsidi"><input value={form.subsidi} onChange={(event) => updateField("subsidi", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
               <Field label="Uang Kerajinan"><input value={form.uangKerajinan} onChange={(event) => updateField("uangKerajinan", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
               <Field label="BPJS"><input value={form.bpjs} onChange={(event) => updateField("bpjs", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
-              {isSales ? (
-                <>
-                  <Field label="Insentif"><input value={form.insentif} onChange={(event) => updateField("insentif", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
-                  <Field label="Uang Transport"><input value={form.uangTransport} onChange={(event) => updateField("uangTransport", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
-                </>
-              ) : (
-                <Field label="Bonus Performa"><input value={form.bonusPerforma} onChange={(event) => updateField("bonusPerforma", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
-              )}
+              {isSales ? <><Field label="Insentif"><input value={form.insentif} onChange={(event) => updateField("insentif", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field><Field label="Uang Transport"><input value={form.uangTransport} onChange={(event) => updateField("uangTransport", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field></> : <Field label="Bonus Performa"><input value={form.bonusPerforma} onChange={(event) => updateField("bonusPerforma", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>}
             </div>
           </div>
 
-          {payrollMessage ? (
-            <div className={`mt-5 rounded-2xl px-4 py-3 text-sm ${payrollMessage.type === "success" ? "bg-[#def8eb] text-[#17603b]" : "bg-[#ffe4e4] text-[#8b2626]"}`}>
-              {payrollMessage.text}
-            </div>
-          ) : null}
+          {editingPayrollId ? <div className="mt-5 rounded-2xl bg-[#fff5e8] px-4 py-3 text-sm text-[#875100]">Mode edit aktif. Hanya field input payroll di form yang bisa diubah; kolom hasil hitung tetap mengikuti sistem untuk periode {periodMonth}/{periodYear}.</div> : null}
+          {payrollMessage ? <div className={`mt-5 rounded-2xl px-4 py-3 text-sm ${payrollMessage.type === "success" ? "bg-[#def8eb] text-[#17603b]" : "bg-[#ffe4e4] text-[#8b2626]"}`}>{payrollMessage.text}</div> : null}
 
-          <div className="mt-6 flex gap-3">
-            <button type="submit" disabled={isPayrollPending || !form.employeeId} className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#0d7f86] px-6 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
-              {isPayrollPending ? "Menyimpan..." : "Simpan Payroll"}
-            </button>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button type="submit" disabled={isPayrollPending || !form.employeeId} className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#0d7f86] px-6 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">{isPayrollPending ? "Menyimpan..." : editingPayrollId ? "Update Payroll" : "Simpan Payroll"}</button>
+            {editingPayrollId ? <button type="button" onClick={() => resetForm()} className="inline-flex h-12 items-center justify-center rounded-2xl border border-[#cfeaec] bg-white px-6 text-sm font-semibold text-[#35585b]">Batal Edit</button> : null}
           </div>
         </form>
 
@@ -244,86 +234,38 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
           <form onSubmit={handleOmzetSubmit} className="rounded-[32px] border border-[#cfeaec] bg-[linear-gradient(180deg,#f9ffff_0%,#f2fcfc_100%)] p-6">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0c8087]">Total Omzet</p>
             <h2 className="mt-3 text-2xl font-semibold text-[#123336]">Input Omzet Bulanan</h2>
-            <p className="mt-2 text-sm text-[#628083]">Diisi satu kali per periode payroll, tidak per karyawan.</p>
+            <p className="mt-2 text-sm text-[#628083]">Diisi satu kali per periode payroll, lalu bisa diupdate bila perlu.</p>
             <div className="mt-6 space-y-4">
-              <Field label="Total Omzet Periode Aktif">
-                <input
-                  value={totalOmzet}
-                  onChange={(event) => setTotalOmzet(formatNumericInput(event.target.value))}
-                  className={inputClassName}
-                  inputMode="numeric"
-                  required
-                  readOnly={false}
-                />
-              </Field>
-              <div className="rounded-[24px] border border-[#d5e9ea] bg-white px-4 py-4 text-sm text-[#35585b]">
-                <p className="text-[13px] font-semibold text-[#466668]">Bonus Omzet Periode Aktif</p>
-                <p className="mt-2 text-2xl font-semibold text-[#123336]">{formatCurrency(omzetBonus)}</p>
-              </div>
+              <Field label="Total Omzet Periode Terpilih"><input value={totalOmzet} onChange={(event) => setTotalOmzet(formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
+              <div className="rounded-[24px] border border-[#d5e9ea] bg-white px-4 py-4 text-sm text-[#35585b]"><p className="text-[13px] font-semibold text-[#466668]">Bonus Omzet Periode Terpilih</p><p className="mt-2 text-2xl font-semibold text-[#123336]">{formatCurrency(omzetBonus)}</p></div>
             </div>
-            {isOmzetLocked ? (
-              <div className="mt-5 rounded-2xl bg-[#edf6f6] px-4 py-3 text-sm text-[#446568]">
-                Total omzet periode ini sudah tersimpan dan dikunci.
-              </div>
-            ) : null}
-            {omzetMessage ? (
-              <div className={`mt-5 rounded-2xl px-4 py-3 text-sm ${omzetMessage.type === "success" ? "bg-[#def8eb] text-[#17603b]" : "bg-[#ffe4e4] text-[#8b2626]"}`}>
-                {omzetMessage.text}
-              </div>
-            ) : null}
+            {omzetPeriod.isLocked ? <div className="mt-5 rounded-2xl bg-[#edf6f6] px-4 py-3 text-sm text-[#446568]">Total omzet periode ini sudah ada. Anda bisa update nominalnya kapan saja.</div> : null}
+            {omzetMessage ? <div className={`mt-5 rounded-2xl px-4 py-3 text-sm ${omzetMessage.type === "success" ? "bg-[#def8eb] text-[#17603b]" : "bg-[#ffe4e4] text-[#8b2626]"}`}>{omzetMessage.text}</div> : null}
             <div className="mt-6 flex gap-3">
-              <button type="submit" disabled={isOmzetPending} className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#19d7df] px-6 text-sm font-semibold text-[#083438] disabled:cursor-not-allowed disabled:opacity-60">
-                {isOmzetPending ? "Menyimpan..." : isOmzetLocked ? "Update Omzet" : "Simpan Omzet"}
-              </button>
+              <button type="submit" disabled={isOmzetPending} className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#19d7df] px-6 text-sm font-semibold text-[#083438] disabled:cursor-not-allowed disabled:opacity-60">{isOmzetPending ? "Menyimpan..." : omzetPeriod.isLocked ? "Update Omzet" : "Simpan Omzet"}</button>
             </div>
           </form>
 
-          {!sheet ? (
-            <div className="rounded-[32px] border border-[#ead7ce] bg-white px-6 py-10 text-sm text-[#7a6059]">Belum ada data payroll yang bisa diringkas.</div>
-          ) : (
-            <section className="grid gap-4">
-              <article className="rounded-[30px] border border-[#ead7ce] bg-[linear-gradient(180deg,#fffdfb_0%,#fff6ef_100%)] px-6 py-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#a16f63]">Periode Payroll</p>
-                <h2 className="mt-3 text-2xl font-semibold text-[#241716]">{sheet.periodLabel}</h2>
-                <p className="mt-2 text-sm text-[#7a6059]">Rentang absensi {sheet.rangeLabel}</p>
-              </article>
-              <article className="rounded-[30px] border border-[#ead7ce] bg-[#19d7df] px-6 py-5 text-[#032a2d]">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em]">Total Omzet</p>
-                <p className="mt-3 text-3xl font-semibold">{formatCurrency(sheet.totalOmzet)}</p>
-              </article>
-              <article className="rounded-[30px] border border-[#ead7ce] bg-[#19d7df] px-6 py-5 text-[#032a2d]">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em]">Bonus Omzet</p>
-                <p className="mt-3 text-3xl font-semibold">{formatCurrency(sheet.totalBonusOmzet)}</p>
-              </article>
-            </section>
-          )}
+          <section className="grid gap-4">
+            <article className="rounded-[30px] border border-[#ead7ce] bg-[linear-gradient(180deg,#fffdfb_0%,#fff6ef_100%)] px-6 py-5"><p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#a16f63]">Periode Payroll</p><h2 className="mt-3 text-2xl font-semibold text-[#241716]">{periodOptions.find((item) => `${item.year}-${String(item.month).padStart(2, "0")}` === selectedPeriod)?.label ?? "-"}</h2><p className="mt-2 text-sm text-[#7a6059]">Rentang absensi {displayedRange}</p></article>
+            <article className="rounded-[30px] border border-[#ead7ce] bg-[#19d7df] px-6 py-5 text-[#032a2d]"><p className="text-xs font-semibold uppercase tracking-[0.22em]">Total Omzet</p><p className="mt-3 text-3xl font-semibold">{formatCurrency(omzetPeriod.totalOmzet)}</p></article>
+            <article className="rounded-[30px] border border-[#ead7ce] bg-[#19d7df] px-6 py-5 text-[#032a2d]"><p className="text-xs font-semibold uppercase tracking-[0.22em]">Bonus Omzet</p><p className="mt-3 text-3xl font-semibold">{formatCurrency(omzetPeriod.bonusOmzet)}</p></article>
+          </section>
         </div>
       </section>
 
       {sheet ? (
         <>
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <article className="rounded-[26px] border border-[#ead7ce] bg-white px-5 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">Karyawan</p>
-              <p className="mt-2 text-3xl font-semibold text-[#241716]">{sheet.rows.length}</p>
-            </article>
-            <article className="rounded-[26px] border border-[#ead7ce] bg-white px-5 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">Total Potongan</p>
-              <p className="mt-2 text-3xl font-semibold text-[#241716]">{formatCurrency(sheet.totalDeduction)}</p>
-            </article>
-            <article className="rounded-[26px] border border-[#ead7ce] bg-white px-5 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">Penerimaan Bersih</p>
-              <p className="mt-2 text-3xl font-semibold text-[#241716]">{formatCurrency(sheet.totalNetIncome)}</p>
-            </article>
-            <article className="rounded-[26px] border border-[#ead7ce] bg-white px-5 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">Range</p>
-              <p className="mt-2 text-lg font-semibold text-[#241716]">26 - 25</p>
-            </article>
+            <article className="rounded-[26px] border border-[#ead7ce] bg-white px-5 py-4"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">Karyawan</p><p className="mt-2 text-3xl font-semibold text-[#241716]">{sheet.rows.length}</p></article>
+            <article className="rounded-[26px] border border-[#ead7ce] bg-white px-5 py-4"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">Total Potongan</p><p className="mt-2 text-3xl font-semibold text-[#241716]">{formatCurrency(sheet.totalDeduction)}</p></article>
+            <article className="rounded-[26px] border border-[#ead7ce] bg-white px-5 py-4"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">Penerimaan Bersih</p><p className="mt-2 text-3xl font-semibold text-[#241716]">{formatCurrency(sheet.totalNetIncome)}</p></article>
+            <article className="rounded-[26px] border border-[#ead7ce] bg-white px-5 py-4"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">Range</p><p className="mt-2 text-lg font-semibold text-[#241716]">{displayedRange}</p></article>
           </section>
 
           <div className="overflow-hidden rounded-[32px] border border-[#d9efef] bg-white">
             <div className="overflow-x-auto">
-              <table className="min-w-[3800px] border-collapse text-left text-sm text-[#1d1d1d]">
+              <table className="min-w-[3960px] border-collapse text-left text-sm text-[#1d1d1d]">
                 <thead>
                   <tr className="bg-[#19d7df] text-center text-xs font-semibold uppercase tracking-[0.14em] text-[#062e31]">
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">No</th>
@@ -355,6 +297,7 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
                     <th colSpan={3} className="border border-[#a8ebef] px-3 py-3">Tambahan</th>
                     <th colSpan={4} className="border border-[#a8ebef] px-3 py-3">Total Potongan</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Penerimaan Bersih</th>
+                    <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Aksi</th>
                   </tr>
                   <tr className="bg-[#19d7df] text-center text-xs font-semibold uppercase tracking-[0.12em] text-[#062e31]">
                     <th className="border border-[#a8ebef] px-3 py-3">Gaji Pokok Perhari / Perjam</th>
@@ -425,6 +368,12 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.loanCut)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.diligenceCut)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right font-semibold text-[#8f1d22]">{formatCurrency(row.netIncome)}</td>
+                      <td className="border border-[#d7ecee] px-3 py-3">
+                        <div className="flex min-w-[140px] gap-2">
+                          <button type="button" onClick={() => handleEditRow(row)} className="inline-flex h-9 items-center justify-center rounded-xl border border-[#0d7f86] px-3 text-xs font-semibold text-[#0d7f86]">Edit</button>
+                          <button type="button" onClick={() => handleDeleteRow(row.id)} disabled={isDeletePending} className="inline-flex h-9 items-center justify-center rounded-xl bg-[#8f1d22] px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">{isDeletePending ? "Proses..." : "Hapus"}</button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -432,15 +381,12 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
             </div>
           </div>
         </>
-      ) : null}
+      ) : (
+        <div className="rounded-[32px] border border-[#ead7ce] bg-white px-6 py-10 text-sm text-[#7a6059]">Belum ada payroll tersimpan untuk periode yang dipilih.</div>
+      )}
     </div>
   );
 }
-
-
-
-
-
 
 
 

@@ -78,6 +78,7 @@ type PeriodLoanRow = RowDataPacket & {
 
 export type AdminPayrollSummarySheetRow = {
   id: number;
+  employeeId: number;
   number: number;
   name: string;
   role: string;
@@ -122,6 +123,15 @@ export type AdminPayrollSummarySheetRow = {
   loanCut: number;
   diligenceCut: number;
   netIncome: number;
+  inputGajiPerDay: number;
+  inputTunjanganJabatan: number;
+  inputUangMakan: number;
+  inputSubsidi: number;
+  inputUangKerajinan: number;
+  inputBpjs: number;
+  inputBonusPerforma: number;
+  inputInsentif: number;
+  inputUangTransport: number;
 };
 
 export type AdminPayrollSummarySheet = {
@@ -186,9 +196,12 @@ function getOmzetFactor(role: string) {
   return 0;
 }
 
-export async function getAdminPayrollSummarySheet() {
+export async function getAdminPayrollSummarySheet(period?: { month?: number; year?: number }) {
   await ensurePayrollSupportTables();
-  const activePeriod = getActivePayrollPeriod();
+  const activePeriod = {
+    month: period?.month ?? getActivePayrollPeriod().month,
+    year: period?.year ?? getActivePayrollPeriod().year,
+  };
   const [latestRows] = await pool.query<LatestPeriodRow[]>(
     `
       SELECT periode_bulan, periode_tahun
@@ -435,6 +448,7 @@ export async function getAdminPayrollSummarySheet() {
 
     return {
       id: row.payroll_id,
+      employeeId: row.employee_id,
       number: index + 1,
       name: row.nama,
       role: row.jabatan,
@@ -479,6 +493,15 @@ export async function getAdminPayrollSummarySheet() {
       loanCut: companyLoan,
       diligenceCut,
       netIncome,
+      inputGajiPerDay: toNumber(row.raw_gaji_pokok_per_hari),
+      inputTunjanganJabatan: toNumber(row.tunjangan_jabatan),
+      inputUangMakan: toNumber(row.raw_uang_makan_per_hari),
+      inputSubsidi: toNumber(row.raw_subsidi),
+      inputUangKerajinan: toNumber(row.raw_uang_kerajinan),
+      inputBpjs: toNumber(row.raw_bpjs),
+      inputBonusPerforma: toNumber(row.raw_bonus_performa),
+      inputInsentif: toNumber(row.raw_insentif),
+      inputUangTransport: toNumber(row.raw_uang_transport),
     };
   });
 

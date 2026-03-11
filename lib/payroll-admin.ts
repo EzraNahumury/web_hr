@@ -48,6 +48,19 @@ type OmzetMonthlyRow = RowDataPacket & {
   total_omzet: string;
 };
 
+type PeriodRow = RowDataPacket & {
+  periode_bulan: number;
+  periode_tahun: number;
+};
+
+type PayrollIdentityRow = RowDataPacket & {
+  id: number;
+  karyawan_id: number;
+  periode_bulan: number;
+  periode_tahun: number;
+  nama: string;
+};
+
 export type PayrollEmployeeOption = {
   employeeId: number;
   name: string;
@@ -79,6 +92,17 @@ export type PayrollOmzetPeriod = {
   totalOmzet: number;
   bonusOmzet: number;
   isLocked: boolean;
+};
+
+export type PayrollPeriodOption = {
+  month: number;
+  year: number;
+  label: string;
+};
+
+type PayrollPeriodInput = {
+  month?: number;
+  year?: number;
 };
 
 function toNumber(value: string | number | null | undefined) {
@@ -118,6 +142,14 @@ export function getActivePayrollPeriod() {
   };
 }
 
+function resolvePayrollPeriod(period?: PayrollPeriodInput) {
+  const active = getActivePayrollPeriod();
+  return {
+    month: period?.month ?? active.month,
+    year: period?.year ?? active.year,
+  };
+}
+
 export function getPayrollDateRange(periodMonth: number, periodYear: number) {
   const start = new Date(periodYear, periodMonth - 2, 26);
   const end = new Date(periodYear, periodMonth - 1, 25);
@@ -135,6 +167,14 @@ export function getPayrollDateRange(periodMonth: number, periodYear: number) {
     startSql: toSqlDate(start),
     endSql: toSqlDate(end),
   };
+}
+
+export function formatPayrollPeriodLabel(month: number, year: number) {
+  return new Intl.DateTimeFormat("id-ID", {
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Jakarta",
+  }).format(new Date(year, month - 1, 1));
 }
 
 function countWorkDays(start: Date, end: Date) {
@@ -238,8 +278,32 @@ export async function listPayrollEmployeeOptions() {
   }));
 }
 
-export async function getPayrollOmzetPeriod(): Promise<PayrollOmzetPeriod> {
-  const period = getActivePayrollPeriod();
+export async function listPayrollPeriods() {
+  await ensurePayrollSupportTables();
+
+  const [rows] = await pool.query<PeriodRow[]>(
+    `
+      SELECT periode_bulan, periode_tahun FROM payroll
+      UNION
+      SELECT periode_bulan, periode_tahun FROM omzet_bulanan
+      ORDER BY periode_tahun DESC, periode_bulan DESC
+    `,
+  );
+
+  if (!rows.length) {
+    const active = getActivePayrollPeriod();
+    return [{ month: active.month, year: active.year, label: formatPayrollPeriodLabel(active.month, active.year) }];
+  }
+
+  return rows.map((row) => ({
+    month: row.periode_bulan,
+    year: row.periode_tahun,
+    label: formatPayrollPeriodLabel(row.periode_bulan, row.periode_tahun),
+  }));
+}
+
+export async function getPayrollOmzetPeriod(period?: PayrollPeriodInput): Promise<PayrollOmzetPeriod> {
+  const resolved = resolvePayrollPeriod(period);
   await ensurePayrollSupportTables();
 
   const [rows] = await pool.query<OmzetMonthlyRow[]>(
@@ -249,23 +313,23 @@ export async function getPayrollOmzetPeriod(): Promise<PayrollOmzetPeriod> {
       WHERE periode_bulan = ? AND periode_tahun = ?
       LIMIT 1
     `,
-    [period.month, period.year],
+    [resolved.month, resolved.year],
   );
 
   const current = rows[0];
   const totalOmzet = toNumber(current?.total_omzet);
 
   return {
-    periodMonth: period.month,
-    periodYear: period.year,
+    periodMonth: resolved.month,
+    periodYear: resolved.year,
     totalOmzet,
     bonusOmzet: totalOmzet * 0.005,
     isLocked: Boolean(current),
   };
 }
 
-export async function upsertPayrollPeriodOmzet(totalOmzet: number) {
-  const period = getActivePayrollPeriod();
+export async function upsertPayrollPeriodOmzet(totalOmzet: number, period?: PayrollPeriodInput) {
+  const resolved = resolvePayrollPeriod(period);
   await ensurePayrollSupportTables();
 
   const [existingRows] = await pool.query<OmzetMonthlyRow[]>(
@@ -275,7 +339,7 @@ export async function upsertPayrollPeriodOmzet(totalOmzet: number) {
       WHERE periode_bulan = ? AND periode_tahun = ?
       LIMIT 1
     `,
-    [period.month, period.year],
+    [resolved.month, resolved.year],
   );
 
   if (existingRows[0]) {
@@ -285,7 +349,7 @@ export async function upsertPayrollPeriodOmzet(totalOmzet: number) {
         SET total_omzet = ?
         WHERE periode_bulan = ? AND periode_tahun = ?
       `,
-      [totalOmzet, period.month, period.year],
+      [totalOmzet, resolved.month, resolved.year],
     );
   } else {
     await pool.query<ResultSetHeader>(
@@ -293,13 +357,13 @@ export async function upsertPayrollPeriodOmzet(totalOmzet: number) {
         INSERT INTO omzet_bulanan (periode_bulan, periode_tahun, total_omzet)
         VALUES (?, ?, ?)
       `,
-      [period.month, period.year, totalOmzet],
+      [resolved.month, resolved.year, totalOmzet],
     );
   }
 
   return {
-    periodMonth: period.month,
-    periodYear: period.year,
+    periodMonth: resolved.month,
+    periodYear: resolved.year,
     totalOmzet,
     bonusOmzet: totalOmzet * 0.005,
     isLocked: true,
@@ -307,7 +371,7 @@ export async function upsertPayrollPeriodOmzet(totalOmzet: number) {
   };
 }
 
-export async function upsertPayrollFromForm(payload: PayrollFormPayload) {
+export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?: PayrollPeriodInput) {
   const connection = await pool.getConnection();
 
   try {
@@ -338,8 +402,8 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload) {
     const payrollType = isSalesEmployeeFromValues(employee.jabatan, employee.divisi, employee.sub_divisi)
       ? "sales"
       : "non_sales";
-    const period = getActivePayrollPeriod();
-    const range = getPayrollDateRange(period.month, period.year);
+    const resolved = resolvePayrollPeriod(period);
+    const range = getPayrollDateRange(resolved.month, resolved.year);
     const workDays = countWorkDays(range.start, range.end);
 
     const [attendanceRows] = await connection.query<AttendanceAggregateRow[]>(
@@ -385,7 +449,7 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload) {
         WHERE karyawan_id = ? AND bulan = ? AND tahun = ?
         LIMIT 1
       `,
-      [payload.employeeId, period.month, period.year],
+      [payload.employeeId, resolved.month, resolved.year],
     );
 
     const [loanRows] = await connection.query<LoanAggregateRow[]>(
@@ -490,8 +554,8 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload) {
       `,
       [
         payload.employeeId,
-        period.month,
-        period.year,
+        resolved.month,
+        resolved.year,
         workDays,
         presentDays,
         overtimeHours,
@@ -523,7 +587,7 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload) {
         WHERE karyawan_id = ? AND periode_bulan = ? AND periode_tahun = ?
         LIMIT 1
       `,
-      [payload.employeeId, period.month, period.year],
+      [payload.employeeId, resolved.month, resolved.year],
     );
 
     const payrollId = payrollRows[0]?.id ?? payrollResult.insertId;
@@ -573,8 +637,8 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload) {
 
     return {
       payrollId,
-      periodMonth: period.month,
-      periodYear: period.year,
+      periodMonth: resolved.month,
+      periodYear: resolved.year,
       payrollType,
       employeeName: employee.nama,
     };
@@ -586,3 +650,44 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload) {
   }
 }
 
+export async function deletePayrollById(payrollId: number) {
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [rows] = await connection.query<PayrollIdentityRow[]>(
+      `
+        SELECT p.id, p.karyawan_id, p.periode_bulan, p.periode_tahun, k.nama
+        FROM payroll p
+        INNER JOIN karyawan k ON k.id = p.karyawan_id
+        WHERE p.id = ?
+        LIMIT 1
+      `,
+      [payrollId],
+    );
+
+    const payroll = rows[0];
+
+    if (!payroll) {
+      throw new Error("Data payroll tidak ditemukan.");
+    }
+
+    await connection.query<ResultSetHeader>(`DELETE FROM payroll WHERE id = ?`, [payrollId]);
+
+    await connection.commit();
+
+    return {
+      payrollId,
+      employeeId: payroll.karyawan_id,
+      employeeName: payroll.nama,
+      periodMonth: payroll.periode_bulan,
+      periodYear: payroll.periode_tahun,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
