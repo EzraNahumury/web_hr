@@ -66,6 +66,9 @@ function AttendanceDetailModal({
             <p className="mt-2 text-sm text-[#7a6059]">
               Jam masuk: {selected.detail.timeIn || "-"} | Jam pulang: {selected.detail.timeOut || "-"}
             </p>
+            <p className="mt-2 text-sm text-[#7a6059]">
+              Terlambat: {selected.detail.lateMinutes > 0 ? `${selected.detail.lateMinutes} menit` : "-"}
+            </p>
           </div>
           <button
             type="button"
@@ -139,6 +142,9 @@ function AttendanceDetailModal({
             <div className="rounded-[22px] border border-[#ead7ce] bg-[#fff8f4] p-4 text-sm text-[#7a6059]">
               <p>Jam masuk: {selected.detail.timeIn || "-"}</p>
               <p className="mt-2">Jam pulang: {selected.detail.timeOut || "-"}</p>
+              <p className="mt-2">
+                Terlambat: {selected.detail.lateMinutes > 0 ? `${selected.detail.lateMinutes} menit` : "-"}
+              </p>
               {isSick ? (
                 <p className="mt-4">Keterangan: {selected.detail.note || "-"}</p>
               ) : null}

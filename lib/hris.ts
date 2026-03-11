@@ -42,6 +42,8 @@ type AttendanceRow = RowDataPacket & {
   longitude_masuk: number | null;
   latitude_pulang: number | null;
   longitude_pulang: number | null;
+  terlambat_menit: number;
+  setengah_hari: number;
   keterangan: string | null;
 };
 
@@ -57,6 +59,7 @@ export type AttendanceDayDetail = {
   longitudeIn: number | null;
   latitudeOut: number | null;
   longitudeOut: number | null;
+  lateMinutes: number;
   note: string | null;
 };
 
@@ -79,38 +82,76 @@ type AttendanceSheetOptions = {
   week?: number;
 };
 
-function mapAttendanceCode(status: string | null, code: string | null) {
+function isTimeWithinRange(time: string, start: string, end: string) {
+  return time >= start && time <= end;
+}
+
+function isHalfDayAttendance(timeIn: string | null, timeOut: string | null, halfDayFlag: number) {
+  if (halfDayFlag === 1) {
+    return true;
+  }
+
+  if (!timeIn || !timeOut) {
+    return false;
+  }
+
+  const isMorningHalfDay =
+    isTimeWithinRange(timeIn, "08:30", "12:00") && isTimeWithinRange(timeOut, "08:30", "12:00");
+  const isAfternoonHalfDay =
+    isTimeWithinRange(timeIn, "13:00", "16:30") && isTimeWithinRange(timeOut, "13:00", "16:30");
+
+  return isMorningHalfDay || isAfternoonHalfDay;
+}
+
+function mapAttendanceCode(row: Pick<
+  AttendanceRow,
+  "status_absensi" | "kode_absensi" | "jam_masuk" | "jam_pulang" | "foto_masuk" | "setengah_hari"
+>) {
+  const { status_absensi: status, kode_absensi: code, jam_masuk: timeIn, jam_pulang: timeOut, foto_masuk: photoIn, setengah_hari: halfDayFlag } = row;
+  const isHalfDay = status === "setengah_hari" || isHalfDayAttendance(timeIn, timeOut, halfDayFlag);
+  const isSickWithoutProof = status === "sakit" && !photoIn;
+
   if (code) {
     switch (code) {
-      case "H":
+      case "O":
       case "S":
       case "X":
       case "SX":
-        return code;
+        return code === "SX" && isHalfDay ? "H" : code;
+      case "H":
+        return isHalfDay ? "H" : "O";
       case "M":
-        return "H";
+        return "O";
       case "SH":
-        return "SX";
+        return "H";
       case "A":
       case "I":
       case "L":
         return "X";
       default:
+        if (isSickWithoutProof) {
+          return "SX";
+        }
+
+        if (isHalfDay) {
+          return "H";
+        }
+
         return code;
     }
   }
 
   switch (status) {
     case "hadir":
-      return "H";
+      return isHalfDay ? "H" : "O";
     case "sakit":
-      return "S";
+      return isSickWithoutProof ? "SX" : "S";
     case "izin":
     case "alfa":
     case "libur":
       return "X";
     case "setengah_hari":
-      return "SX";
+      return "H";
     default:
       return "";
   }
@@ -141,6 +182,8 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         a.longitude_masuk,
         a.latitude_pulang,
         a.longitude_pulang,
+        a.terlambat_menit,
+        a.setengah_hari,
         a.keterangan
       FROM karyawan k
       INNER JOIN users u ON u.id = k.user_id
@@ -183,7 +226,7 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
     if (row.attendance_date) {
       const day = Number(row.attendance_date.split("-")[2]);
       byEmployee.get(row.employee_id)!.daily[day] = {
-        code: mapAttendanceCode(row.status_absensi, row.kode_absensi),
+        code: mapAttendanceCode(row),
         date: row.attendance_date,
         status: row.status_absensi,
         timeIn: row.jam_masuk,
@@ -194,6 +237,7 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         longitudeIn: row.longitude_masuk,
         latitudeOut: row.latitude_pulang,
         longitudeOut: row.longitude_pulang,
+        lateMinutes: row.terlambat_menit,
         note: row.keterangan,
       };
     }
