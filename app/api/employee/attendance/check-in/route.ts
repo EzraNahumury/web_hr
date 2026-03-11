@@ -20,6 +20,13 @@ type AttendanceRow = RowDataPacket & {
   status_absensi: string | null;
 };
 
+type AttendanceRequestStatus =
+  | "hadir"
+  | "izin"
+  | "sakit"
+  | "sakit_tanpa_surat"
+  | "setengah_hari";
+
 export async function POST(request: Request) {
   try {
     const session = await getCurrentEmployeeSession();
@@ -38,12 +45,25 @@ export async function POST(request: Request) {
     const latitude = Number(formData.get("latitude"));
     const longitude = Number(formData.get("longitude"));
 
-    if (status !== "hadir" && status !== "sakit") {
+    if (
+      status !== "hadir" &&
+      status !== "izin" &&
+      status !== "sakit" &&
+      status !== "sakit_tanpa_surat" &&
+      status !== "setengah_hari"
+    ) {
       return NextResponse.json({ message: "Status presensi tidak valid." }, { status: 400 });
     }
 
+    const attendanceRequestStatus = status as AttendanceRequestStatus;
+    const requiresSelfie =
+      attendanceRequestStatus === "hadir" || attendanceRequestStatus === "setengah_hari";
+    const requiresSickProof = attendanceRequestStatus === "sakit";
+    const requiresNote =
+      attendanceRequestStatus === "izin" || attendanceRequestStatus === "sakit_tanpa_surat";
+
     if (
-      status === "hadir" &&
+      requiresSelfie &&
       (!photoDataUrl || !Number.isFinite(latitude) || !Number.isFinite(longitude))
     ) {
       return NextResponse.json(
@@ -52,9 +72,16 @@ export async function POST(request: Request) {
       );
     }
 
-    if (status === "sakit" && !(sickProof instanceof File && sickProof.size > 0)) {
+    if (requiresSickProof && !(sickProof instanceof File && sickProof.size > 0)) {
       return NextResponse.json(
         { message: "Bukti sakit wajib diupload." },
+        { status: 400 },
+      );
+    }
+
+    if (requiresNote && !keterangan?.trim()) {
+      return NextResponse.json(
+        { message: "Keterangan wajib diisi untuk status ini." },
         { status: 400 },
       );
     }
@@ -91,16 +118,34 @@ export async function POST(request: Request) {
       );
     }
 
-    const photoPath =
-      status === "hadir"
-        ? await saveAttendancePhoto(photoDataUrl, employee.id, "in")
-        : await saveUploadedFile(sickProof as File, "attendance");
-    const lateMinutes = status === "hadir" ? getCheckInLateMinutes(currentTime) : 0;
-    const attendanceStatus = status === "sakit" ? "sakit" : "hadir";
-    const attendanceCode = status === "sakit" ? "S" : "H";
-    const attendanceTime = status === "sakit" ? null : attendanceDateTime;
-    const attendanceLatitude = status === "sakit" ? null : latitude;
-    const attendanceLongitude = status === "sakit" ? null : longitude;
+    const photoPath = requiresSelfie
+      ? await saveAttendancePhoto(photoDataUrl, employee.id, "in")
+      : requiresSickProof
+        ? await saveUploadedFile(sickProof as File, "attendance")
+        : null;
+    const lateMinutes = requiresSelfie ? getCheckInLateMinutes(currentTime) : 0;
+    const attendanceStatus =
+      attendanceRequestStatus === "izin"
+        ? "izin"
+        : attendanceRequestStatus === "setengah_hari"
+          ? "setengah_hari"
+          : attendanceRequestStatus === "sakit" || attendanceRequestStatus === "sakit_tanpa_surat"
+            ? "sakit"
+            : "hadir";
+    const attendanceCode =
+      attendanceRequestStatus === "izin"
+        ? "X"
+        : attendanceRequestStatus === "sakit"
+          ? "S"
+          : attendanceRequestStatus === "sakit_tanpa_surat"
+            ? "SX"
+            : attendanceRequestStatus === "setengah_hari"
+              ? "H"
+              : "O";
+    const attendanceTime = requiresSelfie ? attendanceDateTime : null;
+    const attendanceLatitude = requiresSelfie ? latitude : null;
+    const attendanceLongitude = requiresSelfie ? longitude : null;
+    const halfDayFlag = attendanceRequestStatus === "setengah_hari" ? 1 : 0;
 
     await pool.query(
       `
@@ -117,7 +162,7 @@ export async function POST(request: Request) {
           setengah_hari,
           lembur_jam,
           keterangan
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
       `,
       [
         employee.id,
@@ -129,15 +174,22 @@ export async function POST(request: Request) {
         attendanceLatitude,
         attendanceLongitude,
         lateMinutes,
+        halfDayFlag,
         keterangan,
       ],
     );
 
     return NextResponse.json({
       message:
-        status === "sakit"
-          ? "Laporan sakit berhasil disimpan."
-          : "Presensi masuk berhasil disimpan.",
+        attendanceRequestStatus === "sakit"
+          ? "Laporan sakit dengan surat berhasil disimpan."
+          : attendanceRequestStatus === "sakit_tanpa_surat"
+            ? "Laporan sakit tanpa surat berhasil disimpan."
+            : attendanceRequestStatus === "izin"
+              ? "Status izin/off berhasil disimpan."
+              : attendanceRequestStatus === "setengah_hari"
+                ? "Presensi setengah hari berhasil disimpan."
+                : "Presensi masuk berhasil disimpan.",
     });
   } catch (error) {
     console.error("Employee check-in error", error);

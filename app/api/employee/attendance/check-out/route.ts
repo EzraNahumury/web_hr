@@ -70,6 +70,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (attendance?.status_absensi === "izin") {
+      return NextResponse.json(
+        { message: "Status izin/off hari ini sudah tercatat. Presensi pulang tidak diperlukan." },
+        { status: 409 },
+      );
+    }
+
     if (!attendance?.jam_masuk) {
       return NextResponse.json(
         { message: "Presensi masuk hari ini belum tercatat." },

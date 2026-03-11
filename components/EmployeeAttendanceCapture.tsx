@@ -16,6 +16,8 @@ type Props = {
   } | null;
 };
 
+type CheckInStatus = "hadir" | "izin" | "sakit" | "sakit_tanpa_surat" | "setengah_hari";
+
 type LocationSnapshot = {
   latitude: number;
   longitude: number;
@@ -25,6 +27,17 @@ type LocationSnapshot = {
 
 const LOCATION_CACHE_KEY = "web_hr_last_location";
 const LOCATION_CACHE_MAX_AGE = 2 * 60 * 1000;
+const CHECK_IN_OPTIONS: Array<{ value: CheckInStatus; label: string; helper: string }> = [
+  { value: "hadir", label: "Masuk (O)", helper: "Selfie dan lokasi wajib." },
+  { value: "izin", label: "Izin / Off (X)", helper: "Isi keterangan, tanpa selfie." },
+  { value: "sakit", label: "Sakit Pakai Surat (S)", helper: "Upload surat sakit." },
+  { value: "sakit_tanpa_surat", label: "Sakit Tanpa Surat (SX)", helper: "Isi keterangan sakit." },
+  {
+    value: "setengah_hari",
+    label: "Setengah Hari (H)",
+    helper: "Selfie dan lokasi wajib. Acuan jam: 08:30-12:00 atau 13:00-16:30.",
+  },
+];
 
 export default function EmployeeAttendanceCapture({
   mode,
@@ -32,6 +45,10 @@ export default function EmployeeAttendanceCapture({
   employeeMeta,
   todayAttendance,
 }: Props) {
+  const isCheckIn = mode === "check-in";
+  const isCheckOutBlocked =
+    mode === "check-out" &&
+    (todayAttendance?.statusAbsensi === "izin" || todayAttendance?.statusAbsensi === "sakit");
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -50,9 +67,16 @@ export default function EmployeeAttendanceCapture({
   const [locationMessage, setLocationMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const [checkInStatus, setCheckInStatus] = useState<"hadir" | "sakit">("hadir");
+  const [checkInStatus, setCheckInStatus] = useState<CheckInStatus>("hadir");
   const [sickFile, setSickFile] = useState<File | null>(null);
   const [sickNote, setSickNote] = useState("");
+  const needsSelfie = !isCheckIn || checkInStatus === "hadir" || checkInStatus === "setengah_hari";
+  const needsSickProof = isCheckIn && checkInStatus === "sakit";
+  const showsNote =
+    isCheckIn &&
+    (checkInStatus === "izin" || checkInStatus === "sakit" || checkInStatus === "sakit_tanpa_surat");
+  const noteIsRequired =
+    isCheckIn && (checkInStatus === "izin" || checkInStatus === "sakit_tanpa_surat");
 
   const stopLocationTracking = useCallback(() => {
     if (watchIdRef.current !== null) {
@@ -238,12 +262,22 @@ export default function EmployeeAttendanceCapture({
   }
 
   function submitAttendance() {
-    if (isCheckIn && checkInStatus === "sakit" && !sickFile) {
+    if (isCheckOutBlocked) {
+      setErrorMessage("Status izin atau sakit hari ini tidak memerlukan presensi pulang.");
+      return;
+    }
+
+    if (needsSickProof && !sickFile) {
       setErrorMessage("Upload bukti sakit terlebih dahulu.");
       return;
     }
 
-    if (!isCheckIn || checkInStatus === "hadir") {
+    if (noteIsRequired && !sickNote.trim()) {
+      setErrorMessage("Keterangan wajib diisi.");
+      return;
+    }
+
+    if (needsSelfie) {
       if (!photoDataUrl) {
         setErrorMessage("Ambil selfie terlebih dahulu.");
         return;
@@ -255,7 +289,7 @@ export default function EmployeeAttendanceCapture({
       }
     }
 
-    if (!photoDataUrl && (!isCheckIn || checkInStatus === "hadir")) {
+    if (!photoDataUrl && needsSelfie) {
       setErrorMessage("Ambil selfie terlebih dahulu.");
       return;
     }
@@ -276,7 +310,7 @@ export default function EmployeeAttendanceCapture({
               formData.append("status", checkInStatus);
               formData.append("keterangan", sickNote);
 
-              if (checkInStatus === "hadir") {
+              if (checkInStatus === "hadir" || checkInStatus === "setengah_hari") {
                 formData.append("photoDataUrl", photoDataUrl ?? "");
                 formData.append("latitude", String(location?.latitude ?? ""));
                 formData.append("longitude", String(location?.longitude ?? ""));
@@ -311,8 +345,14 @@ export default function EmployeeAttendanceCapture({
       setSuccessMessage(
         mode === "check-in"
           ? checkInStatus === "sakit"
-            ? "Laporan sakit berhasil dikirim."
-            : "Presensi masuk berhasil disimpan."
+            ? "Laporan sakit dengan surat berhasil dikirim."
+            : checkInStatus === "sakit_tanpa_surat"
+              ? "Laporan sakit tanpa surat berhasil dikirim."
+              : checkInStatus === "izin"
+                ? "Status izin/off berhasil disimpan."
+                : checkInStatus === "setengah_hari"
+                  ? "Presensi setengah hari berhasil disimpan."
+                  : "Presensi masuk berhasil disimpan."
           : "Presensi pulang berhasil disimpan.",
       );
       if (mode === "check-in") {
@@ -325,7 +365,6 @@ export default function EmployeeAttendanceCapture({
     });
   }
 
-  const isCheckIn = mode === "check-in";
   const mapUrl = location
     ? `https://www.google.com/maps?q=${location.latitude},${location.longitude}&z=18&output=embed`
     : null;
@@ -355,37 +394,48 @@ export default function EmployeeAttendanceCapture({
           ) : null}
 
           <div className="mt-6">
+            {isCheckOutBlocked ? (
+              <div className="mb-5 rounded-2xl border border-[#f3d6ca] bg-[#fff6f1] px-4 py-3 text-sm text-[#8f1d22]">
+                Status hari ini adalah {todayAttendance?.statusAbsensi}. Presensi pulang tidak
+                diperlukan.
+              </div>
+            ) : null}
             {isCheckIn ? (
-              <div className="mb-5 grid gap-3 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => setCheckInStatus("hadir")}
-                  className={
-                    checkInStatus === "hadir"
-                      ? "rounded-2xl border border-[#c8716d] bg-[#fff3ef] px-4 py-3 text-left text-sm font-semibold text-[#8f1d22]"
-                      : "rounded-2xl border border-[#ead7ce] bg-white px-4 py-3 text-left text-sm font-semibold text-[#4b3230]"
-                  }
-                >
-                  Hadir
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCheckInStatus("sakit")}
-                  className={
-                    checkInStatus === "sakit"
-                      ? "rounded-2xl border border-[#c8716d] bg-[#fff3ef] px-4 py-3 text-left text-sm font-semibold text-[#8f1d22]"
-                      : "rounded-2xl border border-[#ead7ce] bg-white px-4 py-3 text-left text-sm font-semibold text-[#4b3230]"
-                  }
-                >
-                  Sakit
-                </button>
+                <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {CHECK_IN_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => {
+                      setCheckInStatus(option.value);
+                      setSickFile(null);
+                      setErrorMessage("");
+                    }}
+                    className={
+                      checkInStatus === option.value
+                        ? "rounded-2xl border border-[#c8716d] bg-[#fff3ef] px-4 py-3 text-left text-sm font-semibold text-[#8f1d22]"
+                        : "rounded-2xl border border-[#ead7ce] bg-white px-4 py-3 text-left text-sm font-semibold text-[#4b3230]"
+                    }
+                  >
+                    <div>{option.label}</div>
+                    <div className="mt-1 text-xs font-medium text-[#8c6d66]">{option.helper}</div>
+                  </button>
+                ))}
               </div>
             ) : null}
 
             <div className="mx-auto max-w-[360px] overflow-hidden rounded-[28px] border border-[#ead7ce] bg-[#fff8f4]">
-              {isCheckIn && checkInStatus === "sakit" ? (
+              {isCheckIn && !needsSelfie ? (
                 <div className="flex aspect-[4/5] items-center justify-center px-6 text-center text-sm text-[#7a6059]">
-                  Untuk status sakit, upload bukti sakit. Selfie tidak diwajibkan.
+                  {checkInStatus === "sakit"
+                    ? "Untuk status sakit pakai surat, upload bukti sakit. Selfie tidak diwajibkan."
+                    : checkInStatus === "sakit_tanpa_surat"
+                      ? "Untuk sakit tanpa surat, isi keterangan. Selfie tidak diwajibkan."
+                      : "Untuk izin/off, isi keterangan. Selfie tidak diwajibkan."}
+                </div>
+              ) : isCheckOutBlocked ? (
+                <div className="flex aspect-[4/5] items-center justify-center px-6 text-center text-sm text-[#7a6059]">
+                  Presensi pulang dinonaktifkan untuk status izin dan sakit.
                 </div>
               ) : !photoDataUrl ? (
                 <video
@@ -411,7 +461,7 @@ export default function EmployeeAttendanceCapture({
           <canvas ref={canvasRef} className="hidden" />
 
           <div className="mt-5 flex flex-wrap gap-3">
-            {!isCheckIn || checkInStatus === "hadir" ? (
+            {needsSelfie && !isCheckOutBlocked ? (
               <button
                 type="button"
                 onClick={captureSelfie}
@@ -423,48 +473,62 @@ export default function EmployeeAttendanceCapture({
             <button
               type="button"
               onClick={submitAttendance}
-              disabled={isPending}
+              disabled={isPending || isCheckOutBlocked}
               className="rounded-2xl border border-[#e7d4cb] bg-white px-5 py-3 text-sm font-semibold text-[#3c2824] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isPending
                 ? "Menyimpan..."
                 : isCheckIn
                   ? checkInStatus === "sakit"
-                    ? "Kirim Laporan Sakit"
-                    : "Kirim Presensi Masuk"
+                    ? "Kirim Sakit Dengan Surat"
+                    : checkInStatus === "sakit_tanpa_surat"
+                      ? "Kirim Sakit Tanpa Surat"
+                      : checkInStatus === "izin"
+                        ? "Kirim Izin / Off"
+                        : checkInStatus === "setengah_hari"
+                          ? "Kirim Setengah Hari"
+                          : "Kirim Presensi Masuk"
                   : "Kirim Presensi Pulang"}
             </button>
           </div>
 
-          {isCheckIn && checkInStatus === "sakit" ? (
+          {isCheckIn && (needsSickProof || showsNote) ? (
             <div className="mt-5 space-y-4 rounded-[28px] border border-[#ead7ce] bg-[#fff8f4] p-4">
-              <div>
-                <p className="text-sm font-semibold text-[#2f1f1d]">Upload Bukti Sakit</p>
-                <label className="mt-3 flex h-12 cursor-pointer items-center justify-between rounded-2xl border border-[#ead7ce] bg-white px-3.5 transition hover:border-[#d2b0a5]">
-                  <span className="inline-flex h-9 items-center rounded-xl bg-[#8f1d22] px-4 text-sm font-semibold text-white">
-                    Pilih File
-                  </span>
-                  <span className="ml-3 truncate text-sm text-[#7d635c]">
-                    {sickFile ? sickFile.name : "Belum ada file dipilih"}
-                  </span>
-                  <input
-                    type="file"
-                    accept=".jpg,.jpeg,.png,.webp,.pdf"
-                    onChange={(event) => setSickFile(event.target.files?.[0] ?? null)}
-                    className="hidden"
+              {needsSickProof ? (
+                <div>
+                  <p className="text-sm font-semibold text-[#2f1f1d]">Upload Bukti Sakit</p>
+                  <label className="mt-3 flex h-12 cursor-pointer items-center justify-between rounded-2xl border border-[#ead7ce] bg-white px-3.5 transition hover:border-[#d2b0a5]">
+                    <span className="inline-flex h-9 items-center rounded-xl bg-[#8f1d22] px-4 text-sm font-semibold text-white">
+                      Pilih File
+                    </span>
+                    <span className="ml-3 truncate text-sm text-[#7d635c]">
+                      {sickFile ? sickFile.name : "Belum ada file dipilih"}
+                    </span>
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.webp,.pdf"
+                      onChange={(event) => setSickFile(event.target.files?.[0] ?? null)}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              ) : null}
+              {showsNote ? (
+                <div>
+                  <p className="text-sm font-semibold text-[#2f1f1d]">Keterangan</p>
+                  <textarea
+                    value={sickNote}
+                    onChange={(event) => setSickNote(event.target.value)}
+                    rows={3}
+                    placeholder={
+                      checkInStatus === "izin"
+                        ? "Contoh: izin keperluan keluarga / off."
+                        : "Contoh: demam tinggi, istirahat di rumah."
+                    }
+                    className="mt-3 w-full rounded-2xl border border-[#ead7ce] bg-white px-4 py-3 text-sm text-[#241716] outline-none focus:border-[#c8716d]"
                   />
-                </label>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-[#2f1f1d]">Keterangan</p>
-                <textarea
-                  value={sickNote}
-                  onChange={(event) => setSickNote(event.target.value)}
-                  rows={3}
-                  placeholder="Contoh: demam tinggi, istirahat di rumah."
-                  className="mt-3 w-full rounded-2xl border border-[#ead7ce] bg-white px-4 py-3 text-sm text-[#241716] outline-none focus:border-[#c8716d]"
-                />
-              </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </section>
