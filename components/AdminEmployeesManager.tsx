@@ -56,6 +56,7 @@ type FormState = {
   employmentStatus: "training" | "tetap" | "kontrak" | "freelance";
   workStatus: "training" | "tetap" | "kontrak" | "freelance";
   dataStatus: "aktif" | "nonaktif";
+  firstJoinDate: string;
   contractDate: string;
   contractEndDate: string;
   annualRaise: string;
@@ -88,6 +89,7 @@ const emptyForm: FormState = {
   employmentStatus: "kontrak",
   workStatus: "kontrak",
   dataStatus: "aktif",
+  firstJoinDate: "",
   contractDate: "",
   contractEndDate: "",
   annualRaise: "0",
@@ -141,6 +143,24 @@ function EditIcon() {
     >
       <path d="M12 20h9" />
       <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+function ViewIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
     </svg>
   );
 }
@@ -202,6 +222,7 @@ function toFormState(employee: EmployeeListItem): FormState {
     employmentStatus: employee.employmentStatus,
     workStatus: employee.workStatus,
     dataStatus: employee.dataStatus,
+    firstJoinDate: employee.firstJoinDate ?? "",
     contractDate: employee.contractDate ?? "",
     contractEndDate: employee.contractEndDate ?? "",
     annualRaise: employee.annualRaise.replace(/\./g, "").replace(",", "."),
@@ -214,6 +235,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
   const [form, setForm] = useState<FormState>(emptyForm);
   const [ktpFile, setKtpFile] = useState<File | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [viewingEmployee, setViewingEmployee] = useState<EmployeeListItem | null>(null);
   const [search, setSearch] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -291,6 +313,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
       formData.append("employmentStatus", form.employmentStatus);
       formData.append("workStatus", form.workStatus);
       formData.append("dataStatus", form.dataStatus);
+      formData.append("firstJoinDate", form.firstJoinDate);
       formData.append("contractDate", form.contractDate);
       formData.append("contractEndDate", form.contractEndDate);
       formData.append("annualRaise", String(Number(sanitizeCurrencyInput(form.annualRaise) || 0)));
@@ -336,6 +359,52 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
     setKtpFile(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
+
+  const identityEntries: Array<{ label: string; value: string }> = viewingEmployee
+    ? [
+        { label: "Email", value: viewingEmployee.email || "-" },
+        { label: "NIP", value: viewingEmployee.nip || "-" },
+        { label: "Unit", value: viewingEmployee.unit || "-" },
+        { label: "Jabatan", value: viewingEmployee.role || "-" },
+      ]
+    : [];
+  const personalEntries: Array<{ label: string; value: string }> = viewingEmployee
+    ? [
+        { label: "Jenis Kelamin", value: viewingEmployee.gender || "-" },
+        { label: "Tempat Lahir", value: viewingEmployee.birthPlace || "-" },
+        { label: "Tanggal Lahir", value: viewingEmployee.birthDate || "-" },
+        { label: "NIK", value: viewingEmployee.nik || "-" },
+        { label: "Agama", value: viewingEmployee.religion || "-" },
+        { label: "Nomor Telepon", value: viewingEmployee.phoneNumber || "-" },
+      ]
+    : [];
+  const workEntries: Array<{ label: string; value: string }> = viewingEmployee
+    ? [
+        { label: "Departemen", value: viewingEmployee.department || "-" },
+        { label: "Divisi", value: viewingEmployee.division || "-" },
+        { label: "Sub Divisi", value: viewingEmployee.subDivision || "-" },
+        { label: "Penempatan", value: viewingEmployee.placement || "-" },
+        { label: "Pembagian Rekapan", value: viewingEmployee.recapGroup || "-" },
+        { label: "Status Kepegawaian", value: formatStatus(viewingEmployee.employmentStatus) || "-" },
+        { label: "Status Kerja", value: formatStatus(viewingEmployee.workStatus) || "-" },
+        { label: "Status Data", value: viewingEmployee.dataStatus || "-" },
+        { label: "Akun", value: viewingEmployee.userActive ? "Aktif" : "Nonaktif" },
+      ]
+    : [];
+  const financeEntries: Array<{ label: string; value: string }> = viewingEmployee
+    ? [
+        { label: "Bank", value: viewingEmployee.bank || "-" },
+        { label: "No Rekening", value: viewingEmployee.accountNumber || "-" },
+        { label: "Kenaikan / Tahun", value: viewingEmployee.annualRaise || "0" },
+      ]
+    : [];
+  const timelineEntries: Array<{ label: string; value: string }> = viewingEmployee
+    ? [
+        { label: "Tanggal Pertama Masuk", value: viewingEmployee.firstJoinDate || "-" },
+        { label: "Tanggal Kontrak", value: viewingEmployee.contractDate || "-" },
+        { label: "Tanggal Selesai Kontrak", value: viewingEmployee.contractEndDate || "-" },
+      ]
+    : [];
 
   async function handleDelete(employee: EmployeeListItem) {
     if (!window.confirm(`Hapus ${employee.name} (${employee.nip})?`)) return;
@@ -458,13 +527,19 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
               <Field label="Alamat Rumah / Kost"><textarea value={form.addressCurrent} onChange={(event) => updateField("addressCurrent", event.target.value)} className={textareaClassName} /></Field>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <Field label="Status Kepegawaian"><select value={form.employmentStatus} onChange={(event) => updateField("employmentStatus", event.target.value as FormState["employmentStatus"])} className={selectClassName}>{lookups.workStatuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
-              <Field label="Status Kerja"><select value={form.workStatus} onChange={(event) => updateField("workStatus", event.target.value as FormState["workStatus"])} className={selectClassName}>{lookups.workStatuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
-              <Field label="Status Data"><select value={form.dataStatus} onChange={(event) => updateField("dataStatus", event.target.value as FormState["dataStatus"])} className={selectClassName}>{lookups.dataStatuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
-              <Field label="Kenaikan Tiap Tahun"><input value={form.annualRaise} onChange={(event) => updateField("annualRaise", formatRupiahInput(event.target.value))} className={inputClassName} inputMode="numeric" /></Field>
-              <Field label="Tanggal Kontrak"><input type="date" value={form.contractDate} onChange={(event) => updateField("contractDate", event.target.value)} className={inputClassName} /></Field>
-              <Field label="Tanggal Selesai Kontrak"><input type="date" value={form.contractEndDate} onChange={(event) => updateField("contractEndDate", event.target.value)} className={inputClassName} disabled={form.employmentStatus === "tetap" || form.workStatus === "tetap"} /></Field>
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <Field label="Status Kepegawaian"><select value={form.employmentStatus} onChange={(event) => updateField("employmentStatus", event.target.value as FormState["employmentStatus"])} className={selectClassName}>{lookups.workStatuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+                <Field label="Status Kerja"><select value={form.workStatus} onChange={(event) => updateField("workStatus", event.target.value as FormState["workStatus"])} className={selectClassName}>{lookups.workStatuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+                <Field label="Status Data"><select value={form.dataStatus} onChange={(event) => updateField("dataStatus", event.target.value as FormState["dataStatus"])} className={selectClassName}>{lookups.dataStatuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+                <Field label="Kenaikan Tiap Tahun"><input value={form.annualRaise} onChange={(event) => updateField("annualRaise", formatRupiahInput(event.target.value))} className={inputClassName} inputMode="numeric" /></Field>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <Field label="Tanggal Pertama Kali Masuk"><input type="date" value={form.firstJoinDate} onChange={(event) => updateField("firstJoinDate", event.target.value)} className={inputClassName} /></Field>
+                <Field label="Tanggal Kontrak"><input type="date" value={form.contractDate} onChange={(event) => updateField("contractDate", event.target.value)} className={inputClassName} /></Field>
+                <Field label="Tanggal Selesai Kontrak"><input type="date" value={form.contractEndDate} onChange={(event) => updateField("contractEndDate", event.target.value)} className={inputClassName} disabled={form.employmentStatus === "tetap" || form.workStatus === "tetap"} /></Field>
+              </div>
             </div>
 
             <label className="flex items-center gap-3 rounded-2xl border border-[#ead7ce] bg-white px-4 py-3 text-sm font-medium text-[#5f4a45]">
@@ -544,6 +619,15 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                         <div className="flex gap-2">
                           <button
                             type="button"
+                            onClick={() => setViewingEmployee(employee)}
+                            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#d9d6ea] bg-[#faf8ff] text-[#4e3f79] transition hover:border-[#cfc6e7] hover:bg-[#f3efff]"
+                            aria-label={`Lihat ${employee.name}`}
+                            title="Lihat"
+                          >
+                            <ViewIcon />
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => handleEdit(employee)}
                             className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#e8d5cc] bg-white text-[#3c2824] transition hover:border-[#d6bbb0] hover:bg-[#fff7f2] hover:text-[#8f1d22]"
                             aria-label={`Edit ${employee.name}`}
@@ -577,6 +661,182 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
           </div>
         </section>
       </div>
+
+      {viewingEmployee ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
+          <div className="max-h-[92vh] w-full max-w-6xl overflow-hidden rounded-[36px] border border-white/70 bg-[linear-gradient(180deg,#fffdfa_0%,#fff7f2_100%)] shadow-[0_40px_120px_rgba(15,23,42,0.28)]">
+            <div className="relative overflow-hidden border-b border-[#ead9d1] bg-[linear-gradient(135deg,#fff8f2_0%,#fff1e8_52%,#fffdfa_100%)] px-6 py-6">
+              <div className="absolute -right-10 -top-12 h-40 w-40 rounded-full bg-[#f4cdb8]/35 blur-3xl" />
+              <div className="absolute left-1/3 top-0 h-32 w-32 rounded-full bg-[#f8dcca]/35 blur-3xl" />
+              <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-18 w-18 items-center justify-center rounded-[28px] bg-[linear-gradient(135deg,#8f1d22_0%,#d06c4b_100%)] text-2xl font-semibold text-white shadow-[0_18px_45px_rgba(143,29,34,0.28)]">
+                    {viewingEmployee.name.slice(0, 1).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#a16f63]">
+                      Detail Karyawan
+                    </p>
+                    <h3 className="mt-2 text-3xl font-semibold text-[#241716]">{viewingEmployee.name}</h3>
+                    <p className="mt-2 text-sm text-[#7a6059]">
+                      {viewingEmployee.nip} • {viewingEmployee.role} • {viewingEmployee.department}
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-[#8f1d22] shadow-sm">
+                        {formatStatus(viewingEmployee.employmentStatus)}
+                      </span>
+                      <span className="rounded-full bg-[#f4ebe6] px-3 py-1 text-xs font-semibold text-[#6d524a]">
+                        Status data: {viewingEmployee.dataStatus}
+                      </span>
+                      <span className="rounded-full bg-[#f4ebe6] px-3 py-1 text-xs font-semibold text-[#6d524a]">
+                        Akun: {viewingEmployee.userActive ? "Aktif" : "Nonaktif"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setViewingEmployee(null)}
+                  className="rounded-2xl border border-[#e8d5cc] bg-white/90 px-4 py-2 text-sm font-semibold text-[#3c2824] shadow-sm"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+
+            <div className="max-h-[calc(92vh-140px)] overflow-y-auto px-6 py-6">
+              <div className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
+                <div className="space-y-6">
+                  <section className="rounded-[30px] border border-[#ead7ce] bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#a16f63]">
+                      Ringkasan
+                    </p>
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      {identityEntries.map((entry) => (
+                        <div key={entry.label} className="rounded-[22px] bg-[#f9f3ef] px-4 py-3">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">
+                            {entry.label}
+                          </p>
+                          <p className="mt-2 break-words text-sm font-medium text-[#2b1e1b]">{entry.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className="rounded-[30px] border border-[#ead7ce] bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#a16f63]">
+                      Data Personal
+                    </p>
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      {personalEntries.map((entry) => (
+                        <div key={entry.label} className="rounded-[22px] border border-[#f0e1d9] bg-[#fffaf7] px-4 py-3">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">
+                            {entry.label}
+                          </p>
+                          <p className="mt-2 break-words text-sm text-[#3f302c]">{entry.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className="rounded-[30px] border border-[#ead7ce] bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#a16f63]">
+                      Alamat
+                    </p>
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      <div className="rounded-[22px] border border-[#f0e1d9] bg-[#fffaf7] px-4 py-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">
+                          Alamat KTP
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-[#3f302c]">{viewingEmployee.addressKtp || "-"}</p>
+                      </div>
+                      <div className="rounded-[22px] border border-[#f0e1d9] bg-[#fffaf7] px-4 py-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">
+                          Alamat Rumah / Kost
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-[#3f302c]">{viewingEmployee.addressCurrent || "-"}</p>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                <div className="space-y-6">
+                  <section className="rounded-[30px] border border-[#ead7ce] bg-[linear-gradient(180deg,#fffdfb_0%,#fff7f1_100%)] p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#a16f63]">
+                      Organisasi Kerja
+                    </p>
+                    <div className="mt-4 space-y-3">
+                      {workEntries.map((entry) => (
+                        <div key={entry.label} className="flex items-start justify-between gap-4 rounded-[20px] bg-white px-4 py-3">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9c766a]">
+                            {entry.label}
+                          </p>
+                          <p className="text-right text-sm font-medium text-[#2f201d]">{entry.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className="rounded-[30px] border border-[#ead7ce] bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#a16f63]">
+                      Finansial
+                    </p>
+                    <div className="mt-4 space-y-3">
+                      {financeEntries.map((entry) => (
+                        <div key={entry.label} className="rounded-[20px] border border-[#f0e1d9] bg-[#fffaf7] px-4 py-3">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">
+                            {entry.label}
+                          </p>
+                          <p className="mt-2 text-sm font-medium text-[#2f201d]">{entry.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className="rounded-[30px] border border-[#ead7ce] bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#a16f63]">
+                      Timeline Kerja
+                    </p>
+                    <div className="mt-4 space-y-3">
+                      {timelineEntries.map((entry) => (
+                        <div key={entry.label} className="rounded-[20px] bg-[#f9f3ef] px-4 py-3">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">
+                            {entry.label}
+                          </p>
+                          <p className="mt-2 text-sm font-medium text-[#2f201d]">{entry.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className="rounded-[30px] border border-[#ead7ce] bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#a16f63]">
+                      Dokumen
+                    </p>
+                    <div className="mt-4 rounded-[22px] bg-[linear-gradient(135deg,#fff5ef_0%,#fffdfa_100%)] p-4">
+                      <p className="text-sm text-[#6d524a]">
+                        Foto KTP
+                      </p>
+                      {viewingEmployee.ktpPhoto ? (
+                        <a
+                          href={viewingEmployee.ktpPhoto}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-3 inline-flex rounded-full bg-[#8f1d22] px-4 py-2 text-sm font-semibold text-white shadow-[0_14px_35px_rgba(143,29,34,0.22)]"
+                        >
+                          Buka Dokumen
+                        </a>
+                      ) : (
+                        <p className="mt-2 text-sm text-[#8a6f68]">Belum ada file KTP tersimpan.</p>
+                      )}
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

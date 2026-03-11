@@ -30,6 +30,7 @@ export type EmployeeListItem = {
   employmentStatus: "training" | "tetap" | "kontrak" | "freelance";
   workStatus: "training" | "tetap" | "kontrak" | "freelance";
   dataStatus: "aktif" | "nonaktif";
+  firstJoinDate: string | null;
   contractDate: string | null;
   contractEndDate: string | null;
   annualRaise: string;
@@ -133,6 +134,7 @@ export type EmployeePayload = {
   employmentStatus: "training" | "tetap" | "kontrak" | "freelance";
   workStatus: "training" | "tetap" | "kontrak" | "freelance";
   dataStatus: "aktif" | "nonaktif";
+  firstJoinDate: string | null;
   contractDate: string | null;
   contractEndDate: string | null;
   annualRaise: number;
@@ -166,6 +168,7 @@ type EmployeeRow = RowDataPacket & {
   status_kepegawaian: EmployeeListItem["employmentStatus"];
   status_kerja: EmployeeListItem["workStatus"];
   status_data: EmployeeListItem["dataStatus"];
+  tanggal_masuk_pertama: string | null;
   tanggal_kontrak: string | null;
   tanggal_selesai_kontrak: string | null;
   kenaikan_tiap_tahun: string;
@@ -211,6 +214,7 @@ function mapEmployee(row: EmployeeRow): EmployeeListItem {
     employmentStatus: row.status_kepegawaian,
     workStatus: row.status_kerja,
     dataStatus: row.status_data,
+    firstJoinDate: row.tanggal_masuk_pertama,
     contractDate: row.tanggal_kontrak,
     contractEndDate: row.tanggal_selesai_kontrak,
     annualRaise: row.kenaikan_tiap_tahun,
@@ -268,6 +272,7 @@ const employeeSelectQuery = `
     k.status_kepegawaian,
     k.status_kerja,
     k.status_data,
+    DATE_FORMAT(k.tanggal_masuk_pertama, '%Y-%m-%d') AS tanggal_masuk_pertama,
     DATE_FORMAT(k.tanggal_kontrak, '%Y-%m-%d') AS tanggal_kontrak,
     DATE_FORMAT(k.tanggal_selesai_kontrak, '%Y-%m-%d') AS tanggal_selesai_kontrak,
     k.kenaikan_tiap_tahun,
@@ -408,10 +413,11 @@ export async function insertEmployee(payload: EmployeePayload) {
           status_kepegawaian,
           status_kerja,
           status_data,
+          tanggal_masuk_pertama,
           tanggal_kontrak,
           tanggal_selesai_kontrak,
           kenaikan_tiap_tahun
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         userId,
@@ -438,6 +444,7 @@ export async function insertEmployee(payload: EmployeePayload) {
         payload.employmentStatus,
         payload.workStatus,
         payload.dataStatus,
+        payload.firstJoinDate,
         payload.contractDate,
         payload.contractEndDate,
         payload.annualRaise,
@@ -526,6 +533,7 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
           status_kepegawaian = ?,
           status_kerja = ?,
           status_data = ?,
+          tanggal_masuk_pertama = ?,
           tanggal_kontrak = ?,
           tanggal_selesai_kontrak = ?,
           kenaikan_tiap_tahun = ?
@@ -555,6 +563,7 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
         payload.employmentStatus,
         payload.workStatus,
         payload.dataStatus,
+        payload.firstJoinDate,
         payload.contractDate,
         payload.contractEndDate,
         payload.annualRaise,

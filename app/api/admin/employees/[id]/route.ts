@@ -120,6 +120,7 @@ function validatePayload(body: Record<string, unknown>) {
       employmentStatus: employmentStatus as "training" | "tetap" | "kontrak" | "freelance",
       workStatus: workStatus as "training" | "tetap" | "kontrak" | "freelance",
       dataStatus: dataStatus as "aktif" | "nonaktif",
+      firstJoinDate: normalizeText(body.firstJoinDate),
       contractDate: normalizeText(body.contractDate),
       contractEndDate: normalizeText(body.contractEndDate),
       annualRaise: Number(body.annualRaise ?? 0) || 0,
