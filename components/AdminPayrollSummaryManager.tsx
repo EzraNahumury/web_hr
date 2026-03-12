@@ -136,6 +136,18 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
     );
   }, [sheet, searchQuery]);
 
+  const savedEmployeeIds = useMemo(
+    () => new Set(sheet?.rows.map((row) => row.employeeId) ?? []),
+    [sheet],
+  );
+
+  const availableEmployeeOptions = useMemo(
+    () => editingPayrollId
+      ? employeeOptions
+      : employeeOptions.filter((emp) => !savedEmployeeIds.has(emp.employeeId)),
+    [employeeOptions, savedEmployeeIds, editingPayrollId],
+  );
+
   function updateField(key: keyof FormState, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
   }
@@ -255,9 +267,12 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
             <Field label="Nama Karyawan">
               <select value={form.employeeId} onChange={(event) => updateField("employeeId", event.target.value)} className={selectClassName} required>
                 <option value="">Pilih karyawan</option>
-                {employeeOptions.map((employee) => <option key={employee.employeeId} value={employee.employeeId}>{employee.name} - {employee.role}</option>)}
+                {availableEmployeeOptions.map((employee) => <option key={employee.employeeId} value={employee.employeeId}>{employee.name} - {employee.role}</option>)}
               </select>
             </Field>
+            {!editingPayrollId && savedEmployeeIds.size > 0 && employeeOptions.length > availableEmployeeOptions.length ? (
+              <p className="text-xs text-[#87a6a8]">Karyawan yang sudah memiliki payroll periode ini tidak ditampilkan.</p>
+            ) : null}
 
             {selectedEmployee ? <div className="mt-1 rounded-[24px] border border-[#d5e9ea] bg-white px-5 py-5 text-sm text-[#35585b]"><p className="font-semibold text-[#19393d]">{selectedEmployee.name}</p><p className="mt-2">{selectedEmployee.role} | {selectedEmployee.division} | {selectedEmployee.department}</p><p className="mt-2">Pembagian rekapan: {selectedEmployee.recapGroup}</p></div> : null}
 
