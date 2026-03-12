@@ -41,11 +41,12 @@ function validatePayload(body: Record<string, unknown>) {
   const employmentStatus = body.employmentStatus;
   const workStatus = body.workStatus;
   const dataStatus = body.dataStatus;
+  const firstJoinDate = normalizeText(body.firstJoinDate);
 
-  if (!nip || !name || !email || !password || !role || !division || !department) {
+  if (!nip || !name || !email || !password || !role || !division || !department || !firstJoinDate) {
     return {
       error:
-        "Nama, NIP, email, password, jabatan, divisi, dan departemen wajib diisi.",
+        "Nama, NIP, email, password, jabatan, divisi, departemen, dan tanggal pertama masuk wajib diisi.",
     };
   }
 
@@ -117,7 +118,7 @@ function validatePayload(body: Record<string, unknown>) {
     employmentStatus: employmentStatus as EmployeePayload["employmentStatus"],
     workStatus: workStatus as EmployeePayload["workStatus"],
     dataStatus: dataStatus as EmployeePayload["dataStatus"],
-    firstJoinDate: normalizeText(body.firstJoinDate),
+    firstJoinDate,
     contractDate: normalizeText(body.contractDate),
     contractEndDate: normalizeText(body.contractEndDate),
     annualRaise: Number(body.annualRaise ?? 0) || 0,
@@ -205,3 +206,4 @@ export async function POST(request: Request) {
     );
   }
 }
+

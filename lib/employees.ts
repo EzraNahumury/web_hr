@@ -1,5 +1,7 @@
 import { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 
+import { syncContractDeductionSchedule } from "@/lib/contract-deductions";
+import { calculateContractEndDate, calculateEmploymentTimeline } from "@/lib/contract-timeline";
 import { pool } from "@/lib/db";
 
 export type EmployeeListItem = {
@@ -370,11 +372,48 @@ export async function getEmployeeStats() {
   };
 }
 
+function resolveEmployeeTimeline(
+  payload: EmployeePayload,
+  options: { allowManualContractDates: boolean },
+) {
+  if (!payload.firstJoinDate) {
+    throw new Error("Tanggal pertama masuk wajib diisi.");
+  }
+
+  const timeline = calculateEmploymentTimeline(payload.firstJoinDate);
+
+  if (!timeline) {
+    throw new Error("Tanggal pertama masuk tidak valid.");
+  }
+
+  if (!options.allowManualContractDates) {
+    return {
+      firstJoinDate: payload.firstJoinDate,
+      contractDate: timeline.contractDate,
+      contractEndDate: timeline.contractEndDate,
+    };
+  }
+
+  const contractDate = payload.contractDate ?? timeline.contractDate;
+  const contractEndDate =
+    payload.contractEndDate ??
+    (contractDate ? calculateContractEndDate(contractDate) : null) ??
+    timeline.contractEndDate;
+
+  return {
+    firstJoinDate: payload.firstJoinDate,
+    contractDate,
+    contractEndDate,
+  };
+}
+
 export async function insertEmployee(payload: EmployeePayload) {
   const connection = await pool.getConnection();
 
   try {
     await connection.beginTransaction();
+
+    const resolvedTimeline = resolveEmployeeTimeline(payload, { allowManualContractDates: false });
 
     const [userResult] = await connection.query<ResultSetHeader>(
       `
@@ -444,11 +483,20 @@ export async function insertEmployee(payload: EmployeePayload) {
         payload.employmentStatus,
         payload.workStatus,
         payload.dataStatus,
-        payload.firstJoinDate,
-        payload.contractDate,
-        payload.contractEndDate,
+        resolvedTimeline.firstJoinDate,
+        resolvedTimeline.contractDate,
+        resolvedTimeline.contractEndDate,
         payload.annualRaise,
       ],
+    );
+
+    await syncContractDeductionSchedule(
+      {
+        employeeId: employeeResult.insertId,
+        role: payload.role,
+        contractDate: resolvedTimeline.contractDate,
+      },
+      connection,
     );
 
     await connection.commit();
@@ -467,6 +515,8 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
 
   try {
     await connection.beginTransaction();
+
+    const resolvedTimeline = resolveEmployeeTimeline(payload, { allowManualContractDates: true });
 
     const [existingRows] = await connection.query<(RowDataPacket & { user_id: number })[]>(
       "SELECT user_id FROM karyawan WHERE id = ? LIMIT 1",
@@ -563,12 +613,21 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
         payload.employmentStatus,
         payload.workStatus,
         payload.dataStatus,
-        payload.firstJoinDate,
-        payload.contractDate,
-        payload.contractEndDate,
+        resolvedTimeline.firstJoinDate,
+        resolvedTimeline.contractDate,
+        resolvedTimeline.contractEndDate,
         payload.annualRaise,
         id,
       ],
+    );
+
+    await syncContractDeductionSchedule(
+      {
+        employeeId: id,
+        role: payload.role,
+        contractDate: resolvedTimeline.contractDate,
+      },
+      connection,
     );
 
     await connection.commit();

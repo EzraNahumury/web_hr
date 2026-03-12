@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { addMonthsToIsoDate, calculateEmploymentTimeline } from "@/lib/contract-timeline";
 import type { EmployeeListItem, LookupOption } from "@/lib/employees";
 
 type Lookups = {
@@ -266,12 +267,38 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
     );
   }, [employees, search]);
 
+  const timelinePreview = form.firstJoinDate ? calculateEmploymentTimeline(form.firstJoinDate) : null;
+
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => {
       const next = { ...current, [key]: value };
-      if ((key === "employmentStatus" || key === "workStatus") && value === "tetap") {
-        next.contractEndDate = "";
+
+      if (key === "firstJoinDate" && typeof value === "string") {
+        if (!value) {
+          next.contractDate = "";
+          next.contractEndDate = "";
+          return next;
+        }
+
+        const timeline = calculateEmploymentTimeline(value);
+        if (timeline) {
+          next.contractDate = timeline.contractDate;
+          next.contractEndDate = timeline.contractEndDate;
+        }
       }
+
+      if (key === "contractDate" && typeof value === "string") {
+        if (!value) {
+          next.contractEndDate = "";
+          return next;
+        }
+
+        const contractEndDate = addMonthsToIsoDate(value, 12);
+        if (contractEndDate) {
+          next.contractEndDate = contractEndDate;
+        }
+      }
+
       return next;
     });
   }
@@ -536,9 +563,40 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
               </div>
 
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <Field label="Tanggal Pertama Kali Masuk"><input type="date" value={form.firstJoinDate} onChange={(event) => updateField("firstJoinDate", event.target.value)} className={inputClassName} /></Field>
-                <Field label="Tanggal Kontrak"><input type="date" value={form.contractDate} onChange={(event) => updateField("contractDate", event.target.value)} className={inputClassName} /></Field>
-                <Field label="Tanggal Selesai Kontrak"><input type="date" value={form.contractEndDate} onChange={(event) => updateField("contractEndDate", event.target.value)} className={inputClassName} disabled={form.employmentStatus === "tetap" || form.workStatus === "tetap"} /></Field>
+                <Field label="Tanggal Pertama Masuk"><input type="date" value={form.firstJoinDate} onChange={(event) => updateField("firstJoinDate", event.target.value)} className={inputClassName} required /></Field>
+                <Field label="Tanggal Kontrak"><input type="date" value={form.contractDate} onChange={(event) => updateField("contractDate", event.target.value)} className={inputClassName} disabled={!editingId} /></Field>
+                <Field label="Tanggal Selesai Kontrak"><input type="date" value={form.contractEndDate} onChange={(event) => updateField("contractEndDate", event.target.value)} className={inputClassName} disabled={!editingId} /></Field>
+              </div>
+
+              <div className="rounded-[28px] border border-[#ead7ce] bg-white/70 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">Timeline Otomatis</p>
+                <p className="mt-2 text-sm text-[#6f5a54]">
+                  {editingId
+                    ? "Mode edit membuka semua field timeline. Saat create, tanggal kontrak dan selesai kontrak dikunci dan dihitung otomatis dari tanggal pertama masuk."
+                    : "Saat tambah karyawan baru, tanggal kontrak dan tanggal selesai kontrak dihitung otomatis dari tanggal pertama masuk dan dibuat read only."}
+                </p>
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  <div className="rounded-[22px] bg-[#f9f3ef] px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">Training</p>
+                    <p className="mt-2 text-sm font-medium text-[#2f201d]">
+                      {timelinePreview
+                        ? `${timelinePreview.trainingStartDate} s/d ${timelinePreview.trainingEndDate}`
+                        : "Isi tanggal pertama masuk"}
+                    </p>
+                  </div>
+                  <div className="rounded-[22px] bg-[#f9f3ef] px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">Mulai Kontrak</p>
+                    <p className="mt-2 text-sm font-medium text-[#2f201d]">
+                      {timelinePreview?.contractDate || form.contractDate || "-"}
+                    </p>
+                  </div>
+                  <div className="rounded-[22px] bg-[#f9f3ef] px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">Selesai Kontrak</p>
+                    <p className="mt-2 text-sm font-medium text-[#2f201d]">
+                      {timelinePreview?.contractEndDate || form.contractEndDate || "-"}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -840,3 +898,6 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
     </div>
   );
 }
+
+
+
