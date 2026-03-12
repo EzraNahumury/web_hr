@@ -52,6 +52,7 @@ export type ContractDeductionInstallment = {
   year: number | null;
   monthLabel: string;
   nominalDeduction: string | null;
+  deductedAmount: string | null;
 };
 
 export type ContractDeductionPlanItem = {
@@ -67,6 +68,9 @@ export type ContractDeductionPlanItem = {
   deductionStartDate: string | null;
   deductionEndDate: string | null;
   monthlyDeduction: string | null;
+  totalPlannedDeduction: string;
+  totalDeductedAmount: string;
+  remainingDeduction: string;
   annualRaise: string;
   description: string | null;
   isActive: boolean;
@@ -109,6 +113,33 @@ type ContractDeductionEmployeeIdentityRow = RowDataPacket & {
   tanggal_kontrak: string | null;
 };
 
+type ContractDeductionUsageRow = RowDataPacket & {
+  employee_id: number;
+  periode_bulan: number;
+  periode_tahun: number;
+  total_potongan_kontrak: string;
+};
+
+type ContractDeductionUsageItem = {
+  employeeId: number;
+  month: number;
+  year: number;
+  deductedAmount: string;
+};
+
+function toNumber(value: string | number | null | undefined) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  if (!value) {
+    return 0;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function mapRow(row: ContractDeductionRow): ContractDeductionItem {
   return {
     id: row.id,
@@ -130,6 +161,7 @@ function mapRow(row: ContractDeductionRow): ContractDeductionItem {
 function buildPlan(
   employee: ContractDeductionEmployeeOption,
   rows: ContractDeductionItem[],
+  usages: ContractDeductionUsageItem[],
 ): ContractDeductionPlanItem | null {
   if (!employee.contractDate) {
     return null;
@@ -137,7 +169,38 @@ function buildPlan(
 
   const periods = getFirstFiveContractPeriods(employee.contractDate);
   const employeeRows = rows.filter((row) => row.employeeId === employee.employeeId);
+  const employeeUsages = usages.filter((usage) => usage.employeeId === employee.employeeId);
   const deductionEndDate = addMonthsToIsoDate(employee.contractDate, 5);
+  const defaultMonthlyDeduction = getContractDeductionNominalByRole(employee.role);
+
+  const installments = periods.map((period) => {
+    const matched = employeeRows.find(
+      (row) => row.month === period.month && row.year === period.year,
+    );
+    const usage = employeeUsages.find(
+      (item) => item.month === period.month && item.year === period.year,
+    );
+
+    return {
+      id: matched?.id ?? null,
+      sequence: period.sequence,
+      month: period.month,
+      year: period.year,
+      monthLabel: period.monthLabel,
+      nominalDeduction: matched?.nominalDeduction ?? String(defaultMonthlyDeduction),
+      deductedAmount: usage?.deductedAmount ?? null,
+    } satisfies ContractDeductionInstallment;
+  });
+
+  const totalPlannedDeduction = installments.reduce(
+    (total, installment) => total + toNumber(installment.nominalDeduction),
+    0,
+  );
+  const totalDeductedAmount = installments.reduce(
+    (total, installment) => total + toNumber(installment.deductedAmount),
+    0,
+  );
+  const remainingDeduction = Math.max(totalPlannedDeduction - totalDeductedAmount, 0);
 
   return {
     employeeId: employee.employeeId,
@@ -152,24 +215,14 @@ function buildPlan(
     deductionStartDate: employee.contractDate,
     deductionEndDate,
     monthlyDeduction:
-      employeeRows[0]?.nominalDeduction ?? String(getContractDeductionNominalByRole(employee.role)),
+      employeeRows[0]?.nominalDeduction ?? String(defaultMonthlyDeduction),
+    totalPlannedDeduction: String(totalPlannedDeduction),
+    totalDeductedAmount: String(totalDeductedAmount),
+    remainingDeduction: String(remainingDeduction),
     annualRaise: employee.annualRaise,
     description: employeeRows[0]?.description ?? null,
     isActive: isContractDeductionActive(employee.contractDate),
-    installments: periods.map((period) => {
-      const matched = employeeRows.find(
-        (row) => row.month === period.month && row.year === period.year,
-      );
-
-      return {
-        id: matched?.id ?? null,
-        sequence: period.sequence,
-        month: period.month,
-        year: period.year,
-        monthLabel: period.monthLabel,
-        nominalDeduction: matched?.nominalDeduction ?? null,
-      };
-    }),
+    installments,
   } satisfies ContractDeductionPlanItem;
 }
 
@@ -197,6 +250,28 @@ export async function listContractDeductions() {
   );
 
   return rows.map(mapRow);
+}
+
+async function listContractDeductionUsages() {
+  const [rows] = await pool.query<ContractDeductionUsageRow[]>(
+    `
+      SELECT
+        p.karyawan_id AS employee_id,
+        p.periode_bulan,
+        p.periode_tahun,
+        SUM(p.potongan_kontrak) AS total_potongan_kontrak
+      FROM payroll p
+      WHERE p.potongan_kontrak > 0
+      GROUP BY p.karyawan_id, p.periode_bulan, p.periode_tahun
+    `,
+  );
+
+  return rows.map((row) => ({
+    employeeId: row.employee_id,
+    month: row.periode_bulan,
+    year: row.periode_tahun,
+    deductedAmount: row.total_potongan_kontrak,
+  } satisfies ContractDeductionUsageItem));
 }
 
 export async function listContractDeductionEmployees() {
@@ -235,13 +310,14 @@ export async function listContractDeductionEmployees() {
 }
 
 export async function listContractDeductionPlans(options?: { activeOnly?: boolean }) {
-  const [employees, rows] = await Promise.all([
+  const [employees, rows, usages] = await Promise.all([
     listContractDeductionEmployees(),
     listContractDeductions(),
+    listContractDeductionUsages(),
   ]);
 
   const plans = employees.flatMap((employee) => {
-    const plan = buildPlan(employee, rows);
+    const plan = buildPlan(employee, rows, usages);
     return plan ? [plan] : [];
   });
 
@@ -394,5 +470,3 @@ export async function deleteContractDeduction(id: number) {
 
   return result.affectedRows > 0;
 }
-
-

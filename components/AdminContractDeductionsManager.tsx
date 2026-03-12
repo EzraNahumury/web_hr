@@ -19,6 +19,15 @@ function formatMoney(value: string | null) {
   return Number(value).toLocaleString("id-ID");
 }
 
+function toNumber(value: string | null) {
+  if (!value) {
+    return 0;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 export default function AdminContractDeductionsManager({ initialRows }: Props) {
   const [search, setSearch] = useState("");
 
@@ -44,6 +53,20 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
     );
   }, [initialRows, search]);
 
+  const summary = useMemo(
+    () =>
+      filteredRows.reduce(
+        (total, row) => ({
+          employees: total.employees + 1,
+          planned: total.planned + toNumber(row.totalPlannedDeduction),
+          deducted: total.deducted + toNumber(row.totalDeductedAmount),
+          remaining: total.remaining + toNumber(row.remainingDeduction),
+        }),
+        { employees: 0, planned: 0, deducted: 0, remaining: 0 },
+      ),
+    [filteredRows],
+  );
+
   return (
     <div className="space-y-6">
       <section className="rounded-[32px] border border-[#ead7ce] bg-[linear-gradient(180deg,#fffdfc_0%,#fff6f2_100%)] shadow-[0_20px_60px_rgba(96,45,34,0.08)]">
@@ -55,36 +78,35 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
             Rekap Otomatis 5 Bulan Pertama
           </h3>
           <p className="mt-2 text-sm leading-7 text-[#7a6059]">
-            Modul ini read only. Sistem menghitung training 3 bulan dari tanggal pertama masuk,
-            menetapkan tanggal kontrak pada bulan ke-4, lalu membuat potongan 5 bulan pertama
-            secara otomatis saat data karyawan disimpan.
+            Modul ini read only. Sistem membuat total tanggungan potongan kontrak 5 bulan pertama,
+            lalu sisa tanggungan berkurang otomatis setiap kali payroll summary tersimpan.
           </p>
         </div>
 
-        <div className="grid gap-4 px-6 py-6 md:grid-cols-3">
+        <div className="grid gap-4 px-6 py-6 md:grid-cols-4">
           <div className="rounded-[24px] border border-[#ead7ce] bg-white px-4 py-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">
-              Sumber Data
+              Karyawan Aktif
             </p>
-            <p className="mt-2 text-sm text-[#3f302c]">
-              Tanggal pertama masuk dari form karyawan menjadi dasar seluruh timeline kontrak.
-            </p>
+            <p className="mt-2 text-2xl font-semibold text-[#241716]">{summary.employees}</p>
           </div>
           <div className="rounded-[24px] border border-[#ead7ce] bg-white px-4 py-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">
-              Periode Potongan
+              Total Tanggungan
             </p>
-            <p className="mt-2 text-sm text-[#3f302c]">
-              Potongan aktif pada 5 bulan pertama sejak tanggal kontrak dan tampil otomatis di rekap.
-            </p>
+            <p className="mt-2 text-2xl font-semibold text-[#241716]">Rp{formatMoney(String(summary.planned))}</p>
           </div>
           <div className="rounded-[24px] border border-[#ead7ce] bg-white px-4 py-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">
-              Akses Admin
+              Sudah Terpotong
             </p>
-            <p className="mt-2 text-sm text-[#3f302c]">
-              Tidak ada form input manual di halaman ini karena nominal dan periodenya sudah disinkronkan sistem.
+            <p className="mt-2 text-2xl font-semibold text-[#241716]">Rp{formatMoney(String(summary.deducted))}</p>
+          </div>
+          <div className="rounded-[24px] border border-[#ead7ce] bg-white px-4 py-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">
+              Sisa Tanggungan
             </p>
+            <p className="mt-2 text-2xl font-semibold text-[#8f1d22]">Rp{formatMoney(String(summary.remaining))}</p>
           </div>
         </div>
       </section>
@@ -100,7 +122,7 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
                 5 Bulan Pertama Kontrak
               </h3>
               <p className="mt-2 text-sm leading-7 text-[#7a6059]">
-                Hanya karyawan yang masih berada dalam periode potongan kontrak yang ditampilkan.
+                Tanggungan awal mengikuti total 5 bulan potongan kontrak, lalu saldo sisa turun saat payroll summary dibuat.
               </p>
             </div>
 
@@ -114,7 +136,7 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-[1480px] border-collapse text-left">
+          <table className="min-w-[1880px] border-collapse text-left">
             <thead>
               <tr className="border-b border-[#efe0d8] bg-[#12dfe6] text-xs uppercase tracking-[0.16em] text-[#111111]">
                 <th className="px-6 py-4 font-semibold">Nama</th>
@@ -124,6 +146,9 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
                 <th className="px-6 py-4 font-semibold">Departemen</th>
                 <th className="px-6 py-4 font-semibold">Kontrak</th>
                 <th className="px-6 py-4 font-semibold">Potongan / Bulan</th>
+                <th className="px-6 py-4 font-semibold">Total</th>
+                <th className="px-6 py-4 font-semibold">Sudah Terpotong</th>
+                <th className="px-6 py-4 font-semibold">Sisa</th>
                 <th className="px-6 py-4 font-semibold text-center">1</th>
                 <th className="px-6 py-4 font-semibold text-center">2</th>
                 <th className="px-6 py-4 font-semibold text-center">3</th>
@@ -151,27 +176,43 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
                     <td className="px-6 py-4 font-semibold text-[#241716]">
                       Rp{formatMoney(row.monthlyDeduction)}
                     </td>
-                    {row.installments.map((installment) => (
-                      <td key={`${row.employeeId}-${installment.sequence}`} className="px-4 py-4">
-                        {installment.nominalDeduction ? (
-                          <div className="min-w-[120px] rounded-2xl bg-[#fff7f2] px-3 py-2 text-center">
+                    <td className="px-6 py-4 font-semibold text-[#241716]">
+                      Rp{formatMoney(row.totalPlannedDeduction)}
+                    </td>
+                    <td className="px-6 py-4 font-semibold text-[#1f6b5d]">
+                      Rp{formatMoney(row.totalDeductedAmount)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className={`inline-flex min-w-[132px] justify-center rounded-2xl px-3 py-2 font-semibold ${toNumber(row.remainingDeduction) > 0 ? "bg-[#fff1ec] text-[#8f1d22]" : "bg-[#e7f9f0] text-[#17603b]"}`}>
+                        {toNumber(row.remainingDeduction) > 0 ? `Rp${formatMoney(row.remainingDeduction)}` : "Lunas"}
+                      </div>
+                    </td>
+                    {row.installments.map((installment) => {
+                      const deductedAmount = toNumber(installment.deductedAmount);
+
+                      return (
+                        <td key={`${row.employeeId}-${installment.sequence}`} className="px-4 py-4">
+                          <div className={`min-w-[128px] rounded-2xl px-3 py-2 text-center ${deductedAmount > 0 ? "bg-[#edf9f2]" : "bg-[#fff7f2]"}`}>
                             <div className="font-semibold text-[#241716]">
                               {formatMoney(installment.nominalDeduction)}
                             </div>
                             <div className="mt-1 text-xs text-[#7a6059]">
                               {installment.monthLabel}
                             </div>
+                            <div className={`mt-1 text-[11px] font-semibold ${deductedAmount > 0 ? "text-[#17603b]" : "text-[#b1948d]"}`}>
+                              {deductedAmount > 0
+                                ? `Payroll: ${formatMoney(installment.deductedAmount)}`
+                                : "Belum dipotong"}
+                            </div>
                           </div>
-                        ) : (
-                          <div className="text-center text-[#b1948d]">-</div>
-                        )}
-                      </td>
-                    ))}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={12} className="px-6 py-16 text-center">
+                  <td colSpan={15} className="px-6 py-16 text-center">
                     <p className="text-base font-semibold text-[#3b2723]">
                       Belum ada potongan kontrak aktif
                     </p>
