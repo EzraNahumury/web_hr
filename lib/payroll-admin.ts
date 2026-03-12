@@ -1,6 +1,12 @@
 import { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 
 import { pool } from "@/lib/db";
+import {
+  attachLoanInstallmentsToPayroll,
+  detachLoanInstallmentsFromPayroll,
+  ensureLoanSupportTables,
+  getLoanDeductionForPeriod,
+} from "@/lib/loans";
 
 type PayrollEmployeeOptionRow = RowDataPacket & {
   employee_id: number;
@@ -27,10 +33,6 @@ type OvertimeAggregateRow = RowDataPacket & {
 
 type ContractAggregateRow = RowDataPacket & {
   nominal_potongan: string | null;
-};
-
-type LoanAggregateRow = RowDataPacket & {
-  angsuran_per_bulan: string | null;
 };
 
 type PayrollEmployeeRow = RowDataPacket & {
@@ -433,6 +435,7 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
   try {
     await connection.beginTransaction();
     await ensurePayrollSupportTables(connection);
+    await ensureLoanSupportTables(connection);
 
     const [employees] = await connection.query<PayrollEmployeeRow[]>(
       `
@@ -508,16 +511,11 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
       [payload.employeeId, resolved.month, resolved.year],
     );
 
-    const [loanRows] = await connection.query<LoanAggregateRow[]>(
-      `
-        SELECT angsuran_per_bulan
-        FROM pinjaman
-        WHERE karyawan_id = ?
-          AND status_pinjaman IN ('approved', 'berjalan')
-        ORDER BY created_at DESC, id DESC
-        LIMIT 1
-      `,
-      [payload.employeeId],
+    const automaticLoanCut = await getLoanDeductionForPeriod(
+      payload.employeeId,
+      resolved.month,
+      resolved.year,
+      connection,
     );
 
     const presentDays = payload.overrideMasuk ?? attendance.present_count ?? 0;
@@ -528,7 +526,7 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
     const lateCount = attendance.late_count ?? 0;
     const overtimeHours = payload.overrideLembur ?? toNumber(overtimeRows[0]?.total_jam);
     const contractCut = payload.overrideKontrak ?? toNumber(contractRows[0]?.nominal_potongan);
-    const loanCut = payload.overridePinjaman ?? toNumber(loanRows[0]?.angsuran_per_bulan);
+    const loanCut = payload.overridePinjaman ?? automaticLoanCut;
     const personalLoanCut = payload.overridePinjamanPribadi ?? 0;
     const gajiPerDay = payload.gajiPerDay;
     const monthlyBaseSalary = payload.overrideGajiPokok ?? gajiPerDay * workDays;
@@ -723,6 +721,15 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
       ],
     );
 
+    await attachLoanInstallmentsToPayroll(
+      payload.employeeId,
+      payrollId,
+      resolved.month,
+      resolved.year,
+      loanCut,
+      connection,
+    );
+
     await connection.commit();
 
     return {
@@ -745,6 +752,7 @@ export async function deletePayrollById(payrollId: number) {
 
   try {
     await connection.beginTransaction();
+    await ensureLoanSupportTables(connection);
 
     const [rows] = await connection.query<PayrollIdentityRow[]>(
       `
@@ -763,6 +771,7 @@ export async function deletePayrollById(payrollId: number) {
       throw new Error("Data payroll tidak ditemukan.");
     }
 
+    await detachLoanInstallmentsFromPayroll(payrollId, connection);
     await connection.query<ResultSetHeader>(`DELETE FROM payroll WHERE id = ?`, [payrollId]);
 
     await connection.commit();
@@ -781,3 +790,4 @@ export async function deletePayrollById(payrollId: number) {
     connection.release();
   }
 }
+

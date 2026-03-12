@@ -1,5 +1,6 @@
 import { RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
+import { getEmployeeRemainingLoanTotal } from "@/lib/loans";
 
 type CountRow = RowDataPacket & { total: number };
 
@@ -633,10 +634,7 @@ export async function getEmployeeOverview(employeeId: number) {
       "SELECT COUNT(*) AS total, COALESCE(SUM(total_jam), 0) AS total_jam FROM lembur WHERE karyawan_id = ?",
       [employeeId],
     ),
-    pool.query<(RowDataPacket & { sisa_pinjaman: string | null })[]>(
-      "SELECT sisa_pinjaman FROM pinjaman WHERE karyawan_id = ? ORDER BY id DESC LIMIT 1",
-      [employeeId],
-    ),
+    getEmployeeRemainingLoanTotal(employeeId),
     pool.query<CountRow[]>(
       "SELECT COUNT(*) AS total FROM slip_gaji sg INNER JOIN payroll p ON p.id = sg.payroll_id WHERE p.karyawan_id = ?",
       [employeeId],
@@ -647,7 +645,7 @@ export async function getEmployeeOverview(employeeId: number) {
     attendanceThisMonth: attendanceRows[0][0]?.total ?? 0,
     overtimeCount: overtimeRows[0][0]?.total ?? 0,
     overtimeHours: (overtimeRows[0][0] as RowDataPacket & { total_jam?: string })?.total_jam ?? "0",
-    remainingLoan: loanRows[0][0]?.sisa_pinjaman ?? "0",
+    remainingLoan: loanRows ?? "0",
     payslipCount: payslipRows[0][0]?.total ?? 0,
   };
 }
@@ -809,3 +807,4 @@ export async function getEmployeePayslips(employeeId: number) {
 
   return rows;
 }
+

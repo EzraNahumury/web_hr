@@ -1,6 +1,7 @@
 import { RowDataPacket } from "mysql2";
 
 import { pool } from "@/lib/db";
+import { ensureLoanSupportTables, getLoanDeductionRowsForPeriod } from "@/lib/loans";
 import {
   ensurePayrollSupportTables,
   getActivePayrollPeriod,
@@ -79,11 +80,6 @@ type PeriodOvertimeRow = RowDataPacket & {
 type PeriodContractDeductionRow = RowDataPacket & {
   employee_id: number;
   nominal_potongan: string;
-};
-
-type PeriodLoanRow = RowDataPacket & {
-  employee_id: number;
-  angsuran_per_bulan: string;
 };
 
 type TotalEmployeeCountRow = RowDataPacket & {
@@ -221,7 +217,7 @@ function getOmzetFactor(role: string) {
 }
 
 export async function getAdminPayrollSummarySheet(period?: { month?: number; year?: number }) {
-  await ensurePayrollSupportTables();
+  await Promise.all([ensurePayrollSupportTables(), ensureLoanSupportTables()]);
   const activePeriod = {
     month: period?.month ?? getActivePayrollPeriod().month,
     year: period?.year ?? getActivePayrollPeriod().year,
@@ -354,18 +350,7 @@ export async function getAdminPayrollSummarySheet(period?: { month?: number; yea
       `,
       [...employeeIds, periodMonth, periodYear],
     ),
-    pool.query<PeriodLoanRow[]>(
-      `
-        SELECT
-          karyawan_id AS employee_id,
-          angsuran_per_bulan
-        FROM pinjaman
-        WHERE karyawan_id IN (${placeholders})
-          AND status_pinjaman IN ('approved', 'berjalan')
-        ORDER BY created_at DESC, id DESC
-      `,
-      employeeIds,
-    ),
+    getLoanDeductionRowsForPeriod(employeeIds, periodMonth, periodYear),
     pool.query<TotalEmployeeCountRow[]>(
       `SELECT COUNT(*) AS total FROM karyawan WHERE status_data = 'aktif'`,
     ),
@@ -426,10 +411,8 @@ export async function getAdminPayrollSummarySheet(period?: { month?: number; yea
   }
 
   const loanMap = new Map<number, number>();
-  for (const row of loanResult[0]) {
-    if (!loanMap.has(row.employee_id)) {
-      loanMap.set(row.employee_id, toNumber(row.angsuran_per_bulan));
-    }
+  for (const row of loanResult) {
+    loanMap.set(row.employeeId, toNumber(row.totalDeduction));
   }
 
   const totalOmzet = toNumber(rows[0]?.total_omzet_global);
@@ -580,3 +563,4 @@ export async function getAdminPayrollSummarySheet(period?: { month?: number; yea
     rows: mappedRows,
   };
 }
+
