@@ -24,6 +24,16 @@ type FormState = {
   bonusPerforma: string;
   insentif: string;
   uangTransport: string;
+  overrideMasuk: string;
+  overrideLembur: string;
+  overrideIzin: string;
+  overrideSakit: string;
+  overrideSakitTanpaSurat: string;
+  overrideSetengahHari: string;
+  overrideKontrak: string;
+  overridePinjaman: string;
+  overridePinjamanPribadi: string;
+  overrideGajiPokok: string;
 };
 
 const inputClassName = "h-12 w-full rounded-2xl border border-[#d5e9ea] bg-white px-4 text-[#173033] outline-none placeholder:text-[#87a6a8] focus:border-[#19d7df] focus:shadow-[0_0_0_4px_rgba(25,215,223,0.16)]";
@@ -52,11 +62,15 @@ function parseNumber(value: string) {
 }
 
 function emptyForm(employeeId = ""): FormState {
-  return { employeeId, gajiPerDay: "", tunjanganJabatan: "", uangMakan: "", subsidi: "", uangKerajinan: "", bpjs: "", bonusPerforma: "", insentif: "", uangTransport: "" };
+  return { employeeId, gajiPerDay: "", tunjanganJabatan: "", uangMakan: "", subsidi: "", uangKerajinan: "", bpjs: "", bonusPerforma: "", insentif: "", uangTransport: "", overrideMasuk: "", overrideLembur: "", overrideIzin: "", overrideSakit: "", overrideSakitTanpaSurat: "", overrideSetengahHari: "", overrideKontrak: "", overridePinjaman: "", overridePinjamanPribadi: "", overrideGajiPokok: "" };
 }
 
 function formatFormValue(value: number) {
   return value > 0 ? formatNumericInput(String(value)) : "";
+}
+
+function formatOverrideValue(value: number | null) {
+  return value !== null ? formatNumericInput(String(value)) : "";
 }
 
 function buildFormFromRow(row: AdminPayrollSummarySheetRow): FormState {
@@ -71,6 +85,16 @@ function buildFormFromRow(row: AdminPayrollSummarySheetRow): FormState {
     bonusPerforma: formatFormValue(row.inputBonusPerforma),
     insentif: formatFormValue(row.inputInsentif),
     uangTransport: formatFormValue(row.inputUangTransport),
+    overrideMasuk: formatOverrideValue(row.inputOverrideMasuk),
+    overrideLembur: formatOverrideValue(row.inputOverrideLembur),
+    overrideIzin: formatOverrideValue(row.inputOverrideIzin),
+    overrideSakit: formatOverrideValue(row.inputOverrideSakit),
+    overrideSakitTanpaSurat: formatOverrideValue(row.inputOverrideSakitTanpaSurat),
+    overrideSetengahHari: formatOverrideValue(row.inputOverrideSetengahHari),
+    overrideKontrak: formatOverrideValue(row.inputOverrideKontrak),
+    overridePinjaman: formatOverrideValue(row.inputOverridePinjaman),
+    overridePinjamanPribadi: formatOverrideValue(row.inputOverridePinjamanPribadi),
+    overrideGajiPokok: formatOverrideValue(row.inputOverrideGajiPokok),
   };
 }
 
@@ -89,6 +113,7 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
   const [selectedPeriod, setSelectedPeriod] = useState(`${omzetPeriod.periodYear}-${String(omzetPeriod.periodMonth).padStart(2, "0")}`);
   const [totalOmzet, setTotalOmzet] = useState(formatNumericInput(String(omzetPeriod.totalOmzet)));
   const [form, setForm] = useState<FormState>(emptyForm(employeeOptions[0] ? String(employeeOptions[0].employeeId) : ""));
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [periodYear, periodMonth] = useMemo(() => {
     const [year, month] = selectedPeriod.split("-");
@@ -99,6 +124,17 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
   const isSales = selectedEmployee?.isSales ?? false;
   const omzetBonus = parseNumber(totalOmzet) * 0.005;
   const displayedRange = sheet?.rangeLabel ?? `Periode ${periodOptions.find((item) => `${item.year}-${String(item.month).padStart(2, "0")}` === selectedPeriod)?.label ?? "aktif"}`;
+
+  const filteredRows = useMemo(() => {
+    if (!sheet) return [];
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return sheet.rows;
+    return sheet.rows.filter((row) =>
+      [row.name, row.role, row.division, row.recapGroup, row.department].some((field) =>
+        field.toLowerCase().includes(q)
+      )
+    );
+  }, [sheet, searchQuery]);
 
   function updateField(key: keyof FormState, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -145,7 +181,22 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
   async function handlePayrollSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPayrollMessage(null);
-    const payload = { action: "save_payroll", month: periodMonth, year: periodYear, employeeId: Number(form.employeeId), gajiPerDay: parseNumber(form.gajiPerDay), tunjanganJabatan: parseNumber(form.tunjanganJabatan), uangMakan: parseNumber(form.uangMakan), subsidi: parseNumber(form.subsidi), uangKerajinan: parseNumber(form.uangKerajinan), bpjs: parseNumber(form.bpjs), bonusPerforma: parseNumber(form.bonusPerforma), insentif: parseNumber(form.insentif), uangTransport: parseNumber(form.uangTransport) };
+    const payload = {
+      action: "save_payroll", month: periodMonth, year: periodYear, employeeId: Number(form.employeeId),
+      gajiPerDay: parseNumber(form.gajiPerDay), tunjanganJabatan: parseNumber(form.tunjanganJabatan),
+      uangMakan: parseNumber(form.uangMakan), subsidi: parseNumber(form.subsidi), uangKerajinan: parseNumber(form.uangKerajinan),
+      bpjs: parseNumber(form.bpjs), bonusPerforma: parseNumber(form.bonusPerforma), insentif: parseNumber(form.insentif), uangTransport: parseNumber(form.uangTransport),
+      overrideMasuk: form.overrideMasuk !== "" ? parseNumber(form.overrideMasuk) : null,
+      overrideLembur: form.overrideLembur !== "" ? parseNumber(form.overrideLembur) : null,
+      overrideIzin: form.overrideIzin !== "" ? parseNumber(form.overrideIzin) : null,
+      overrideSakit: form.overrideSakit !== "" ? parseNumber(form.overrideSakit) : null,
+      overrideSakitTanpaSurat: form.overrideSakitTanpaSurat !== "" ? parseNumber(form.overrideSakitTanpaSurat) : null,
+      overrideSetengahHari: form.overrideSetengahHari !== "" ? parseNumber(form.overrideSetengahHari) : null,
+      overrideKontrak: form.overrideKontrak !== "" ? parseNumber(form.overrideKontrak) : null,
+      overridePinjaman: form.overridePinjaman !== "" ? parseNumber(form.overridePinjaman) : null,
+      overridePinjamanPribadi: form.overridePinjamanPribadi !== "" ? parseNumber(form.overridePinjamanPribadi) : null,
+      overrideGajiPokok: form.overrideGajiPokok !== "" ? parseNumber(form.overrideGajiPokok) : null,
+    };
     startPayrollTransition(async () => {
       try {
         const response = await fetch("/api/admin/payroll-summary", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -218,6 +269,28 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
               <Field label="Uang Kerajinan"><input value={form.uangKerajinan} onChange={(event) => updateField("uangKerajinan", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
               <Field label="BPJS"><input value={form.bpjs} onChange={(event) => updateField("bpjs", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
               {isSales ? <><Field label="Insentif"><input value={form.insentif} onChange={(event) => updateField("insentif", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field><Field label="Uang Transport"><input value={form.uangTransport} onChange={(event) => updateField("uangTransport", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field></> : <Field label="Bonus Performa"><input value={form.bonusPerforma} onChange={(event) => updateField("bonusPerforma", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>}
+              <Field label="Gaji Pokok (Bulanan)"><input value={form.overrideGajiPokok} onChange={(event) => updateField("overrideGajiPokok", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" /></Field>
+            </div>
+
+            <div className="mt-8">
+              <p className="mb-4 text-sm font-semibold text-[#123336]">Override Kehadiran (Opsional, kosongkan jika ingin menggunakan data sistem)</p>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <Field label="Masuk (Hari)"><input value={form.overrideMasuk} onChange={(event) => updateField("overrideMasuk", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
+                <Field label="Lembur (Jam)"><input value={form.overrideLembur} onChange={(event) => updateField("overrideLembur", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
+                <Field label="Izin / Off (Hari)"><input value={form.overrideIzin} onChange={(event) => updateField("overrideIzin", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
+                <Field label="Sakit (Hari)"><input value={form.overrideSakit} onChange={(event) => updateField("overrideSakit", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
+                <Field label="Sakit Tanpa Surat (Hari)"><input value={form.overrideSakitTanpaSurat} onChange={(event) => updateField("overrideSakitTanpaSurat", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
+                <Field label="1/2 Hari (Hari)"><input value={form.overrideSetengahHari} onChange={(event) => updateField("overrideSetengahHari", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
+              </div>
+            </div>
+
+            <div className="mt-8">
+              <p className="mb-4 text-sm font-semibold text-[#123336]">Override Potongan (Opsional, kosongkan jika ingin menggunakan data sistem)</p>
+              <div className="grid gap-4 md:grid-cols-3">
+                <Field label="Kontrak"><input value={form.overrideKontrak} onChange={(event) => updateField("overrideKontrak", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
+                <Field label="Pinjaman Perusahaan"><input value={form.overridePinjaman} onChange={(event) => updateField("overridePinjaman", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
+                <Field label="Pinjaman Pribadi"><input value={form.overridePinjamanPribadi} onChange={(event) => updateField("overridePinjamanPribadi", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
+              </div>
             </div>
           </div>
 
@@ -257,13 +330,23 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
       {sheet ? (
         <>
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <article className="rounded-[26px] border border-[#ead7ce] bg-white px-5 py-4"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">Karyawan</p><p className="mt-2 text-3xl font-semibold text-[#241716]">{sheet.rows.length}</p></article>
+            <article className="rounded-[26px] border border-[#ead7ce] bg-white px-5 py-4"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">Karyawan</p><p className="mt-2 text-3xl font-semibold text-[#241716]">{filteredRows.length}{filteredRows.length !== sheet.rows.length ? <span className="ml-1 text-base text-[#a16f63]">/ {sheet.rows.length}</span> : null}</p></article>
             <article className="rounded-[26px] border border-[#ead7ce] bg-white px-5 py-4"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">Total Potongan</p><p className="mt-2 text-3xl font-semibold text-[#241716]">{formatCurrency(sheet.totalDeduction)}</p></article>
             <article className="rounded-[26px] border border-[#ead7ce] bg-white px-5 py-4"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">Penerimaan Bersih</p><p className="mt-2 text-3xl font-semibold text-[#241716]">{formatCurrency(sheet.totalNetIncome)}</p></article>
             <article className="rounded-[26px] border border-[#ead7ce] bg-white px-5 py-4"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">Range</p><p className="mt-2 text-lg font-semibold text-[#241716]">{displayedRange}</p></article>
           </section>
 
           <div className="overflow-hidden rounded-[32px] border border-[#d9efef] bg-white">
+            <div className="flex items-center gap-3 border-b border-[#d9efef] px-5 py-4">
+              <svg className="shrink-0 text-[#3bbfc6]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari nama, jabatan, divisi, departemen..."
+                className="w-full bg-transparent text-sm text-[#1d3f42] outline-none placeholder:text-[#87a6a8]"
+              />
+              {searchQuery ? <button type="button" onClick={() => setSearchQuery("")} className="shrink-0 text-xs font-semibold text-[#a16f63] hover:text-[#7a3f35]">Hapus</button> : null}
+            </div>
             <div className="overflow-x-auto">
               <table className="min-w-[3960px] border-collapse text-left text-sm text-[#1d1d1d]">
                 <thead>
@@ -323,7 +406,9 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
                   </tr>
                 </thead>
                 <tbody>
-                  {sheet.rows.map((row) => (
+                  {filteredRows.length === 0 ? (
+                    <tr><td colSpan={99} className="px-6 py-8 text-center text-sm text-[#87a6a8]">Tidak ada data yang cocok dengan pencarian.</td></tr>
+                  ) : filteredRows.map((row) => (
                     <tr key={row.id} className="text-[#3a2b27] odd:bg-white even:bg-[#fcfefe]">
                       <td className="border border-[#d7ecee] px-3 py-3 text-center">{row.number}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 font-semibold text-[#241716]">{row.name}</td>

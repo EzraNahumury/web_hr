@@ -84,6 +84,16 @@ export type PayrollFormPayload = {
   totalOmzet: number;
   insentif: number;
   uangTransport: number;
+  overrideMasuk?: number | null;
+  overrideLembur?: number | null;
+  overrideIzin?: number | null;
+  overrideSakit?: number | null;
+  overrideSakitTanpaSurat?: number | null;
+  overrideSetengahHari?: number | null;
+  overrideKontrak?: number | null;
+  overridePinjaman?: number | null;
+  overridePinjamanPribadi?: number | null;
+  overrideGajiPokok?: number | null;
 };
 
 export type PayrollOmzetPeriod = {
@@ -205,7 +215,7 @@ export function isSalesEmployeeFromValues(role: string, division: string, subDiv
   );
 }
 
-export async function ensurePayrollSupportTables(connection?: typeof pool) {
+export async function ensurePayrollSupportTables(connection?: any) {
   const executor = connection ?? pool;
 
   await executor.query(`
@@ -235,6 +245,12 @@ export async function ensurePayrollSupportTables(connection?: typeof pool) {
       bonus_performa DECIMAL(14,2) NOT NULL DEFAULT 0.00,
       insentif DECIMAL(14,2) NOT NULL DEFAULT 0.00,
       uang_transport DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+      override_masuk INT NULL DEFAULT NULL,
+      override_lembur DECIMAL(14,2) NULL DEFAULT NULL,
+      override_izin INT NULL DEFAULT NULL,
+      override_sakit INT NULL DEFAULT NULL,
+      override_sakit_tanpa_surat INT NULL DEFAULT NULL,
+      override_setengah_hari INT NULL DEFAULT NULL,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       PRIMARY KEY (id),
@@ -248,6 +264,46 @@ export async function ensurePayrollSupportTables(connection?: typeof pool) {
         ON UPDATE CASCADE ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `);
+
+  try {
+    await executor.query(`
+      ALTER TABLE payroll_employee_input 
+      ADD COLUMN override_masuk INT NULL DEFAULT NULL,
+      ADD COLUMN override_lembur DECIMAL(14,2) NULL DEFAULT NULL,
+      ADD COLUMN override_izin INT NULL DEFAULT NULL,
+      ADD COLUMN override_sakit INT NULL DEFAULT NULL,
+      ADD COLUMN override_sakit_tanpa_surat INT NULL DEFAULT NULL,
+      ADD COLUMN override_setengah_hari INT NULL DEFAULT NULL
+    `);
+  } catch (err: any) {
+    if (err.code !== 'ER_DUP_FIELDNAME') {
+      console.error("Migration warning for payroll_employee_input:", err);
+    }
+  }
+
+  try {
+    await executor.query(`
+      ALTER TABLE payroll_employee_input 
+      ADD COLUMN override_kontrak DECIMAL(14,2) NULL DEFAULT NULL,
+      ADD COLUMN override_pinjaman DECIMAL(14,2) NULL DEFAULT NULL,
+      ADD COLUMN override_pinjaman_pribadi DECIMAL(14,2) NULL DEFAULT NULL
+    `);
+  } catch (err: any) {
+    if (err.code !== 'ER_DUP_FIELDNAME') {
+      console.error("Migration warning for deduction overrides:", err);
+    }
+  }
+
+  try {
+    await executor.query(`
+      ALTER TABLE payroll_employee_input 
+      ADD COLUMN override_gaji_pokok DECIMAL(14,2) NULL DEFAULT NULL
+    `);
+  } catch (err: any) {
+    if (err.code !== 'ER_DUP_FIELDNAME') {
+      console.error("Migration warning for override_gaji_pokok:", err);
+    }
+  }
 }
 
 export async function listPayrollEmployeeOptions() {
@@ -464,14 +520,18 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
       [payload.employeeId],
     );
 
-    const presentDays = attendance.present_count ?? 0;
-    const halfDayCount = attendance.half_day_count ?? 0;
+    const presentDays = payload.overrideMasuk ?? attendance.present_count ?? 0;
+    const leaveCount = payload.overrideIzin ?? attendance.leave_count ?? 0;
+    const sickCount = payload.overrideSakit ?? attendance.sick_count ?? 0;
+    const sickWithoutNoteCount = payload.overrideSakitTanpaSurat ?? attendance.sick_without_note_count ?? 0;
+    const halfDayCount = payload.overrideSetengahHari ?? attendance.half_day_count ?? 0;
     const lateCount = attendance.late_count ?? 0;
-    const overtimeHours = toNumber(overtimeRows[0]?.total_jam);
-    const contractCut = toNumber(contractRows[0]?.nominal_potongan);
-    const loanCut = toNumber(loanRows[0]?.angsuran_per_bulan);
+    const overtimeHours = payload.overrideLembur ?? toNumber(overtimeRows[0]?.total_jam);
+    const contractCut = payload.overrideKontrak ?? toNumber(contractRows[0]?.nominal_potongan);
+    const loanCut = payload.overridePinjaman ?? toNumber(loanRows[0]?.angsuran_per_bulan);
+    const personalLoanCut = payload.overridePinjamanPribadi ?? 0;
     const gajiPerDay = payload.gajiPerDay;
-    const monthlyBaseSalary = gajiPerDay * workDays;
+    const monthlyBaseSalary = payload.overrideGajiPokok ?? gajiPerDay * workDays;
     const tunjanganJabatan = payload.tunjanganJabatan;
     const subsidi = payload.subsidi;
     const uangMakanPerDay = payload.uangMakan;
@@ -479,7 +539,7 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
     const uangKerajinan = payload.uangKerajinan;
     const bpjs = payload.bpjs;
     const bonusPerforma = payrollType === "sales" ? 0 : payload.bonusPerforma;
-    const diligenceAllowance = presentDays + (attendance.sick_count ?? 0) >= workDays ? uangKerajinan : 0;
+    const diligenceAllowance = presentDays + sickCount >= workDays ? uangKerajinan : 0;
     const diligenceCut = Math.max(uangKerajinan - diligenceAllowance, 0);
     const overtimeBonus = overtimeHours * 20000;
     const halfDayDeduction = (gajiPerDay / 2) * halfDayCount;
@@ -496,8 +556,8 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
       overtimeBonus +
       (payrollType === "sales" ? payload.insentif + payload.uangTransport : 0);
     const totalSalary = totalSalaryBeforeDeduction - halfDayDeduction - lateDeduction;
-    const totalPotongan = halfDayDeduction + lateDeduction + diligenceCut + contractCut + loanCut;
-    const netIncome = totalSalary - contractCut - loanCut;
+    const totalPotongan = halfDayDeduction + lateDeduction + diligenceCut + contractCut + loanCut + personalLoanCut;
+    const netIncome = totalSalary - contractCut - loanCut - personalLoanCut;
 
     const [payrollResult] = await connection.query<ResultSetHeader>(
       `
@@ -605,8 +665,18 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
           bpjs,
           bonus_performa,
           insentif,
-          uang_transport
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          uang_transport,
+          override_masuk,
+          override_lembur,
+          override_izin,
+          override_sakit,
+          override_sakit_tanpa_surat,
+          override_setengah_hari,
+          override_kontrak,
+          override_pinjaman,
+          override_pinjaman_pribadi,
+          override_gaji_pokok
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           payroll_type = VALUES(payroll_type),
           gaji_pokok_per_hari = VALUES(gaji_pokok_per_hari),
@@ -616,7 +686,17 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
           bpjs = VALUES(bpjs),
           bonus_performa = VALUES(bonus_performa),
           insentif = VALUES(insentif),
-          uang_transport = VALUES(uang_transport)
+          uang_transport = VALUES(uang_transport),
+          override_masuk = VALUES(override_masuk),
+          override_lembur = VALUES(override_lembur),
+          override_izin = VALUES(override_izin),
+          override_sakit = VALUES(override_sakit),
+          override_sakit_tanpa_surat = VALUES(override_sakit_tanpa_surat),
+          override_setengah_hari = VALUES(override_setengah_hari),
+          override_kontrak = VALUES(override_kontrak),
+          override_pinjaman = VALUES(override_pinjaman),
+          override_pinjaman_pribadi = VALUES(override_pinjaman_pribadi),
+          override_gaji_pokok = VALUES(override_gaji_pokok)
       `,
       [
         payrollId,
@@ -630,6 +710,16 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
         bonusPerforma,
         payrollType === "sales" ? payload.insentif : 0,
         payrollType === "sales" ? payload.uangTransport : 0,
+        payload.overrideMasuk ?? null,
+        payload.overrideLembur ?? null,
+        payload.overrideIzin ?? null,
+        payload.overrideSakit ?? null,
+        payload.overrideSakitTanpaSurat ?? null,
+        payload.overrideSetengahHari ?? null,
+        payload.overrideKontrak ?? null,
+        payload.overridePinjaman ?? null,
+        payload.overridePinjamanPribadi ?? null,
+        payload.overrideGajiPokok ?? null,
       ],
     );
 

@@ -7,6 +7,14 @@ import {
   type PayrollFormPayload,
 } from "@/lib/payroll-admin";
 
+function parseOverride(value: unknown) {
+  if (value === "" || value === null || value === undefined) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
 function parseCurrency(value: unknown) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
@@ -45,9 +53,22 @@ function validatePayrollPayload(body: Record<string, unknown>) {
     bonusPerforma: parseCurrency(body.bonusPerforma),
     insentif: parseCurrency(body.insentif),
     uangTransport: parseCurrency(body.uangTransport),
+    overrideMasuk: parseOverride(body.overrideMasuk),
+    overrideLembur: parseOverride(body.overrideLembur),
+    overrideIzin: parseOverride(body.overrideIzin),
+    overrideSakit: parseOverride(body.overrideSakit),
+    overrideSakitTanpaSurat: parseOverride(body.overrideSakitTanpaSurat),
+    overrideSetengahHari: parseOverride(body.overrideSetengahHari),
+    overrideKontrak: parseOverride(body.overrideKontrak),
+    overridePinjaman: parseOverride(body.overridePinjaman),
+    overridePinjamanPribadi: parseOverride(body.overridePinjamanPribadi),
+    overrideGajiPokok: parseOverride(body.overrideGajiPokok),
   };
 
-  if (Object.values(values).some((value) => value === null)) {
+  if ([
+    values.gajiPerDay, values.tunjanganJabatan, values.uangMakan, values.subsidi, 
+    values.uangKerajinan, values.bpjs, values.bonusPerforma, values.insentif, values.uangTransport
+  ].some((value) => value === null)) {
     return { error: "Semua nominal payroll harus berupa angka valid dan tidak boleh negatif." };
   }
 
@@ -64,6 +85,16 @@ function validatePayrollPayload(body: Record<string, unknown>) {
     totalOmzet: 0,
     insentif: values.insentif ?? 0,
     uangTransport: values.uangTransport ?? 0,
+    overrideMasuk: values.overrideMasuk,
+    overrideLembur: values.overrideLembur,
+    overrideIzin: values.overrideIzin,
+    overrideSakit: values.overrideSakit,
+    overrideSakitTanpaSurat: values.overrideSakitTanpaSurat,
+    overrideSetengahHari: values.overrideSetengahHari,
+    overrideKontrak: values.overrideKontrak,
+    overridePinjaman: values.overridePinjaman,
+    overridePinjamanPribadi: values.overridePinjamanPribadi,
+    overrideGajiPokok: values.overrideGajiPokok,
   };
 
   return { payload };

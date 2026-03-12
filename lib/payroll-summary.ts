@@ -50,6 +50,16 @@ type PayrollSheetBaseRow = RowDataPacket & {
   raw_bonus_performa: string | null;
   raw_insentif: string | null;
   raw_uang_transport: string | null;
+  raw_override_masuk: number | null;
+  raw_override_lembur: string | null;
+  raw_override_izin: number | null;
+  raw_override_sakit: number | null;
+  raw_override_sakit_tanpa_surat: number | null;
+  raw_override_setengah_hari: number | null;
+  raw_override_kontrak: string | null;
+  raw_override_pinjaman: string | null;
+  raw_override_pinjaman_pribadi: string | null;
+  raw_override_gaji_pokok: string | null;
   total_omzet_global: string | null;
 };
 
@@ -74,6 +84,10 @@ type PeriodContractDeductionRow = RowDataPacket & {
 type PeriodLoanRow = RowDataPacket & {
   employee_id: number;
   angsuran_per_bulan: string;
+};
+
+type TotalEmployeeCountRow = RowDataPacket & {
+  total: number;
 };
 
 export type AdminPayrollSummarySheetRow = {
@@ -132,6 +146,16 @@ export type AdminPayrollSummarySheetRow = {
   inputBonusPerforma: number;
   inputInsentif: number;
   inputUangTransport: number;
+  inputOverrideMasuk: number | null;
+  inputOverrideLembur: number | null;
+  inputOverrideIzin: number | null;
+  inputOverrideSakit: number | null;
+  inputOverrideSakitTanpaSurat: number | null;
+  inputOverrideSetengahHari: number | null;
+  inputOverrideKontrak: number | null;
+  inputOverridePinjaman: number | null;
+  inputOverridePinjamanPribadi: number | null;
+  inputOverrideGajiPokok: number | null;
 };
 
 export type AdminPayrollSummarySheet = {
@@ -261,6 +285,16 @@ export async function getAdminPayrollSummarySheet(period?: { month?: number; yea
         pei.bonus_performa AS raw_bonus_performa,
         pei.insentif AS raw_insentif,
         pei.uang_transport AS raw_uang_transport,
+        pei.override_masuk AS raw_override_masuk,
+        pei.override_lembur AS raw_override_lembur,
+        pei.override_izin AS raw_override_izin,
+        pei.override_sakit AS raw_override_sakit,
+        pei.override_sakit_tanpa_surat AS raw_override_sakit_tanpa_surat,
+        pei.override_setengah_hari AS raw_override_setengah_hari,
+        pei.override_kontrak AS raw_override_kontrak,
+        pei.override_pinjaman AS raw_override_pinjaman,
+        pei.override_pinjaman_pribadi AS raw_override_pinjaman_pribadi,
+        pei.override_gaji_pokok AS raw_override_gaji_pokok,
         ob.total_omzet AS total_omzet_global
       FROM payroll p
       INNER JOIN karyawan k ON k.id = p.karyawan_id
@@ -281,7 +315,7 @@ export async function getAdminPayrollSummarySheet(period?: { month?: number; yea
   const employeeIds = rows.map((row) => row.employee_id);
   const placeholders = employeeIds.map(() => "?").join(", ");
 
-  const [attendanceResult, overtimeResult, contractResult, loanResult] = await Promise.all([
+  const [attendanceResult, overtimeResult, contractResult, loanResult, totalEmployeeResult] = await Promise.all([
     pool.query<PeriodAttendanceRow[]>(
       `
         SELECT
@@ -331,6 +365,9 @@ export async function getAdminPayrollSummarySheet(period?: { month?: number; yea
         ORDER BY created_at DESC, id DESC
       `,
       employeeIds,
+    ),
+    pool.query<TotalEmployeeCountRow[]>(
+      `SELECT COUNT(*) AS total FROM karyawan WHERE status_data = 'aktif'`,
     ),
   ]);
 
@@ -396,7 +433,7 @@ export async function getAdminPayrollSummarySheet(period?: { month?: number; yea
   }
 
   const totalOmzet = toNumber(rows[0]?.total_omzet_global);
-  const totalEmployees = rows.length;
+  const totalEmployees = toNumber(totalEmployeeResult[0]?.[0]?.total) || rows.length;
   const totalBonusOmzet = totalOmzet * 0.005;
 
   const mappedRows = rows.map<AdminPayrollSummarySheetRow>((row, index) => {
@@ -408,11 +445,23 @@ export async function getAdminPayrollSummarySheet(period?: { month?: number; yea
       halfDay: row.total_setengah_hari ?? 0,
       late: row.total_terlambat ?? 0,
     };
+    
+    const inputOverrideMasuk = row.raw_override_masuk ?? null;
+    const inputOverrideLembur = row.raw_override_lembur !== null ? toNumber(row.raw_override_lembur) : null;
+    const inputOverrideIzin = row.raw_override_izin ?? null;
+    const inputOverrideSakit = row.raw_override_sakit ?? null;
+    const inputOverrideSakitTanpaSurat = row.raw_override_sakit_tanpa_surat ?? null;
+    const inputOverrideSetengahHari = row.raw_override_setengah_hari ?? null;
+    const inputOverrideKontrak = row.raw_override_kontrak !== null ? toNumber(row.raw_override_kontrak) : null;
+    const inputOverridePinjaman = row.raw_override_pinjaman !== null ? toNumber(row.raw_override_pinjaman) : null;
+    const inputOverridePinjamanPribadi = row.raw_override_pinjaman_pribadi !== null ? toNumber(row.raw_override_pinjaman_pribadi) : null;
+    const inputOverrideGajiPokok = row.raw_override_gaji_pokok !== null ? toNumber(row.raw_override_gaji_pokok) : null;
+
     const payrollType = row.raw_payroll_type ?? (isSalesEmployeeFromValues(row.jabatan, row.divisi, row.sub_divisi) ? "sales" : "non_sales");
     const workDays = row.hari_kerja ?? 0;
-    const presentDays = attendance.present || row.total_masuk || 0;
+    const presentDays = inputOverrideMasuk ?? (attendance.present || row.total_masuk || 0);
     const dailyBaseSalary = toNumber(row.raw_gaji_pokok_per_hari) || (workDays > 0 ? toNumber(row.gaji_pokok) / workDays : 0);
-    const monthlyBaseSalary = dailyBaseSalary * workDays;
+    const monthlyBaseSalary = inputOverrideGajiPokok ?? dailyBaseSalary * workDays;
     const positionAllowance = toNumber(row.tunjangan_jabatan);
     const fixedMealAllowance = toNumber(row.raw_uang_makan_per_hari) || (presentDays > 0 ? toNumber(row.uang_makan) / presentDays : 0);
     const subsidy = toNumber(row.raw_subsidi) || toNumber(row.tunjangan_lain);
@@ -423,28 +472,32 @@ export async function getAdminPayrollSummarySheet(period?: { month?: number; yea
     const incentive = payrollType === "sales" ? (toNumber(row.raw_insentif) || toNumber(row.insentif)) : 0;
     const totalBaseSalary = dailyBaseSalary * presentDays;
     const roleFactor = getOmzetFactor(row.jabatan);
-    const omzetBonus = payrollType === "non_sales"
-      ? totalEmployees > 0
-        ? (totalBonusOmzet / totalEmployees) * roleFactor
-        : 0
-      : incentive;
+    const omzetBonus = totalEmployees > 0
+      ? (totalBonusOmzet / totalEmployees) * roleFactor
+      : 0;
     const mealAllowance = fixedMealAllowance * presentDays;
-    const diligenceAllowance = presentDays + attendance.sick >= workDays && workDays > 0
+    
+    const leaveCount = inputOverrideIzin ?? attendance.leave;
+    const sickCount = inputOverrideSakit ?? attendance.sick;
+    const sickWithoutNoteCount = inputOverrideSakitTanpaSurat ?? attendance.sickWithoutNote;
+    
+    const diligenceAllowance = presentDays + sickCount >= workDays && workDays > 0
       ? fixedDiligenceAllowance
       : 0;
-    const overtimeHours = overtimeMap.get(row.employee_id) ?? toNumber(row.total_lembur_jam);
+    const overtimeHours = inputOverrideLembur ?? overtimeMap.get(row.employee_id) ?? toNumber(row.total_lembur_jam);
     const overtimeBonus = overtimeHours * 20000;
-    const halfDayCount = attendance.halfDay || row.total_setengah_hari || 0;
+    const halfDayCount = inputOverrideSetengahHari ?? (attendance.halfDay || row.total_setengah_hari || 0);
     const halfDayDeduction = (dailyBaseSalary / 2) * halfDayCount;
     const lateCount = attendance.late || row.total_terlambat || 0;
     const lateDeduction = lateCount * 20000;
-    const totalSalaryBeforeDeduction = totalBaseSalary + positionAllowance + mealAllowance + subsidy + performanceBonus + diligenceAllowance + bpjs + overtimeBonus + omzetBonus + transportAllowance;
+    const totalSalaryBeforeDeduction = totalBaseSalary + positionAllowance + mealAllowance + subsidy + performanceBonus + diligenceAllowance + bpjs + overtimeBonus + omzetBonus + incentive + transportAllowance;
     const totalSalary = totalSalaryBeforeDeduction - halfDayDeduction - lateDeduction;
-    const contractDeduction = contractMap.get(row.employee_id) ?? toNumber(row.potongan_kontrak);
-    const companyLoan = loanMap.get(row.employee_id) ?? toNumber(row.potongan_pinjaman);
+    const contractDeduction = inputOverrideKontrak ?? (contractMap.get(row.employee_id) ?? toNumber(row.potongan_kontrak));
+    const companyLoan = inputOverridePinjaman ?? (loanMap.get(row.employee_id) ?? toNumber(row.potongan_pinjaman));
+    const personalLoan = inputOverridePinjamanPribadi ?? 0;
     const diligenceCut = Math.max(fixedDiligenceAllowance - diligenceAllowance, 0);
     const fineDeduction = halfDayDeduction + lateDeduction + diligenceCut;
-    const netIncome = totalSalary - contractDeduction - companyLoan;
+    const netIncome = totalSalary - contractDeduction - companyLoan - personalLoan;
 
     return {
       id: row.payroll_id,
@@ -476,9 +529,9 @@ export async function getAdminPayrollSummarySheet(period?: { month?: number; yea
       diligenceAllowance,
       overtimeHours,
       overtimeBonus,
-      leaveCount: attendance.leave,
-      sickCount: attendance.sick,
-      sickWithoutNoteCount: attendance.sickWithoutNote,
+      leaveCount,
+      sickCount,
+      sickWithoutNoteCount,
       halfDayCount,
       halfDayDeduction,
       lateCount,
@@ -487,7 +540,7 @@ export async function getAdminPayrollSummarySheet(period?: { month?: number; yea
       totalSalaryBeforeDeduction,
       contractDeduction,
       companyLoan,
-      personalLoan: 0,
+      personalLoan,
       fineDeduction,
       contractCut: contractDeduction,
       loanCut: companyLoan,
@@ -502,6 +555,16 @@ export async function getAdminPayrollSummarySheet(period?: { month?: number; yea
       inputBonusPerforma: toNumber(row.raw_bonus_performa),
       inputInsentif: toNumber(row.raw_insentif),
       inputUangTransport: toNumber(row.raw_uang_transport),
+      inputOverrideMasuk,
+      inputOverrideLembur,
+      inputOverrideIzin,
+      inputOverrideSakit,
+      inputOverrideSakitTanpaSurat,
+      inputOverrideSetengahHari,
+      inputOverrideKontrak,
+      inputOverridePinjaman,
+      inputOverridePinjamanPribadi,
+      inputOverrideGajiPokok,
     };
   });
 
