@@ -112,7 +112,7 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
   const [omzetMessage, setOmzetMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState(`${omzetPeriod.periodYear}-${String(omzetPeriod.periodMonth).padStart(2, "0")}`);
   const [totalOmzet, setTotalOmzet] = useState(formatNumericInput(String(omzetPeriod.totalOmzet)));
-  const [form, setForm] = useState<FormState>(emptyForm(employeeOptions[0] ? String(employeeOptions[0].employeeId) : ""));
+  const [form, setForm] = useState<FormState>(emptyForm(""));
   const [searchQuery, setSearchQuery] = useState("");
 
   const [periodYear, periodMonth] = useMemo(() => {
