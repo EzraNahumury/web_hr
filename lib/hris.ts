@@ -602,6 +602,105 @@ export async function listFinanceByUnit(period?: {
   };
 }
 
+// ─── PEMBEBANAN ──────────────────────────────────────────────────────────────
+
+const PEMBEBANAN_CONFIG = [
+  { key: "produksi", label: "Produksi (25%)", factor: 0.25 },
+  { key: "penjualan", label: "Penjualan (50%)", factor: 0.5 },
+  { key: "umum", label: "Umum (50%)", factor: 0.5 },
+] as const;
+
+const UNIT_KEYWORDS: Record<string, string> = {
+  ava: "ava",
+  ayres: "ayres",
+};
+
+export type PembebananCell = {
+  totalGaji: number;
+  amount: number;
+} | null;
+
+export type PembebananRow = {
+  label: string;
+  typeKey: string;
+  factor: number;
+  byUnit: Record<string, PembebananCell>;
+};
+
+export type PembebananResult = {
+  rows: PembebananRow[];
+  units: string[];
+  period: { month: number; year: number } | null;
+};
+
+export async function listFinancePembebanan(period?: {
+  month?: number;
+  year?: number;
+}): Promise<PembebananResult> {
+  const sheet = await getAdminPayrollSummarySheet(period);
+  if (!sheet || !sheet.rows.length)
+    return { rows: [], units: [], period: null };
+
+  // Accumulate totalSalary: typeKey -> unitKeyword -> total
+  const acc = new Map<string, Map<string, number>>();
+
+  for (const row of sheet.rows) {
+    const pb = (row.pembebanan ?? "").toLowerCase().trim();
+    if (!pb || pb === "tidak keduanya") continue;
+
+    let matchedType: string | null = null;
+    let matchedUnit: string | null = null;
+
+    for (const cfg of PEMBEBANAN_CONFIG) {
+      if (pb.includes(cfg.key)) {
+        matchedType = cfg.key;
+        break;
+      }
+    }
+    for (const kw of Object.keys(UNIT_KEYWORDS)) {
+      if (pb.includes(kw)) {
+        matchedUnit = kw;
+        break;
+      }
+    }
+    if (!matchedType || !matchedUnit) continue;
+
+    if (!acc.has(matchedType)) acc.set(matchedType, new Map());
+    const unitMap = acc.get(matchedType)!;
+    unitMap.set(matchedUnit, (unitMap.get(matchedUnit) ?? 0) + row.totalSalary);
+  }
+
+  // Collect ordered unit names from payroll rows (same order as finance table)
+  const unitSet = new Set<string>();
+  for (const row of sheet.rows) {
+    if (row.unit) unitSet.add(row.unit);
+  }
+  const units = Array.from(unitSet).sort();
+
+  // Build result
+  const rows: PembebananRow[] = PEMBEBANAN_CONFIG.map((cfg) => {
+    const unitMap = acc.get(cfg.key);
+    const byUnit: Record<string, PembebananCell> = {};
+
+    for (const unitName of units) {
+      const kw = Object.keys(UNIT_KEYWORDS).find((k) =>
+        unitName.toLowerCase().includes(k),
+      );
+      const totalGaji = kw ? (unitMap?.get(kw) ?? 0) : 0;
+      byUnit[unitName] =
+        totalGaji > 0 ? { totalGaji, amount: totalGaji * cfg.factor } : null;
+    }
+
+    return { label: cfg.label, typeKey: cfg.key, factor: cfg.factor, byUnit };
+  });
+
+  return {
+    rows,
+    units,
+    period: { month: sheet.periodMonth, year: sheet.periodYear },
+  };
+}
+
 type PayslipRow = RowDataPacket & {
   id: number;
   nomor_slip: string;

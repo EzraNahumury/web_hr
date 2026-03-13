@@ -3,6 +3,7 @@ import AdminShell from "@/components/AdminShell";
 import { requireAdminSession } from "@/lib/auth";
 import {
   listFinanceByUnit,
+  listFinancePembebanan,
   type FinanceUnitDeptData,
   type FinanceUnitGroup,
 } from "@/lib/hris";
@@ -99,7 +100,10 @@ function getDepartmentsForUnit(unit: string): string[] {
 
 export default async function AdminFinancePage() {
   const admin = await requireAdminSession();
-  const { unitGroups, period } = await listFinanceByUnit();
+  const [{ unitGroups, period }, pembebanan] = await Promise.all([
+    listFinanceByUnit(),
+    listFinancePembebanan(),
+  ]);
 
   const periodLabel = period ? formatPeriod(period.month, period.year) : null;
 
@@ -293,83 +297,98 @@ export default async function AdminFinancePage() {
         </div>
       )}
 
-      {/* ── Legend ── */}
-      <div className="mt-4 rounded-[20px] border border-[#ead7ce] bg-[#fffaf8] px-6 py-5">
-        <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[#9e7467]">
-          Keterangan Kolom
-        </p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          {/* Gaji */}
-          <div className="flex items-start gap-3 rounded-[14px] border border-[#ead7ce] bg-white px-4 py-3">
-            <span className="mt-0.5 shrink-0 rounded-md bg-[#e8f5e9] px-2 py-0.5 text-[11px] font-bold text-[#2e7d32]">
-              Gaji
-            </span>
-            <p className="text-[12px] leading-snug text-[#6b4c46]">
-              Penerimaan bersih karyawan — sama dengan kolom{" "}
-              <span className="font-medium text-[#241716]">
-                Penerimaan Bersih
-              </span>{" "}
-              di Payroll Summary.
-            </p>
-          </div>
+      {/* ── PEMBEBANAN ── */}
+      {pembebanan.rows.length > 0 && (
+        <div className="mt-6 w-fit overflow-x-auto rounded-[24px] border border-[#ead7ce] bg-white shadow-sm">
+          <table className="border-collapse text-sm">
+            <thead>
+              {/* Row 1: PEMBEBANAN header */}
+              <tr>
+                <th
+                  colSpan={1 + pembebanan.units.length}
+                  className="border border-[#e0ccc5] bg-[#f5e8e4] px-4 py-3 text-center text-sm font-bold uppercase tracking-widest text-[#7a3828]"
+                >
+                  PEMBEBANAN
+                  {periodLabel && (
+                    <span className="ml-2 text-xs font-medium text-[#9e7467]">
+                      — {periodLabel}
+                    </span>
+                  )}
+                </th>
+              </tr>
 
-          {/* Potongan Denda */}
-          <div className="flex items-start gap-3 rounded-[14px] border border-[#ead7ce] bg-white px-4 py-3">
-            <span className="mt-0.5 shrink-0 rounded-md bg-[#fff3e0] px-2 py-0.5 text-[11px] font-bold text-[#e65100]">
-              Pot. Denda
-            </span>
-            <p className="text-[12px] leading-snug text-[#6b4c46]">
-              Total potongan{" "}
-              <span className="font-medium text-[#241716]">
-                keterlambatan + setengah hari + kerajinan
-              </span>
-              .
-            </p>
-          </div>
+              {/* Row 2: column headers */}
+              <tr className="bg-[#fff8f4] text-xs uppercase tracking-[0.14em] text-[#9e7467]">
+                <th className="w-48 border border-[#e0ccc5] px-4 py-3 text-left">
+                  Departemen
+                </th>
+                {pembebanan.units.map((unit) => (
+                  <th
+                    key={unit}
+                    className="w-40 border border-[#e0ccc5] px-4 py-3 text-right"
+                  >
+                    {unit}
+                  </th>
+                ))}
+              </tr>
+            </thead>
 
-          {/* Potongan Kontrak */}
-          <div className="flex items-start gap-3 rounded-[14px] border border-[#ead7ce] bg-white px-4 py-3">
-            <span className="mt-0.5 shrink-0 rounded-md bg-[#fce4ec] px-2 py-0.5 text-[11px] font-bold text-[#c62828]">
-              Pot. Kontrak
-            </span>
-            <p className="text-[12px] leading-snug text-[#6b4c46]">
-              Potongan biaya kontrak karyawan training{" "}
-              <span className="font-medium text-[#241716]">
-                (bulan ke‑4 s/d ke‑8)
-              </span>
-              .
-            </p>
-          </div>
+            <tbody>
+              {pembebanan.rows.map((row, i) => (
+                <tr
+                  key={row.typeKey}
+                  className={i % 2 === 0 ? "bg-white" : "bg-[#fffaf8]"}
+                >
+                  {/* Departemen label */}
+                  <td className="w-48 border border-[#e0ccc5] px-4 py-2 font-semibold text-[#241716]">
+                    {row.label}
+                  </td>
 
-          {/* Potongan Pinjaman */}
-          <div className="flex items-start gap-3 rounded-[14px] border border-[#ead7ce] bg-white px-4 py-3">
-            <span className="mt-0.5 shrink-0 rounded-md bg-[#ede7f6] px-2 py-0.5 text-[11px] font-bold text-[#4527a0]">
-              Pot. Pinjaman
-            </span>
-            <p className="text-[12px] leading-snug text-[#6b4c46]">
-              Cicilan{" "}
-              <span className="font-medium text-[#241716]">
-                pinjaman perusahaan
-              </span>{" "}
-              yang dipotong dari gaji bulan ini.
-            </p>
-          </div>
+                  {/* Value per unit */}
+                  {pembebanan.units.map((unit) => {
+                    const cell = row.byUnit[unit];
+                    return (
+                      <td
+                        key={unit}
+                        className="w-40 border border-[#e0ccc5] px-4 py-2 text-right tabular-nums text-[#241716]"
+                      >
+                        {cell ? (
+                          <span className="font-medium">
+                            {formatRp(cell.amount)}
+                          </span>
+                        ) : (
+                          <span className="text-[#c0a89e]">—</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
 
-          {/* Total */}
-          <div className="flex items-start gap-3 rounded-[14px] border border-[#ead7ce] bg-white px-4 py-3">
-            <span className="mt-0.5 shrink-0 rounded-md bg-[#fbe9e7] px-2 py-0.5 text-[11px] font-bold text-[#8b3a2a]">
-              Total
-            </span>
-            <p className="text-[12px] leading-snug text-[#6b4c46]">
-              Gaji + semua potongan ={" "}
-              <span className="font-medium text-[#241716]">
-                total beban bruto
-              </span>{" "}
-              per departemen.
-            </p>
-          </div>
+              {/* Total row */}
+              <tr className="bg-[#f5e8e4]">
+                <td className="w-48 border border-[#e0ccc5] px-4 py-3 font-bold text-[#7a3828]">
+                  Total
+                </td>
+                {pembebanan.units.map((unit) => {
+                  const total = pembebanan.rows.reduce((sum, row) => {
+                    const cell = row.byUnit[unit];
+                    return sum + (cell?.amount ?? 0);
+                  }, 0);
+                  return (
+                    <td
+                      key={unit}
+                      className="w-40 border border-[#e0ccc5] px-4 py-3 text-right tabular-nums font-bold text-[#8b3a2a]"
+                    >
+                      {formatRp(total)}
+                    </td>
+                  );
+                })}
+              </tr>
+            </tbody>
+          </table>
         </div>
-      </div>
+      )}
     </AdminShell>
   );
 }
