@@ -18,6 +18,7 @@ export type EmployeeListItem = {
   subDivision: string | null;
   placement: string | null;
   recapGroup: string | null;
+  costAllocation: string | null;
   bank: string | null;
   accountNumber: string | null;
   gender: "laki-laki" | "perempuan" | null;
@@ -108,6 +109,15 @@ export const EMPLOYEE_WORK_STATUSES = [
   "tetap",
   "freelance",
 ] as const;
+export const EMPLOYEE_COST_ALLOCATIONS = [
+  "produksi ava",
+  "penjualan ava",
+  "umum ava",
+  "produksi ayres",
+  "penjualan ayres",
+  "umum ayres",
+  "tidak keduanya",
+] as const;
 
 export type EmployeePayload = {
   name: string;
@@ -121,6 +131,7 @@ export type EmployeePayload = {
   subDivision: string | null;
   placement: string | null;
   recapGroup: string | null;
+  costAllocation: string | null;
   bank: string | null;
   accountNumber: string | null;
   gender: "laki-laki" | "perempuan" | null;
@@ -155,6 +166,7 @@ type EmployeeRow = RowDataPacket & {
   sub_divisi: string | null;
   penempatan: string | null;
   pembagian_rekapan: string | null;
+  pembebanan: string | null;
   bank: string | null;
   no_rekening: string | null;
   jenis_kelamin: EmployeeListItem["gender"];
@@ -201,6 +213,7 @@ function mapEmployee(row: EmployeeRow): EmployeeListItem {
     subDivision: row.sub_divisi,
     placement: row.penempatan,
     recapGroup: row.pembagian_rekapan,
+    costAllocation: row.pembebanan,
     bank: row.bank,
     accountNumber: row.no_rekening,
     gender: row.jenis_kelamin,
@@ -259,6 +272,7 @@ const employeeSelectQuery = `
     k.sub_divisi,
     k.penempatan,
     k.pembagian_rekapan,
+    k.pembebanan,
     k.bank,
     k.no_rekening,
     k.jenis_kelamin,
@@ -284,7 +298,32 @@ const employeeSelectQuery = `
   INNER JOIN users u ON u.id = k.user_id
 `;
 
+let employeeSchemaReady: Promise<void> | null = null;
+
+async function ensureEmployeeSchemaSupport() {
+  if (!employeeSchemaReady) {
+    employeeSchemaReady = (async () => {
+      try {
+        await pool.query(
+          `
+          ALTER TABLE karyawan
+          ADD COLUMN pembebanan VARCHAR(100) NULL AFTER pembagian_rekapan
+        `,
+        );
+      } catch (error: unknown) {
+        if (!(typeof error === "object" && error !== null && "code" in error) || error.code !== "ER_DUP_FIELDNAME") {
+          throw error;
+        }
+      }
+    })();
+  }
+
+  await employeeSchemaReady;
+}
+
+
 export async function listEmployees() {
+  await ensureEmployeeSchemaSupport();
   const [rows] = await pool.query<EmployeeRow[]>(
     `
       ${employeeSelectQuery}
@@ -296,6 +335,7 @@ export async function listEmployees() {
 }
 
 export async function getEmployeeById(id: number) {
+  await ensureEmployeeSchemaSupport();
   const [rows] = await pool.query<EmployeeRow[]>(
     `
       ${employeeSelectQuery}
@@ -309,6 +349,7 @@ export async function getEmployeeById(id: number) {
 }
 
 export async function getEmployeeLookups() {
+  await ensureEmployeeSchemaSupport();
   const [religions] = await Promise.all([fetchDistinctOptions("agama")]);
 
   return {
@@ -326,6 +367,10 @@ export async function getEmployeeLookups() {
       { label: "Penjualan Ayres", value: "Penjualan Ayres" },
       { label: "Umum Ayres", value: "Umum Ayres" },
     ],
+    costAllocations: EMPLOYEE_COST_ALLOCATIONS.map((value) => ({
+      label: value.replace(/\b\w/g, (char) => char.toUpperCase()),
+      value,
+    })),
     banks: [{ label: "BCA", value: "BCA" }],
     workStatuses: EMPLOYEE_WORK_STATUSES.map((value) => ({
       label:
@@ -351,6 +396,7 @@ export async function getEmployeeLookups() {
 }
 
 export async function getEmployeeStats() {
+  await ensureEmployeeSchemaSupport();
   const [employeeRows, contractRows, activeLoanRows] = await Promise.all([
     pool.query<CountRow[]>("SELECT COUNT(*) AS total FROM karyawan"),
     pool.query<CountRow[]>(
@@ -404,6 +450,7 @@ function resolveEmployeeTimeline(
 }
 
 export async function insertEmployee(payload: EmployeePayload) {
+  await ensureEmployeeSchemaSupport();
   const connection = await pool.getConnection();
 
   try {
@@ -434,6 +481,7 @@ export async function insertEmployee(payload: EmployeePayload) {
           sub_divisi,
           penempatan,
           pembagian_rekapan,
+          pembebanan,
           bank,
           no_rekening,
           jenis_kelamin,
@@ -452,7 +500,7 @@ export async function insertEmployee(payload: EmployeePayload) {
           tanggal_kontrak,
           tanggal_selesai_kontrak,
           kenaikan_tiap_tahun
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         userId,
@@ -465,6 +513,7 @@ export async function insertEmployee(payload: EmployeePayload) {
         payload.subDivision,
         payload.placement,
         payload.recapGroup,
+        payload.costAllocation,
         payload.bank,
         payload.accountNumber,
         payload.gender,
@@ -507,6 +556,7 @@ export async function insertEmployee(payload: EmployeePayload) {
 }
 
 export async function updateEmployee(id: number, payload: EmployeePayload) {
+  await ensureEmployeeSchemaSupport();
   const connection = await pool.getConnection();
 
   try {
@@ -565,6 +615,7 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
           sub_divisi = ?,
           penempatan = ?,
           pembagian_rekapan = ?,
+          pembebanan = ?,
           bank = ?,
           no_rekening = ?,
           jenis_kelamin = ?,
@@ -595,6 +646,7 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
         payload.subDivision,
         payload.placement,
         payload.recapGroup,
+        payload.costAllocation,
         payload.bank,
         payload.accountNumber,
         payload.gender,

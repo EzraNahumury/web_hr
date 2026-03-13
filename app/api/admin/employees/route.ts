@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentAdminSession } from "@/lib/auth";
 import {
+  EMPLOYEE_COST_ALLOCATIONS,
   EMPLOYEE_DEPARTMENTS,
   EMPLOYEE_DIVISIONS,
   EMPLOYEE_PLACEMENTS,
@@ -36,6 +37,7 @@ function validatePayload(body: Record<string, unknown>) {
   const placement = normalizeText(body.placement);
   const division = normalizeText(body.division);
   const department = normalizeText(body.department);
+  const costAllocation = normalizeText(body.costAllocation);
   const gender: EmployeePayload["gender"] =
     body.gender === "laki-laki" || body.gender === "perempuan" ? body.gender : null;
   const employmentStatus = body.employmentStatus;
@@ -80,6 +82,13 @@ function validatePayload(body: Record<string, unknown>) {
     return { error: "Penempatan tidak valid." };
   }
 
+  if (
+    costAllocation &&
+    !EMPLOYEE_COST_ALLOCATIONS.includes(costAllocation as (typeof EMPLOYEE_COST_ALLOCATIONS)[number])
+  ) {
+    return { error: "Pembebanan tidak valid." };
+  }
+
   if (!EMPLOYEE_WORK_STATUSES.includes(String(workStatus) as (typeof EMPLOYEE_WORK_STATUSES)[number])) {
     return { error: "Status kerja tidak valid." };
   }
@@ -104,6 +113,7 @@ function validatePayload(body: Record<string, unknown>) {
     division,
     department,
     recapGroup: normalizeText(body.recapGroup),
+    costAllocation,
     bank: normalizeText(body.bank),
     accountNumber: normalizeText(body.accountNumber),
     gender,
@@ -206,4 +216,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

@@ -30,6 +30,7 @@ CREATE TABLE karyawan (
   tanggal_selesai_kontrak DATE NULL,
   kenaikan_tiap_tahun DECIMAL(12,2) NOT NULL DEFAULT 0,
   pembagian_rekapan VARCHAR(100) NULL,
+  pembebanan VARCHAR(100) NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 

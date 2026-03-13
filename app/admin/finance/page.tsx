@@ -30,7 +30,7 @@ export default async function AdminFinancePage() {
               <tr key={`${row.departemen}-${index}`} className="border-b border-[#f1e5de] text-[#513d39]">
                 <td className="px-6 py-4 font-semibold text-[#241716]">{row.departemen}</td>
                 <td className="px-6 py-4">{row.pembagian_rekapan || "-"}</td>
-                <td className="px-6 py-4">Beban {row.departemen}</td>
+                <td className="px-6 py-4">{row.pembebanan || "-"}</td>
                 <td className="px-6 py-4">Rp{row.total_pencairan}</td>
                 <td className="px-6 py-4">
                   Kontrak: Rp{row.total_potongan_kontrak} | Pinjaman: Rp{row.total_potongan_pinjaman}

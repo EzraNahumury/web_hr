@@ -427,26 +427,42 @@ export async function listPayrollSummary() {
 type FinanceRow = RowDataPacket & {
   departemen: string;
   pembagian_rekapan: string | null;
+  pembebanan: string | null;
   total_pencairan: string;
   total_potongan_kontrak: string;
   total_potongan_pinjaman: string;
   jumlah_karyawan: number;
 };
 
+async function ensureHrisSchemaSupport() {
+  try {
+    await pool.query(`
+      ALTER TABLE karyawan
+      ADD COLUMN pembebanan VARCHAR(100) NULL AFTER pembagian_rekapan
+    `);
+  } catch (error: unknown) {
+        if (!(typeof error === "object" && error !== null && "code" in error) || error.code !== "ER_DUP_FIELDNAME") {
+      throw error;
+    }
+  }
+}
+
 export async function listFinanceSummary() {
+  await ensureHrisSchemaSupport();
   const [rows] = await pool.query<FinanceRow[]>(
     `
       SELECT
         k.departemen,
         k.pembagian_rekapan,
+        k.pembebanan,
         SUM(p.gaji_bersih) AS total_pencairan,
         SUM(p.potongan_kontrak) AS total_potongan_kontrak,
         SUM(p.potongan_pinjaman) AS total_potongan_pinjaman,
         COUNT(*) AS jumlah_karyawan
       FROM payroll p
       INNER JOIN karyawan k ON k.id = p.karyawan_id
-      GROUP BY k.departemen, k.pembagian_rekapan
-      ORDER BY k.departemen ASC, k.pembagian_rekapan ASC
+      GROUP BY k.departemen, k.pembagian_rekapan, k.pembebanan
+      ORDER BY k.departemen ASC, k.pembagian_rekapan ASC, k.pembebanan ASC
     `,
   );
 

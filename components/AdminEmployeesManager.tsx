@@ -12,6 +12,7 @@ type Lookups = {
   subDivisions: LookupOption[];
   placements: LookupOption[];
   recapGroups: LookupOption[];
+  costAllocations: LookupOption[];
   banks: LookupOption[];
   workStatuses: LookupOption[];
   dataStatuses: LookupOption[];
@@ -43,6 +44,7 @@ type FormState = {
   subDivision: string;
   placement: string;
   recapGroup: string;
+  costAllocation: string;
   bank: string;
   accountNumber: string;
   gender: "" | "laki-laki" | "perempuan";
@@ -76,6 +78,7 @@ const emptyForm: FormState = {
   subDivision: "",
   placement: "",
   recapGroup: "",
+  costAllocation: "",
   bank: "",
   accountNumber: "",
   gender: "",
@@ -209,6 +212,7 @@ function toFormState(employee: EmployeeListItem): FormState {
     subDivision: employee.subDivision ?? "",
     placement: employee.placement ?? "",
     recapGroup: employee.recapGroup ?? "",
+    costAllocation: employee.costAllocation ?? "",
     bank: employee.bank ?? "BCA",
     accountNumber: employee.accountNumber ?? "",
     gender: employee.gender ?? "",
@@ -332,6 +336,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
       formData.append("subDivision", form.subDivision);
       formData.append("placement", form.placement);
       formData.append("recapGroup", form.recapGroup);
+      formData.append("costAllocation", form.costAllocation);
       formData.append("bank", form.bank);
       formData.append("accountNumber", form.accountNumber);
       formData.append("gender", form.gender);
@@ -419,6 +424,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
       { label: "Sub Divisi", value: viewingEmployee.subDivision || "-" },
       { label: "Penempatan", value: viewingEmployee.placement || "-" },
       { label: "Pembagian Rekapan", value: viewingEmployee.recapGroup || "-" },
+      { label: "Pembebanan", value: viewingEmployee.costAllocation || "-" },
       { label: "Status Kepegawaian", value: formatStatus(viewingEmployee.employmentStatus) || "-" },
       { label: "Status Kerja", value: formatStatus(viewingEmployee.workStatus) || "-" },
       { label: "Status Data", value: viewingEmployee.dataStatus || "-" },
@@ -517,6 +523,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
               <Field label="Sub Divisi"><select value={form.subDivision} onChange={(event) => updateField("subDivision", event.target.value)} className={selectClassName}><option value="">Pilih sub divisi</option>{lookups.subDivisions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
               <Field label="Penempatan"><select value={form.placement} onChange={(event) => updateField("placement", event.target.value)} className={selectClassName}><option value="">Pilih penempatan</option>{lookups.placements.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
               <Field label="Pembagian Rekapan"><select value={form.recapGroup} onChange={(event) => updateField("recapGroup", event.target.value)} className={selectClassName}><option value="">Pilih pembagian rekapan</option>{lookups.recapGroups.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+              <Field label="Pembebanan"><select value={form.costAllocation} onChange={(event) => updateField("costAllocation", event.target.value)} className={selectClassName}><option value="">Pilih pembebanan</option>{lookups.costAllocations.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
               <Field label="Bank"><input value={form.bank} onChange={(event) => updateField("bank", event.target.value)} className={inputClassName} placeholder="Nama bank" /></Field>
             </div>
 
@@ -677,6 +684,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                   <th className="px-6 py-4 font-semibold">Divisi</th>
                   <th className="px-6 py-4 font-semibold">Sub Divisi</th>
                   <th className="px-6 py-4 font-semibold">Penempatan</th>
+                  <th className="px-6 py-4 font-semibold">Pembebanan</th>
                   <th className="px-6 py-4 font-semibold">Status</th>
                   <th className="px-6 py-4 font-semibold">Bank</th>
                   <th className="px-6 py-4 font-semibold">No Rekening</th>
@@ -698,6 +706,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                       <td className="px-6 py-5">{employee.division}</td>
                       <td className="px-6 py-5">{employee.subDivision || "-"}</td>
                       <td className="px-6 py-5">{employee.placement || "-"}</td>
+                      <td className="px-6 py-5">{employee.costAllocation || "-"}</td>
                       <td className="px-6 py-5">{formatStatus(employee.employmentStatus)}</td>
                       <td className="px-6 py-5">{employee.bank || "-"}</td>
                       <td className="px-6 py-5">{employee.accountNumber || "-"}</td>
@@ -742,7 +751,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={15} className="px-6 py-16 text-center text-[#8a6f68]">
+                    <td colSpan={16} className="px-6 py-16 text-center text-[#8a6f68]">
                       Belum ada data yang cocok.
                     </td>
                   </tr>
