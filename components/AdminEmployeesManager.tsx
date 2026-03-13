@@ -241,6 +241,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [toast, setToast] = useState<{ title: string; description: string; type: "success" | "error" } | null>(null);
+  const [isAddressSame, setIsAddressSame] = useState(false);
 
   useEffect(() => {
     if (!toast) return;
@@ -272,6 +273,10 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => {
       const next = { ...current, [key]: value };
+
+      if (key === "addressKtp" && isAddressSame) {
+        next.addressCurrent = value as string;
+      }
 
       if (key === "firstJoinDate" && typeof value === "string") {
         if (!value) {
@@ -307,6 +312,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
     setForm(emptyForm);
     setKtpFile(null);
     setEditingId(null);
+    setIsAddressSame(false);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -384,53 +390,54 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
     setEditingId(employee.id);
     setForm(toFormState(employee));
     setKtpFile(null);
+    setIsAddressSame(employee.addressCurrent === employee.addressKtp && !!employee.addressKtp);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   const identityEntries: Array<{ label: string; value: string }> = viewingEmployee
     ? [
-        { label: "Email", value: viewingEmployee.email || "-" },
-        { label: "NIP", value: viewingEmployee.nip || "-" },
-        { label: "Unit", value: viewingEmployee.unit || "-" },
-        { label: "Jabatan", value: viewingEmployee.role || "-" },
-      ]
+      { label: "Email", value: viewingEmployee.email || "-" },
+      { label: "NIP", value: viewingEmployee.nip || "-" },
+      { label: "Unit", value: viewingEmployee.unit || "-" },
+      { label: "Jabatan", value: viewingEmployee.role || "-" },
+    ]
     : [];
   const personalEntries: Array<{ label: string; value: string }> = viewingEmployee
     ? [
-        { label: "Jenis Kelamin", value: viewingEmployee.gender || "-" },
-        { label: "Tempat Lahir", value: viewingEmployee.birthPlace || "-" },
-        { label: "Tanggal Lahir", value: viewingEmployee.birthDate || "-" },
-        { label: "NIK", value: viewingEmployee.nik || "-" },
-        { label: "Agama", value: viewingEmployee.religion || "-" },
-        { label: "Nomor Telepon", value: viewingEmployee.phoneNumber || "-" },
-      ]
+      { label: "Jenis Kelamin", value: viewingEmployee.gender || "-" },
+      { label: "Tempat Lahir", value: viewingEmployee.birthPlace || "-" },
+      { label: "Tanggal Lahir", value: viewingEmployee.birthDate || "-" },
+      { label: "NIK", value: viewingEmployee.nik || "-" },
+      { label: "Agama", value: viewingEmployee.religion || "-" },
+      { label: "Nomor Telepon", value: viewingEmployee.phoneNumber || "-" },
+    ]
     : [];
   const workEntries: Array<{ label: string; value: string }> = viewingEmployee
     ? [
-        { label: "Departemen", value: viewingEmployee.department || "-" },
-        { label: "Divisi", value: viewingEmployee.division || "-" },
-        { label: "Sub Divisi", value: viewingEmployee.subDivision || "-" },
-        { label: "Penempatan", value: viewingEmployee.placement || "-" },
-        { label: "Pembagian Rekapan", value: viewingEmployee.recapGroup || "-" },
-        { label: "Status Kepegawaian", value: formatStatus(viewingEmployee.employmentStatus) || "-" },
-        { label: "Status Kerja", value: formatStatus(viewingEmployee.workStatus) || "-" },
-        { label: "Status Data", value: viewingEmployee.dataStatus || "-" },
-        { label: "Akun", value: viewingEmployee.userActive ? "Aktif" : "Nonaktif" },
-      ]
+      { label: "Departemen", value: viewingEmployee.department || "-" },
+      { label: "Divisi", value: viewingEmployee.division || "-" },
+      { label: "Sub Divisi", value: viewingEmployee.subDivision || "-" },
+      { label: "Penempatan", value: viewingEmployee.placement || "-" },
+      { label: "Pembagian Rekapan", value: viewingEmployee.recapGroup || "-" },
+      { label: "Status Kepegawaian", value: formatStatus(viewingEmployee.employmentStatus) || "-" },
+      { label: "Status Kerja", value: formatStatus(viewingEmployee.workStatus) || "-" },
+      { label: "Status Data", value: viewingEmployee.dataStatus || "-" },
+      { label: "Akun", value: viewingEmployee.userActive ? "Aktif" : "Nonaktif" },
+    ]
     : [];
   const financeEntries: Array<{ label: string; value: string }> = viewingEmployee
     ? [
-        { label: "Bank", value: viewingEmployee.bank || "-" },
-        { label: "No Rekening", value: viewingEmployee.accountNumber || "-" },
-        { label: "Kenaikan / Tahun", value: viewingEmployee.annualRaise || "0" },
-      ]
+      { label: "Bank", value: viewingEmployee.bank || "-" },
+      { label: "No Rekening", value: viewingEmployee.accountNumber || "-" },
+      { label: "Kenaikan / Tahun", value: viewingEmployee.annualRaise || "0" },
+    ]
     : [];
   const timelineEntries: Array<{ label: string; value: string }> = viewingEmployee
     ? [
-        { label: "Tanggal Pertama Masuk", value: viewingEmployee.firstJoinDate || "-" },
-        { label: "Tanggal Kontrak", value: viewingEmployee.contractDate || "-" },
-        { label: "Tanggal Selesai Kontrak", value: viewingEmployee.contractEndDate || "-" },
-      ]
+      { label: "Tanggal Pertama Masuk", value: viewingEmployee.firstJoinDate || "-" },
+      { label: "Tanggal Kontrak", value: viewingEmployee.contractDate || "-" },
+      { label: "Tanggal Selesai Kontrak", value: viewingEmployee.contractEndDate || "-" },
+    ]
     : [];
 
   async function handleDelete(employee: EmployeeListItem) {
@@ -551,7 +558,33 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
 
             <div className="grid gap-4">
               <Field label="Alamat KTP"><textarea value={form.addressKtp} onChange={(event) => updateField("addressKtp", event.target.value)} className={textareaClassName} /></Field>
-              <Field label="Alamat Rumah / Kost"><textarea value={form.addressCurrent} onChange={(event) => updateField("addressCurrent", event.target.value)} className={textareaClassName} /></Field>
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[13px] font-semibold text-[#6f5a54]">Alamat Rumah / Kost</span>
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="h-3.5 w-3.5 rounded border-[#ead7ce] text-[#8f1d22] focus:ring-[#c8716d]"
+                      checked={isAddressSame}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setIsAddressSame(checked);
+                        if (checked) updateField("addressCurrent", form.addressKtp);
+                      }}
+                    />
+                    <span className="text-xs text-[#8a6f68]">Sama dengan Alamat KTP</span>
+                  </label>
+                </div>
+                <textarea
+                  value={form.addressCurrent}
+                  onChange={(event) => {
+                    updateField("addressCurrent", event.target.value);
+                    setIsAddressSame(false);
+                  }}
+                  disabled={isAddressSame}
+                  className={`${textareaClassName} ${isAddressSame ? "cursor-not-allowed opacity-60 bg-gray-50" : ""}`}
+                />
+              </div>
             </div>
 
             <div className="space-y-4">
