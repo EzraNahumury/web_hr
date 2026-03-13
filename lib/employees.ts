@@ -55,11 +55,10 @@ export const EMPLOYEE_ROLES = [
   "Staff",
 ] as const;
 export const EMPLOYEE_DEPARTMENTS = [
-  "Operasional",
-  "Marketing",
-  "Finance",
-  "HRD",
-  "Ekspedisi",
+  "Produksi",
+  "Penjualan",
+  "Umum",
+  "Logistik",
 ] as const;
 export const EMPLOYEE_DIVISIONS = [
   "Produksi",
@@ -326,9 +325,6 @@ export async function getEmployeeLookups() {
       { label: "Produksi Ayres", value: "Produksi Ayres" },
       { label: "Penjualan Ayres", value: "Penjualan Ayres" },
       { label: "Umum Ayres", value: "Umum Ayres" },
-      { label: "AVA Sportivo", value: "AVA Sportivo" },
-      { label: "Ayres Apparel", value: "Ayres Apparel" },
-      { label: "JNE", value: "JNE" },
     ],
     banks: [{ label: "BCA", value: "BCA" }],
     workStatuses: EMPLOYEE_WORK_STATUSES.map((value) => ({
