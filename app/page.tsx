@@ -123,14 +123,14 @@ export default function Home() {
             />
           </div>
 
-          <div className="space-y-2 text-center">
+          <div className="space-y-3 text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.38em] text-red-200/80">
               Employee Portal
             </p>
-            <h1 className="text-4xl font-semibold tracking-[-0.05em] text-white">
+            <h1 className="bg-gradient-to-br from-white via-white to-white/30 bg-clip-text pb-2 text-4xl font-bold tracking-tight text-transparent sm:text-5xl">
               Login
             </h1>
-            <p className="text-sm leading-7 text-white/68">
+            <p className="mx-auto max-w-[280px] text-sm leading-7 text-white/68 sm:max-w-none">
               Login admin atau karyawan menggunakan email dan password yang tersimpan di sistem.
             </p>
           </div>
