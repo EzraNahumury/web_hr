@@ -1,7 +1,10 @@
 import { RowDataPacket } from "mysql2";
 
 import { pool } from "@/lib/db";
-import { ensureLoanSupportTables, getLoanDeductionRowsForPeriod } from "@/lib/loans";
+import {
+  ensureLoanSupportTables,
+  getLoanDeductionRowsForPeriod,
+} from "@/lib/loans";
 import {
   ensurePayrollSupportTables,
   getActivePayrollPeriod,
@@ -21,6 +24,7 @@ type PayrollSheetBaseRow = RowDataPacket & {
   jabatan: string;
   divisi: string;
   sub_divisi: string | null;
+  unit: string | null;
   departemen: string;
   pembagian_rekapan: string | null;
   bank: string | null;
@@ -94,6 +98,7 @@ export type AdminPayrollSummarySheetRow = {
   role: string;
   division: string;
   recapGroup: string;
+  unit: string | null;
   department: string;
   bank: string;
   accountNumber: string;
@@ -201,7 +206,11 @@ function formatPayrollDateRange(start: Date, end: Date) {
 function getOmzetFactor(role: string) {
   const normalized = role.trim().toLowerCase();
 
-  if (normalized.includes("secretary") || normalized.includes("manager") || normalized.includes("kepala")) {
+  if (
+    normalized.includes("secretary") ||
+    normalized.includes("manager") ||
+    normalized.includes("kepala")
+  ) {
     return 0.7;
   }
 
@@ -216,7 +225,10 @@ function getOmzetFactor(role: string) {
   return 0;
 }
 
-export async function getAdminPayrollSummarySheet(period?: { month?: number; year?: number }) {
+export async function getAdminPayrollSummarySheet(period?: {
+  month?: number;
+  year?: number;
+}) {
   await Promise.all([ensurePayrollSupportTables(), ensureLoanSupportTables()]);
   const activePeriod = {
     month: period?.month ?? getActivePayrollPeriod().month,
@@ -251,6 +263,7 @@ export async function getAdminPayrollSummarySheet(period?: { month?: number; yea
         k.jabatan,
         k.divisi,
         k.sub_divisi,
+        k.unit,
         k.departemen,
         k.pembagian_rekapan,
         k.bank,
@@ -311,7 +324,13 @@ export async function getAdminPayrollSummarySheet(period?: { month?: number; yea
   const employeeIds = rows.map((row) => row.employee_id);
   const placeholders = employeeIds.map(() => "?").join(", ");
 
-  const [attendanceResult, overtimeResult, contractResult, loanResult, totalEmployeeResult] = await Promise.all([
+  const [
+    attendanceResult,
+    overtimeResult,
+    contractResult,
+    loanResult,
+    totalEmployeeResult,
+  ] = await Promise.all([
     pool.query<PeriodAttendanceRow[]>(
       `
         SELECT
@@ -356,14 +375,17 @@ export async function getAdminPayrollSummarySheet(period?: { month?: number; yea
     ),
   ]);
 
-  const attendanceMap = new Map<number, {
-    present: number;
-    leave: number;
-    sick: number;
-    sickWithoutNote: number;
-    halfDay: number;
-    late: number;
-  }>();
+  const attendanceMap = new Map<
+    number,
+    {
+      present: number;
+      leave: number;
+      sick: number;
+      sickWithoutNote: number;
+      halfDay: number;
+      late: number;
+    }
+  >();
 
   for (const row of attendanceResult[0]) {
     const current = attendanceMap.get(row.employee_id) ?? {
@@ -402,7 +424,10 @@ export async function getAdminPayrollSummarySheet(period?: { month?: number; yea
 
   const overtimeMap = new Map<number, number>();
   for (const row of overtimeResult[0]) {
-    overtimeMap.set(row.employee_id, (overtimeMap.get(row.employee_id) ?? 0) + toNumber(row.total_jam));
+    overtimeMap.set(
+      row.employee_id,
+      (overtimeMap.get(row.employee_id) ?? 0) + toNumber(row.total_jam),
+    );
   }
 
   const contractMap = new Map<number, number>();
@@ -416,7 +441,8 @@ export async function getAdminPayrollSummarySheet(period?: { month?: number; yea
   }
 
   const totalOmzet = toNumber(rows[0]?.total_omzet_global);
-  const totalEmployees = toNumber(totalEmployeeResult[0]?.[0]?.total) || rows.length;
+  const totalEmployees =
+    toNumber(totalEmployeeResult[0]?.[0]?.total) || rows.length;
   const totalBonusOmzet = totalOmzet * 0.005;
 
   const mappedRows = rows.map<AdminPayrollSummarySheetRow>((row, index) => {
@@ -428,59 +454,122 @@ export async function getAdminPayrollSummarySheet(period?: { month?: number; yea
       halfDay: row.total_setengah_hari ?? 0,
       late: row.total_terlambat ?? 0,
     };
-    
+
     const inputOverrideMasuk = row.raw_override_masuk ?? null;
-    const inputOverrideLembur = row.raw_override_lembur !== null ? toNumber(row.raw_override_lembur) : null;
+    const inputOverrideLembur =
+      row.raw_override_lembur !== null
+        ? toNumber(row.raw_override_lembur)
+        : null;
     const inputOverrideIzin = row.raw_override_izin ?? null;
     const inputOverrideSakit = row.raw_override_sakit ?? null;
-    const inputOverrideSakitTanpaSurat = row.raw_override_sakit_tanpa_surat ?? null;
+    const inputOverrideSakitTanpaSurat =
+      row.raw_override_sakit_tanpa_surat ?? null;
     const inputOverrideSetengahHari = row.raw_override_setengah_hari ?? null;
-    const inputOverrideKontrak = row.raw_override_kontrak !== null ? toNumber(row.raw_override_kontrak) : null;
-    const inputOverridePinjaman = row.raw_override_pinjaman !== null ? toNumber(row.raw_override_pinjaman) : null;
-    const inputOverridePinjamanPribadi = row.raw_override_pinjaman_pribadi !== null ? toNumber(row.raw_override_pinjaman_pribadi) : null;
-    const inputOverrideGajiPokok = row.raw_override_gaji_pokok !== null ? toNumber(row.raw_override_gaji_pokok) : null;
+    const inputOverrideKontrak =
+      row.raw_override_kontrak !== null
+        ? toNumber(row.raw_override_kontrak)
+        : null;
+    const inputOverridePinjaman =
+      row.raw_override_pinjaman !== null
+        ? toNumber(row.raw_override_pinjaman)
+        : null;
+    const inputOverridePinjamanPribadi =
+      row.raw_override_pinjaman_pribadi !== null
+        ? toNumber(row.raw_override_pinjaman_pribadi)
+        : null;
+    const inputOverrideGajiPokok =
+      row.raw_override_gaji_pokok !== null
+        ? toNumber(row.raw_override_gaji_pokok)
+        : null;
 
-    const payrollType = row.raw_payroll_type ?? (isSalesEmployeeFromValues(row.jabatan, row.divisi, row.sub_divisi) ? "sales" : "non_sales");
+    const payrollType =
+      row.raw_payroll_type ??
+      (isSalesEmployeeFromValues(row.jabatan, row.divisi, row.sub_divisi)
+        ? "sales"
+        : "non_sales");
     const workDays = row.hari_kerja ?? 0;
-    const presentDays = inputOverrideMasuk ?? (attendance.present || row.total_masuk || 0);
-    const dailyBaseSalary = toNumber(row.raw_gaji_pokok_per_hari) || (workDays > 0 ? toNumber(row.gaji_pokok) / workDays : 0);
-    const monthlyBaseSalary = inputOverrideGajiPokok ?? dailyBaseSalary * workDays;
+    const presentDays =
+      inputOverrideMasuk ?? (attendance.present || row.total_masuk || 0);
+    const dailyBaseSalary =
+      toNumber(row.raw_gaji_pokok_per_hari) ||
+      (workDays > 0 ? toNumber(row.gaji_pokok) / workDays : 0);
+    const monthlyBaseSalary =
+      inputOverrideGajiPokok ?? dailyBaseSalary * workDays;
     const positionAllowance = toNumber(row.tunjangan_jabatan);
-    const fixedMealAllowance = toNumber(row.raw_uang_makan_per_hari) || (presentDays > 0 ? toNumber(row.uang_makan) / presentDays : 0);
+    const fixedMealAllowance =
+      toNumber(row.raw_uang_makan_per_hari) ||
+      (presentDays > 0 ? toNumber(row.uang_makan) / presentDays : 0);
     const subsidy = toNumber(row.raw_subsidi) || toNumber(row.tunjangan_lain);
     const fixedDiligenceAllowance = toNumber(row.raw_uang_kerajinan);
     const bpjs = toNumber(row.raw_bpjs) || toNumber(row.bpjs);
-    const performanceBonus = payrollType === "sales" ? 0 : (toNumber(row.raw_bonus_performa) || toNumber(row.bonus_performa));
-    const transportAllowance = payrollType === "sales" ? (toNumber(row.raw_uang_transport) || toNumber(row.transport)) : 0;
-    const incentive = payrollType === "sales" ? (toNumber(row.raw_insentif) || toNumber(row.insentif)) : 0;
+    const performanceBonus =
+      payrollType === "sales"
+        ? 0
+        : toNumber(row.raw_bonus_performa) || toNumber(row.bonus_performa);
+    const transportAllowance =
+      payrollType === "sales"
+        ? toNumber(row.raw_uang_transport) || toNumber(row.transport)
+        : 0;
+    const incentive =
+      payrollType === "sales"
+        ? toNumber(row.raw_insentif) || toNumber(row.insentif)
+        : 0;
     const totalBaseSalary = dailyBaseSalary * presentDays;
     const roleFactor = getOmzetFactor(row.jabatan);
-    const omzetBonus = totalEmployees > 0
-      ? (totalBonusOmzet / totalEmployees) * roleFactor
-      : 0;
+    const omzetBonus =
+      totalEmployees > 0 ? (totalBonusOmzet / totalEmployees) * roleFactor : 0;
     const mealAllowance = fixedMealAllowance * presentDays;
-    
+
     const leaveCount = inputOverrideIzin ?? attendance.leave;
     const sickCount = inputOverrideSakit ?? attendance.sick;
-    const sickWithoutNoteCount = inputOverrideSakitTanpaSurat ?? attendance.sickWithoutNote;
-    
-    const diligenceAllowance = presentDays + sickCount >= workDays && workDays > 0
-      ? fixedDiligenceAllowance
-      : 0;
-    const overtimeHours = inputOverrideLembur ?? overtimeMap.get(row.employee_id) ?? toNumber(row.total_lembur_jam);
+    const sickWithoutNoteCount =
+      inputOverrideSakitTanpaSurat ?? attendance.sickWithoutNote;
+
+    const diligenceAllowance =
+      presentDays + sickCount >= workDays && workDays > 0
+        ? fixedDiligenceAllowance
+        : 0;
+    const overtimeHours =
+      inputOverrideLembur ??
+      overtimeMap.get(row.employee_id) ??
+      toNumber(row.total_lembur_jam);
     const overtimeBonus = overtimeHours * 20000;
-    const halfDayCount = inputOverrideSetengahHari ?? (attendance.halfDay || row.total_setengah_hari || 0);
+    const halfDayCount =
+      inputOverrideSetengahHari ??
+      (attendance.halfDay || row.total_setengah_hari || 0);
     const halfDayDeduction = (dailyBaseSalary / 2) * halfDayCount;
     const lateCount = attendance.late || row.total_terlambat || 0;
     const lateDeduction = lateCount * 20000;
-    const totalSalaryBeforeDeduction = totalBaseSalary + positionAllowance + mealAllowance + subsidy + performanceBonus + diligenceAllowance + bpjs + overtimeBonus + omzetBonus + incentive + transportAllowance;
-    const totalSalary = totalSalaryBeforeDeduction - halfDayDeduction - lateDeduction;
-    const contractDeduction = inputOverrideKontrak ?? (contractMap.get(row.employee_id) ?? toNumber(row.potongan_kontrak));
-    const companyLoan = inputOverridePinjaman ?? (loanMap.get(row.employee_id) ?? toNumber(row.potongan_pinjaman));
+    const totalSalaryBeforeDeduction =
+      totalBaseSalary +
+      positionAllowance +
+      mealAllowance +
+      subsidy +
+      performanceBonus +
+      diligenceAllowance +
+      bpjs +
+      overtimeBonus +
+      omzetBonus +
+      incentive +
+      transportAllowance;
+    const totalSalary =
+      totalSalaryBeforeDeduction - halfDayDeduction - lateDeduction;
+    const contractDeduction =
+      inputOverrideKontrak ??
+      contractMap.get(row.employee_id) ??
+      toNumber(row.potongan_kontrak);
+    const companyLoan =
+      inputOverridePinjaman ??
+      loanMap.get(row.employee_id) ??
+      toNumber(row.potongan_pinjaman);
     const personalLoan = inputOverridePinjamanPribadi ?? 0;
-    const diligenceCut = Math.max(fixedDiligenceAllowance - diligenceAllowance, 0);
+    const diligenceCut = Math.max(
+      fixedDiligenceAllowance - diligenceAllowance,
+      0,
+    );
     const fineDeduction = halfDayDeduction + lateDeduction + diligenceCut;
-    const netIncome = totalSalary - contractDeduction - companyLoan - personalLoan;
+    const netIncome =
+      totalSalary - contractDeduction - companyLoan - personalLoan;
 
     return {
       id: row.payroll_id,
@@ -490,6 +579,7 @@ export async function getAdminPayrollSummarySheet(period?: { month?: number; yea
       role: row.jabatan,
       division: row.divisi,
       recapGroup: row.pembagian_rekapan || "-",
+      unit: row.unit ?? null,
       department: row.departemen,
       bank: row.bank || "-",
       accountNumber: row.no_rekening || "-",
@@ -559,8 +649,10 @@ export async function getAdminPayrollSummarySheet(period?: { month?: number; yea
     totalOmzet,
     totalBonusOmzet,
     totalNetIncome: mappedRows.reduce((total, row) => total + row.netIncome, 0),
-    totalDeduction: mappedRows.reduce((total, row) => total + row.fineDeduction + row.contractCut + row.loanCut, 0),
+    totalDeduction: mappedRows.reduce(
+      (total, row) => total + row.fineDeduction + row.contractCut + row.loanCut,
+      0,
+    ),
     rows: mappedRows,
   };
 }
-

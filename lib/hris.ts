@@ -1,20 +1,24 @@
 import { RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
 import { getEmployeeRemainingLoanTotal } from "@/lib/loans";
+import { getAdminPayrollSummarySheet } from "@/lib/payroll-summary";
 
 type CountRow = RowDataPacket & { total: number };
 
 export async function getAdminDashboardStats() {
-  const [employeeRows, attendanceRows, payrollRows, slipRows] = await Promise.all([
-    pool.query<CountRow[]>("SELECT COUNT(*) AS total FROM karyawan"),
-    pool.query<CountRow[]>("SELECT COUNT(*) AS total FROM absensi WHERE tanggal = CURDATE()"),
-    pool.query<CountRow[]>(
-      "SELECT COUNT(*) AS total FROM payroll WHERE status_payroll IN ('draft', 'processed')",
-    ),
-    pool.query<CountRow[]>(
-      "SELECT COUNT(*) AS total FROM slip_gaji WHERE status_distribusi IN ('draft', 'didistribusikan')",
-    ),
-  ]);
+  const [employeeRows, attendanceRows, payrollRows, slipRows] =
+    await Promise.all([
+      pool.query<CountRow[]>("SELECT COUNT(*) AS total FROM karyawan"),
+      pool.query<CountRow[]>(
+        "SELECT COUNT(*) AS total FROM absensi WHERE tanggal = CURDATE()",
+      ),
+      pool.query<CountRow[]>(
+        "SELECT COUNT(*) AS total FROM payroll WHERE status_payroll IN ('draft', 'processed')",
+      ),
+      pool.query<CountRow[]>(
+        "SELECT COUNT(*) AS total FROM slip_gaji WHERE status_distribusi IN ('draft', 'didistribusikan')",
+      ),
+    ]);
 
   return {
     totalEmployees: employeeRows[0][0]?.total ?? 0,
@@ -87,7 +91,11 @@ function isTimeWithinRange(time: string, start: string, end: string) {
   return time >= start && time <= end;
 }
 
-function isHalfDayAttendance(timeIn: string | null, timeOut: string | null, halfDayFlag: number) {
+function isHalfDayAttendance(
+  timeIn: string | null,
+  timeOut: string | null,
+  halfDayFlag: number,
+) {
   if (halfDayFlag === 1) {
     return true;
   }
@@ -97,19 +105,37 @@ function isHalfDayAttendance(timeIn: string | null, timeOut: string | null, half
   }
 
   const isMorningHalfDay =
-    isTimeWithinRange(timeIn, "08:30", "12:00") && isTimeWithinRange(timeOut, "08:30", "12:00");
+    isTimeWithinRange(timeIn, "08:30", "12:00") &&
+    isTimeWithinRange(timeOut, "08:30", "12:00");
   const isAfternoonHalfDay =
-    isTimeWithinRange(timeIn, "13:00", "16:30") && isTimeWithinRange(timeOut, "13:00", "16:30");
+    isTimeWithinRange(timeIn, "13:00", "16:30") &&
+    isTimeWithinRange(timeOut, "13:00", "16:30");
 
   return isMorningHalfDay || isAfternoonHalfDay;
 }
 
-function mapAttendanceCode(row: Pick<
-  AttendanceRow,
-  "status_absensi" | "kode_absensi" | "jam_masuk" | "jam_pulang" | "foto_masuk" | "setengah_hari"
->) {
-  const { status_absensi: status, kode_absensi: code, jam_masuk: timeIn, jam_pulang: timeOut, foto_masuk: photoIn, setengah_hari: halfDayFlag } = row;
-  const isHalfDay = status === "setengah_hari" || isHalfDayAttendance(timeIn, timeOut, halfDayFlag);
+function mapAttendanceCode(
+  row: Pick<
+    AttendanceRow,
+    | "status_absensi"
+    | "kode_absensi"
+    | "jam_masuk"
+    | "jam_pulang"
+    | "foto_masuk"
+    | "setengah_hari"
+  >,
+) {
+  const {
+    status_absensi: status,
+    kode_absensi: code,
+    jam_masuk: timeIn,
+    jam_pulang: timeOut,
+    foto_masuk: photoIn,
+    setengah_hari: halfDayFlag,
+  } = row;
+  const isHalfDay =
+    status === "setengah_hari" ||
+    isHalfDayAttendance(timeIn, timeOut, halfDayFlag);
   const isSickWithoutProof = status === "sakit" && !photoIn;
 
   if (code) {
@@ -204,7 +230,10 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
   const weekEndDay = Math.min(weekStartDay + 6, daysInMonth);
   const activeDays =
     view === "week"
-      ? Array.from({ length: weekEndDay - weekStartDay + 1 }, (_, index) => weekStartDay + index)
+      ? Array.from(
+          { length: weekEndDay - weekStartDay + 1 },
+          (_, index) => weekStartDay + index,
+        )
       : Array.from({ length: daysInMonth }, (_, index) => index + 1);
 
   const byEmployee = new Map<number, AttendanceSheetRow>();
@@ -441,7 +470,10 @@ async function ensureHrisSchemaSupport() {
       ADD COLUMN pembebanan VARCHAR(100) NULL AFTER pembagian_rekapan
     `);
   } catch (error: unknown) {
-        if (!(typeof error === "object" && error !== null && "code" in error) || error.code !== "ER_DUP_FIELDNAME") {
+    if (
+      !(typeof error === "object" && error !== null && "code" in error) ||
+      error.code !== "ER_DUP_FIELDNAME"
+    ) {
       throw error;
     }
   }
@@ -467,6 +499,107 @@ export async function listFinanceSummary() {
   );
 
   return rows;
+}
+
+export type FinanceUnitDeptData = {
+  departemen: string;
+  totalGaji: number;
+  totalPotonganDenda: number;
+  totalPotonganKontrak: number;
+  totalPotonganPinjaman: number;
+  total: number;
+};
+
+export type FinanceUnitGroup = {
+  unit: string;
+  departments: FinanceUnitDeptData[];
+  totals: FinanceUnitDeptData;
+};
+
+export type FinanceByUnitResult = {
+  unitGroups: FinanceUnitGroup[];
+  period: { month: number; year: number } | null;
+};
+
+export async function listFinanceByUnit(period?: {
+  month?: number;
+  year?: number;
+}): Promise<FinanceByUnitResult> {
+  // Use the live-computed payroll summary sheet so that netIncome (Penerimaan
+  // Bersih) matches exactly what is shown in the AdminPayrollSummaryManager,
+  // including any override values stored in payroll_employee_input.
+  const sheet = await getAdminPayrollSummarySheet(period);
+
+  if (!sheet || !sheet.rows.length) {
+    return { unitGroups: [], period: null };
+  }
+
+  // Accumulate per unit → department
+  const unitMap = new Map<string, Map<string, FinanceUnitDeptData>>();
+
+  for (const row of sheet.rows) {
+    const unit = row.unit ?? "-";
+    const dept = row.department;
+
+    if (!unitMap.has(unit)) unitMap.set(unit, new Map());
+    const deptMap = unitMap.get(unit)!;
+
+    const existing = deptMap.get(dept) ?? {
+      departemen: dept,
+      totalGaji: 0,
+      totalPotonganDenda: 0,
+      totalPotonganKontrak: 0,
+      totalPotonganPinjaman: 0,
+      total: 0,
+    };
+
+    existing.totalGaji += row.netIncome;
+    existing.totalPotonganDenda += row.fineDeduction;
+    existing.totalPotonganKontrak += row.contractCut;
+    existing.totalPotonganPinjaman += row.loanCut;
+    existing.total =
+      existing.totalGaji +
+      existing.totalPotonganDenda +
+      existing.totalPotonganKontrak +
+      existing.totalPotonganPinjaman;
+
+    deptMap.set(dept, existing);
+  }
+
+  // Build sorted unit groups with per-unit totals
+  const unitGroups: FinanceUnitGroup[] = [];
+  for (const [unit, deptMap] of Array.from(unitMap.entries()).sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    const departments = Array.from(deptMap.values()).sort((a, b) =>
+      a.departemen.localeCompare(b.departemen),
+    );
+
+    const totals: FinanceUnitDeptData = {
+      departemen: "Total",
+      totalGaji: departments.reduce((s, d) => s + d.totalGaji, 0),
+      totalPotonganDenda: departments.reduce(
+        (s, d) => s + d.totalPotonganDenda,
+        0,
+      ),
+      totalPotonganKontrak: departments.reduce(
+        (s, d) => s + d.totalPotonganKontrak,
+        0,
+      ),
+      totalPotonganPinjaman: departments.reduce(
+        (s, d) => s + d.totalPotonganPinjaman,
+        0,
+      ),
+      total: departments.reduce((s, d) => s + d.total, 0),
+    };
+
+    unitGroups.push({ unit, departments, totals });
+  }
+
+  return {
+    unitGroups,
+    period: { month: sheet.periodMonth, year: sheet.periodYear },
+  };
 }
 
 type PayslipRow = RowDataPacket & {
@@ -641,26 +774,29 @@ type EmployeeTodayAttendanceRow = RowDataPacket & {
 };
 
 export async function getEmployeeOverview(employeeId: number) {
-  const [attendanceRows, overtimeRows, loanRows, payslipRows] = await Promise.all([
-    pool.query<CountRow[]>(
-      "SELECT COUNT(*) AS total FROM absensi WHERE karyawan_id = ? AND MONTH(tanggal) = MONTH(CURDATE()) AND YEAR(tanggal) = YEAR(CURDATE()) AND status_absensi = 'hadir'",
-      [employeeId],
-    ),
-    pool.query<(CountRow & { total_jam?: string })[]>(
-      "SELECT COUNT(*) AS total, COALESCE(SUM(total_jam), 0) AS total_jam FROM lembur WHERE karyawan_id = ?",
-      [employeeId],
-    ),
-    getEmployeeRemainingLoanTotal(employeeId),
-    pool.query<CountRow[]>(
-      "SELECT COUNT(*) AS total FROM slip_gaji sg INNER JOIN payroll p ON p.id = sg.payroll_id WHERE p.karyawan_id = ?",
-      [employeeId],
-    ),
-  ]);
+  const [attendanceRows, overtimeRows, loanRows, payslipRows] =
+    await Promise.all([
+      pool.query<CountRow[]>(
+        "SELECT COUNT(*) AS total FROM absensi WHERE karyawan_id = ? AND MONTH(tanggal) = MONTH(CURDATE()) AND YEAR(tanggal) = YEAR(CURDATE()) AND status_absensi = 'hadir'",
+        [employeeId],
+      ),
+      pool.query<(CountRow & { total_jam?: string })[]>(
+        "SELECT COUNT(*) AS total, COALESCE(SUM(total_jam), 0) AS total_jam FROM lembur WHERE karyawan_id = ?",
+        [employeeId],
+      ),
+      getEmployeeRemainingLoanTotal(employeeId),
+      pool.query<CountRow[]>(
+        "SELECT COUNT(*) AS total FROM slip_gaji sg INNER JOIN payroll p ON p.id = sg.payroll_id WHERE p.karyawan_id = ?",
+        [employeeId],
+      ),
+    ]);
 
   return {
     attendanceThisMonth: attendanceRows[0][0]?.total ?? 0,
     overtimeCount: overtimeRows[0][0]?.total ?? 0,
-    overtimeHours: (overtimeRows[0][0] as RowDataPacket & { total_jam?: string })?.total_jam ?? "0",
+    overtimeHours:
+      (overtimeRows[0][0] as RowDataPacket & { total_jam?: string })
+        ?.total_jam ?? "0",
     remainingLoan: loanRows ?? "0",
     payslipCount: payslipRows[0][0]?.total ?? 0,
   };
@@ -823,4 +959,3 @@ export async function getEmployeePayslips(employeeId: number) {
 
   return rows;
 }
-
