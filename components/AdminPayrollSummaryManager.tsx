@@ -99,7 +99,7 @@ function buildFormFromRow(row: AdminPayrollSummarySheetRow): FormState {
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="space-y-2"><span className="text-[13px] font-semibold text-[#466668]">{label}</span>{children}</label>;
+  return <label className="block space-y-2"><span className="block text-[13px] font-semibold text-[#466668]">{label}</span>{children}</label>;
 }
 
 export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omzetPeriod, periodOptions }: Props) {
@@ -323,9 +323,9 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0c8087]">Total Omzet</p>
             <h2 className="mt-3 text-2xl font-semibold text-[#123336]">Input Omzet Bulanan</h2>
             <p className="mt-2 text-sm text-[#628083]">Diisi satu kali per periode payroll, lalu bisa diupdate bila perlu.</p>
-            <div className="mt-6 space-y-4">
+            <div className="mt-6 space-y-5">
               <Field label="Total Omzet Periode Terpilih"><input value={totalOmzet} onChange={(event) => setTotalOmzet(formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
-              <div className="rounded-[24px] border border-[#d5e9ea] bg-white px-4 py-4 text-sm text-[#35585b]"><p className="text-[13px] font-semibold text-[#466668]">Bonus Omzet Periode Terpilih</p><p className="mt-2 text-2xl font-semibold text-[#123336]">{formatCurrency(omzetBonus)}</p></div>
+              <div className="rounded-2xl border border-[#d5e9ea] bg-white px-4 py-4 text-sm text-[#35585b]"><p className="text-[13px] font-semibold text-[#466668]">Bonus Omzet Periode Terpilih</p><p className="mt-2 text-2xl font-semibold text-[#123336]">{formatCurrency(omzetBonus)}</p></div>
             </div>
             {omzetPeriod.isLocked ? <div className="mt-5 rounded-2xl bg-[#edf6f6] px-4 py-3 text-sm text-[#446568]">Total omzet periode ini sudah ada. Anda bisa update nominalnya kapan saja.</div> : null}
             {omzetMessage ? <div className={`mt-5 rounded-2xl px-4 py-3 text-sm ${omzetMessage.type === "success" ? "bg-[#def8eb] text-[#17603b]" : "bg-[#ffe4e4] text-[#8b2626]"}`}>{omzetMessage.text}</div> : null}
