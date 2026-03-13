@@ -336,8 +336,6 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
 
           <section className="grid gap-4">
             <article className="rounded-[30px] border border-[#ead7ce] bg-[linear-gradient(180deg,#fffdfb_0%,#fff6ef_100%)] px-6 py-5"><p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#a16f63]">Periode Payroll</p><h2 className="mt-3 text-2xl font-semibold text-[#241716]">{periodOptions.find((item) => `${item.year}-${String(item.month).padStart(2, "0")}` === selectedPeriod)?.label ?? "-"}</h2><p className="mt-2 text-sm text-[#7a6059]">Rentang absensi {displayedRange}</p></article>
-            <article className="rounded-[30px] border border-[#ead7ce] bg-[#19d7df] px-6 py-5 text-[#032a2d]"><p className="text-xs font-semibold uppercase tracking-[0.22em]">Total Omzet</p><p className="mt-3 text-3xl font-semibold">{formatCurrency(omzetPeriod.totalOmzet)}</p></article>
-            <article className="rounded-[30px] border border-[#ead7ce] bg-[#19d7df] px-6 py-5 text-[#032a2d]"><p className="text-xs font-semibold uppercase tracking-[0.22em]">Bonus Omzet</p><p className="mt-3 text-3xl font-semibold">{formatCurrency(omzetPeriod.bonusOmzet)}</p></article>
           </section>
         </div>
       </section>
@@ -487,6 +485,3 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
     </div>
   );
 }
-
-
-
