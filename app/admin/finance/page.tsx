@@ -4,8 +4,10 @@ import { requireAdminSession } from "@/lib/auth";
 import {
   listFinanceByUnit,
   listFinancePembebanan,
+  listFinancePencairanGaji,
   type FinanceUnitDeptData,
   type FinanceUnitGroup,
+  type PencairanGajiByUnit,
 } from "@/lib/hris";
 import { EMPLOYEE_DEPARTMENTS } from "@/lib/employees";
 
@@ -100,9 +102,10 @@ function getDepartmentsForUnit(unit: string): string[] {
 
 export default async function AdminFinancePage() {
   const admin = await requireAdminSession();
-  const [{ unitGroups, period }, pembebanan] = await Promise.all([
+  const [{ unitGroups, period }, pembebanan, pencairan] = await Promise.all([
     listFinanceByUnit(),
     listFinancePembebanan(),
+    listFinancePencairanGaji(),
   ]);
 
   const periodLabel = period ? formatPeriod(period.month, period.year) : null;
@@ -375,6 +378,126 @@ export default async function AdminFinancePage() {
                     const cell = row.byUnit[unit];
                     return sum + (cell?.amount ?? 0);
                   }, 0);
+                  return (
+                    <td
+                      key={unit}
+                      className="w-40 border border-[#e0ccc5] px-4 py-3 text-right tabular-nums font-bold text-[#8b3a2a]"
+                    >
+                      {formatRp(total)}
+                    </td>
+                  );
+                })}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ── PENCAIRAN GAJI ── */}
+      {pencairan.units.length > 0 && (
+        <div className="mt-6 w-fit overflow-x-auto rounded-[24px] border border-[#ead7ce] bg-white shadow-sm">
+          <table className="border-collapse text-sm">
+            <thead>
+              {/* Row 1: PENCAIRAN GAJI header */}
+              <tr>
+                <th
+                  colSpan={1 + pencairan.units.length}
+                  className="border border-[#e0ccc5] bg-[#f5e8e4] px-4 py-3 text-center text-sm font-bold uppercase tracking-widest text-[#7a3828]"
+                >
+                  PENCAIRAN GAJI
+                  {periodLabel && (
+                    <span className="ml-2 text-xs font-medium text-[#9e7467]">
+                      — {periodLabel}
+                    </span>
+                  )}
+                </th>
+              </tr>
+
+              {/* Row 2: column headers */}
+              <tr className="bg-[#fff8f4] text-xs uppercase tracking-[0.14em] text-[#9e7467]">
+                <th className="w-56 border border-[#e0ccc5] px-4 py-3 text-left">
+                  Kategori
+                </th>
+                {pencairan.units.map((unit) => (
+                  <th
+                    key={unit}
+                    className="w-40 border border-[#e0ccc5] px-4 py-3 text-right"
+                  >
+                    {unit}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+
+            <tbody>
+              {(
+                [
+                  {
+                    label: "Total bersih (sudah potongan)",
+                    key: "totalBersih" as keyof PencairanGajiByUnit,
+                  },
+                  {
+                    label: "Uang kontrak",
+                    key: "uangKontrak" as keyof PencairanGajiByUnit,
+                  },
+                  {
+                    label: "Pengembalian kontrak",
+                    key: "pengembalianKontrak" as keyof PencairanGajiByUnit,
+                  },
+                  {
+                    label: "Potongan uang terlambat",
+                    key: "potonganTerlambat" as keyof PencairanGajiByUnit,
+                  },
+                  {
+                    label: "Potongan uang setengah hari",
+                    key: "potonganSetengahHari" as keyof PencairanGajiByUnit,
+                  },
+                  {
+                    label: "Potongan uang kerajinan",
+                    key: "potonganKerajinan" as keyof PencairanGajiByUnit,
+                  },
+                  {
+                    label: "Hutang ke perusahaan",
+                    key: "hutangPerusahaan" as keyof PencairanGajiByUnit,
+                  },
+                ] as { label: string; key: keyof PencairanGajiByUnit }[]
+              ).map(({ label, key }, i) => (
+                <tr
+                  key={label}
+                  className={i % 2 === 0 ? "bg-white" : "bg-[#fffaf8]"}
+                >
+                  <td className="w-56 border border-[#e0ccc5] px-4 py-2 font-semibold text-[#241716]">
+                    {label}
+                  </td>
+                  {pencairan.units.map((unit) => {
+                    const data = pencairan.byUnit[unit];
+                    const value = data?.[key] ?? 0;
+                    return (
+                      <td
+                        key={unit}
+                        className="w-40 border border-[#e0ccc5] px-4 py-2 text-right tabular-nums text-[#241716]"
+                      >
+                        {formatRp(value as number)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+
+              {/* Total Gaji (sebelum dipotong) row */}
+              <tr className="bg-[#f5e8e4]">
+                <td className="w-56 border border-[#e0ccc5] px-4 py-3 font-bold text-[#7a3828]">
+                  Total Gaji (sebelum dipotong)
+                </td>
+                {pencairan.units.map((unit) => {
+                  const data = pencairan.byUnit[unit];
+                  const total =
+                    (data?.totalBersih ?? 0) +
+                    (data?.uangKontrak ?? 0) +
+                    (data?.potonganTerlambat ?? 0) +
+                    (data?.potonganSetengahHari ?? 0) +
+                    (data?.potonganKerajinan ?? 0) +
+                    (data?.hutangPerusahaan ?? 0);
                   return (
                     <td
                       key={unit}

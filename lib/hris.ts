@@ -701,6 +701,81 @@ export async function listFinancePembebanan(period?: {
   };
 }
 
+// ─── PENCAIRAN GAJI ──────────────────────────────────────────────────────────
+
+/** Unit yang selalu ditampilkan di tabel pencairan gaji, meskipun tidak ada data payroll */
+const PENCAIRAN_UNIT_ORDER = ["AVA Sportivo", "Ayres Apparel", "JNE"];
+
+export type PencairanGajiByUnit = {
+  totalBersih: number;
+  uangKontrak: number;
+  pengembalianKontrak: number;
+  potonganTerlambat: number;
+  potonganSetengahHari: number;
+  potonganKerajinan: number;
+  hutangPerusahaan: number;
+};
+
+export type PencairanGajiResult = {
+  units: string[];
+  byUnit: Record<string, PencairanGajiByUnit>;
+  period: { month: number; year: number } | null;
+};
+
+export async function listFinancePencairanGaji(period?: {
+  month?: number;
+  year?: number;
+}): Promise<PencairanGajiResult> {
+  const sheet = await getAdminPayrollSummarySheet(period);
+  if (!sheet || !sheet.rows.length)
+    return { units: [], byUnit: {}, period: null };
+
+  // Collect unit names from payroll data, then merge with fixed order
+  const unitSet = new Set<string>(PENCAIRAN_UNIT_ORDER);
+  for (const row of sheet.rows) {
+    if (row.unit) unitSet.add(row.unit);
+  }
+  // Keep fixed order first, then any extra units from payroll sorted after
+  const extraUnits = Array.from(unitSet)
+    .filter((u) => !PENCAIRAN_UNIT_ORDER.includes(u))
+    .sort();
+  const units = [...PENCAIRAN_UNIT_ORDER, ...extraUnits];
+
+  // Init accumulator
+  const acc: Record<string, PencairanGajiByUnit> = {};
+  for (const unit of units) {
+    acc[unit] = {
+      totalBersih: 0,
+      uangKontrak: 0,
+      pengembalianKontrak: 0,
+      potonganTerlambat: 0,
+      potonganSetengahHari: 0,
+      potonganKerajinan: 0,
+      hutangPerusahaan: 0,
+    };
+  }
+
+  // Sum up per unit
+  for (const row of sheet.rows) {
+    if (!row.unit) continue;
+    const u = acc[row.unit];
+    if (!u) continue;
+    u.totalBersih += row.netIncome;
+    u.uangKontrak += row.contractDeduction;
+    // pengembalianKontrak stays 0
+    u.potonganTerlambat += row.lateDeduction;
+    u.potonganSetengahHari += row.halfDayDeduction;
+    u.potonganKerajinan += row.diligenceCut;
+    u.hutangPerusahaan += row.companyLoan;
+  }
+
+  return {
+    units,
+    byUnit: acc,
+    period: { month: sheet.periodMonth, year: sheet.periodYear },
+  };
+}
+
 type PayslipRow = RowDataPacket & {
   id: number;
   nomor_slip: string;
