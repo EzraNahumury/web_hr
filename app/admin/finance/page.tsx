@@ -393,125 +393,196 @@ export default async function AdminFinancePage() {
         </div>
       )}
 
-      {/* ── PENCAIRAN GAJI ── */}
-      {pencairan.units.length > 0 && (
-        <div className="mt-6 w-fit overflow-x-auto rounded-[24px] border border-[#ead7ce] bg-white shadow-sm">
-          <table className="border-collapse text-sm">
-            <thead>
-              {/* Row 1: PENCAIRAN GAJI header */}
-              <tr>
-                <th
-                  colSpan={1 + pencairan.units.length}
-                  className="border border-[#e0ccc5] bg-[#f5e8e4] px-4 py-3 text-center text-sm font-bold uppercase tracking-widest text-[#7a3828]"
-                >
-                  PENCAIRAN GAJI
-                  {periodLabel && (
-                    <span className="ml-2 text-xs font-medium text-[#9e7467]">
-                      — {periodLabel}
-                    </span>
-                  )}
-                </th>
-              </tr>
+      {/* ── PENCAIRAN GAJI + TOTAL GAJI PER UNIT ── */}
+      {pencairan.units.length > 0 &&
+        (() => {
+          // Helper: hitung Total Gaji (sebelum dipotong) per unit
+          const unitTotal = (unit: string) => {
+            const d = pencairan.byUnit[unit];
+            return (
+              (d?.totalBersih ?? 0) +
+              (d?.uangKontrak ?? 0) +
+              (d?.potonganTerlambat ?? 0) +
+              (d?.potonganSetengahHari ?? 0) +
+              (d?.potonganKerajinan ?? 0) +
+              (d?.hutangPerusahaan ?? 0)
+            );
+          };
+          const avaTotal = unitTotal("AVA Sportivo");
+          const ayresTotal = unitTotal("Ayres Apparel");
+          const jneTotal = unitTotal("JNE");
+          const avaAyres = avaTotal + ayresTotal;
+          const allTotal = avaAyres + jneTotal;
 
-              {/* Row 2: column headers */}
-              <tr className="bg-[#fff8f4] text-xs uppercase tracking-[0.14em] text-[#9e7467]">
-                <th className="w-56 border border-[#e0ccc5] px-4 py-3 text-left">
-                  Kategori
-                </th>
-                {pencairan.units.map((unit) => (
-                  <th
-                    key={unit}
-                    className="w-40 border border-[#e0ccc5] px-4 py-3 text-right"
-                  >
-                    {unit}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-
-            <tbody>
-              {(
-                [
-                  {
-                    label: "Total bersih (sudah potongan)",
-                    key: "totalBersih" as keyof PencairanGajiByUnit,
-                  },
-                  {
-                    label: "Uang kontrak",
-                    key: "uangKontrak" as keyof PencairanGajiByUnit,
-                  },
-                  {
-                    label: "Pengembalian kontrak",
-                    key: "pengembalianKontrak" as keyof PencairanGajiByUnit,
-                  },
-                  {
-                    label: "Potongan uang terlambat",
-                    key: "potonganTerlambat" as keyof PencairanGajiByUnit,
-                  },
-                  {
-                    label: "Potongan uang setengah hari",
-                    key: "potonganSetengahHari" as keyof PencairanGajiByUnit,
-                  },
-                  {
-                    label: "Potongan uang kerajinan",
-                    key: "potonganKerajinan" as keyof PencairanGajiByUnit,
-                  },
-                  {
-                    label: "Hutang ke perusahaan",
-                    key: "hutangPerusahaan" as keyof PencairanGajiByUnit,
-                  },
-                ] as { label: string; key: keyof PencairanGajiByUnit }[]
-              ).map(({ label, key }, i) => (
-                <tr
-                  key={label}
-                  className={i % 2 === 0 ? "bg-white" : "bg-[#fffaf8]"}
-                >
-                  <td className="w-56 border border-[#e0ccc5] px-4 py-2 font-semibold text-[#241716]">
-                    {label}
-                  </td>
-                  {pencairan.units.map((unit) => {
-                    const data = pencairan.byUnit[unit];
-                    const value = data?.[key] ?? 0;
-                    return (
-                      <td
-                        key={unit}
-                        className="w-40 border border-[#e0ccc5] px-4 py-2 text-right tabular-nums text-[#241716]"
+          return (
+            <div className="mt-6 flex flex-wrap items-start gap-6">
+              {/* Tabel Pencairan Gaji */}
+              <div className="w-fit overflow-x-auto rounded-[24px] border border-[#ead7ce] bg-white shadow-sm">
+                <table className="border-collapse text-sm">
+                  <thead>
+                    {/* Row 1: PENCAIRAN GAJI header */}
+                    <tr>
+                      <th
+                        colSpan={1 + pencairan.units.length}
+                        className="border border-[#e0ccc5] bg-[#f5e8e4] px-4 py-3 text-center text-sm font-bold uppercase tracking-widest text-[#7a3828]"
                       >
-                        {formatRp(value as number)}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+                        PENCAIRAN GAJI
+                        {periodLabel && (
+                          <span className="ml-2 text-xs font-medium text-[#9e7467]">
+                            — {periodLabel}
+                          </span>
+                        )}
+                      </th>
+                    </tr>
 
-              {/* Total Gaji (sebelum dipotong) row */}
-              <tr className="bg-[#f5e8e4]">
-                <td className="w-56 border border-[#e0ccc5] px-4 py-3 font-bold text-[#7a3828]">
-                  Total Gaji (sebelum dipotong)
-                </td>
-                {pencairan.units.map((unit) => {
-                  const data = pencairan.byUnit[unit];
-                  const total =
-                    (data?.totalBersih ?? 0) +
-                    (data?.uangKontrak ?? 0) +
-                    (data?.potonganTerlambat ?? 0) +
-                    (data?.potonganSetengahHari ?? 0) +
-                    (data?.potonganKerajinan ?? 0) +
-                    (data?.hutangPerusahaan ?? 0);
-                  return (
-                    <td
-                      key={unit}
-                      className="w-40 border border-[#e0ccc5] px-4 py-3 text-right tabular-nums font-bold text-[#8b3a2a]"
-                    >
-                      {formatRp(total)}
-                    </td>
-                  );
-                })}
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      )}
+                    {/* Row 2: column headers */}
+                    <tr className="bg-[#fff8f4] text-xs uppercase tracking-[0.14em] text-[#9e7467]">
+                      <th className="w-56 border border-[#e0ccc5] px-4 py-3 text-left">
+                        Kategori
+                      </th>
+                      {pencairan.units.map((unit) => (
+                        <th
+                          key={unit}
+                          className="w-40 border border-[#e0ccc5] px-4 py-3 text-right"
+                        >
+                          {unit}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {(
+                      [
+                        {
+                          label: "Total bersih (sudah potongan)",
+                          key: "totalBersih" as keyof PencairanGajiByUnit,
+                        },
+                        {
+                          label: "Uang kontrak",
+                          key: "uangKontrak" as keyof PencairanGajiByUnit,
+                        },
+                        {
+                          label: "Pengembalian kontrak",
+                          key: "pengembalianKontrak" as keyof PencairanGajiByUnit,
+                        },
+                        {
+                          label: "Potongan uang terlambat",
+                          key: "potonganTerlambat" as keyof PencairanGajiByUnit,
+                        },
+                        {
+                          label: "Potongan uang setengah hari",
+                          key: "potonganSetengahHari" as keyof PencairanGajiByUnit,
+                        },
+                        {
+                          label: "Potongan uang kerajinan",
+                          key: "potonganKerajinan" as keyof PencairanGajiByUnit,
+                        },
+                        {
+                          label: "Hutang ke perusahaan",
+                          key: "hutangPerusahaan" as keyof PencairanGajiByUnit,
+                        },
+                      ] as { label: string; key: keyof PencairanGajiByUnit }[]
+                    ).map(({ label, key }, i) => (
+                      <tr
+                        key={label}
+                        className={i % 2 === 0 ? "bg-white" : "bg-[#fffaf8]"}
+                      >
+                        <td className="w-56 border border-[#e0ccc5] px-4 py-2 font-semibold text-[#241716]">
+                          {label}
+                        </td>
+                        {pencairan.units.map((unit) => {
+                          const data = pencairan.byUnit[unit];
+                          const value = data?.[key] ?? 0;
+                          return (
+                            <td
+                              key={unit}
+                              className="w-40 border border-[#e0ccc5] px-4 py-2 text-right tabular-nums text-[#241716]"
+                            >
+                              {formatRp(value as number)}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+
+                    {/* Total Gaji (sebelum dipotong) row */}
+                    <tr className="bg-[#f5e8e4]">
+                      <td className="w-56 border border-[#e0ccc5] px-4 py-3 font-bold text-[#7a3828]">
+                        Total Gaji (sebelum dipotong)
+                      </td>
+                      {pencairan.units.map((unit) => {
+                        const data = pencairan.byUnit[unit];
+                        const total =
+                          (data?.totalBersih ?? 0) +
+                          (data?.uangKontrak ?? 0) +
+                          (data?.potonganTerlambat ?? 0) +
+                          (data?.potonganSetengahHari ?? 0) +
+                          (data?.potonganKerajinan ?? 0) +
+                          (data?.hutangPerusahaan ?? 0);
+                        return (
+                          <td
+                            key={unit}
+                            className="w-40 border border-[#e0ccc5] px-4 py-3 text-right tabular-nums font-bold text-[#8b3a2a]"
+                          >
+                            {formatRp(total)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Tabel Total Gaji per Unit */}
+              <div className="w-fit overflow-x-auto rounded-[24px] border border-[#ead7ce] bg-white shadow-sm">
+                <table className="border-collapse text-sm">
+                  <thead>
+                    <tr>
+                      <th
+                        colSpan={2}
+                        className="border border-[#e0ccc5] bg-[#f5e8e4] px-4 py-3 text-center text-sm font-bold uppercase tracking-widest text-[#7a3828]"
+                      >
+                        TOTAL GAJI PER UNIT
+                        {periodLabel && (
+                          <span className="ml-2 text-xs font-medium text-[#9e7467]">
+                            — {periodLabel}
+                          </span>
+                        )}
+                      </th>
+                    </tr>
+                    <tr className="bg-[#fff8f4] text-xs uppercase tracking-[0.14em] text-[#9e7467]">
+                      <th className="w-52 border border-[#e0ccc5] px-4 py-3 text-left">
+                        Keterangan
+                      </th>
+                      <th className="w-44 border border-[#e0ccc5] px-4 py-3 text-right">
+                        Total
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="bg-white">
+                      <td className="w-52 border border-[#e0ccc5] px-4 py-2 font-semibold text-[#241716]">
+                        AVA &amp; Ayres
+                      </td>
+                      <td className="w-44 border border-[#e0ccc5] px-4 py-2 text-right tabular-nums text-[#241716]">
+                        {formatRp(avaAyres)}
+                      </td>
+                    </tr>
+                    <tr className="bg-[#fffaf8]">
+                      <td className="w-52 border border-[#e0ccc5] px-4 py-2 font-semibold text-[#241716]">
+                        Total AVA + Ayres + JNE
+                      </td>
+                      <td className="w-44 border border-[#e0ccc5] px-4 py-2 text-right tabular-nums text-[#241716]">
+                        {formatRp(allTotal)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
     </AdminShell>
   );
 }
