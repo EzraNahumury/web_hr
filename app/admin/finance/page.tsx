@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import AdminShell from "@/components/AdminShell";
+import FinancePeriodSelector from "@/components/FinancePeriodSelector";
 import { requireAdminSession } from "@/lib/auth";
 import {
   listFinanceByUnit,
@@ -11,7 +12,14 @@ import {
   type PencairanGajiByUnit,
   type KeteranganItem,
 } from "@/lib/hris";
+import { listPayrollPeriods } from "@/lib/payroll-admin";
 import { EMPLOYEE_DEPARTMENTS } from "@/lib/employees";
+
+function parsePositiveInt(value: string | string[] | undefined) {
+  if (typeof value !== "string") return null;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
 
 const MONTHS_ID = [
   "Januari",
@@ -102,17 +110,46 @@ function getDepartmentsForUnit(unit: string): string[] {
   return [...EMPLOYEE_DEPARTMENTS].sort();
 }
 
-export default async function AdminFinancePage() {
+export default async function AdminFinancePage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const admin = await requireAdminSession();
-  const [{ unitGroups, period }, pembebanan, pencairan, keterangan] =
-    await Promise.all([
-      listFinanceByUnit(),
-      listFinancePembebanan(),
-      listFinancePencairanGaji(),
-      listKeteranganHutangKontrak(),
-    ]);
+  const resolvedParams = (await searchParams) ?? {};
+  const requestedMonth = parsePositiveInt(resolvedParams.month);
+  const requestedYear = parsePositiveInt(resolvedParams.year);
+  const periodInput =
+    requestedMonth && requestedYear
+      ? { month: requestedMonth, year: requestedYear }
+      : undefined;
 
-  const periodLabel = period ? formatPeriod(period.month, period.year) : null;
+  const [
+    { unitGroups, period },
+    pembebanan,
+    pencairan,
+    keterangan,
+    periodOptions,
+  ] = await Promise.all([
+    listFinanceByUnit(periodInput),
+    listFinancePembebanan(periodInput),
+    listFinancePencairanGaji(periodInput),
+    listKeteranganHutangKontrak(periodInput),
+    listPayrollPeriods(),
+  ]);
+
+  const activePeriod =
+    period ??
+    (periodOptions[0]
+      ? { month: periodOptions[0].month, year: periodOptions[0].year }
+      : null);
+  const periodLabel = activePeriod
+    ? formatPeriod(activePeriod.month, activePeriod.year)
+    : null;
+  const selectedMonth =
+    activePeriod?.month ?? periodOptions[0]?.month ?? new Date().getMonth() + 1;
+  const selectedYear =
+    activePeriod?.year ?? periodOptions[0]?.year ?? new Date().getFullYear();
 
   // 6 columns per unit: Departemen + Gaji + Pot.Denda + Pot.Kontrak + Pot.Pinjaman + Total
   const totalCols = unitGroups.length * 6;
@@ -131,6 +168,15 @@ export default async function AdminFinancePage() {
       adminEmail={admin.email}
       currentPath="/admin/finance"
     >
+      {/* ── PERIOD SELECTOR ── */}
+      <div className="mb-6 flex items-center gap-3">
+        <FinancePeriodSelector
+          options={periodOptions}
+          selectedMonth={selectedMonth}
+          selectedYear={selectedYear}
+        />
+      </div>
+
       {unitGroups.length === 0 ? (
         <div className="rounded-[24px] border border-[#ead7ce] bg-white px-8 py-12 text-center text-[#9e7467]">
           <p className="text-lg font-semibold">Belum ada data payroll</p>
