@@ -5,9 +5,11 @@ import {
   listFinanceByUnit,
   listFinancePembebanan,
   listFinancePencairanGaji,
+  listKeteranganHutangKontrak,
   type FinanceUnitDeptData,
   type FinanceUnitGroup,
   type PencairanGajiByUnit,
+  type KeteranganItem,
 } from "@/lib/hris";
 import { EMPLOYEE_DEPARTMENTS } from "@/lib/employees";
 
@@ -102,11 +104,13 @@ function getDepartmentsForUnit(unit: string): string[] {
 
 export default async function AdminFinancePage() {
   const admin = await requireAdminSession();
-  const [{ unitGroups, period }, pembebanan, pencairan] = await Promise.all([
-    listFinanceByUnit(),
-    listFinancePembebanan(),
-    listFinancePencairanGaji(),
-  ]);
+  const [{ unitGroups, period }, pembebanan, pencairan, keterangan] =
+    await Promise.all([
+      listFinanceByUnit(),
+      listFinancePembebanan(),
+      listFinancePencairanGaji(),
+      listKeteranganHutangKontrak(),
+    ]);
 
   const periodLabel = period ? formatPeriod(period.month, period.year) : null;
 
@@ -583,6 +587,121 @@ export default async function AdminFinancePage() {
             </div>
           );
         })()}
+
+      {/* ── KETERANGAN HUTANG DAN KONTRAK ── */}
+      {(() => {
+        const kontrakUnits = ["AVA Sportivo", "Ayres Apparel"];
+        const hutangPerusahaanUnits = ["AVA Sportivo", "Ayres Apparel"];
+        // Shorthand label untuk header kolom
+        const unitLabel: Record<string, string> = {
+          "AVA Sportivo": "AVA",
+          "Ayres Apparel": "Ayres",
+          JNE: "JNE",
+        };
+
+        // Kolom-kolom: [kategori, unit] pasangan
+        const columns: {
+          cat: "kontrak" | "hutangPerusahaan";
+          unit: string;
+        }[] = [
+          ...kontrakUnits.map((u) => ({ cat: "kontrak" as const, unit: u })),
+          ...hutangPerusahaanUnits.map((u) => ({
+            cat: "hutangPerusahaan" as const,
+            unit: u,
+          })),
+        ];
+
+        const getList = (
+          cat: "kontrak" | "hutangPerusahaan",
+          unit: string,
+        ): KeteranganItem[] => {
+          return keterangan[cat][unit] ?? [];
+        };
+
+        const maxRows = Math.max(
+          3,
+          ...columns.map((c) => getList(c.cat, c.unit).length),
+        );
+
+        return (
+          <div className="mt-6 w-fit overflow-x-auto rounded-[24px] border border-[#ead7ce] bg-white shadow-sm">
+            <table className="border-collapse text-sm">
+              <thead>
+                {/* Row 1: judul */}
+                <tr>
+                  <th
+                    colSpan={4}
+                    className="border border-[#e0ccc5] bg-[#f5e8e4] px-4 py-3 text-center text-sm font-bold uppercase tracking-widest text-[#7a3828]"
+                  >
+                    KETERANGAN HUTANG DAN KONTRAK
+                    {periodLabel && (
+                      <span className="ml-2 text-xs font-medium text-[#9e7467]">
+                        — {periodLabel}
+                      </span>
+                    )}
+                  </th>
+                </tr>
+
+                {/* Row 2: grup kategori */}
+                <tr className="bg-[#fce9e2] text-xs font-bold uppercase tracking-[0.12em] text-[#8b3a2a]">
+                  <th
+                    colSpan={2}
+                    className="border border-[#e0ccc5] px-4 py-2 text-center"
+                  >
+                    Kontrak
+                  </th>
+                  <th
+                    colSpan={2}
+                    className="border border-[#e0ccc5] px-4 py-2 text-center"
+                  >
+                    Hutang ke perusahaan
+                  </th>
+                </tr>
+
+                {/* Row 3: sub-header unit */}
+                <tr className="bg-[#fff8f4] text-xs uppercase tracking-[0.14em] text-[#9e7467]">
+                  {columns.map((col, i) => (
+                    <th
+                      key={i}
+                      className="w-40 border border-[#e0ccc5] px-4 py-2 text-center"
+                    >
+                      {unitLabel[col.unit] ?? col.unit}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+
+              <tbody>
+                {Array.from({ length: maxRows }, (_, rowIdx) => (
+                  <tr
+                    key={rowIdx}
+                    className={rowIdx % 2 === 0 ? "bg-white" : "bg-[#fffaf8]"}
+                  >
+                    {columns.map((col, colIdx) => {
+                      const item = getList(col.cat, col.unit)[rowIdx];
+                      return (
+                        <td
+                          key={colIdx}
+                          className="w-40 border border-[#e0ccc5] px-4 py-2 text-left text-[#241716]"
+                        >
+                          {item ? (
+                            <span>
+                              {item.name}{" "}
+                              <span className="text-[#8b3a2a]">
+                                ({formatRp(item.amount)})
+                              </span>
+                            </span>
+                          ) : null}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      })()}
     </AdminShell>
   );
 }

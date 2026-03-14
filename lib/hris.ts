@@ -701,6 +701,65 @@ export async function listFinancePembebanan(period?: {
   };
 }
 
+// ─── KETERANGAN HUTANG DAN KONTRAK ───────────────────────────────────────────
+
+export type KeteranganItem = {
+  name: string;
+  amount: number;
+};
+
+export type KeteranganHutangKontrakResult = {
+  kontrak: Record<string, KeteranganItem[]>;
+  hutangPerusahaan: Record<string, KeteranganItem[]>;
+  hutangPribadi: Record<string, KeteranganItem[]>;
+  period: { month: number; year: number } | null;
+};
+
+export async function listKeteranganHutangKontrak(period?: {
+  month?: number;
+  year?: number;
+}): Promise<KeteranganHutangKontrakResult> {
+  const sheet = await getAdminPayrollSummarySheet(period);
+  if (!sheet || !sheet.rows.length)
+    return {
+      kontrak: {},
+      hutangPerusahaan: {},
+      hutangPribadi: {},
+      period: null,
+    };
+
+  const kontrak: Record<string, KeteranganItem[]> = {};
+  const hutangPerusahaan: Record<string, KeteranganItem[]> = {};
+  const hutangPribadi: Record<string, KeteranganItem[]> = {};
+
+  for (const row of sheet.rows) {
+    const unit = row.unit ?? null;
+    if (!unit) continue;
+
+    if (row.contractDeduction > 0) {
+      if (!kontrak[unit]) kontrak[unit] = [];
+      kontrak[unit].push({ name: row.name, amount: row.contractDeduction });
+    }
+
+    if (row.companyLoan > 0) {
+      if (!hutangPerusahaan[unit]) hutangPerusahaan[unit] = [];
+      hutangPerusahaan[unit].push({ name: row.name, amount: row.companyLoan });
+    }
+
+    if (row.personalLoan > 0) {
+      if (!hutangPribadi[unit]) hutangPribadi[unit] = [];
+      hutangPribadi[unit].push({ name: row.name, amount: row.personalLoan });
+    }
+  }
+
+  return {
+    kontrak,
+    hutangPerusahaan,
+    hutangPribadi,
+    period: { month: sheet.periodMonth, year: sheet.periodYear },
+  };
+}
+
 // ─── PENCAIRAN GAJI ──────────────────────────────────────────────────────────
 
 /** Unit yang selalu ditampilkan di tabel pencairan gaji, meskipun tidak ada data payroll */
