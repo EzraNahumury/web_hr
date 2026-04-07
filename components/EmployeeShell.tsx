@@ -12,6 +12,7 @@ type Props = {
 
 const menuItems = [
   { label: "Dashboard", href: "/employee", description: "Ringkasan akun karyawan" },
+  { label: "Profil Pribadi", href: "/employee/profile", description: "Lengkapi data diri Anda" },
   { label: "Presensi Masuk", href: "/employee/check-in", description: "Selfie dan lokasi masuk" },
   { label: "Presensi Pulang", href: "/employee/check-out", description: "Selfie dan lokasi pulang" },
   { label: "Riwayat Absensi", href: "/employee/attendance-history", description: "Rekap kehadiran pribadi" },
@@ -152,12 +153,23 @@ export default function EmployeeShell({
                 </div>
               </div>
 
-              <div className="rounded-full border border-[#ead9d6] bg-white px-4 py-2">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#a3767b]">
-                  Akses
-                </p>
-                <p className="mt-1 text-xs font-semibold text-[#1b1314]">Karyawan aktif</p>
-              </div>
+              <Link
+                href="/employee/profile"
+                className="flex items-center gap-3 rounded-full border border-[#ead9d6] bg-white px-4 py-2 transition hover:border-[#c8716d] hover:shadow-sm"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[linear-gradient(135deg,#8f1d22_0%,#d06c4b_100%)] text-white">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+                    <circle cx="12" cy="8" r="4" />
+                    <path d="M5 20c0-3.87 3.13-7 7-7s7 3.13 7 7" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#a3767b]">
+                    Profil
+                  </p>
+                  <p className="text-xs font-semibold text-[#1b1314]">Lengkapi Data Diri</p>
+                </div>
+              </Link>
             </div>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-[#7d5b60]">{description}</p>
           </header>

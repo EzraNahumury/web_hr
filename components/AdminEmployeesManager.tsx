@@ -11,13 +11,11 @@ type Lookups = {
   divisions: LookupOption[];
   subDivisions: LookupOption[];
   placements: LookupOption[];
-  recapGroups: LookupOption[];
   costAllocations: LookupOption[];
   banks: LookupOption[];
   workStatuses: LookupOption[];
   dataStatuses: LookupOption[];
-  genders: LookupOption[];
-  religions: LookupOption[];
+  [key: string]: LookupOption[];
 };
 
 type Stats = {
@@ -35,29 +33,14 @@ type Props = {
 type FormState = {
   name: string;
   nip: string;
-  email: string;
-  password: string;
   unit: string;
   role: string;
   department: string;
   division: string;
   subDivision: string;
   placement: string;
-  recapGroup: string;
   costAllocation: string;
-  bank: string;
-  accountNumber: string;
-  gender: "" | "laki-laki" | "perempuan";
-  birthPlace: string;
-  birthDate: string;
-  nik: string;
-  religion: string;
-  addressKtp: string;
-  addressCurrent: string;
-  phoneNumber: string;
-  ktpPhoto: string;
   employmentStatus: "training" | "tetap" | "kontrak" | "freelance";
-  workStatus: "training" | "tetap" | "kontrak" | "freelance";
   dataStatus: "aktif" | "nonaktif";
   firstJoinDate: string;
   contractDate: string;
@@ -69,29 +52,14 @@ type FormState = {
 const emptyForm: FormState = {
   name: "",
   nip: "",
-  email: "",
-  password: "",
   unit: "",
   role: "",
   department: "",
   division: "",
   subDivision: "",
   placement: "",
-  recapGroup: "",
   costAllocation: "",
-  bank: "",
-  accountNumber: "",
-  gender: "",
-  birthPlace: "",
-  birthDate: "",
-  nik: "",
-  religion: "",
-  addressKtp: "",
-  addressCurrent: "",
-  phoneNumber: "",
-  ktpPhoto: "",
   employmentStatus: "kontrak",
-  workStatus: "kontrak",
   dataStatus: "aktif",
   firstJoinDate: "",
   contractDate: "",
@@ -203,29 +171,14 @@ function toFormState(employee: EmployeeListItem): FormState {
   return {
     name: employee.name,
     nip: employee.nip,
-    email: employee.email,
-    password: "",
     unit: employee.unit ?? "",
-    role: employee.role,
-    department: employee.department,
-    division: employee.division,
+    role: employee.role ?? "",
+    department: employee.department ?? "",
+    division: employee.division ?? "",
     subDivision: employee.subDivision ?? "",
     placement: employee.placement ?? "",
-    recapGroup: employee.recapGroup ?? "",
     costAllocation: employee.costAllocation ?? "",
-    bank: employee.bank ?? "BCA",
-    accountNumber: employee.accountNumber ?? "",
-    gender: employee.gender ?? "",
-    birthPlace: employee.birthPlace ?? "",
-    birthDate: employee.birthDate ?? "",
-    nik: employee.nik ?? "",
-    religion: employee.religion ?? "",
-    addressKtp: employee.addressKtp ?? "",
-    addressCurrent: employee.addressCurrent ?? "",
-    phoneNumber: employee.phoneNumber ?? "",
-    ktpPhoto: employee.ktpPhoto ?? "",
     employmentStatus: employee.employmentStatus,
-    workStatus: employee.workStatus,
     dataStatus: employee.dataStatus,
     firstJoinDate: employee.firstJoinDate ?? "",
     contractDate: employee.contractDate ?? "",
@@ -238,14 +191,12 @@ function toFormState(employee: EmployeeListItem): FormState {
 export default function AdminEmployeesManager({ initialEmployees, lookups, stats }: Props) {
   const [employees, setEmployees] = useState(initialEmployees);
   const [form, setForm] = useState<FormState>(emptyForm);
-  const [ktpFile, setKtpFile] = useState<File | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [viewingEmployee, setViewingEmployee] = useState<EmployeeListItem | null>(null);
   const [search, setSearch] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [toast, setToast] = useState<{ title: string; description: string; type: "success" | "error" } | null>(null);
-  const [isAddressSame, setIsAddressSame] = useState(false);
 
   useEffect(() => {
     if (!toast) return;
@@ -277,10 +228,6 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => {
       const next = { ...current, [key]: value };
-
-      if (key === "addressKtp" && isAddressSame) {
-        next.addressCurrent = value as string;
-      }
 
       if (key === "firstJoinDate" && typeof value === "string") {
         if (!value) {
@@ -314,56 +261,37 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
 
   function resetForm() {
     setForm(emptyForm);
-    setKtpFile(null);
     setEditingId(null);
-    setIsAddressSame(false);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
     try {
-      const formData = new FormData();
-
-      formData.append("name", form.name);
-      formData.append("nip", form.nip);
-      formData.append("email", form.email);
-      formData.append("password", form.password);
-      formData.append("unit", form.unit);
-      formData.append("role", form.role);
-      formData.append("department", form.department);
-      formData.append("division", form.division);
-      formData.append("subDivision", form.subDivision);
-      formData.append("placement", form.placement);
-      formData.append("recapGroup", form.recapGroup);
-      formData.append("costAllocation", form.costAllocation);
-      formData.append("bank", form.bank);
-      formData.append("accountNumber", form.accountNumber);
-      formData.append("gender", form.gender);
-      formData.append("birthPlace", form.birthPlace);
-      formData.append("birthDate", form.birthDate);
-      formData.append("nik", form.nik);
-      formData.append("religion", form.religion);
-      formData.append("addressKtp", form.addressKtp);
-      formData.append("addressCurrent", form.addressCurrent);
-      formData.append("phoneNumber", form.phoneNumber);
-      formData.append("ktpPhoto", form.ktpPhoto);
-      formData.append("employmentStatus", form.employmentStatus);
-      formData.append("workStatus", form.workStatus);
-      formData.append("dataStatus", form.dataStatus);
-      formData.append("firstJoinDate", form.firstJoinDate);
-      formData.append("contractDate", form.contractDate);
-      formData.append("contractEndDate", form.contractEndDate);
-      formData.append("annualRaise", String(Number(sanitizeCurrencyInput(form.annualRaise) || 0)));
-      formData.append("userActive", String(form.userActive));
-
-      if (ktpFile) {
-        formData.append("ktpFile", ktpFile);
-      }
+      const body = {
+        name: form.name,
+        nip: form.nip,
+        unit: form.unit,
+        role: form.role,
+        department: form.department,
+        division: form.division,
+        subDivision: form.subDivision,
+        placement: form.placement,
+        costAllocation: form.costAllocation,
+        employmentStatus: form.employmentStatus,
+        workStatus: form.employmentStatus,
+        dataStatus: form.dataStatus,
+        firstJoinDate: form.firstJoinDate,
+        contractDate: form.contractDate,
+        contractEndDate: form.contractEndDate,
+        annualRaise: Number(sanitizeCurrencyInput(form.annualRaise) || 0),
+        userActive: form.userActive,
+      };
 
       const response = await fetch(editingId ? `/api/admin/employees/${editingId}` : "/api/admin/employees", {
         method: editingId ? "PUT" : "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
       });
       const result = (await response.json()) as { message?: string; employee?: EmployeeListItem };
       if (!response.ok || !result.employee) {
@@ -394,8 +322,6 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
   function handleEdit(employee: EmployeeListItem) {
     setEditingId(employee.id);
     setForm(toFormState(employee));
-    setKtpFile(null);
-    setIsAddressSame(employee.addressCurrent === employee.addressKtp && !!employee.addressKtp);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -423,10 +349,8 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
       { label: "Divisi", value: viewingEmployee.division || "-" },
       { label: "Sub Divisi", value: viewingEmployee.subDivision || "-" },
       { label: "Penempatan", value: viewingEmployee.placement || "-" },
-      { label: "Pembagian Rekapan", value: viewingEmployee.recapGroup || "-" },
       { label: "Pembebanan", value: viewingEmployee.costAllocation || "-" },
       { label: "Status Kepegawaian", value: formatStatus(viewingEmployee.employmentStatus) || "-" },
-      { label: "Status Kerja", value: formatStatus(viewingEmployee.workStatus) || "-" },
       { label: "Status Data", value: viewingEmployee.dataStatus || "-" },
       { label: "Akun", value: viewingEmployee.userActive ? "Aktif" : "Nonaktif" },
     ]
@@ -508,96 +432,32 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
           </div>
 
           <form className="space-y-6 px-6 py-6" onSubmit={handleSubmit}>
-            <div className="grid gap-4 md:grid-cols-2">
+            {editingId ? (
+              <div className="rounded-[22px] border border-[#ead7ce] bg-[#f9f3ef] px-5 py-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">Nama Karyawan</p>
+                <p className="mt-2 text-lg font-semibold text-[#241716]">{form.name || "-"}</p>
+              </div>
+            ) : (
               <Field label="Nama"><input value={form.name} onChange={(event) => updateField("name", event.target.value)} className={inputClassName} required /></Field>
-              <Field label="NIP / No Karyawan"><input value={form.nip} onChange={(event) => updateField("nip", event.target.value)} className={inputClassName} required /></Field>
-              <Field label="Email"><input type="email" value={form.email} onChange={(event) => updateField("email", event.target.value)} className={inputClassName} required /></Field>
-              <Field label={editingId ? "Password Baru (opsional)" : "Password"}><input type="text" value={form.password} onChange={(event) => updateField("password", event.target.value)} className={inputClassName} required={!editingId} /></Field>
+            )}
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="NIP / No Karyawan"><input value={form.nip} onChange={(event) => updateField("nip", event.target.value)} className={inputClassName} /></Field>
+              <Field label="Unit"><select value={form.unit} onChange={(event) => updateField("unit", event.target.value)} className={selectClassName}><option value="">Pilih unit</option>{lookups.units.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <Field label="Unit"><select value={form.unit} onChange={(event) => updateField("unit", event.target.value)} className={selectClassName}><option value="">Pilih unit</option>{lookups.units.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
-              <Field label="Jabatan"><select value={form.role} onChange={(event) => updateField("role", event.target.value)} className={selectClassName} required><option value="">Pilih jabatan</option>{lookups.roles.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
-              <Field label="Departemen"><select value={form.department} onChange={(event) => updateField("department", event.target.value)} className={selectClassName} required><option value="">Pilih departemen</option>{lookups.departments.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
-              <Field label="Divisi"><select value={form.division} onChange={(event) => updateField("division", event.target.value)} className={selectClassName} required><option value="">Pilih divisi</option>{lookups.divisions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <Field label="Jabatan"><select value={form.role} onChange={(event) => updateField("role", event.target.value)} className={selectClassName}><option value="">Pilih jabatan</option>{lookups.roles.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+              <Field label="Departemen"><select value={form.department} onChange={(event) => updateField("department", event.target.value)} className={selectClassName}><option value="">Pilih departemen</option>{lookups.departments.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+              <Field label="Divisi"><select value={form.division} onChange={(event) => updateField("division", event.target.value)} className={selectClassName}><option value="">Pilih divisi</option>{lookups.divisions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
               <Field label="Sub Divisi"><select value={form.subDivision} onChange={(event) => updateField("subDivision", event.target.value)} className={selectClassName}><option value="">Pilih sub divisi</option>{lookups.subDivisions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
               <Field label="Penempatan"><select value={form.placement} onChange={(event) => updateField("placement", event.target.value)} className={selectClassName}><option value="">Pilih penempatan</option>{lookups.placements.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
-              <Field label="Pembagian Rekapan"><select value={form.recapGroup} onChange={(event) => updateField("recapGroup", event.target.value)} className={selectClassName}><option value="">Pilih pembagian rekapan</option>{lookups.recapGroups.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
               <Field label="Pembebanan"><select value={form.costAllocation} onChange={(event) => updateField("costAllocation", event.target.value)} className={selectClassName}><option value="">Pilih pembebanan</option>{lookups.costAllocations.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
-              <Field label="Bank"><input value={form.bank} onChange={(event) => updateField("bank", event.target.value)} className={inputClassName} placeholder="Nama bank" /></Field>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <Field label="No Rekening"><input value={form.accountNumber} onChange={(event) => updateField("accountNumber", event.target.value)} className={inputClassName} /></Field>
-              <Field label="Jenis Kelamin"><select value={form.gender} onChange={(event) => updateField("gender", event.target.value as FormState["gender"])} className={selectClassName}><option value="">Pilih jenis kelamin</option>{lookups.genders.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
-              <Field label="Tempat Lahir"><input value={form.birthPlace} onChange={(event) => updateField("birthPlace", event.target.value)} className={inputClassName} /></Field>
-              <Field label="Tanggal Lahir"><input type="date" value={form.birthDate} onChange={(event) => updateField("birthDate", event.target.value)} className={inputClassName} /></Field>
-              <Field label="NIK"><input value={form.nik} onChange={(event) => updateField("nik", event.target.value)} className={inputClassName} /></Field>
-              <Field label="Agama"><input list="religions-list" value={form.religion} onChange={(event) => updateField("religion", event.target.value)} className={inputClassName} /></Field>
-              <Field label="Nomor Telepon"><input value={form.phoneNumber} onChange={(event) => updateField("phoneNumber", event.target.value)} className={inputClassName} /></Field>
-              <Field label="Foto KTP">
-                <div className="space-y-3">
-                  <label className="flex h-12 cursor-pointer items-center justify-between rounded-2xl border border-[#ead7ce] bg-white px-3.5 transition hover:border-[#d2b0a5]">
-                    <span className="inline-flex h-9 items-center rounded-xl bg-[#8f1d22] px-4 text-sm font-semibold text-white">
-                      Pilih File
-                    </span>
-                    <span className="ml-3 truncate text-sm text-[#7d635c]">
-                      {ktpFile ? ktpFile.name : form.ktpPhoto ? "Gunakan file tersimpan" : "Belum ada file dipilih"}
-                    </span>
-                    <input
-                      type="file"
-                      accept=".jpg,.jpeg,.png,.webp,.pdf"
-                      onChange={(event) => setKtpFile(event.target.files?.[0] ?? null)}
-                      className="hidden"
-                    />
-                  </label>
-                  {form.ktpPhoto ? (
-                    <p className="text-xs text-[#7d635c]">
-                      File tersimpan:{" "}
-                      <a href={form.ktpPhoto} target="_blank" className="font-semibold text-[#8f1d22] underline" rel="noreferrer">
-                        lihat file
-                      </a>
-                    </p>
-                  ) : null}
-                </div>
-              </Field>
-            </div>
-
-            <div className="grid gap-4">
-              <Field label="Alamat KTP"><textarea value={form.addressKtp} onChange={(event) => updateField("addressKtp", event.target.value)} className={textareaClassName} /></Field>
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[13px] font-semibold text-[#6f5a54]">Alamat Rumah / Kost</span>
-                  <label className="flex cursor-pointer items-center gap-2">
-                    <input
-                      type="checkbox"
-                      className="h-3.5 w-3.5 rounded border-[#ead7ce] text-[#8f1d22] focus:ring-[#c8716d]"
-                      checked={isAddressSame}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        setIsAddressSame(checked);
-                        if (checked) updateField("addressCurrent", form.addressKtp);
-                      }}
-                    />
-                    <span className="text-xs text-[#8a6f68]">Sama dengan Alamat KTP</span>
-                  </label>
-                </div>
-                <textarea
-                  value={form.addressCurrent}
-                  onChange={(event) => {
-                    updateField("addressCurrent", event.target.value);
-                    setIsAddressSame(false);
-                  }}
-                  disabled={isAddressSame}
-                  className={`${textareaClassName} ${isAddressSame ? "cursor-not-allowed opacity-60 bg-gray-50" : ""}`}
-                />
-              </div>
             </div>
 
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <Field label="Status Kepegawaian"><select value={form.employmentStatus} onChange={(event) => updateField("employmentStatus", event.target.value as FormState["employmentStatus"])} className={selectClassName}>{lookups.workStatuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
-                <Field label="Status Kerja"><select value={form.workStatus} onChange={(event) => updateField("workStatus", event.target.value as FormState["workStatus"])} className={selectClassName}>{lookups.workStatuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
                 <Field label="Status Data"><select value={form.dataStatus} onChange={(event) => updateField("dataStatus", event.target.value as FormState["dataStatus"])} className={selectClassName}>{lookups.dataStatuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
                 <Field label="Kenaikan Tiap Tahun"><input value={form.annualRaise} onChange={(event) => updateField("annualRaise", formatRupiahInput(event.target.value))} className={inputClassName} inputMode="numeric" /></Field>
               </div>
@@ -653,7 +513,6 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                 Reset Form
               </button>
             </div>
-            <datalist id="religions-list">{lookups.religions.map((item) => <option key={item.value} value={item.value} />)}</datalist>
           </form>
         </section>
 

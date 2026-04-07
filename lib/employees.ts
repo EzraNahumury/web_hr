@@ -56,10 +56,12 @@ export const EMPLOYEE_ROLES = [
   "Staff",
 ] as const;
 export const EMPLOYEE_DEPARTMENTS = [
-  "Produksi",
-  "Penjualan",
-  "Umum",
-  "Logistik",
+  "Secretary",
+  "HRD",
+  "Finance",
+  "Operasional",
+  "Marketing",
+  "Ekspedisi",
 ] as const;
 export const EMPLOYEE_DIVISIONS = [
   "Produksi",
@@ -108,6 +110,14 @@ export const EMPLOYEE_WORK_STATUSES = [
   "kontrak",
   "tetap",
   "freelance",
+] as const;
+export const EMPLOYEE_RELIGIONS = [
+  "Islam",
+  "Kristen",
+  "Katolik",
+  "Hindu",
+  "Buddha",
+  "Konghucu",
 ] as const;
 export const EMPLOYEE_COST_ALLOCATIONS = [
   "produksi ava",
@@ -303,18 +313,31 @@ let employeeSchemaReady: Promise<void> | null = null;
 async function ensureEmployeeSchemaSupport() {
   if (!employeeSchemaReady) {
     employeeSchemaReady = (async () => {
-      try {
-        await pool.query(
-          `
-          ALTER TABLE karyawan
-          ADD COLUMN pembebanan VARCHAR(100) NULL AFTER pembagian_rekapan
-        `,
-        );
-      } catch (error: unknown) {
-        if (!(typeof error === "object" && error !== null && "code" in error) || error.code !== "ER_DUP_FIELDNAME") {
-          throw error;
+      const safeMigrate = async (sql: string) => {
+        try {
+          await pool.query(sql);
+        } catch (error: unknown) {
+          if (!(typeof error === "object" && error !== null && "code" in error) || (error.code !== "ER_DUP_FIELDNAME" && error.code !== "ER_BAD_FIELD_ERROR")) {
+            throw error;
+          }
         }
-      }
+      };
+
+      await safeMigrate(
+        `ALTER TABLE karyawan ADD COLUMN pembebanan VARCHAR(100) NULL AFTER pembagian_rekapan`,
+      );
+      await safeMigrate(
+        `ALTER TABLE karyawan MODIFY COLUMN jabatan VARCHAR(100) NULL`,
+      );
+      await safeMigrate(
+        `ALTER TABLE karyawan MODIFY COLUMN departemen VARCHAR(100) NULL`,
+      );
+      await safeMigrate(
+        `ALTER TABLE karyawan MODIFY COLUMN divisi VARCHAR(100) NULL`,
+      );
+      await safeMigrate(
+        `ALTER TABLE karyawan MODIFY COLUMN no_karyawan VARCHAR(50) NULL`,
+      );
     })();
   }
 
@@ -350,7 +373,6 @@ export async function getEmployeeById(id: number) {
 
 export async function getEmployeeLookups() {
   await ensureEmployeeSchemaSupport();
-  const [religions] = await Promise.all([fetchDistinctOptions("agama")]);
 
   return {
     units: EMPLOYEE_UNITS.map((value) => ({ label: value, value })),
@@ -359,14 +381,6 @@ export async function getEmployeeLookups() {
     divisions: EMPLOYEE_DIVISIONS.map((value) => ({ label: value, value })),
     subDivisions: EMPLOYEE_SUB_DIVISIONS.map((value) => ({ label: value, value })),
     placements: EMPLOYEE_PLACEMENTS.map((value) => ({ label: value, value })),
-    recapGroups: [
-      { label: "Logistik AVA", value: "Logistik AVA" },
-      { label: "Penjualan AVA", value: "Penjualan AVA" },
-      { label: "Umum AVA", value: "Umum AVA" },
-      { label: "Produksi Ayres", value: "Produksi Ayres" },
-      { label: "Penjualan Ayres", value: "Penjualan Ayres" },
-      { label: "Umum Ayres", value: "Umum Ayres" },
-    ],
     costAllocations: EMPLOYEE_COST_ALLOCATIONS.map((value) => ({
       label: value.replace(/\b\w/g, (char) => char.toUpperCase()),
       value,
@@ -391,7 +405,7 @@ export async function getEmployeeLookups() {
       { label: "Laki-laki", value: "laki-laki" },
       { label: "Perempuan", value: "perempuan" },
     ],
-    religions,
+    religions: EMPLOYEE_RELIGIONS.map((value) => ({ label: value, value })),
   };
 }
 
@@ -687,6 +701,112 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
   } finally {
     connection.release();
   }
+}
+
+export async function signupEmployee(email: string, password: string) {
+  await ensureEmployeeSchemaSupport();
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [userResult] = await connection.query<ResultSetHeader>(
+      `
+        INSERT INTO users (nama, email, password, role, status_aktif)
+        VALUES (?, ?, SHA2(?, 256), 'karyawan', 1)
+      `,
+      [email.split("@")[0], email, password],
+    );
+
+    const userId = userResult.insertId;
+
+    await connection.query<ResultSetHeader>(
+      `
+        INSERT INTO karyawan (
+          user_id, nama,
+          status_kepegawaian, status_kerja, status_data,
+          kenaikan_tiap_tahun
+        ) VALUES (?, ?, 'training', 'training', 'aktif', 0)
+      `,
+      [userId, email.split("@")[0]],
+    );
+
+    await connection.commit();
+    return { userId };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function updateEmployeeProfile(
+  userId: number,
+  data: {
+    name: string;
+    gender: "laki-laki" | "perempuan" | null;
+    birthPlace: string | null;
+    birthDate: string | null;
+    nik: string | null;
+    religion: string | null;
+    phoneNumber: string | null;
+    addressKtp: string | null;
+    addressCurrent: string | null;
+    ktpPhotoLink: string | null;
+    bank: string | null;
+    accountNumber: string | null;
+  },
+) {
+  await ensureEmployeeSchemaSupport();
+
+  await pool.query(
+    `UPDATE users SET nama = ? WHERE id = ?`,
+    [data.name, userId],
+  );
+
+  await pool.query(
+    `
+      UPDATE karyawan SET
+        nama = ?,
+        jenis_kelamin = ?,
+        tempat_lahir = ?,
+        tanggal_lahir = ?,
+        nik = ?,
+        agama = ?,
+        nomor_telepon = ?,
+        alamat_ktp = ?,
+        alamat_rumah_kost = ?,
+        foto_ktp = ?,
+        bank = ?,
+        no_rekening = ?
+      WHERE user_id = ?
+    `,
+    [
+      data.name,
+      data.gender,
+      data.birthPlace,
+      data.birthDate,
+      data.nik,
+      data.religion,
+      data.phoneNumber,
+      data.addressKtp,
+      data.addressCurrent,
+      data.ktpPhotoLink,
+      data.bank,
+      data.accountNumber,
+      userId,
+    ],
+  );
+}
+
+export async function getEmployeeProfileByUserId(userId: number) {
+  await ensureEmployeeSchemaSupport();
+  const [rows] = await pool.query<EmployeeRow[]>(
+    `${employeeSelectQuery} WHERE k.user_id = ? LIMIT 1`,
+    [userId],
+  );
+  return rows[0] ? mapEmployee(rows[0]) : null;
 }
 
 export async function deleteEmployee(id: number) {

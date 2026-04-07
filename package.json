@@ -12,6 +12,7 @@
     "jspdf": "^4.2.0",
     "mysql2": "^3.19.1",
     "next": "16.1.6",
+    "nodemailer": "^8.0.4",
     "postprocessing": "^6.38.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -20,6 +21,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "20.19.37",
+    "@types/nodemailer": "^8.0.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "^19",
     "@types/three": "^0.183.1",

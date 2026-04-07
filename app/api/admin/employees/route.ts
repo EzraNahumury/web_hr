@@ -5,6 +5,7 @@ import {
   EMPLOYEE_DEPARTMENTS,
   EMPLOYEE_DIVISIONS,
   EMPLOYEE_PLACEMENTS,
+  EMPLOYEE_RELIGIONS,
   EMPLOYEE_ROLES,
   EMPLOYEE_SUB_DIVISIONS,
   EMPLOYEE_UNITS,
@@ -15,7 +16,6 @@ import {
   getEmployeeLookups,
   getEmployeeStats,
 } from "@/lib/employees";
-import { saveUploadedFile } from "@/lib/uploads";
 
 function normalizeText(value: unknown) {
   if (typeof value !== "string") {
@@ -29,8 +29,6 @@ function normalizeText(value: unknown) {
 function validatePayload(body: Record<string, unknown>) {
   const nip = normalizeText(body.nip);
   const name = normalizeText(body.name);
-  const email = normalizeText(body.email)?.toLowerCase() ?? null;
-  const password = normalizeText(body.password);
   const unit = normalizeText(body.unit);
   const role = normalizeText(body.role);
   const subDivision = normalizeText(body.subDivision);
@@ -41,30 +39,26 @@ function validatePayload(body: Record<string, unknown>) {
   const gender: EmployeePayload["gender"] =
     body.gender === "laki-laki" || body.gender === "perempuan" ? body.gender : null;
   const employmentStatus = body.employmentStatus;
-  const workStatus = body.workStatus;
   const dataStatus = body.dataStatus;
   const firstJoinDate = normalizeText(body.firstJoinDate);
 
-  if (!nip || !name || !email || !password || !role || !division || !department || !firstJoinDate) {
-    return {
-      error:
-        "Nama, NIP, email, password, jabatan, divisi, departemen, dan tanggal pertama masuk wajib diisi.",
-    };
+  if (!name) {
+    return { error: "Nama wajib diisi." };
   }
 
   if (unit && !EMPLOYEE_UNITS.includes(unit as (typeof EMPLOYEE_UNITS)[number])) {
     return { error: "Unit tidak valid." };
   }
 
-  if (!EMPLOYEE_ROLES.includes(role as (typeof EMPLOYEE_ROLES)[number])) {
+  if (role && !EMPLOYEE_ROLES.includes(role as (typeof EMPLOYEE_ROLES)[number])) {
     return { error: "Jabatan tidak valid." };
   }
 
-  if (!EMPLOYEE_DEPARTMENTS.includes(department as (typeof EMPLOYEE_DEPARTMENTS)[number])) {
+  if (department && !EMPLOYEE_DEPARTMENTS.includes(department as (typeof EMPLOYEE_DEPARTMENTS)[number])) {
     return { error: "Departemen tidak valid." };
   }
 
-  if (!EMPLOYEE_DIVISIONS.includes(division as (typeof EMPLOYEE_DIVISIONS)[number])) {
+  if (division && !EMPLOYEE_DIVISIONS.includes(division as (typeof EMPLOYEE_DIVISIONS)[number])) {
     return { error: "Divisi tidak valid." };
   }
 
@@ -89,30 +83,31 @@ function validatePayload(body: Record<string, unknown>) {
     return { error: "Pembebanan tidak valid." };
   }
 
-  if (!EMPLOYEE_WORK_STATUSES.includes(String(workStatus) as (typeof EMPLOYEE_WORK_STATUSES)[number])) {
-    return { error: "Status kerja tidak valid." };
+  const religion = normalizeText(body.religion);
+  if (religion && !EMPLOYEE_RELIGIONS.includes(religion as (typeof EMPLOYEE_RELIGIONS)[number])) {
+    return { error: "Agama tidak valid." };
   }
 
-  if (!EMPLOYEE_WORK_STATUSES.includes(String(employmentStatus) as (typeof EMPLOYEE_WORK_STATUSES)[number])) {
+  if (employmentStatus && !EMPLOYEE_WORK_STATUSES.includes(String(employmentStatus) as (typeof EMPLOYEE_WORK_STATUSES)[number])) {
     return { error: "Status kepegawaian tidak valid." };
   }
 
-  if (!["aktif", "nonaktif"].includes(String(dataStatus))) {
+  if (dataStatus && !["aktif", "nonaktif"].includes(String(dataStatus))) {
     return { error: "Status data tidak valid." };
   }
 
   const payload: EmployeePayload = {
     name,
-    nip,
-    email,
-    password,
+    nip: nip ?? "",
+    email: "",
+    password: null,
     unit,
-    role,
+    role: role ?? "",
     subDivision,
     placement,
-    division,
-    department,
-    recapGroup: normalizeText(body.recapGroup),
+    division: division ?? "",
+    department: department ?? "",
+    recapGroup: null,
     costAllocation,
     bank: normalizeText(body.bank),
     accountNumber: normalizeText(body.accountNumber),
@@ -120,15 +115,15 @@ function validatePayload(body: Record<string, unknown>) {
     birthPlace: normalizeText(body.birthPlace),
     birthDate: normalizeText(body.birthDate),
     nik: normalizeText(body.nik),
-    religion: normalizeText(body.religion),
+    religion,
     addressKtp: normalizeText(body.addressKtp),
     addressCurrent: normalizeText(body.addressCurrent),
     phoneNumber: normalizeText(body.phoneNumber),
     ktpPhoto: normalizeText(body.ktpPhoto),
-    employmentStatus: employmentStatus as EmployeePayload["employmentStatus"],
-    workStatus: workStatus as EmployeePayload["workStatus"],
-    dataStatus: dataStatus as EmployeePayload["dataStatus"],
-    firstJoinDate,
+    employmentStatus: (employmentStatus as EmployeePayload["employmentStatus"]) ?? "kontrak",
+    workStatus: (body.workStatus as EmployeePayload["workStatus"]) ?? (employmentStatus as EmployeePayload["workStatus"]) ?? "kontrak",
+    dataStatus: (dataStatus as EmployeePayload["dataStatus"]) ?? "aktif",
+    firstJoinDate: firstJoinDate ?? new Date().toISOString().split("T")[0],
     contractDate: normalizeText(body.contractDate),
     contractEndDate: normalizeText(body.contractEndDate),
     annualRaise: Number(body.annualRaise ?? 0) || 0,
@@ -175,23 +170,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const formData = await request.formData();
-    const ktpFile = formData.get("ktpFile");
-    const body = Object.fromEntries(formData.entries()) as Record<string, unknown>;
+    const body = (await request.json()) as Record<string, unknown>;
     const result = validatePayload(body);
 
     if ("error" in result) {
       return NextResponse.json({ message: result.error }, { status: 400 });
     }
 
-    const employee = await insertEmployee({
-      ...result.payload,
-      ktpPhoto:
-        ktpFile instanceof File && ktpFile.size > 0
-          ? await saveUploadedFile(ktpFile, "ktp")
-          : null,
-      userActive: body.userActive === "true",
-    });
+    const employee = await insertEmployee(result.payload);
 
     return NextResponse.json(
       {
