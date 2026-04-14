@@ -114,7 +114,7 @@ function PrintSignatureBlock({ title, name }: { title: string; name: string }) {
 
 export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSheetProps) {
   const slipTypeLabel = row.payrollType === "sales" ? "Slip Gaji Sales" : "Slip Gaji Karyawan";
-  const tunjanganLainLain = row.mealAllowance + row.bpjs + row.omzetBonus + row.diligenceAllowance + row.subsidy;
+  const tunjanganLainLain = row.mealAllowance + row.bpjs + row.omzetBonus + row.fixedDiligenceAllowance + row.subsidy;
   const totalPinjaman = row.companyLoan + row.personalLoan;
   const exportFileName = `${slipTypeLabel}-${row.name}-${periodLabel}`.replace(/[\\/:*?"<>|]+/g, "-");
 

@@ -1,9 +1,11 @@
 import { Fragment } from "react";
 import AdminShell from "@/components/AdminShell";
 import FinancePeriodSelector from "@/components/FinancePeriodSelector";
+import FinanceLemburCustom from "@/components/FinanceLemburCustom";
 import { requireAdminSession } from "@/lib/auth";
 import {
   listFinanceByUnit,
+  listFinanceLemburTambahan,
   listFinancePembebanan,
   listFinancePencairanGaji,
   listKeteranganHutangKontrak,
@@ -151,6 +153,18 @@ export default async function AdminFinancePage({
   const selectedYear =
     activePeriod?.year ?? periodOptions[0]?.year ?? new Date().getFullYear();
 
+  const lemburMap = await listFinanceLemburTambahan({
+    month: selectedMonth,
+    year: selectedYear,
+  });
+  const lemburInitial: Record<string, { nominal: number; catatan: string | null }> = {};
+  for (const [unit, value] of lemburMap.entries()) {
+    lemburInitial[unit] = value;
+  }
+  const lemburUnits = pencairan.units.length
+    ? pencairan.units
+    : ["AVA Sportivo", "Ayres Apparel", "JNE"];
+
   // 6 columns per unit: Departemen + Gaji + Pot.Denda + Pot.Kontrak + Pot.Pinjaman + Total
   const totalCols = unitGroups.length * 6;
 
@@ -174,6 +188,16 @@ export default async function AdminFinancePage({
           options={periodOptions}
           selectedMonth={selectedMonth}
           selectedYear={selectedYear}
+        />
+      </div>
+
+      {/* ── LEMBUR CUSTOM (per finance, mis. Pipin JNE) ── */}
+      <div className="mb-6">
+        <FinanceLemburCustom
+          month={selectedMonth}
+          year={selectedYear}
+          units={lemburUnits}
+          initial={lemburInitial}
         />
       </div>
 
@@ -455,7 +479,8 @@ export default async function AdminFinancePage({
               (d?.potonganTerlambat ?? 0) +
               (d?.potonganSetengahHari ?? 0) +
               (d?.potonganKerajinan ?? 0) +
-              (d?.hutangPerusahaan ?? 0)
+              (d?.hutangPerusahaan ?? 0) +
+              (d?.lemburTambahan ?? 0)
             );
           };
           const avaTotal = unitTotal("AVA Sportivo");
@@ -532,6 +557,10 @@ export default async function AdminFinancePage({
                           label: "Hutang ke perusahaan",
                           key: "hutangPerusahaan" as keyof PencairanGajiByUnit,
                         },
+                        {
+                          label: "Lembur (custom)",
+                          key: "lemburTambahan" as keyof PencairanGajiByUnit,
+                        },
                       ] as { label: string; key: keyof PencairanGajiByUnit }[]
                     ).map(({ label, key }, i) => (
                       <tr
@@ -569,7 +598,8 @@ export default async function AdminFinancePage({
                           (data?.potonganTerlambat ?? 0) +
                           (data?.potonganSetengahHari ?? 0) +
                           (data?.potonganKerajinan ?? 0) +
-                          (data?.hutangPerusahaan ?? 0);
+                          (data?.hutangPerusahaan ?? 0) +
+                          (data?.lemburTambahan ?? 0);
                         return (
                           <td
                             key={unit}

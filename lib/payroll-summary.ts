@@ -8,6 +8,7 @@ import {
 import {
   ensurePayrollSupportTables,
   getActivePayrollPeriod,
+  getOmzetGroupKeyForUnit,
   getPayrollDateRange,
   isSalesEmployeeFromValues,
 } from "@/lib/payroll-admin";
@@ -67,6 +68,18 @@ type PayrollSheetBaseRow = RowDataPacket & {
   raw_override_pinjaman_pribadi: string | null;
   raw_override_gaji_pokok: string | null;
   total_omzet_global: string | null;
+  status_kepegawaian: string | null;
+};
+
+type OmzetUnitRow = RowDataPacket & {
+  unit: string;
+  total_omzet: string;
+  is_custom_bonus: number;
+};
+
+type EmployeeUnitCountRow = RowDataPacket & {
+  unit: string | null;
+  total: number;
 };
 
 type PeriodAttendanceRow = RowDataPacket & {
@@ -205,8 +218,14 @@ function formatPayrollDateRange(start: Date, end: Date) {
   return `${formatter.format(start)} - ${formatter.format(end)}`;
 }
 
-function getOmzetFactor(role: string) {
-  const normalized = role.trim().toLowerCase();
+function getOmzetFactor(role: string | null | undefined, employmentStatus?: string | null) {
+  const normalized = (role ?? "").trim().toLowerCase();
+  const status = (employmentStatus ?? "").trim().toLowerCase();
+
+  // CEO dan freelance tidak dapat bonus omzet
+  if (normalized === "ceo" || normalized === "freelance" || status === "freelance") {
+    return 0;
+  }
 
   if (
     normalized.includes("secretary") ||
@@ -225,6 +244,12 @@ function getOmzetFactor(role: string) {
   }
 
   return 0;
+}
+
+function isOmzetEligible(role: string | null | undefined, employmentStatus?: string | null) {
+  const normalized = (role ?? "").trim().toLowerCase();
+  const status = (employmentStatus ?? "").trim().toLowerCase();
+  return !(normalized === "ceo" || normalized === "freelance" || status === "freelance");
 }
 
 export async function getAdminPayrollSummarySheet(period?: {
@@ -307,13 +332,11 @@ export async function getAdminPayrollSummarySheet(period?: {
         pei.override_pinjaman AS raw_override_pinjaman,
         pei.override_pinjaman_pribadi AS raw_override_pinjaman_pribadi,
         pei.override_gaji_pokok AS raw_override_gaji_pokok,
-        ob.total_omzet AS total_omzet_global
+        NULL AS total_omzet_global,
+        k.status_kepegawaian
       FROM payroll p
       INNER JOIN karyawan k ON k.id = p.karyawan_id
       LEFT JOIN payroll_employee_input pei ON pei.payroll_id = p.id
-      LEFT JOIN omzet_bulanan ob
-        ON ob.periode_bulan = p.periode_bulan
-        AND ob.periode_tahun = p.periode_tahun
       WHERE p.periode_bulan = ? AND p.periode_tahun = ?
       ORDER BY k.nama ASC
     `,
@@ -333,6 +356,8 @@ export async function getAdminPayrollSummarySheet(period?: {
     contractResult,
     loanResult,
     totalEmployeeResult,
+    omzetUnitResult,
+    employeeUnitCountResult,
   ] = await Promise.all([
     pool.query<PeriodAttendanceRow[]>(
       `
@@ -374,7 +399,23 @@ export async function getAdminPayrollSummarySheet(period?: {
     ),
     getLoanDeductionRowsForPeriod(employeeIds, periodMonth, periodYear),
     pool.query<TotalEmployeeCountRow[]>(
-      `SELECT COUNT(*) AS total FROM karyawan WHERE status_data = 'aktif'`,
+      `SELECT COUNT(*) AS total FROM karyawan
+        WHERE status_data = 'aktif'
+          AND COALESCE(LOWER(jabatan), '') NOT IN ('ceo', 'freelance')
+          AND COALESCE(LOWER(status_kepegawaian), '') <> 'freelance'`,
+    ),
+    pool.query<OmzetUnitRow[]>(
+      `SELECT unit, total_omzet, is_custom_bonus
+       FROM omzet_bulanan
+       WHERE periode_bulan = ? AND periode_tahun = ?`,
+      [periodMonth, periodYear],
+    ),
+    pool.query<EmployeeUnitCountRow[]>(
+      `SELECT unit, COUNT(*) AS total FROM karyawan
+        WHERE status_data = 'aktif'
+          AND COALESCE(LOWER(jabatan), '') NOT IN ('ceo', 'freelance')
+          AND COALESCE(LOWER(status_kepegawaian), '') <> 'freelance'
+        GROUP BY unit`,
     ),
   ]);
 
@@ -443,10 +484,43 @@ export async function getAdminPayrollSummarySheet(period?: {
     loanMap.set(row.employeeId, toNumber(row.totalDeduction));
   }
 
-  const totalOmzet = toNumber(rows[0]?.total_omzet_global);
-  const totalEmployees =
-    toNumber(totalEmployeeResult[0]?.[0]?.total) || rows.length;
-  const totalBonusOmzet = totalOmzet * 0.005;
+  // Bonus omzet di-pool per group (mis. "AVA+Ayres" gabung; "JNE" terpisah)
+  const omzetByGroup = new Map<string, { totalOmzet: number; bonusPool: number }>();
+  let totalOmzetAll = 0;
+  let totalBonusOmzetAll = 0;
+  for (const row of omzetUnitResult[0]) {
+    const rawUnit = (row.unit ?? "").trim();
+    if (!rawUnit) continue;
+    const groupKey = getOmzetGroupKeyForUnit(rawUnit) ?? rawUnit;
+    const omzet = toNumber(row.total_omzet);
+    const bonusPool = row.is_custom_bonus ? omzet : omzet * 0.005;
+    const existing = omzetByGroup.get(groupKey);
+    if (existing) {
+      existing.totalOmzet += omzet;
+      existing.bonusPool += bonusPool;
+    } else {
+      omzetByGroup.set(groupKey, { totalOmzet: omzet, bonusPool });
+    }
+    totalOmzetAll += omzet;
+    totalBonusOmzetAll += bonusPool;
+  }
+
+  // Employee count per group (AVA + Ayres karyawan dijumlahkan; JNE sendiri)
+  const employeeCountByGroup = new Map<string, number>();
+  let totalEligibleEmployees = 0;
+  for (const row of employeeUnitCountResult[0]) {
+    const groupKey = getOmzetGroupKeyForUnit(row.unit);
+    if (!groupKey) continue;
+    const count = toNumber(row.total);
+    employeeCountByGroup.set(groupKey, (employeeCountByGroup.get(groupKey) ?? 0) + count);
+    totalEligibleEmployees += count;
+  }
+  if (totalEligibleEmployees === 0) {
+    totalEligibleEmployees = toNumber(totalEmployeeResult[0]?.[0]?.total) || rows.length;
+  }
+
+  const totalOmzet = totalOmzetAll;
+  const totalBonusOmzet = totalBonusOmzetAll;
 
   const mappedRows = rows.map<AdminPayrollSummarySheetRow>((row, index) => {
     const attendance = attendanceMap.get(row.employee_id) ?? {
@@ -518,9 +592,13 @@ export async function getAdminPayrollSummarySheet(period?: {
         ? toNumber(row.raw_insentif) || toNumber(row.insentif)
         : 0;
     const totalBaseSalary = dailyBaseSalary * presentDays;
-    const roleFactor = getOmzetFactor(row.jabatan);
-    const omzetBonus =
-      totalEmployees > 0 ? (totalBonusOmzet / totalEmployees) * roleFactor : 0;
+    const roleFactor = getOmzetFactor(row.jabatan, row.status_kepegawaian);
+    const employeeGroupKey = getOmzetGroupKeyForUnit(row.unit);
+    const groupOmzet = employeeGroupKey ? omzetByGroup.get(employeeGroupKey) : undefined;
+    const groupEligibleCount = employeeGroupKey ? (employeeCountByGroup.get(employeeGroupKey) ?? 0) : 0;
+    const omzetBonus = isOmzetEligible(row.jabatan, row.status_kepegawaian) && groupOmzet && groupEligibleCount > 0
+      ? (groupOmzet.bonusPool / groupEligibleCount) * roleFactor
+      : 0;
     const mealAllowance = fixedMealAllowance * presentDays;
 
     const leaveCount = inputOverrideIzin ?? attendance.leave;
@@ -579,12 +657,12 @@ export async function getAdminPayrollSummarySheet(period?: {
       employeeId: row.employee_id,
       number: index + 1,
       name: row.nama,
-      role: row.jabatan,
-      division: row.divisi,
+      role: row.jabatan ?? "-",
+      division: row.divisi ?? "-",
       recapGroup: row.pembagian_rekapan || "-",
       unit: row.unit ?? null,
       pembebanan: row.pembebanan ?? null,
-      department: row.departemen,
+      department: row.departemen ?? "-",
       bank: row.bank || "-",
       accountNumber: row.no_rekening || "-",
       payrollType,

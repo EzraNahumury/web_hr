@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 import type { PayrollEmployeeOption, PayrollOmzetPeriod, PayrollPeriodOption } from "@/lib/payroll-admin";
 import type { AdminPayrollSummarySheet, AdminPayrollSummarySheetRow } from "@/lib/payroll-summary";
@@ -111,7 +111,14 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
   const [payrollMessage, setPayrollMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [omzetMessage, setOmzetMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState(`${omzetPeriod.periodYear}-${String(omzetPeriod.periodMonth).padStart(2, "0")}`);
-  const [totalOmzet, setTotalOmzet] = useState(formatNumericInput(String(omzetPeriod.totalOmzet)));
+  const [omzetInputs, setOmzetInputs] = useState(() =>
+    omzetPeriod.units.map((unit) => ({
+      unit: unit.unit,
+      label: unit.label,
+      totalOmzet: formatNumericInput(String(unit.totalOmzet)),
+      isCustomBonus: unit.isCustomBonus,
+    })),
+  );
   const [form, setForm] = useState<FormState>(emptyForm(""));
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -120,10 +127,37 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
     return [Number(year), Number(month)];
   }, [selectedPeriod]);
 
+  useEffect(() => {
+    setOmzetInputs(
+      omzetPeriod.units.map((unit) => ({
+        unit: unit.unit,
+        label: unit.label,
+        totalOmzet: formatNumericInput(String(unit.totalOmzet)),
+        isCustomBonus: unit.isCustomBonus,
+      })),
+    );
+  }, [omzetPeriod]);
+
   const selectedEmployee = useMemo(() => employeeOptions.find((employee) => employee.employeeId === Number(form.employeeId)) ?? null, [employeeOptions, form.employeeId]);
   const isSales = selectedEmployee?.isSales ?? false;
-  const omzetBonus = parseNumber(totalOmzet) * 0.005;
-  const displayedRange = sheet?.rangeLabel ?? `Periode ${periodOptions.find((item) => `${item.year}-${String(item.month).padStart(2, "0")}` === selectedPeriod)?.label ?? "aktif"}`;
+  const totalBonusOmzet = useMemo(
+    () => omzetInputs.reduce((sum, item) => {
+      const value = parseNumber(item.totalOmzet);
+      return sum + (item.isCustomBonus ? value : value * 0.005);
+    }, 0),
+    [omzetInputs],
+  );
+  const selectedPeriodLabel = useMemo(() => {
+    if (Number.isFinite(periodMonth) && Number.isFinite(periodYear) && periodMonth >= 1 && periodMonth <= 12) {
+      return new Intl.DateTimeFormat("id-ID", {
+        month: "long",
+        year: "numeric",
+        timeZone: "Asia/Jakarta",
+      }).format(new Date(periodYear, periodMonth - 1, 1));
+    }
+    return periodOptions.find((item) => `${item.year}-${String(item.month).padStart(2, "0")}` === selectedPeriod)?.label ?? "-";
+  }, [periodMonth, periodYear, periodOptions, selectedPeriod]);
+  const displayedRange = sheet?.rangeLabel ?? `Periode ${selectedPeriodLabel}`;
 
   const filteredRows = useMemo(() => {
     if (!sheet) return [];
@@ -226,12 +260,17 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
   async function handleOmzetSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setOmzetMessage(null);
+    const unitsPayload = omzetInputs.map((item) => ({
+      unit: item.unit,
+      totalOmzet: parseNumber(item.totalOmzet),
+      isCustomBonus: item.isCustomBonus,
+    }));
     startOmzetTransition(async () => {
       try {
-        const response = await fetch("/api/admin/payroll-summary", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "save_omzet", month: periodMonth, year: periodYear, totalOmzet: parseNumber(totalOmzet) }) });
+        const response = await fetch("/api/admin/payroll-summary", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "save_omzet", month: periodMonth, year: periodYear, units: unitsPayload }) });
         const result = (await response.json()) as { message?: string };
         if (!response.ok) throw new Error(result.message || "Gagal menyimpan total omzet.");
-        setOmzetMessage({ type: "success", text: result.message || "Total omzet berhasil disimpan." });
+        setOmzetMessage({ type: "success", text: result.message || "Omzet berhasil disimpan." });
         router.refresh();
       } catch (error) {
         setOmzetMessage({ type: "error", text: error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan total omzet." });
@@ -239,16 +278,34 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
     });
   }
 
+  function updateOmzetUnit(unit: string, field: "totalOmzet" | "isCustomBonus", value: string | boolean) {
+    setOmzetInputs((current) =>
+      current.map((item) =>
+        item.unit === unit
+          ? {
+              ...item,
+              ...(field === "totalOmzet"
+                ? { totalOmzet: formatNumericInput(value as string) }
+                : { isCustomBonus: value as boolean }),
+            }
+          : item,
+      ),
+    );
+  }
+
   return (
     <div className="space-y-5">
       <section className="rounded-[28px] border border-[#ead7ce] bg-white p-5">
         <div className="grid gap-4 md:grid-cols-[minmax(0,280px)_180px] md:items-end md:justify-between">
           <Field label="Periode History Payroll">
-            <select value={selectedPeriod} onChange={(event) => handlePeriodChange(event.target.value)} className={selectClassName}>
-              {periodOptions.map((option) => <option key={`${option.year}-${option.month}`} value={`${option.year}-${String(option.month).padStart(2, "0")}`}>{option.label}</option>)}
-            </select>
+            <input
+              type="month"
+              value={selectedPeriod}
+              onChange={(event) => handlePeriodChange(event.target.value)}
+              className={inputClassName}
+            />
           </Field>
-          <div className="rounded-[22px] bg-[#f5fbfb] px-4 py-3 text-sm text-[#47696b]">Cek histori payroll dan omzet per bulan langsung dari dropdown periode.</div>
+          <div className="rounded-[22px] bg-[#f5fbfb] px-4 py-3 text-sm text-[#47696b]">Pilih bulan langsung dari kalender. Periode yang belum punya data payroll tetap bisa dipilih untuk mulai input baru.</div>
         </div>
       </section>
 
@@ -320,14 +377,47 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
 
         <div className="space-y-4">
           <form onSubmit={handleOmzetSubmit} className="rounded-[32px] border border-[#cfeaec] bg-[linear-gradient(180deg,#f9ffff_0%,#f2fcfc_100%)] p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0c8087]">Total Omzet</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0c8087]">Omzet per Group</p>
             <h2 className="mt-3 text-2xl font-semibold text-[#123336]">Input Omzet Bulanan</h2>
-            <p className="mt-2 text-sm text-[#628083]">Diisi satu kali per periode payroll, lalu bisa diupdate bila perlu.</p>
-            <div className="mt-6 space-y-5">
-              <Field label="Total Omzet Periode Terpilih"><input value={totalOmzet} onChange={(event) => setTotalOmzet(formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
-              <div className="rounded-2xl border border-[#d5e9ea] bg-white px-4 py-4 text-sm text-[#35585b]"><p className="text-[13px] font-semibold text-[#466668]">Bonus Omzet Periode Terpilih</p><p className="mt-2 text-2xl font-semibold text-[#123336]">{formatCurrency(omzetBonus)}</p></div>
+            <p className="mt-2 text-sm text-[#628083]">AVA + Ayres dijadikan satu pool (dibagi rata ke semua karyawan AVA &amp; Ayres). JNE pakai nominal bonus custom.</p>
+            <div className="mt-6 space-y-4">
+              {omzetInputs.map((item) => {
+                const value = parseNumber(item.totalOmzet);
+                const bonusUnit = item.isCustomBonus ? value : value * 0.005;
+                return (
+                  <div key={item.unit} className="rounded-2xl border border-[#d5e9ea] bg-white px-4 py-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-[#123336]">{item.label}</p>
+                      <label className="inline-flex items-center gap-2 text-xs font-semibold text-[#466668]">
+                        <input
+                          type="checkbox"
+                          checked={item.isCustomBonus}
+                          onChange={(event) => updateOmzetUnit(item.unit, "isCustomBonus", event.target.checked)}
+                          className="h-4 w-4 rounded border-[#cfeaec] accent-[#0d7f86]"
+                        />
+                        Custom Bonus
+                      </label>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      <input
+                        value={item.totalOmzet}
+                        onChange={(event) => updateOmzetUnit(item.unit, "totalOmzet", event.target.value)}
+                        className={inputClassName}
+                        inputMode="numeric"
+                        placeholder={item.isCustomBonus ? "Nominal bonus omzet" : "Total omzet"}
+                      />
+                      <p className="text-[12px] text-[#628083]">
+                        {item.isCustomBonus
+                          ? `Nominal di atas dipakai langsung sebagai bonus omzet (${formatCurrency(bonusUnit)}).`
+                          : `Bonus omzet otomatis ${formatCurrency(bonusUnit)} (0,5% × omzet).`}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="rounded-2xl border border-[#d5e9ea] bg-white px-4 py-4 text-sm text-[#35585b]"><p className="text-[13px] font-semibold text-[#466668]">Total Bonus Omzet Periode Terpilih</p><p className="mt-2 text-2xl font-semibold text-[#123336]">{formatCurrency(totalBonusOmzet)}</p></div>
             </div>
-            {omzetPeriod.isLocked ? <div className="mt-5 rounded-2xl bg-[#edf6f6] px-4 py-3 text-sm text-[#446568]">Total omzet periode ini sudah ada. Anda bisa update nominalnya kapan saja.</div> : null}
+            {omzetPeriod.isLocked ? <div className="mt-5 rounded-2xl bg-[#edf6f6] px-4 py-3 text-sm text-[#446568]">Omzet periode ini sudah ada. Anda bisa update nominalnya kapan saja.</div> : null}
             {omzetMessage ? <div className={`mt-5 rounded-2xl px-4 py-3 text-sm ${omzetMessage.type === "success" ? "bg-[#def8eb] text-[#17603b]" : "bg-[#ffe4e4] text-[#8b2626]"}`}>{omzetMessage.text}</div> : null}
             <div className="mt-6 flex gap-3">
               <button type="submit" disabled={isOmzetPending} className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#19d7df] px-6 text-sm font-semibold text-[#083438] disabled:cursor-not-allowed disabled:opacity-60">{isOmzetPending ? "Menyimpan..." : omzetPeriod.isLocked ? "Update Omzet" : "Simpan Omzet"}</button>
@@ -335,7 +425,7 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
           </form>
 
           <section className="grid gap-4">
-            <article className="rounded-[30px] border border-[#ead7ce] bg-[linear-gradient(180deg,#fffdfb_0%,#fff6ef_100%)] px-6 py-5"><p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#a16f63]">Periode Payroll</p><h2 className="mt-3 text-2xl font-semibold text-[#241716]">{periodOptions.find((item) => `${item.year}-${String(item.month).padStart(2, "0")}` === selectedPeriod)?.label ?? "-"}</h2><p className="mt-2 text-sm text-[#7a6059]">Rentang absensi {displayedRange}</p></article>
+            <article className="rounded-[30px] border border-[#ead7ce] bg-[linear-gradient(180deg,#fffdfb_0%,#fff6ef_100%)] px-6 py-5"><p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#a16f63]">Periode Payroll</p><h2 className="mt-3 text-2xl font-semibold text-[#241716]">{selectedPeriodLabel}</h2><p className="mt-2 text-sm text-[#7a6059]">Rentang absensi {displayedRange}</p></article>
           </section>
         </div>
       </section>

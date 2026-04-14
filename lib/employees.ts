@@ -54,6 +54,7 @@ export const EMPLOYEE_ROLES = [
   "Manager",
   "Supervisor",
   "Staff",
+  "Freelance",
 ] as const;
 export const EMPLOYEE_DEPARTMENTS = [
   "Secretary",

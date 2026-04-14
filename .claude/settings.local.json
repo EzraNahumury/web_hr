@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(npm install:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(grep -n \"freelance\\\\|CEO\\\\|Pipin\" /d/web_hr/lib/*.ts /d/web_hr/components/*.tsx)",
+      "Bash(xargs ls:*)",
+      "Bash(grep -rn \"omzet\\\\|unit\" /d/web_hr/database/*.sql)",
+      "Bash(npx eslint:*)",
+      "Bash(npx next:*)"
     ]
   }
 }

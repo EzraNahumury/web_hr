@@ -773,6 +773,7 @@ export type PencairanGajiByUnit = {
   potonganSetengahHari: number;
   potonganKerajinan: number;
   hutangPerusahaan: number;
+  lemburTambahan: number;
 };
 
 export type PencairanGajiResult = {
@@ -781,20 +782,83 @@ export type PencairanGajiResult = {
   period: { month: number; year: number } | null;
 };
 
+let financeLemburTableReady: Promise<void> | null = null;
+
+async function ensureFinanceLemburTable() {
+  if (!financeLemburTableReady) {
+    financeLemburTableReady = (async () => {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS finance_lembur_tambahan (
+          id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+          periode_bulan TINYINT UNSIGNED NOT NULL,
+          periode_tahun SMALLINT UNSIGNED NOT NULL,
+          unit VARCHAR(100) NOT NULL,
+          nominal DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+          catatan VARCHAR(255) NULL,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          UNIQUE KEY uq_finance_lembur_unit (periode_bulan, periode_tahun, unit)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+    })();
+  }
+  await financeLemburTableReady;
+}
+
+type FinanceLemburRow = RowDataPacket & {
+  unit: string;
+  nominal: string;
+  catatan: string | null;
+};
+
+export async function listFinanceLemburTambahan(period: { month: number; year: number }) {
+  await ensureFinanceLemburTable();
+  const [rows] = await pool.query<FinanceLemburRow[]>(
+    `SELECT unit, nominal, catatan FROM finance_lembur_tambahan
+      WHERE periode_bulan = ? AND periode_tahun = ?`,
+    [period.month, period.year],
+  );
+  const map = new Map<string, { nominal: number; catatan: string | null }>();
+  for (const row of rows) {
+    map.set(row.unit, {
+      nominal: Number(row.nominal) || 0,
+      catatan: row.catatan,
+    });
+  }
+  return map;
+}
+
+export async function upsertFinanceLemburTambahan(
+  period: { month: number; year: number },
+  entries: { unit: string; nominal: number; catatan?: string | null }[],
+) {
+  await ensureFinanceLemburTable();
+  for (const entry of entries) {
+    const unitName = entry.unit.trim();
+    if (!unitName) continue;
+    await pool.query(
+      `INSERT INTO finance_lembur_tambahan (periode_bulan, periode_tahun, unit, nominal, catatan)
+       VALUES (?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE nominal = VALUES(nominal), catatan = VALUES(catatan)`,
+      [period.month, period.year, unitName, entry.nominal, entry.catatan ?? null],
+    );
+  }
+}
+
 export async function listFinancePencairanGaji(period?: {
   month?: number;
   year?: number;
 }): Promise<PencairanGajiResult> {
   const sheet = await getAdminPayrollSummarySheet(period);
-  if (!sheet || !sheet.rows.length)
-    return { units: [], byUnit: {}, period: null };
 
   // Collect unit names from payroll data, then merge with fixed order
   const unitSet = new Set<string>(PENCAIRAN_UNIT_ORDER);
-  for (const row of sheet.rows) {
-    if (row.unit) unitSet.add(row.unit);
+  if (sheet) {
+    for (const row of sheet.rows) {
+      if (row.unit) unitSet.add(row.unit);
+    }
   }
-  // Keep fixed order first, then any extra units from payroll sorted after
   const extraUnits = Array.from(unitSet)
     .filter((u) => !PENCAIRAN_UNIT_ORDER.includes(u))
     .sort();
@@ -811,27 +875,55 @@ export async function listFinancePencairanGaji(period?: {
       potonganSetengahHari: 0,
       potonganKerajinan: 0,
       hutangPerusahaan: 0,
+      lemburTambahan: 0,
     };
   }
 
-  // Sum up per unit
-  for (const row of sheet.rows) {
-    if (!row.unit) continue;
-    const u = acc[row.unit];
-    if (!u) continue;
-    u.totalBersih += row.netIncome;
-    u.uangKontrak += row.contractDeduction;
-    // pengembalianKontrak stays 0
-    u.potonganTerlambat += row.lateDeduction;
-    u.potonganSetengahHari += row.halfDayDeduction;
-    u.potonganKerajinan += row.diligenceCut;
-    u.hutangPerusahaan += row.companyLoan;
+  if (sheet) {
+    for (const row of sheet.rows) {
+      if (!row.unit) continue;
+      const u = acc[row.unit];
+      if (!u) continue;
+      u.totalBersih += row.netIncome;
+      u.uangKontrak += row.contractDeduction;
+      u.potonganTerlambat += row.lateDeduction;
+      u.potonganSetengahHari += row.halfDayDeduction;
+      u.potonganKerajinan += row.diligenceCut;
+      u.hutangPerusahaan += row.companyLoan;
+    }
+  }
+
+  // Tambah lembur custom (finance) per unit
+  const resolvedPeriod = sheet
+    ? { month: sheet.periodMonth, year: sheet.periodYear }
+    : period?.month && period?.year
+      ? { month: period.month, year: period.year }
+      : null;
+
+  if (resolvedPeriod) {
+    const lemburMap = await listFinanceLemburTambahan(resolvedPeriod);
+    for (const [unit, value] of lemburMap.entries()) {
+      if (!acc[unit]) {
+        acc[unit] = {
+          totalBersih: 0,
+          uangKontrak: 0,
+          pengembalianKontrak: 0,
+          potonganTerlambat: 0,
+          potonganSetengahHari: 0,
+          potonganKerajinan: 0,
+          hutangPerusahaan: 0,
+          lemburTambahan: 0,
+        };
+        if (!units.includes(unit)) units.push(unit);
+      }
+      acc[unit].lemburTambahan = value.nominal;
+    }
   }
 
   return {
     units,
     byUnit: acc,
-    period: { month: sheet.periodMonth, year: sheet.periodYear },
+    period: resolvedPeriod,
   };
 }
 

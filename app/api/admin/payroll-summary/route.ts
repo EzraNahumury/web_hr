@@ -4,6 +4,7 @@ import { getCurrentAdminSession } from "@/lib/auth";
 import {
   upsertPayrollPeriodOmzet,
   upsertPayrollFromForm,
+  type OmzetUnitInput,
   type PayrollFormPayload,
 } from "@/lib/payroll-admin";
 
@@ -101,12 +102,41 @@ function validatePayrollPayload(body: Record<string, unknown>) {
 }
 
 function validateOmzetPayload(body: Record<string, unknown>) {
-  const totalOmzet = parseCurrency(body.totalOmzet);
+  const rawUnits = body.units;
 
+  if (Array.isArray(rawUnits)) {
+    const inputs: OmzetUnitInput[] = [];
+    for (const item of rawUnits) {
+      if (!item || typeof item !== "object") {
+        return { error: "Format omzet per unit tidak valid." };
+      }
+      const unitName = typeof (item as Record<string, unknown>).unit === "string"
+        ? ((item as Record<string, unknown>).unit as string).trim()
+        : "";
+      const total = parseCurrency((item as Record<string, unknown>).totalOmzet);
+      if (!unitName) {
+        return { error: "Nama unit omzet wajib diisi." };
+      }
+      if (total === null) {
+        return { error: `Nominal omzet untuk ${unitName} harus angka valid dan tidak boleh negatif.` };
+      }
+      inputs.push({
+        unit: unitName,
+        totalOmzet: total,
+        isCustomBonus: Boolean((item as Record<string, unknown>).isCustomBonus),
+      });
+    }
+    if (!inputs.length) {
+      return { error: "Tidak ada data omzet untuk disimpan." };
+    }
+    return { units: inputs };
+  }
+
+  // Backward-compat: single total omzet
+  const totalOmzet = parseCurrency(body.totalOmzet);
   if (totalOmzet === null) {
     return { error: "Total omzet harus berupa angka valid dan tidak boleh negatif." };
   }
-
   return { totalOmzet };
 }
 
@@ -134,12 +164,14 @@ export async function POST(request: Request) {
         return NextResponse.json({ message: result.error }, { status: 400 });
       }
 
-      const saved = await upsertPayrollPeriodOmzet(result.totalOmzet, periodResult.period);
+      const inputs: OmzetUnitInput[] | number =
+        "units" in result && result.units ? result.units : (result.totalOmzet ?? 0);
+      const saved = await upsertPayrollPeriodOmzet(inputs, periodResult.period);
 
       return NextResponse.json({
         message: saved.isUpdate
-          ? `Total omzet periode ${saved.periodMonth}/${saved.periodYear} berhasil diupdate. Bonus omzet ${saved.bonusOmzet.toLocaleString("id-ID")}.`
-          : `Total omzet periode ${saved.periodMonth}/${saved.periodYear} berhasil disimpan. Bonus omzet ${saved.bonusOmzet.toLocaleString("id-ID")}.`,
+          ? `Omzet periode ${saved.periodMonth}/${saved.periodYear} berhasil diupdate. Total bonus omzet ${saved.bonusOmzet.toLocaleString("id-ID")}.`
+          : `Omzet periode ${saved.periodMonth}/${saved.periodYear} berhasil disimpan. Total bonus omzet ${saved.bonusOmzet.toLocaleString("id-ID")}.`,
         saved,
       });
     }

@@ -47,7 +47,9 @@ type OmzetMonthlyRow = RowDataPacket & {
   id: number;
   periode_bulan: number;
   periode_tahun: number;
+  unit: string;
   total_omzet: string;
+  is_custom_bonus: number;
 };
 
 type PeriodRow = RowDataPacket & {
@@ -98,12 +100,54 @@ export type PayrollFormPayload = {
   overrideGajiPokok?: number | null;
 };
 
+export type PayrollOmzetUnitEntry = {
+  unit: string;
+  label: string;
+  totalOmzet: number;
+  bonusOmzet: number;
+  isCustomBonus: boolean;
+  isLocked: boolean;
+};
+
+export type OmzetGroupConfig = {
+  key: string;
+  label: string;
+  units: string[];
+  defaultCustomBonus: boolean;
+};
+
+export const OMZET_GROUPS: OmzetGroupConfig[] = [
+  {
+    key: "AVA+Ayres",
+    label: "AVA + Ayres",
+    units: ["AVA Sportivo", "Ayres Apparel"],
+    defaultCustomBonus: false,
+  },
+  {
+    key: "JNE",
+    label: "JNE",
+    units: ["JNE"],
+    defaultCustomBonus: true,
+  },
+];
+
+export function getOmzetGroupKeyForUnit(unit: string | null | undefined): string | null {
+  const normalized = (unit ?? "").trim().toLowerCase();
+  if (!normalized) return null;
+  for (const group of OMZET_GROUPS) {
+    if (group.key.toLowerCase() === normalized) return group.key;
+    if (group.units.some((u) => u.toLowerCase() === normalized)) return group.key;
+  }
+  return null;
+}
+
 export type PayrollOmzetPeriod = {
   periodMonth: number;
   periodYear: number;
   totalOmzet: number;
   bonusOmzet: number;
   isLocked: boolean;
+  units: PayrollOmzetUnitEntry[];
 };
 
 export type PayrollPeriodOption = {
@@ -203,9 +247,9 @@ function countWorkDays(start: Date, end: Date) {
   return total;
 }
 
-export function isSalesEmployeeFromValues(role: string, division: string, subDivision?: string | null) {
-  const roleText = role.trim().toLowerCase();
-  const divisionText = division.trim().toLowerCase();
+export function isSalesEmployeeFromValues(role: string | null | undefined, division: string | null | undefined, subDivision?: string | null) {
+  const roleText = (role ?? "").trim().toLowerCase();
+  const divisionText = (division ?? "").trim().toLowerCase();
   const subDivisionText = (subDivision ?? "").trim().toLowerCase();
 
   if (["secretary", "manager", "admin", "supervisor"].some((keyword) => roleText.includes(keyword))) {
@@ -225,13 +269,47 @@ export async function ensurePayrollSupportTables(connection?: any) {
       id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
       periode_bulan TINYINT UNSIGNED NOT NULL,
       periode_tahun SMALLINT UNSIGNED NOT NULL,
+      unit VARCHAR(100) NOT NULL DEFAULT '',
       total_omzet DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+      is_custom_bonus TINYINT(1) NOT NULL DEFAULT 0,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       PRIMARY KEY (id),
-      UNIQUE KEY uq_omzet_bulanan_periode (periode_bulan, periode_tahun)
+      UNIQUE KEY uq_omzet_bulanan_periode_unit (periode_bulan, periode_tahun, unit)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `);
+
+  const safeMigrateOmzet = async (sql: string, ignoreCode: string, label: string) => {
+    try {
+      await executor.query(sql);
+    } catch (err) {
+      const code = (err as { code?: string } | null)?.code;
+      if (code !== ignoreCode) {
+        console.error(`Migration warning ${label}:`, err);
+      }
+    }
+  };
+
+  await safeMigrateOmzet(
+    `ALTER TABLE omzet_bulanan ADD COLUMN unit VARCHAR(100) NOT NULL DEFAULT '' AFTER periode_tahun`,
+    "ER_DUP_FIELDNAME",
+    "omzet_bulanan.unit",
+  );
+  await safeMigrateOmzet(
+    `ALTER TABLE omzet_bulanan ADD COLUMN is_custom_bonus TINYINT(1) NOT NULL DEFAULT 0 AFTER total_omzet`,
+    "ER_DUP_FIELDNAME",
+    "omzet_bulanan.is_custom_bonus",
+  );
+  await safeMigrateOmzet(
+    `ALTER TABLE omzet_bulanan DROP INDEX uq_omzet_bulanan_periode`,
+    "ER_CANT_DROP_FIELD_OR_KEY",
+    "omzet_bulanan drop old unique",
+  );
+  await safeMigrateOmzet(
+    `ALTER TABLE omzet_bulanan ADD UNIQUE KEY uq_omzet_bulanan_periode_unit (periode_bulan, periode_tahun, unit)`,
+    "ER_DUP_KEYNAME",
+    "omzet_bulanan unique unit",
+  );
 
   await executor.query(`
     CREATE TABLE IF NOT EXISTS payroll_employee_input (
@@ -366,66 +444,135 @@ export async function getPayrollOmzetPeriod(period?: PayrollPeriodInput): Promis
 
   const [rows] = await pool.query<OmzetMonthlyRow[]>(
     `
-      SELECT id, periode_bulan, periode_tahun, total_omzet
+      SELECT id, periode_bulan, periode_tahun, unit, total_omzet, is_custom_bonus
       FROM omzet_bulanan
       WHERE periode_bulan = ? AND periode_tahun = ?
-      LIMIT 1
     `,
     [resolved.month, resolved.year],
   );
 
-  const current = rows[0];
-  const totalOmzet = toNumber(current?.total_omzet);
+  // Map data tersimpan ke group key (mendukung data lama yang masih pakai nama unit asli)
+  const savedByGroup = new Map<string, OmzetMonthlyRow>();
+  for (const row of rows) {
+    const unitName = (row.unit ?? "").trim();
+    if (!unitName) continue;
+    const groupKey = getOmzetGroupKeyForUnit(unitName) ?? unitName;
+    savedByGroup.set(groupKey, row);
+  }
+
+  const units: PayrollOmzetUnitEntry[] = OMZET_GROUPS.map((group) => {
+    const saved = savedByGroup.get(group.key);
+    const totalOmzet = toNumber(saved?.total_omzet);
+    const isCustomBonus = saved ? Boolean(saved.is_custom_bonus) : group.defaultCustomBonus;
+    const bonusOmzet = isCustomBonus ? totalOmzet : totalOmzet * 0.005;
+    return {
+      unit: group.key,
+      label: group.label,
+      totalOmzet,
+      bonusOmzet,
+      isCustomBonus,
+      isLocked: Boolean(saved),
+    };
+  });
+
+  // Sertakan grup lain yang sudah tersimpan tapi tidak ada di daftar default
+  for (const row of rows) {
+    const unitName = (row.unit ?? "").trim();
+    if (!unitName) continue;
+    const groupKey = getOmzetGroupKeyForUnit(unitName) ?? unitName;
+    if (OMZET_GROUPS.some((g) => g.key === groupKey)) continue;
+    const totalOmzet = toNumber(row.total_omzet);
+    const isCustomBonus = Boolean(row.is_custom_bonus);
+    units.push({
+      unit: groupKey,
+      label: groupKey,
+      totalOmzet,
+      bonusOmzet: isCustomBonus ? totalOmzet : totalOmzet * 0.005,
+      isCustomBonus,
+      isLocked: true,
+    });
+  }
+
+  const totalOmzet = units.reduce((sum, item) => sum + item.totalOmzet, 0);
+  const bonusOmzet = units.reduce((sum, item) => sum + item.bonusOmzet, 0);
+  const isLocked = units.some((item) => item.isLocked);
 
   return {
     periodMonth: resolved.month,
     periodYear: resolved.year,
     totalOmzet,
-    bonusOmzet: totalOmzet * 0.005,
-    isLocked: Boolean(current),
+    bonusOmzet,
+    isLocked,
+    units,
   };
 }
 
-export async function upsertPayrollPeriodOmzet(totalOmzet: number, period?: PayrollPeriodInput) {
+export type OmzetUnitInput = {
+  unit: string;
+  totalOmzet: number;
+  isCustomBonus: boolean;
+};
+
+export async function upsertPayrollPeriodOmzet(
+  inputs: OmzetUnitInput[] | number,
+  period?: PayrollPeriodInput,
+) {
   const resolved = resolvePayrollPeriod(period);
   await ensurePayrollSupportTables();
 
-  const [existingRows] = await pool.query<OmzetMonthlyRow[]>(
-    `
-      SELECT id, periode_bulan, periode_tahun, total_omzet
-      FROM omzet_bulanan
-      WHERE periode_bulan = ? AND periode_tahun = ?
-      LIMIT 1
-    `,
-    [resolved.month, resolved.year],
-  );
+  // Backward compat: jika dipanggil dengan single number, taruh ke group pertama (legacy)
+  const normalizedInputs: OmzetUnitInput[] = Array.isArray(inputs)
+    ? inputs
+    : [{ unit: OMZET_GROUPS[0].key, totalOmzet: inputs, isCustomBonus: false }];
 
-  if (existingRows[0]) {
-    await pool.query<ResultSetHeader>(
+  let isUpdateAny = false;
+
+  for (const item of normalizedInputs) {
+    const rawUnitName = item.unit.trim();
+    if (!rawUnitName) continue;
+    // Normalisasi ke group key (kalau user kirim "AVA Sportivo", auto map ke "AVA+Ayres")
+    const unitName = getOmzetGroupKeyForUnit(rawUnitName) ?? rawUnitName;
+
+    const [existingRows] = await pool.query<OmzetMonthlyRow[]>(
       `
-        UPDATE omzet_bulanan
-        SET total_omzet = ?
-        WHERE periode_bulan = ? AND periode_tahun = ?
+        SELECT id FROM omzet_bulanan
+        WHERE periode_bulan = ? AND periode_tahun = ? AND unit = ?
+        LIMIT 1
       `,
-      [totalOmzet, resolved.month, resolved.year],
+      [resolved.month, resolved.year, unitName],
     );
-  } else {
-    await pool.query<ResultSetHeader>(
-      `
-        INSERT INTO omzet_bulanan (periode_bulan, periode_tahun, total_omzet)
-        VALUES (?, ?, ?)
-      `,
-      [resolved.month, resolved.year, totalOmzet],
-    );
+
+    if (existingRows[0]) {
+      isUpdateAny = true;
+      await pool.query<ResultSetHeader>(
+        `
+          UPDATE omzet_bulanan
+          SET total_omzet = ?, is_custom_bonus = ?
+          WHERE periode_bulan = ? AND periode_tahun = ? AND unit = ?
+        `,
+        [item.totalOmzet, item.isCustomBonus ? 1 : 0, resolved.month, resolved.year, unitName],
+      );
+    } else {
+      await pool.query<ResultSetHeader>(
+        `
+          INSERT INTO omzet_bulanan (periode_bulan, periode_tahun, unit, total_omzet, is_custom_bonus)
+          VALUES (?, ?, ?, ?, ?)
+        `,
+        [resolved.month, resolved.year, unitName, item.totalOmzet, item.isCustomBonus ? 1 : 0],
+      );
+    }
   }
+
+  const refreshed = await getPayrollOmzetPeriod({ month: resolved.month, year: resolved.year });
 
   return {
     periodMonth: resolved.month,
     periodYear: resolved.year,
-    totalOmzet,
-    bonusOmzet: totalOmzet * 0.005,
-    isLocked: true,
-    isUpdate: Boolean(existingRows[0]),
+    totalOmzet: refreshed.totalOmzet,
+    bonusOmzet: refreshed.bonusOmzet,
+    units: refreshed.units,
+    isLocked: refreshed.isLocked,
+    isUpdate: isUpdateAny,
   };
 }
 
