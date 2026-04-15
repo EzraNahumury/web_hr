@@ -140,11 +140,15 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
 
   const selectedEmployee = useMemo(() => employeeOptions.find((employee) => employee.employeeId === Number(form.employeeId)) ?? null, [employeeOptions, form.employeeId]);
   const isSales = selectedEmployee?.isSales ?? false;
-  const totalBonusOmzet = useMemo(
-    () => omzetInputs.reduce((sum, item) => {
+  const bonusOmzetPerUnit = useMemo(
+    () => omzetInputs.map((item) => {
       const value = parseNumber(item.totalOmzet);
-      return sum + (item.isCustomBonus ? value : value * 0.005);
-    }, 0),
+      return {
+        unit: item.unit,
+        label: item.label,
+        bonus: item.isCustomBonus ? value : value * 0.005,
+      };
+    }),
     [omzetInputs],
   );
   const selectedPeriodLabel = useMemo(() => {
@@ -415,7 +419,14 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
                   </div>
                 );
               })}
-              <div className="rounded-2xl border border-[#d5e9ea] bg-white px-4 py-4 text-sm text-[#35585b]"><p className="text-[13px] font-semibold text-[#466668]">Total Bonus Omzet Periode Terpilih</p><p className="mt-2 text-2xl font-semibold text-[#123336]">{formatCurrency(totalBonusOmzet)}</p></div>
+              <div className="space-y-2">
+                {bonusOmzetPerUnit.map((item) => (
+                  <div key={item.unit} className="rounded-2xl border border-[#d5e9ea] bg-white px-4 py-4 text-sm text-[#35585b]">
+                    <p className="text-[13px] font-semibold text-[#466668]">Total Bonus Omzet {item.label}</p>
+                    <p className="mt-2 text-2xl font-semibold text-[#123336]">{formatCurrency(item.bonus)}</p>
+                  </div>
+                ))}
+              </div>
             </div>
             {omzetPeriod.isLocked ? <div className="mt-5 rounded-2xl bg-[#edf6f6] px-4 py-3 text-sm text-[#446568]">Omzet periode ini sudah ada. Anda bisa update nominalnya kapan saja.</div> : null}
             {omzetMessage ? <div className={`mt-5 rounded-2xl px-4 py-3 text-sm ${omzetMessage.type === "success" ? "bg-[#def8eb] text-[#17603b]" : "bg-[#ffe4e4] text-[#8b2626]"}`}>{omzetMessage.text}</div> : null}

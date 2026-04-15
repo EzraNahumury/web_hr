@@ -15,7 +15,7 @@ import {
   type KeteranganItem,
 } from "@/lib/hris";
 import { listPayrollPeriods } from "@/lib/payroll-admin";
-import { EMPLOYEE_DEPARTMENTS } from "@/lib/employees";
+import { EMPLOYEE_DEPARTMENTS, listEmployees } from "@/lib/employees";
 
 function parsePositiveInt(value: string | string[] | undefined) {
   if (typeof value !== "string") return null;
@@ -165,6 +165,15 @@ export default async function AdminFinancePage({
     ? pencairan.units
     : ["AVA Sportivo", "Ayres Apparel", "JNE"];
 
+  const allEmployees = await listEmployees();
+  const employeesByUnit: Record<string, string[]> = {};
+  for (const unit of lemburUnits) {
+    employeesByUnit[unit] = allEmployees
+      .filter((emp) => (emp.unit ?? "").toLowerCase() === unit.toLowerCase())
+      .map((emp) => emp.name)
+      .sort((a, b) => a.localeCompare(b, "id-ID"));
+  }
+
   // 6 columns per unit: Departemen + Gaji + Pot.Denda + Pot.Kontrak + Pot.Pinjaman + Total
   const totalCols = unitGroups.length * 6;
 
@@ -198,6 +207,7 @@ export default async function AdminFinancePage({
           year={selectedYear}
           units={lemburUnits}
           initial={lemburInitial}
+          employeesByUnit={employeesByUnit}
         />
       </div>
 

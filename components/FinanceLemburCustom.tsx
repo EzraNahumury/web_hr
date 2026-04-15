@@ -14,6 +14,7 @@ type Props = {
   year: number;
   units: string[];
   initial: Record<string, { nominal: number; catatan: string | null }>;
+  employeesByUnit: Record<string, string[]>;
 };
 
 function digitsOnly(value: string) {
@@ -30,7 +31,7 @@ function parseNumber(value: string) {
   return digits ? Number(digits) : 0;
 }
 
-export default function FinanceLemburCustom({ month, year, units, initial }: Props) {
+export default function FinanceLemburCustom({ month, year, units, initial, employeesByUnit }: Props) {
   const router = useRouter();
   const [entries, setEntries] = useState<Entry[]>(() =>
     units.map((unit) => ({
@@ -137,12 +138,16 @@ export default function FinanceLemburCustom({ month, year, units, initial }: Pro
                 placeholder="Nominal lembur"
                 className="h-11 w-full rounded-xl border border-[#e0ccc5] bg-white px-3 text-sm text-[#241716] outline-none focus:border-[#a16f63]"
               />
-              <input
+              <select
                 value={entry.catatan}
                 onChange={(event) => updateEntry(entry.unit, "catatan", event.target.value)}
-                placeholder="Catatan (opsional, mis. nama karyawan)"
                 className="h-11 w-full rounded-xl border border-[#e0ccc5] bg-white px-3 text-sm text-[#241716] outline-none focus:border-[#a16f63]"
-              />
+              >
+                <option value="">Pilih karyawan (opsional)</option>
+                {(employeesByUnit[entry.unit] ?? []).map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
             </div>
           </div>
         ))}

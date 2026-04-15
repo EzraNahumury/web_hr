@@ -168,10 +168,13 @@ export async function POST(request: Request) {
         "units" in result && result.units ? result.units : (result.totalOmzet ?? 0);
       const saved = await upsertPayrollPeriodOmzet(inputs, periodResult.period);
 
+      const perUnitSummary = saved.units
+        .map((item) => `${item.label} ${item.bonusOmzet.toLocaleString("id-ID")}`)
+        .join(", ");
       return NextResponse.json({
         message: saved.isUpdate
-          ? `Omzet periode ${saved.periodMonth}/${saved.periodYear} berhasil diupdate. Total bonus omzet ${saved.bonusOmzet.toLocaleString("id-ID")}.`
-          : `Omzet periode ${saved.periodMonth}/${saved.periodYear} berhasil disimpan. Total bonus omzet ${saved.bonusOmzet.toLocaleString("id-ID")}.`,
+          ? `Omzet periode ${saved.periodMonth}/${saved.periodYear} berhasil diupdate. Bonus omzet: ${perUnitSummary}.`
+          : `Omzet periode ${saved.periodMonth}/${saved.periodYear} berhasil disimpan. Bonus omzet: ${perUnitSummary}.`,
         saved,
       });
     }
