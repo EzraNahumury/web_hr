@@ -1012,6 +1012,61 @@ export async function listPayslipDistribution() {
   return rows;
 }
 
+type PendingSlipRow = RowDataPacket & {
+  id: number;
+  karyawan_id: number;
+};
+
+export async function distributePendingPayslips(adminUserId: number) {
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [pendingRows] = await connection.query<PendingSlipRow[]>(
+      `
+        SELECT sg.id, p.karyawan_id
+        FROM slip_gaji sg
+        INNER JOIN payroll p ON p.id = sg.payroll_id
+        WHERE sg.status_distribusi = 'draft'
+      `,
+    );
+
+    if (pendingRows.length === 0) {
+      await connection.commit();
+      return { distributed: 0 };
+    }
+
+    const ids = pendingRows.map((row) => row.id);
+    await connection.query(
+      `UPDATE slip_gaji SET status_distribusi = 'didistribusikan', tanggal_distribusi = NOW() WHERE id IN (?)`,
+      [ids],
+    );
+
+    const logValues = pendingRows.map((row) => [
+      row.id,
+      row.karyawan_id,
+      adminUserId,
+    ]);
+    await connection.query(
+      `
+        INSERT INTO log_distribusi_slip
+          (slip_gaji_id, karyawan_id, didistribusikan_oleh, tanggal_distribusi, status_baca)
+        VALUES ?
+      `,
+      [logValues.map((v) => [...v, new Date(), 0])],
+    );
+
+    await connection.commit();
+    return { distributed: pendingRows.length };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 type EmployeeCardRow = RowDataPacket & {
   id: number;
   user_id?: number;
@@ -1277,6 +1332,7 @@ export async function getEmployeePayslips(employeeId: number) {
       INNER JOIN payroll p ON p.id = sg.payroll_id
       INNER JOIN karyawan k ON k.id = p.karyawan_id
       WHERE p.karyawan_id = ?
+        AND sg.status_distribusi IN ('didistribusikan', 'dibaca')
       ORDER BY p.periode_tahun DESC, p.periode_bulan DESC
     `,
     [employeeId],

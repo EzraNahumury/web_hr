@@ -1,4 +1,5 @@
 import AdminShell from "@/components/AdminShell";
+import DistributePayslipButton from "@/components/DistributePayslipButton";
 import { requireAdminSession } from "@/lib/auth";
 import { listPayslipDistribution } from "@/lib/hris";
 
@@ -14,14 +15,12 @@ export default async function AdminPayslipDistributionPage() {
       adminEmail={admin.email}
       currentPath="/admin/payslip-distribution"
     >
-      <div className="mb-6 flex items-center justify-between rounded-[28px] border border-[#ead7ce] bg-[#fff8f4] px-5 py-4">
+      <div className="mb-6 flex items-start justify-between gap-4 rounded-[28px] border border-[#ead7ce] bg-[#fff8f4] px-5 py-4">
         <div>
           <p className="text-sm font-semibold text-[#2f1f1d]">Distribusi Slip Gaji</p>
-          <p className="mt-1 text-sm text-[#7a6059]">Tombol distribusi akan mengikuti alur tabel `slip_gaji` dan `log_distribusi_slip`.</p>
+          <p className="mt-1 text-sm text-[#7a6059]">Klik tombol untuk mendistribusikan semua slip berstatus draft. Setelah didistribusikan, slip akan muncul di halaman karyawan.</p>
         </div>
-        <button className="rounded-2xl bg-[#8f1d22] px-5 py-3 text-sm font-semibold text-white">
-          Distribusi Slip Gaji
-        </button>
+        <DistributePayslipButton />
       </div>
 
       <div className="overflow-hidden rounded-[32px] border border-[#ead7ce] bg-white">

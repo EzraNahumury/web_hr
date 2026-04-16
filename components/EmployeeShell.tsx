@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import LogoutButton from "@/components/LogoutButton";
 
 type Props = {
@@ -10,11 +13,30 @@ type Props = {
   children: React.ReactNode;
 };
 
-const menuItems = [
+type SubMenuItem = {
+  label: string;
+  href: string;
+  description: string;
+};
+
+type MenuItem = {
+  label: string;
+  description: string;
+  href?: string;
+  children?: SubMenuItem[];
+};
+
+const menuItems: MenuItem[] = [
   { label: "Dashboard", href: "/employee", description: "Ringkasan akun karyawan" },
   { label: "Profil Pribadi", href: "/employee/profile", description: "Lengkapi data diri Anda" },
-  { label: "Presensi Masuk", href: "/employee/check-in", description: "Selfie dan lokasi masuk" },
-  { label: "Presensi Pulang", href: "/employee/check-out", description: "Selfie dan lokasi pulang" },
+  {
+    label: "Presensi",
+    description: "Selfie dan lokasi presensi",
+    children: [
+      { label: "Presensi Masuk", href: "/employee/check-in", description: "Selfie dan lokasi masuk" },
+      { label: "Presensi Pulang", href: "/employee/check-out", description: "Selfie dan lokasi pulang" },
+    ],
+  },
   { label: "Riwayat Absensi", href: "/employee/attendance-history", description: "Rekap kehadiran pribadi" },
   { label: "Data Lembur", href: "/employee/overtime", description: "Pengajuan dan status lembur" },
   { label: "Status Pinjaman", href: "/employee/loans", description: "Sisa pinjaman dan cicilan" },
@@ -48,6 +70,23 @@ function MenuIcon({ active }: { active?: boolean }) {
   );
 }
 
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`h-4 w-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+      aria-hidden="true"
+    >
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
+
 export default function EmployeeShell({
   title,
   description,
@@ -56,13 +95,25 @@ export default function EmployeeShell({
   currentPath,
   children,
 }: Props) {
+  const initiallyOpen = menuItems.reduce<Record<string, boolean>>((acc, item) => {
+    if (item.children) {
+      acc[item.label] = item.children.some((sub) => sub.href === currentPath);
+    }
+    return acc;
+  }, {});
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(initiallyOpen);
+
+  const toggleGroup = (label: string) => {
+    setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
+  };
+
   return (
     <main className="min-h-screen bg-[#f5f2f1] text-[#141414]">
       <section className="flex min-h-screen flex-col xl:flex-row">
-        <aside className="relative w-full overflow-hidden bg-[linear-gradient(180deg,#090909_0%,#111111_55%,#1a0608_100%)] text-white xl:min-h-screen xl:w-[252px] xl:flex-none">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(220,38,38,0.28),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(239,68,68,0.14),transparent_26%)]" />
-          <div className="relative flex h-full flex-col px-5 py-6">
-            <div className="flex items-center gap-3">
+        <aside className="relative w-full overflow-hidden bg-[linear-gradient(180deg,#090909_0%,#111111_55%,#1a0608_100%)] text-white xl:sticky xl:top-0 xl:h-screen xl:w-[252px] xl:flex-none">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(220,38,38,0.28),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(239,68,68,0.14),transparent_26%)]" />
+          <div className="relative flex h-full min-h-0 flex-col px-5 py-6">
+            <div className="flex flex-none items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#ef4444_0%,#991b1b_100%)] shadow-[0_16px_32px_rgba(185,28,28,0.35)]">
                 <svg
                   viewBox="0 0 24 24"
@@ -84,14 +135,82 @@ export default function EmployeeShell({
               </div>
             </div>
 
-            <nav className="mt-8 space-y-1.5">
+            <nav className="mt-8 flex-1 space-y-1.5 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5">
               {menuItems.map((item) => {
+                if (item.children) {
+                  const isOpen = openGroups[item.label] ?? false;
+                  const hasActiveChild = item.children.some((sub) => sub.href === currentPath);
+
+                  return (
+                    <div key={item.label}>
+                      <button
+                        type="button"
+                        onClick={() => toggleGroup(item.label)}
+                        className={
+                          hasActiveChild
+                            ? "flex w-full items-center gap-3 rounded-2xl bg-white/8 px-3 py-2.5 text-left text-white transition hover:bg-white/10"
+                            : "flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-[#f7eaea] transition hover:bg-white/5"
+                        }
+                        aria-expanded={isOpen}
+                      >
+                        <MenuIcon active={hasActiveChild} />
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold">{item.label}</p>
+                          <p className={hasActiveChild ? "mt-0.5 text-[11px] text-white/78" : "mt-0.5 text-[11px] text-[#b08b91]"}>
+                            {item.description}
+                          </p>
+                        </div>
+                        <ChevronIcon open={isOpen} />
+                      </button>
+
+                      {isOpen ? (
+                        <div className="ml-4 mt-1.5 space-y-1 border-l border-white/10 pl-3">
+                          {item.children.map((sub) => {
+                            const subActive = sub.href === currentPath;
+                            return (
+                              <Link
+                                key={sub.href}
+                                href={sub.href}
+                                className={
+                                  subActive
+                                    ? "flex items-center gap-2.5 rounded-xl bg-[linear-gradient(135deg,#ef4444_0%,#b91c1c_100%)] px-3 py-2 text-white shadow-[0_8px_20px_rgba(185,28,28,0.28)]"
+                                    : "flex items-center gap-2.5 rounded-xl px-3 py-2 text-[#f7eaea] transition hover:bg-white/5"
+                                }
+                              >
+                                <span
+                                  className={
+                                    subActive
+                                      ? "h-1.5 w-1.5 rounded-full bg-white"
+                                      : "h-1.5 w-1.5 rounded-full bg-white/30"
+                                  }
+                                />
+                                <div>
+                                  <p className="text-[13px] font-semibold">{sub.label}</p>
+                                  <p
+                                    className={
+                                      subActive
+                                        ? "text-[10px] text-white/75"
+                                        : "text-[10px] text-[#b08b91]"
+                                    }
+                                  >
+                                    {sub.description}
+                                  </p>
+                                </div>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                }
+
                 const active = item.href === currentPath;
 
                 return (
                   <Link
                     key={item.href}
-                    href={item.href}
+                    href={item.href!}
                     className={
                       active
                         ? "flex items-center gap-3 rounded-2xl bg-[linear-gradient(135deg,#ef4444_0%,#b91c1c_100%)] px-3 py-2.5 text-white shadow-[0_16px_30px_rgba(185,28,28,0.34)]"
@@ -110,7 +229,7 @@ export default function EmployeeShell({
               })}
             </nav>
 
-            <div className="mt-auto space-y-3 border-t border-white/10 pt-5">
+            <div className="mt-4 flex-none space-y-3 border-t border-white/10 pt-5">
               <div className="rounded-2xl border border-white/8 bg-white/5 p-4 backdrop-blur">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#b08b91]">
                   Karyawan Aktif
