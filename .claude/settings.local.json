@@ -8,7 +8,8 @@
       "Bash(grep -rn \"omzet\\\\|unit\" /d/web_hr/database/*.sql)",
       "Bash(npx eslint:*)",
       "Bash(npx next:*)",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(echo \"exit=$?\")"
     ]
   }
 }
