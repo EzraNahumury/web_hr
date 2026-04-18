@@ -9,9 +9,11 @@ import {
   saveAttendancePhoto,
 } from "@/lib/attendance";
 import { saveUploadedFile } from "@/lib/uploads";
+import { checkGeofence, MAX_GEOFENCE_RADIUS_METERS } from "@/lib/geofence";
 
 type EmployeeRow = RowDataPacket & {
   id: number;
+  penempatan: string | null;
 };
 
 type AttendanceRow = RowDataPacket & {
@@ -87,7 +89,7 @@ export async function POST(request: Request) {
     }
 
     const [employeeRows] = await pool.query<EmployeeRow[]>(
-      "SELECT id FROM karyawan WHERE user_id = ? LIMIT 1",
+      "SELECT id, penempatan FROM karyawan WHERE user_id = ? LIMIT 1",
       [session.userId],
     );
 
@@ -95,6 +97,27 @@ export async function POST(request: Request) {
 
     if (!employee) {
       return NextResponse.json({ message: "Data karyawan tidak ditemukan." }, { status: 404 });
+    }
+
+    if (requiresSelfie) {
+      const geofence = checkGeofence(employee.penempatan, latitude, longitude);
+      if (!geofence.valid) {
+        return NextResponse.json(
+          {
+            message: geofence.message,
+            geofence: {
+              reason: geofence.reason,
+              distanceMeters: geofence.distanceMeters,
+              maxRadiusMeters: MAX_GEOFENCE_RADIUS_METERS,
+              targetLabel: geofence.location?.label ?? null,
+              targetLatitude: geofence.location?.latitude ?? null,
+              targetLongitude: geofence.location?.longitude ?? null,
+              placement: geofence.placement,
+            },
+          },
+          { status: 403 },
+        );
+      }
     }
 
     const attendanceDate = getJakartaDate();

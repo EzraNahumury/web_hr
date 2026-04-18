@@ -22,7 +22,10 @@
       "Bash(node scripts/import-db.mjs reset)",
       "Bash(npm run *)",
       "Bash(node *)",
-      "Bash(npm uninstall *)"
+      "Bash(npm uninstall *)",
+      "WebFetch(domain:maps.app.goo.gl)",
+      "WebFetch(domain:maps.google.com)",
+      "WebFetch(domain:www.google.com)"
     ]
   }
 }

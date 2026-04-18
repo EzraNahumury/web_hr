@@ -25,6 +25,15 @@ type LocationSnapshot = {
   capturedAt: number;
 };
 
+type GeofencePopup = {
+  message: string;
+  distanceMeters: number | null;
+  maxRadiusMeters: number;
+  targetLabel: string | null;
+  placement: string | null;
+  reason: string | null;
+};
+
 const LOCATION_CACHE_KEY = "web_hr_last_location";
 const LOCATION_CACHE_MAX_AGE = 2 * 60 * 1000;
 const CHECK_IN_OPTIONS: Array<{
@@ -76,6 +85,7 @@ export default function EmployeeAttendanceCapture({
   const [checkInStatus, setCheckInStatus] = useState<CheckInStatus>("hadir");
   const [sickFile, setSickFile] = useState<File | null>(null);
   const [sickNote, setSickNote] = useState("");
+  const [geofencePopup, setGeofencePopup] = useState<GeofencePopup | null>(null);
   const needsSelfie = !isCheckIn || checkInStatus === "hadir" || checkInStatus === "setengah_hari";
   const needsSickProof = isCheckIn && checkInStatus === "sakit";
   const showsNote =
@@ -341,10 +351,30 @@ export default function EmployeeAttendanceCapture({
               }),
             });
 
-      const result = (await response.json()) as { message?: string };
+      const result = (await response.json()) as {
+        message?: string;
+        geofence?: {
+          reason: string | null;
+          distanceMeters: number | null;
+          maxRadiusMeters: number;
+          targetLabel: string | null;
+          placement: string | null;
+        };
+      };
 
       if (!response.ok) {
-        setErrorMessage(result.message || "Presensi gagal disimpan.");
+        if (response.status === 403 && result.geofence) {
+          setGeofencePopup({
+            message: result.message || "Anda berada di luar radius presensi.",
+            distanceMeters: result.geofence.distanceMeters,
+            maxRadiusMeters: result.geofence.maxRadiusMeters,
+            targetLabel: result.geofence.targetLabel,
+            placement: result.geofence.placement,
+            reason: result.geofence.reason,
+          });
+        } else {
+          setErrorMessage(result.message || "Presensi gagal disimpan.");
+        }
         return;
       }
 
@@ -397,6 +427,62 @@ export default function EmployeeAttendanceCapture({
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
+      {geofencePopup ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/55 px-4 py-6">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-[0_24px_60px_rgba(15,23,42,0.28)]">
+            <div className="flex items-start gap-4 border-b border-[#f3dcd4] px-6 py-5">
+              <div className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-[#fdecec] text-[#8f1d22]">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="text-lg font-semibold text-[#241716]">Presensi Ditolak</h4>
+                <p className="mt-1 text-sm leading-6 text-[#7a6059]">{geofencePopup.message}</p>
+              </div>
+            </div>
+            <div className="space-y-3 px-6 py-5">
+              {geofencePopup.placement ? (
+                <div className="flex items-center justify-between rounded-xl bg-[#faf3ef] px-4 py-3">
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#a16f63]">Penempatan</span>
+                  <span className="text-sm font-semibold text-[#241716]">{geofencePopup.placement}</span>
+                </div>
+              ) : null}
+              {geofencePopup.targetLabel ? (
+                <div className="flex items-center justify-between rounded-xl bg-[#faf3ef] px-4 py-3">
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#a16f63]">Lokasi Target</span>
+                  <span className="text-sm font-semibold text-[#241716]">{geofencePopup.targetLabel}</span>
+                </div>
+              ) : null}
+              {geofencePopup.distanceMeters !== null ? (
+                <div className="rounded-xl border border-[#f3dcd4] bg-[#fff5f0] px-4 py-4 text-center">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#a16f63]">Jarak Anda Sekarang</p>
+                  <p className="mt-2 text-3xl font-bold text-[#8f1d22]">
+                    {Math.round(geofencePopup.distanceMeters)} m
+                  </p>
+                  <p className="mt-1 text-xs text-[#7a6059]">
+                    Maksimal: <span className="font-semibold text-[#241716]">{geofencePopup.maxRadiusMeters} meter</span>
+                  </p>
+                </div>
+              ) : null}
+              <p className="text-xs leading-5 text-[#7a6059]">
+                Silakan mendekat ke lokasi penempatan Anda, lalu refresh lokasi dan coba presensi kembali.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-[#f3dcd4] bg-[#fffaf7] px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setGeofencePopup(null)}
+                className="inline-flex h-10 items-center justify-center rounded-xl bg-[#8f1d22] px-5 text-sm font-semibold text-white transition hover:bg-[#7a171c]"
+              >
+                Mengerti
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* Alerts */}
       {errorMessage ? (
         <div className="flex items-start gap-2.5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] leading-5 text-rose-700">
