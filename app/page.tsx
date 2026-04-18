@@ -17,10 +17,6 @@ export default function Home() {
   const [locationStatus, setLocationStatus] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
-  const [otpStep, setOtpStep] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
-  const [sendingOtp, setSendingOtp] = useState(false);
-  const [otpCooldown, setOtpCooldown] = useState(0);
 
   async function requestLoginLocation() {
     if (!navigator.geolocation) return;
@@ -50,35 +46,15 @@ export default function Home() {
     e.preventDefault(); setErrorMessage(""); setSuccessMessage("");
     if (!signupEmail || !signupPassword) { setErrorMessage("Email dan password wajib diisi."); return; }
     if (signupPassword.length < 6) { setErrorMessage("Password minimal 6 karakter."); return; }
-    if (!otpStep) {
-      setSendingOtp(true);
-      try {
-        const res = await fetch("/api/signup/send-otp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: signupEmail }) });
-        const r = (await res.json()) as { message?: string }; if (!res.ok) throw new Error(r.message || "Gagal.");
-        setOtpStep(true); setSuccessMessage("Kode verifikasi dikirim ke " + signupEmail);
-        setOtpCooldown(60); const iv = setInterval(() => { setOtpCooldown((p) => { if (p <= 1) { clearInterval(iv); return 0; } return p - 1; }); }, 1000);
-      } catch (err) { setErrorMessage(err instanceof Error ? err.message : "Gagal."); } finally { setSendingOtp(false); } return;
-    }
-    if (!otpCode || otpCode.length < 6) { setErrorMessage("Masukkan 6 digit kode."); return; }
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: signupEmail, password: signupPassword, otpCode }) });
+      const res = await fetch("/api/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: signupEmail, password: signupPassword }) });
       const r = (await res.json()) as { message?: string }; if (!res.ok) throw new Error(r.message || "Gagal.");
-      setSuccessMessage(r.message || "Pendaftaran berhasil!"); setSignupEmail(""); setSignupPassword(""); setOtpStep(false); setOtpCode("");
+      setSuccessMessage(r.message || "Pendaftaran berhasil!"); setSignupEmail(""); setSignupPassword("");
     } catch (err) { setErrorMessage(err instanceof Error ? err.message : "Terjadi kesalahan."); } finally { setIsSubmitting(false); }
   }
 
-  async function handleResendOtp() {
-    setSendingOtp(true); setErrorMessage("");
-    try {
-      const res = await fetch("/api/signup/send-otp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: signupEmail }) });
-      const r = (await res.json()) as { message?: string }; if (!res.ok) throw new Error(r.message || "Gagal.");
-      setSuccessMessage("Kode baru dikirim ke " + signupEmail);
-      setOtpCooldown(60); const iv = setInterval(() => { setOtpCooldown((p) => { if (p <= 1) { clearInterval(iv); return 0; } return p - 1; }); }, 1000);
-    } catch (err) { setErrorMessage(err instanceof Error ? err.message : "Gagal."); } finally { setSendingOtp(false); }
-  }
-
-  function switchTab(tab: "login" | "signup") { setActiveTab(tab); setErrorMessage(""); setSuccessMessage(""); setOtpStep(false); setOtpCode(""); }
+  function switchTab(tab: "login" | "signup") { setActiveTab(tab); setErrorMessage(""); setSuccessMessage(""); }
 
   const inputClass = "h-14 w-full rounded-xl border border-white/15 bg-white/[0.04] px-5 text-white outline-none placeholder:text-white/25 focus:border-[#e74c4c]/50 focus:bg-white/[0.07] transition";
 
@@ -144,40 +120,17 @@ export default function Home() {
             </form>
           ) : (
             <form className="mt-10 space-y-5" onSubmit={handleSignupSubmit}>
-              {!otpStep ? (
-                <>
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-white/40">Email</label>
-                    <input type="email" placeholder="nama@email.com" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} className={inputClass} required />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-white/40">Password</label>
-                    <input type="password" placeholder="Minimal 6 karakter" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} className={inputClass} required minLength={6} />
-                  </div>
-                  <button type="submit" disabled={sendingOtp} className="!mt-8 flex h-14 w-full max-w-[220px] items-center justify-center rounded-xl border-2 border-[#e74c4c] bg-[#e74c4c]/10 text-sm font-bold uppercase tracking-wider text-[#e74c4c] transition hover:bg-[#e74c4c] hover:text-white">
-                    {sendingOtp ? "Mengirim..." : "Sign Up"}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">
-                    <p className="text-sm text-white/40">Kode dikirim ke <span className="font-semibold text-white/70">{signupEmail}</span></p>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-white/40">Kode OTP</label>
-                    <input value={otpCode} onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" className={`${inputClass} text-center text-xl tracking-[0.4em] font-bold`} maxLength={6} inputMode="numeric" autoFocus />
-                  </div>
-                  <button type="submit" disabled={isSubmitting || otpCode.length < 6} className="!mt-8 flex h-14 w-full max-w-[220px] items-center justify-center rounded-xl border-2 border-[#e74c4c] bg-[#e74c4c]/10 text-sm font-bold uppercase tracking-wider text-[#e74c4c] transition hover:bg-[#e74c4c] hover:text-white disabled:opacity-40">
-                    {isSubmitting ? "Memproses..." : "Verifikasi"}
-                  </button>
-                  <div className="flex gap-4 text-sm">
-                    <button type="button" onClick={() => { setOtpStep(false); setOtpCode(""); setErrorMessage(""); setSuccessMessage(""); }} className="text-white/30 hover:text-white/60">Ubah email</button>
-                    <button type="button" onClick={handleResendOtp} disabled={sendingOtp || otpCooldown > 0} className="font-semibold text-[#e74c4c]/70 hover:text-[#e74c4c] disabled:opacity-40">
-                      {otpCooldown > 0 ? `Kirim ulang (${otpCooldown}s)` : "Kirim ulang"}
-                    </button>
-                  </div>
-                </>
-              )}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-white/40">Email</label>
+                <input type="email" placeholder="nama@email.com" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} className={inputClass} required />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-white/40">Password</label>
+                <input type="password" placeholder="Minimal 6 karakter" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} className={inputClass} required minLength={6} />
+              </div>
+              <button type="submit" disabled={isSubmitting} className="!mt-8 flex h-14 w-full max-w-[220px] items-center justify-center rounded-xl border-2 border-[#e74c4c] bg-[#e74c4c]/10 text-sm font-bold uppercase tracking-wider text-[#e74c4c] transition hover:bg-[#e74c4c] hover:text-white">
+                {isSubmitting ? "Memproses..." : "Sign Up"}
+              </button>
             </form>
           )}
 

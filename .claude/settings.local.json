@@ -9,7 +9,20 @@
       "Bash(npx eslint:*)",
       "Bash(npx next:*)",
       "Bash(xargs grep *)",
-      "Bash(echo \"exit=$?\")"
+      "Bash(echo \"exit=$?\")",
+      "Bash(mysql --version)",
+      "Read(//c/xampp/mysql/bin/**)",
+      "Read(//d/xampp/mysql/bin/**)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Program Files \\(x86\\)/**)",
+      "Bash(/c/xampp/mysql/bin/mysql.exe *)",
+      "Bash(node scripts/import-db.mjs test)",
+      "Bash(node scripts/import-db.mjs import)",
+      "Bash(node scripts/import-db.mjs verify)",
+      "Bash(node scripts/import-db.mjs reset)",
+      "Bash(npm run *)",
+      "Bash(node *)",
+      "Bash(npm uninstall *)"
     ]
   }
 }

@@ -339,6 +339,12 @@ async function ensureEmployeeSchemaSupport() {
       await safeMigrate(
         `ALTER TABLE karyawan MODIFY COLUMN no_karyawan VARCHAR(50) NULL`,
       );
+      await safeMigrate(
+        `ALTER TABLE karyawan MODIFY COLUMN status_kepegawaian ENUM('training','kontrak','tetap','freelance','magang','resign') NOT NULL DEFAULT 'kontrak'`,
+      );
+      await safeMigrate(
+        `ALTER TABLE karyawan MODIFY COLUMN status_kerja ENUM('training','kontrak','tetap','freelance','magang','resign') NOT NULL DEFAULT 'kontrak'`,
+      );
     })();
   }
 

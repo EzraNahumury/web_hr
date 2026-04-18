@@ -1,22 +1,22 @@
 import { NextResponse } from "next/server";
 import { signupEmployee } from "@/lib/employees";
-import { verifyOtp } from "@/lib/otp";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
       email?: string;
       password?: string;
-      otpCode?: string;
     };
 
     const email = body.email?.trim().toLowerCase();
     const password = body.password?.trim();
-    const otpCode = body.otpCode?.trim();
 
-    if (!email || !password || !otpCode) {
+    if (!email || !password) {
       return NextResponse.json(
-        { message: "Email, password, dan kode OTP wajib diisi." },
+        { message: "Email dan password wajib diisi." },
         { status: 400 },
       );
     }
@@ -24,14 +24,6 @@ export async function POST(request: Request) {
     if (password.length < 6) {
       return NextResponse.json(
         { message: "Password minimal 6 karakter." },
-        { status: 400 },
-      );
-    }
-
-    const otpValid = await verifyOtp(email, otpCode);
-    if (!otpValid) {
-      return NextResponse.json(
-        { message: "Kode OTP tidak valid atau sudah kadaluarsa." },
         { status: 400 },
       );
     }
@@ -56,8 +48,14 @@ export async function POST(request: Request) {
     }
 
     console.error("Signup error", error);
+    const detail =
+      error instanceof Error
+        ? `${error.name}: ${error.message}`
+        : typeof error === "object" && error !== null && "code" in error
+          ? String((error as { code: unknown }).code)
+          : "unknown";
     return NextResponse.json(
-      { message: "Gagal memproses pendaftaran." },
+      { message: `Gagal memproses pendaftaran (${detail}).` },
       { status: 500 },
     );
   }

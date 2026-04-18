@@ -1,5 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { saveBufferToUploads } from "@/lib/uploads";
 
 function getJakartaParts() {
   const formatter = new Intl.DateTimeFormat("en-CA", {
@@ -55,12 +54,5 @@ export async function saveAttendancePhoto(dataUrl: string, employeeId: number, m
   const extension =
     mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg";
   const fileName = `employee-${employeeId}-${mode}-${Date.now()}.${extension}`;
-  const relativePath = `/uploads/attendance/${fileName}`;
-  const uploadDir = path.join(process.cwd(), "public", "uploads", "attendance");
-  const absolutePath = path.join(uploadDir, fileName);
-
-  await mkdir(uploadDir, { recursive: true });
-  await writeFile(absolutePath, Buffer.from(base64Data, "base64"));
-
-  return relativePath;
+  return saveBufferToUploads(Buffer.from(base64Data, "base64"), "attendance", fileName);
 }
