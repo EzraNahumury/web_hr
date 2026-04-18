@@ -15,8 +15,7 @@ export default function LogoutButton() {
         method: "POST",
       });
     } finally {
-      router.push("/");
-      router.refresh();
+      router.replace("/");
       setIsSubmitting(false);
     }
   }

@@ -1,9 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { FormEvent, useState } from "react";
+import dynamic from "next/dynamic";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import GridScan from "@/components/GridScan";
+
+const GridScan = dynamic(() => import("@/components/GridScan"), { ssr: false });
 
 export default function Home() {
   const router = useRouter();
@@ -17,6 +19,15 @@ export default function Home() {
   const [locationStatus, setLocationStatus] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
+  const [showGrid, setShowGrid] = useState(false);
+
+  useEffect(() => {
+    const canUseGrid =
+      typeof window !== "undefined" &&
+      window.matchMedia("(min-width: 1024px)").matches &&
+      !window.matchMedia("(pointer: coarse)").matches;
+    setShowGrid(canUseGrid);
+  }, []);
 
   async function requestLoginLocation() {
     if (!navigator.geolocation) return;
@@ -36,8 +47,10 @@ export default function Home() {
       const res = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
       const r = (await res.json()) as { message?: string; redirectTo?: string; role?: "admin" | "karyawan" };
       if (!res.ok) throw new Error(r.message || "Login gagal.");
-      if (r.role === "karyawan") await requestLoginLocation();
-      router.push(r.redirectTo || "/"); router.refresh();
+      if (r.role === "karyawan") {
+        try { await requestLoginLocation(); } catch { /* biarkan login lanjut */ }
+      }
+      router.push(r.redirectTo || "/");
     } catch (err) { setErrorMessage(err instanceof Error ? err.message : "Terjadi kesalahan."); }
     finally { setIsSubmitting(false); }
   }
@@ -60,21 +73,25 @@ export default function Home() {
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0e0e0e] p-4 sm:p-8">
-      {/* Animated background */}
+      {/* Animated background (desktop only; fallback gradient di mobile untuk hemat battery & cegah crash WebGL) */}
       <div className="absolute inset-0">
-        <GridScan
-          sensitivity={0.55}
-          lineThickness={1}
-          linesColor="#2f2228"
-          gridScale={0.1}
-          scanColor="#ff4d5e"
-          scanOpacity={0.4}
-          enablePost
-          bloomIntensity={0.6}
-          chromaticAberration={0.002}
-          noiseIntensity={0.01}
-          className="absolute inset-0"
-        />
+        {showGrid ? (
+          <GridScan
+            sensitivity={0.55}
+            lineThickness={1}
+            linesColor="#2f2228"
+            gridScale={0.1}
+            scanColor="#ff4d5e"
+            scanOpacity={0.4}
+            enablePost
+            bloomIntensity={0.6}
+            chromaticAberration={0.002}
+            noiseIntensity={0.01}
+            className="absolute inset-0"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(143,29,34,0.28),transparent_55%),radial-gradient(circle_at_bottom_left,rgba(143,29,34,0.18),transparent_55%),#0e0e0e]" />
+        )}
       </div>
       <div className="absolute right-[15%] top-[10%] h-[400px] w-[400px] rounded-full bg-[#8f1d22]/8 blur-[120px]" />
       <div className="absolute bottom-[15%] left-[10%] h-[300px] w-[300px] rounded-full bg-[#8f1d22]/5 blur-[100px]" />

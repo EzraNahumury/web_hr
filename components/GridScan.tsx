@@ -354,7 +354,13 @@ export default function GridScan({
       material.uniforms.uScanCount.value = next.length;
     };
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    } catch (error) {
+      console.warn("GridScan: WebGL tidak tersedia, skip animated background.", error);
+      return;
+    }
     rendererRef.current = renderer;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(element.clientWidth, element.clientHeight);
