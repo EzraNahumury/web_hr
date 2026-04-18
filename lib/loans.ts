@@ -3,6 +3,79 @@ import type { PoolConnection, ResultSetHeader, RowDataPacket } from "mysql2/prom
 import { addMonthsToIsoDate } from "@/lib/contract-timeline";
 import { pool } from "@/lib/db";
 
+export const LOAN_MINIMUM_TENURE_MONTHS = 6;
+
+export type LoanEligibility = {
+  eligible: boolean;
+  firstJoinDate: string | null;
+  eligibleFromDate: string | null;
+  monthsWorked: number;
+  reason: string | null;
+};
+
+function getJakartaTodayIsoDate() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const year = parts.find((p) => p.type === "year")?.value ?? "1970";
+  const month = parts.find((p) => p.type === "month")?.value ?? "01";
+  const day = parts.find((p) => p.type === "day")?.value ?? "01";
+  return `${year}-${month}-${day}`;
+}
+
+function monthsBetweenIsoDates(fromIso: string, toIso: string) {
+  const fromMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fromIso);
+  const toMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(toIso);
+  if (!fromMatch || !toMatch) return 0;
+  const fromY = Number(fromMatch[1]);
+  const fromM = Number(fromMatch[2]);
+  const fromD = Number(fromMatch[3]);
+  const toY = Number(toMatch[1]);
+  const toM = Number(toMatch[2]);
+  const toD = Number(toMatch[3]);
+  let months = (toY - fromY) * 12 + (toM - fromM);
+  if (toD < fromD) months -= 1;
+  return Math.max(0, months);
+}
+
+export function checkLoanEligibility(firstJoinDate: string | null | undefined): LoanEligibility {
+  if (!firstJoinDate || !/^\d{4}-\d{2}-\d{2}$/.test(firstJoinDate)) {
+    return {
+      eligible: false,
+      firstJoinDate: null,
+      eligibleFromDate: null,
+      monthsWorked: 0,
+      reason:
+        "Tanggal masuk pertama Anda belum tercatat. Hubungi HR untuk melengkapi data sebelum mengajukan pinjaman.",
+    };
+  }
+
+  const today = getJakartaTodayIsoDate();
+  const monthsWorked = monthsBetweenIsoDates(firstJoinDate, today);
+  const eligibleFromDate = addMonthsToIsoDate(firstJoinDate, LOAN_MINIMUM_TENURE_MONTHS);
+
+  if (monthsWorked < LOAN_MINIMUM_TENURE_MONTHS) {
+    return {
+      eligible: false,
+      firstJoinDate,
+      eligibleFromDate,
+      monthsWorked,
+      reason: `Pengajuan pinjaman baru bisa dilakukan setelah Anda bekerja minimal ${LOAN_MINIMUM_TENURE_MONTHS} bulan.`,
+    };
+  }
+
+  return {
+    eligible: true,
+    firstJoinDate,
+    eligibleFromDate,
+    monthsWorked,
+    reason: null,
+  };
+}
+
 export type LoanStatus =
   | "pending"
   | "approved"

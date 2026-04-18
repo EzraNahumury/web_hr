@@ -2,7 +2,7 @@ import EmployeeLoansManager from "@/components/EmployeeLoansManager";
 import EmployeeShell from "@/components/EmployeeShell";
 import { requireEmployeeSession } from "@/lib/auth";
 import { getEmployeeByUserId } from "@/lib/hris";
-import { listEmployeeLoans } from "@/lib/loans";
+import { checkLoanEligibility, listEmployeeLoans } from "@/lib/loans";
 
 function getJakartaTodaySqlDate() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -28,6 +28,7 @@ export default async function EmployeeLoansPage() {
   }
 
   const rows = await listEmployeeLoans(employee.id);
+  const eligibility = checkLoanEligibility(employee.tanggal_masuk_pertama);
 
   return (
     <EmployeeShell
@@ -41,6 +42,7 @@ export default async function EmployeeLoansPage() {
         employeeName={employee.nama}
         initialRows={rows}
         defaultRequestDate={getJakartaTodaySqlDate()}
+        eligibility={eligibility}
       />
     </EmployeeShell>
   );

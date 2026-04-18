@@ -1,6 +1,8 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { RowDataPacket } from "mysql2";
+import { pool } from "@/lib/db";
 
 const ADMIN_SESSION_COOKIE = "web_hr_admin_session";
 const EMPLOYEE_SESSION_COOKIE = "web_hr_employee_session";
@@ -102,6 +104,17 @@ export async function requireEmployeeSession() {
   const session = await getCurrentEmployeeSession();
 
   if (!session) {
+    redirect("/");
+  }
+
+  const [rows] = await pool.query<(RowDataPacket & { status_data: string | null })[]>(
+    `SELECT status_data FROM karyawan WHERE user_id = ? LIMIT 1`,
+    [session.userId],
+  );
+
+  if (rows[0]?.status_data === "nonaktif") {
+    const cookieStore = await cookies();
+    cookieStore.delete(EMPLOYEE_SESSION_COOKIE);
     redirect("/");
   }
 

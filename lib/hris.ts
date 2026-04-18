@@ -1075,6 +1075,7 @@ type EmployeeCardRow = RowDataPacket & {
   jabatan: string;
   divisi: string;
   departemen: string;
+  tanggal_masuk_pertama?: string | null;
 };
 
 export async function getEmployeeByEmail(email: string) {
@@ -1108,7 +1109,8 @@ export async function getEmployeeByUserId(userId: number) {
         k.no_karyawan,
         k.jabatan,
         k.divisi,
-        k.departemen
+        k.departemen,
+        DATE_FORMAT(k.tanggal_masuk_pertama, '%Y-%m-%d') AS tanggal_masuk_pertama
       FROM karyawan k
       WHERE k.user_id = ?
       LIMIT 1

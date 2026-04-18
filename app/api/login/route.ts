@@ -10,6 +10,7 @@ type UserRow = RowDataPacket & {
   password: string;
   role: "admin" | "karyawan";
   status_aktif: number;
+  status_data: string | null;
 };
 
 export async function POST(request: Request) {
@@ -31,9 +32,11 @@ export async function POST(request: Request) {
 
     const [rows] = await pool.query<UserRow[]>(
       `
-        SELECT id, nama, email, password, role, status_aktif
-        FROM users
-        WHERE email = ?
+        SELECT u.id, u.nama, u.email, u.password, u.role, u.status_aktif,
+               k.status_data
+        FROM users u
+        LEFT JOIN karyawan k ON k.user_id = u.id
+        WHERE u.email = ?
         LIMIT 1
       `,
       [email],
@@ -45,6 +48,16 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { message: "Akun tidak ditemukan atau tidak aktif." },
         { status: 401 },
+      );
+    }
+
+    if (user.role === "karyawan" && user.status_data === "nonaktif") {
+      return NextResponse.json(
+        {
+          message:
+            "Akun Anda sudah dinonaktifkan karena sudah tidak bekerja di perusahaan. Hubungi HR bila ini keliru.",
+        },
+        { status: 403 },
       );
     }
 

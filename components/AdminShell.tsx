@@ -31,6 +31,7 @@ const menuItems: MenuItem[] = [
   { label: "Finance", href: "/admin/finance", description: "Pembebanan dan pencairan" },
   { label: "Slip Gaji", href: "/admin/payslips", description: "Detail slip gaji" },
   { label: "Distribusi Slip", href: "/admin/payslip-distribution", description: "Log distribusi slip" },
+  { label: "Role", href: "/admin/roles", description: "Kelola akun admin" },
 ];
 
 function GridIcon({ active }: { active?: boolean }) {

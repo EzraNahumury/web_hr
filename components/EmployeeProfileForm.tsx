@@ -57,12 +57,30 @@ export default function EmployeeProfileForm({ initial }: { initial: EmployeeList
   const [ktpFile, setKtpFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [validationPopup, setValidationPopup] = useState<{ missing: string[] } | null>(null);
 
   useEffect(() => {
     if (!toast) return;
     const timeout = window.setTimeout(() => setToast(null), 3000);
     return () => window.clearTimeout(timeout);
   }, [toast]);
+
+  function validateForm(): string[] {
+    const missing: string[] = [];
+    if (!form.name.trim()) missing.push("Nama Lengkap");
+    if (!form.gender) missing.push("Jenis Kelamin");
+    if (!form.birthPlace.trim()) missing.push("Tempat Lahir");
+    if (!form.birthDate) missing.push("Tanggal Lahir");
+    if (!form.nik.trim()) missing.push("NIK");
+    if (!form.religion) missing.push("Agama");
+    if (!form.phoneNumber.trim()) missing.push("Nomor Telepon");
+    if (!ktpFile && !form.ktpPhotoLink) missing.push("Foto KTP");
+    if (!form.bank.trim()) missing.push("Bank");
+    if (!form.accountNumber.trim()) missing.push("No Rekening");
+    if (!form.addressKtp.trim()) missing.push("Alamat KTP");
+    if (!form.addressCurrent.trim()) missing.push("Alamat Rumah / Kost");
+    return missing;
+  }
 
   function update<K extends keyof ProfileForm>(key: K, value: ProfileForm[K]) {
     setForm((current) => {
@@ -76,6 +94,11 @@ export default function EmployeeProfileForm({ initial }: { initial: EmployeeList
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    const missing = validateForm();
+    if (missing.length > 0) {
+      setValidationPopup({ missing });
+      return;
+    }
     setIsSubmitting(true);
     try {
       const formData = new FormData();
@@ -109,6 +132,48 @@ export default function EmployeeProfileForm({ initial }: { initial: EmployeeList
         </div>
       ) : null}
 
+      {validationPopup ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4 py-6">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-[0_24px_60px_rgba(15,23,42,0.28)]">
+            <div className="flex items-start gap-4 border-b border-[#f3dcd4] px-6 py-5">
+              <div className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-[#fdecec] text-[#8f1d22]">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 9v4" />
+                  <path d="M12 17h.01" />
+                  <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+                </svg>
+              </div>
+              <div>
+                <h4 className="text-lg font-semibold text-[#241716]">Data Belum Lengkap</h4>
+                <p className="mt-1 text-sm text-[#7a6059]">
+                  Mohon lengkapi data diri Anda terlebih dahulu sebelum menyimpan.
+                </p>
+              </div>
+            </div>
+            <div className="max-h-64 overflow-y-auto px-6 py-4">
+              <p className="text-sm font-semibold text-[#6f5a54]">Kolom yang belum diisi:</p>
+              <ul className="mt-2 space-y-1.5">
+                {validationPopup.missing.map((field) => (
+                  <li key={field} className="flex items-center gap-2 text-sm text-[#2d1b18]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#8f1d22]" />
+                    {field}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-[#f3dcd4] bg-[#fffaf7] px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setValidationPopup(null)}
+                className="inline-flex h-10 items-center justify-center rounded-xl bg-[#8f1d22] px-5 text-sm font-semibold text-white"
+              >
+                Mengerti
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <section className="overflow-hidden rounded-[32px] border border-[#ead7ce] bg-[linear-gradient(180deg,#fffdfc_0%,#fff6f2_100%)]">
         <div className="border-b border-[#eddad1] px-6 py-6">
           <div className="inline-flex rounded-full border border-[#f0d8d1] bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.26em] text-[#a16f63]">
@@ -120,10 +185,10 @@ export default function EmployeeProfileForm({ initial }: { initial: EmployeeList
           </p>
         </div>
 
-        <form className="space-y-6 px-6 py-6" onSubmit={handleSubmit}>
+        <form noValidate className="space-y-6 px-6 py-6" onSubmit={handleSubmit}>
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Nama Lengkap *">
-              <input value={form.name} onChange={(e) => update("name", e.target.value)} className={inputClassName} required />
+              <input value={form.name} onChange={(e) => update("name", e.target.value)} className={inputClassName} />
             </Field>
             <Field label="Jenis Kelamin">
               <select value={form.gender} onChange={(e) => update("gender", e.target.value as ProfileForm["gender"])} className={selectClassName}>

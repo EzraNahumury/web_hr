@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getCurrentEmployeeSession } from "@/lib/auth";
 import { getEmployeeByUserId } from "@/lib/hris";
-import { createEmployeeLoanRequest } from "@/lib/loans";
+import { checkLoanEligibility, createEmployeeLoanRequest } from "@/lib/loans";
 
 function parsePositiveNumber(value: unknown) {
   const parsed = Number(value);
@@ -34,6 +34,14 @@ export async function POST(request: Request) {
 
   if (!employee) {
     return NextResponse.json({ message: "Data karyawan tidak ditemukan." }, { status: 404 });
+  }
+
+  const eligibility = checkLoanEligibility(employee.tanggal_masuk_pertama);
+  if (!eligibility.eligible) {
+    return NextResponse.json(
+      { message: eligibility.reason ?? "Anda belum memenuhi syarat untuk mengajukan pinjaman." },
+      { status: 403 },
+    );
   }
 
   try {

@@ -3,13 +3,27 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
-import type { LoanListItem } from "@/lib/loans";
+import type { LoanEligibility, LoanListItem } from "@/lib/loans";
 
 type Props = {
   employeeName: string;
   initialRows: LoanListItem[];
   defaultRequestDate: string;
+  eligibility: LoanEligibility;
 };
+
+function formatDateId(iso: string | null) {
+  if (!iso) return "-";
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!match) return "-";
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  return date.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
 
 type FormState = {
   totalLoan: string;
@@ -66,7 +80,7 @@ function StatusBadge({ status }: { status: LoanListItem["status"] }) {
   return <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${styles}`}>{status}</span>;
 }
 
-export default function EmployeeLoansManager({ employeeName, initialRows, defaultRequestDate }: Props) {
+export default function EmployeeLoansManager({ employeeName, initialRows, defaultRequestDate, eligibility }: Props) {
   const router = useRouter();
   const [rows, setRows] = useState(initialRows);
   const [isPending, startTransition] = useTransition();
@@ -110,6 +124,14 @@ export default function EmployeeLoansManager({ employeeName, initialRows, defaul
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
+
+    if (!eligibility.eligible) {
+      setMessage({
+        type: "error",
+        text: eligibility.reason ?? "Anda belum memenuhi syarat untuk mengajukan pinjaman.",
+      });
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -179,8 +201,37 @@ export default function EmployeeLoansManager({ employeeName, initialRows, defaul
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="grid gap-6 px-6 py-6 xl:grid-cols-[minmax(0,1fr)_300px]">
-          <div className="grid gap-4 md:grid-cols-2">
+        {!eligibility.eligible ? (
+          <div className="border-b border-[#f3dcd4] bg-[#fff4ec] px-6 py-5">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[#fde3d6] text-[#a1491f]">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v6" />
+                  <path d="M12 17h.01" />
+                </svg>
+              </div>
+              <div className="text-sm leading-6 text-[#5a3a2d]">
+                <p className="font-semibold text-[#8a3b1a]">Belum Bisa Mengajukan Pinjaman</p>
+                <p className="mt-1">{eligibility.reason}</p>
+                {eligibility.firstJoinDate ? (
+                  <p className="mt-1 text-[#6f5a54]">
+                    Tanggal mulai bekerja: <span className="font-semibold text-[#241716]">{formatDateId(eligibility.firstJoinDate)}</span>
+                    {eligibility.eligibleFromDate ? (
+                      <>
+                        {" "}| Dapat mengajukan mulai: <span className="font-semibold text-[#241716]">{formatDateId(eligibility.eligibleFromDate)}</span>
+                      </>
+                    ) : null}
+                    {" "}(sudah bekerja <span className="font-semibold text-[#241716]">{eligibility.monthsWorked} bulan</span>).
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        <form onSubmit={handleSubmit} className={`grid gap-6 px-6 py-6 xl:grid-cols-[minmax(0,1fr)_300px] ${!eligibility.eligible ? "opacity-60" : ""}`}>
+          <fieldset disabled={!eligibility.eligible} className="grid gap-4 md:grid-cols-2">
             <label className="space-y-2">
               <span className="text-sm font-semibold text-[#2f1f1d]">Nama Karyawan</span>
               <input value={employeeName} readOnly className={`${inputClassName} bg-[#f8f3f0] text-[#6b514b]`} />
@@ -218,7 +269,7 @@ export default function EmployeeLoansManager({ employeeName, initialRows, defaul
                 required
               />
             </label>
-          </div>
+          </fieldset>
 
           <div className="rounded-[28px] border border-[#ead7ce] bg-white p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#a16f63]">Preview Otomatis</p>
@@ -243,7 +294,8 @@ export default function EmployeeLoansManager({ employeeName, initialRows, defaul
             <div className="mt-5 flex flex-wrap gap-3">
               <button
                 type="submit"
-                disabled={isPending}
+                disabled={isPending || !eligibility.eligible}
+                title={!eligibility.eligible ? eligibility.reason ?? undefined : undefined}
                 className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#8f1d22] px-6 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isPending ? "Mengirim..." : "Kirim Pengajuan"}
@@ -251,7 +303,8 @@ export default function EmployeeLoansManager({ employeeName, initialRows, defaul
               <button
                 type="button"
                 onClick={resetForm}
-                className="inline-flex h-12 items-center justify-center rounded-2xl border border-[#e7d4cb] bg-white px-6 text-sm font-semibold text-[#3b2622]"
+                disabled={!eligibility.eligible}
+                className="inline-flex h-12 items-center justify-center rounded-2xl border border-[#e7d4cb] bg-white px-6 text-sm font-semibold text-[#3b2622] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Reset
               </button>
