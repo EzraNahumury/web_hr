@@ -25,7 +25,8 @@
       "Bash(npm uninstall *)",
       "WebFetch(domain:maps.app.goo.gl)",
       "WebFetch(domain:maps.google.com)",
-      "WebFetch(domain:www.google.com)"
+      "WebFetch(domain:www.google.com)",
+      "Bash(echo \"EXIT=$?\")"
     ]
   }
 }

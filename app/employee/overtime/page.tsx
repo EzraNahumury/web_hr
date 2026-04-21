@@ -20,6 +20,7 @@ export default async function EmployeeOvertimePage() {
       employeeName={employee.nama}
       employeeMeta={`${employee.no_karyawan} - ${employee.jabatan}`}
       currentPath="/employee/overtime"
+      employeeRole={employee.jabatan}
     >
       <EmployeeOvertimeManager employeeId={employee.id} rows={rows} />
     </EmployeeShell>

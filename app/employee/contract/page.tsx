@@ -15,6 +15,7 @@ export default async function EmployeeContractPage() {
       employeeName={employee.nama}
       employeeMeta={`${employee.no_karyawan} • ${employee.jabatan}`}
       currentPath="/employee/contract"
+      employeeRole={employee.jabatan}
     >
       <div className="overflow-hidden rounded-[32px] border border-[#ead7ce] bg-white">
         <table className="min-w-full border-collapse text-left text-sm">

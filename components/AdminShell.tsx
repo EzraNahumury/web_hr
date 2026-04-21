@@ -24,6 +24,7 @@ const menuItems: MenuItem[] = [
   { label: "Dashboard", href: "/admin", description: "Ringkasan panel admin" },
   { label: "Data Karyawan", href: "/admin/employees", description: "Kelola master karyawan" },
   { label: "Absensi", href: "/admin/attendance", description: "Presensi dan keterlambatan" },
+  { label: "Laporan Kunjungan", href: "/admin/visit-reports", description: "Timeline kunjungan Sales Area" },
   { label: "Lembur", href: "/admin/overtime", description: "Approval dan rekap lembur" },
   { label: "Pinjaman", href: "/admin/loans", description: "Pinjaman karyawan" },
   { label: "Potongan Kontrak", href: "/admin/contract-deductions", description: "Potongan per bulan" },

@@ -19,6 +19,7 @@ export default async function EmployeeDashboardPage() {
       employeeName={employee.nama}
       employeeMeta={`${employee.no_karyawan} • ${employee.jabatan}`}
       currentPath="/employee"
+      employeeRole={employee.jabatan}
     >
       <div className="grid gap-4 md:grid-cols-4">
         <div className="rounded-[28px] border border-[#ead7ce] bg-white/82 p-5">

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 17, 2026 at 04:58 AM
+-- Generation Time: Apr 21, 2026 at 08:01 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -62,7 +62,11 @@ INSERT INTO `absensi` (`id`, `karyawan_id`, `tanggal`, `jam_masuk`, `jam_pulang`
 (6, 3, '2026-03-11', NULL, NULL, 'izin', 'X', NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0.00, 'keperluan keluarga', '2026-03-11 11:38:27', '2026-03-11 11:38:27'),
 (7, 2, '2026-03-12', '2026-03-12 09:33:23', NULL, 'hadir', 'O', '/uploads/attendance/employee-2-in-1773282803112.jpg', NULL, -7.7780000, 110.3677000, NULL, NULL, 63, 0, 0.00, '', '2026-03-12 09:33:23', '2026-03-12 09:33:23'),
 (8, 3, '2026-03-12', '2026-03-12 11:44:23', NULL, 'hadir', 'O', '/uploads/attendance/employee-3-in-1773290663470.jpg', NULL, -7.7780000, 110.3677000, NULL, NULL, 194, 0, 0.00, '', '2026-03-12 11:44:23', '2026-03-12 11:44:23'),
-(9, 3, '2026-04-16', '2026-04-16 08:55:25', NULL, 'hadir', 'O', '/uploads/attendance/employee-3-in-1776304525785.jpg', NULL, -7.8025076, 110.4068520, NULL, NULL, 25, 0, 0.00, '', '2026-04-16 08:55:25', '2026-04-16 08:55:25');
+(9, 3, '2026-04-16', '2026-04-16 08:55:25', NULL, 'hadir', 'O', '/uploads/attendance/employee-3-in-1776304525785.jpg', NULL, -7.8025076, 110.4068520, NULL, NULL, 25, 0, 0.00, '', '2026-04-16 08:55:25', '2026-04-16 08:55:25'),
+(10, 3, '2026-04-17', NULL, NULL, 'izin', 'X', NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0.00, 'sedang acara keluarga', '2026-04-17 10:10:28', '2026-04-17 10:10:28'),
+(11, 3, '2026-04-18', '2026-04-18 10:49:02', NULL, 'hadir', 'O', '/uploads/attendance/employee-3-in-1776484142921.jpg', NULL, -7.8025094, 110.4068550, NULL, NULL, 139, 0, 0.00, '', '2026-04-18 10:49:02', '2026-04-18 10:49:02'),
+(12, 2, '2026-04-18', '2026-04-18 11:11:44', NULL, 'hadir', 'O', '/uploads/attendance/employee-2-in-1776485505000.jpg', NULL, -7.8025076, 110.4068520, NULL, NULL, 161, 0, 0.00, '', '2026-04-18 11:11:45', '2026-04-18 11:11:45'),
+(13, 1, '2026-04-18', '2026-04-18 11:14:32', NULL, 'hadir', 'O', '/uploads/attendance/employee-1-in-1776485672233.jpg', NULL, -7.8025067, 110.4067805, NULL, NULL, 164, 0, 0.00, '', '2026-04-18 11:14:32', '2026-04-18 11:14:32');
 
 -- --------------------------------------------------------
 
@@ -111,8 +115,8 @@ CREATE TABLE `karyawan` (
   `alamat_rumah_kost` text DEFAULT NULL,
   `nomor_telepon` varchar(30) DEFAULT NULL,
   `foto_ktp` varchar(255) DEFAULT NULL,
-  `status_kepegawaian` enum('tetap','kontrak','freelance','magang','resign') NOT NULL DEFAULT 'kontrak',
-  `status_kerja` enum('tetap','kontrak','freelance','magang','resign') NOT NULL DEFAULT 'kontrak',
+  `status_kepegawaian` enum('training','kontrak','tetap','freelance','magang','resign') NOT NULL DEFAULT 'kontrak',
+  `status_kerja` enum('training','kontrak','tetap','freelance','magang','resign') NOT NULL DEFAULT 'kontrak',
   `status_data` enum('aktif','nonaktif') NOT NULL DEFAULT 'aktif',
   `tanggal_masuk_pertama` date DEFAULT NULL,
   `tanggal_kontrak` date DEFAULT NULL,
@@ -127,10 +131,36 @@ CREATE TABLE `karyawan` (
 --
 
 INSERT INTO `karyawan` (`id`, `user_id`, `no_karyawan`, `nama`, `unit`, `jabatan`, `departemen`, `divisi`, `sub_divisi`, `penempatan`, `pembagian_rekapan`, `pembebanan`, `bank`, `no_rekening`, `jenis_kelamin`, `tempat_lahir`, `tanggal_lahir`, `nik`, `agama`, `alamat_ktp`, `alamat_rumah_kost`, `nomor_telepon`, `foto_ktp`, `status_kepegawaian`, `status_kerja`, `status_data`, `tanggal_masuk_pertama`, `tanggal_kontrak`, `tanggal_selesai_kontrak`, `kenaikan_tiap_tahun`, `created_at`, `updated_at`) VALUES
-(1, 2, '0001', 'ZEXO', 'Ayres Apparel', 'Staff', 'Umum', 'Marketing & Media', 'Media', 'Ayres', 'Umum Ayres', 'produksi ayres', 'BCA', '123343', 'laki-laki', 'BANTUL', '2020-05-06', '244545', 'KRISTEN', 'SDSa', 'SDSa', '0884376324', '/uploads/ktp/1773132378887-ABSENSI.drawio.png', 'kontrak', 'kontrak', 'aktif', '2025-12-10', '2026-03-10', '2027-03-10', 999999999999.99, '2026-03-10 15:46:18', '2026-03-13 16:21:10'),
-(2, 3, '0002', 'ZETACO', 'AVA Sportivo', 'Supervisor', 'Umum', 'RnD', 'Customer Service', 'Ayres', 'Penjualan Ayres', 'penjualan ayres', 'BNI', '3425', 'perempuan', 'DFFV', '2026-03-24', '43244', 'KRISTEN', 'XSWEDC', 'DFEVFFE', '34255', '/uploads/ktp/1773134048617-Mar06-02_09.jpg.jpeg', 'tetap', 'tetap', 'aktif', '2026-03-10', '2026-06-10', '2027-06-10', 999999999999.99, '2026-03-10 16:14:08', '2026-03-13 15:58:31'),
-(3, 4, '0003', 'LEIF', 'AVA Sportivo', 'Manager', 'Logistik', 'Produksi', 'Finishing', 'Toko', 'Penjualan AVA', 'penjualan ava', 'CIMB', '24T', 'laki-laki', 'GG', '2026-03-01', '455', 'KRISTEN', 'REG', 'GBDFGB', '543545', '/uploads/ktp/1773134994321-AdiVira-01.jpg.jpeg', 'tetap', 'tetap', 'aktif', '2026-03-11', '2026-06-11', '2027-06-11', 999999999999.99, '2026-03-10 16:29:54', '2026-03-14 09:05:11'),
-(4, 5, NULL, 'ezranhmry', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'BNI', '222', 'laki-laki', 'ddd', '2026-04-08', '333', 'Kristen', '3', '3', '3333', '33', '', '', 'aktif', NULL, NULL, NULL, 0.00, '2026-04-07 10:19:21', '2026-04-07 11:00:06');
+(1, 2, '0001', 'ZEXO', 'Ayres Apparel', 'Staff', 'Secretary', 'Marketing & Media', 'Media', 'Office', NULL, 'produksi ayres', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '/uploads/ktp/1773132378887-ABSENSI.drawio.png', 'kontrak', 'kontrak', 'aktif', '2025-12-10', '2026-03-10', '2027-03-10', 999999999999.99, '2026-03-10 15:46:18', '2026-04-18 11:14:10'),
+(2, 3, '0002', 'ZETACO', 'AVA Sportivo', 'Supervisor', 'Finance', 'RnD', 'Customer Service', 'Office', NULL, 'penjualan ayres', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '/uploads/ktp/1773134048617-Mar06-02_09.jpg.jpeg', 'tetap', 'tetap', 'aktif', '2026-03-10', '2026-06-10', '2027-06-10', 999999999999.99, '2026-03-10 16:14:08', '2026-04-18 11:11:27'),
+(3, 4, '0003', 'LEIF', 'AVA Sportivo', 'Sales Area', 'Marketing', 'Sales & Retail', 'Finishing', 'Toko', NULL, 'penjualan ava', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '/uploads/ktp/1773134994321-AdiVira-01.jpg.jpeg', 'tetap', 'tetap', 'aktif', '2026-03-11', '2026-06-11', '2027-06-11', 999999999999.99, '2026-03-10 16:29:54', '2026-04-21 12:57:30'),
+(4, 5, NULL, 'ezranhmry', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'BNI', '222', 'laki-laki', 'ddd', '2026-04-08', '333', 'Kristen', '3', '3', '3333', '33', '', '', 'aktif', NULL, NULL, NULL, 0.00, '2026-04-07 10:19:21', '2026-04-07 11:00:06'),
+(5, 6, NULL, 'avagrouphrd', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'BCA', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'training', 'training', 'aktif', NULL, NULL, NULL, 0.00, '2026-04-18 09:18:49', '2026-04-18 09:18:49');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `laporan_kunjungan`
+--
+
+CREATE TABLE `laporan_kunjungan` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `karyawan_id` bigint(20) UNSIGNED NOT NULL,
+  `tanggal` date NOT NULL,
+  `waktu_submit` datetime NOT NULL,
+  `nama_toko` varchar(255) NOT NULL,
+  `foto_path` varchar(500) NOT NULL,
+  `latitude` decimal(10,7) DEFAULT NULL,
+  `longitude` decimal(10,7) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `laporan_kunjungan`
+--
+
+INSERT INTO `laporan_kunjungan` (`id`, `karyawan_id`, `tanggal`, `waktu_submit`, `nama_toko`, `foto_path`, `latitude`, `longitude`, `created_at`) VALUES
+(1, 3, '2026-04-21', '2026-04-21 12:58:07', 'Toko Lampu', '/uploads/visit-reports/visit-3-1776751087422.jpg', -7.8025077, 110.4067648, '2026-04-21 12:58:07');
 
 -- --------------------------------------------------------
 
@@ -225,7 +255,8 @@ CREATE TABLE `otp_codes` (
 
 INSERT INTO `otp_codes` (`id`, `email`, `code`, `expires_at`, `used`, `created_at`) VALUES
 (1, 'ezranhmry@gmail.com', '489344', '2026-04-07 09:26:50', 1, '2026-04-07 09:21:50'),
-(2, 'ezranhmry@gmail.com', '792405', '2026-04-07 10:24:02', 1, '2026-04-07 10:19:02');
+(2, 'ezranhmry@gmail.com', '792405', '2026-04-07 10:24:02', 1, '2026-04-07 10:19:02'),
+(3, 'ezra.kristanto@ti.ukdw.ac.id', '889381', '2026-04-18 09:15:20', 0, '2026-04-18 09:10:20');
 
 -- --------------------------------------------------------
 
@@ -416,21 +447,21 @@ CREATE TABLE `potongan_kontrak` (
 --
 
 INSERT INTO `potongan_kontrak` (`id`, `karyawan_id`, `bulan`, `tahun`, `nominal_potongan`, `keterangan`, `created_at`, `updated_at`) VALUES
-(86, 2, 6, 2026, 200000.00, 'Potongan kontrak bulan ke-1 dari 5', '2026-03-13 15:58:31', '2026-03-13 15:58:31'),
-(87, 2, 7, 2026, 200000.00, 'Potongan kontrak bulan ke-2 dari 5', '2026-03-13 15:58:31', '2026-03-13 15:58:31'),
-(88, 2, 8, 2026, 200000.00, 'Potongan kontrak bulan ke-3 dari 5', '2026-03-13 15:58:31', '2026-03-13 15:58:31'),
-(89, 2, 9, 2026, 200000.00, 'Potongan kontrak bulan ke-4 dari 5', '2026-03-13 15:58:31', '2026-03-13 15:58:31'),
-(90, 2, 10, 2026, 200000.00, 'Potongan kontrak bulan ke-5 dari 5', '2026-03-13 15:58:31', '2026-03-13 15:58:31'),
-(96, 1, 3, 2026, 200000.00, 'Potongan kontrak bulan ke-1 dari 5', '2026-03-13 16:21:10', '2026-03-13 16:21:10'),
-(97, 1, 4, 2026, 200000.00, 'Potongan kontrak bulan ke-2 dari 5', '2026-03-13 16:21:10', '2026-03-13 16:21:10'),
-(98, 1, 5, 2026, 200000.00, 'Potongan kontrak bulan ke-3 dari 5', '2026-03-13 16:21:10', '2026-03-13 16:21:10'),
-(99, 1, 6, 2026, 200000.00, 'Potongan kontrak bulan ke-4 dari 5', '2026-03-13 16:21:10', '2026-03-13 16:21:10'),
-(100, 1, 7, 2026, 200000.00, 'Potongan kontrak bulan ke-5 dari 5', '2026-03-13 16:21:10', '2026-03-13 16:21:10'),
-(106, 3, 6, 2026, 200000.00, 'Potongan kontrak bulan ke-1 dari 5', '2026-03-14 09:05:11', '2026-03-14 09:05:11'),
-(107, 3, 7, 2026, 200000.00, 'Potongan kontrak bulan ke-2 dari 5', '2026-03-14 09:05:11', '2026-03-14 09:05:11'),
-(108, 3, 8, 2026, 200000.00, 'Potongan kontrak bulan ke-3 dari 5', '2026-03-14 09:05:11', '2026-03-14 09:05:11'),
-(109, 3, 9, 2026, 200000.00, 'Potongan kontrak bulan ke-4 dari 5', '2026-03-14 09:05:11', '2026-03-14 09:05:11'),
-(110, 3, 10, 2026, 200000.00, 'Potongan kontrak bulan ke-5 dari 5', '2026-03-14 09:05:11', '2026-03-14 09:05:11');
+(131, 2, 6, 2026, 200000.00, 'Potongan kontrak bulan ke-1 dari 5', '2026-04-18 11:11:27', '2026-04-18 11:11:27'),
+(132, 2, 7, 2026, 200000.00, 'Potongan kontrak bulan ke-2 dari 5', '2026-04-18 11:11:27', '2026-04-18 11:11:27'),
+(133, 2, 8, 2026, 200000.00, 'Potongan kontrak bulan ke-3 dari 5', '2026-04-18 11:11:27', '2026-04-18 11:11:27'),
+(134, 2, 9, 2026, 200000.00, 'Potongan kontrak bulan ke-4 dari 5', '2026-04-18 11:11:27', '2026-04-18 11:11:27'),
+(135, 2, 10, 2026, 200000.00, 'Potongan kontrak bulan ke-5 dari 5', '2026-04-18 11:11:27', '2026-04-18 11:11:27'),
+(136, 1, 3, 2026, 200000.00, 'Potongan kontrak bulan ke-1 dari 5', '2026-04-18 11:14:10', '2026-04-18 11:14:10'),
+(137, 1, 4, 2026, 200000.00, 'Potongan kontrak bulan ke-2 dari 5', '2026-04-18 11:14:10', '2026-04-18 11:14:10'),
+(138, 1, 5, 2026, 200000.00, 'Potongan kontrak bulan ke-3 dari 5', '2026-04-18 11:14:10', '2026-04-18 11:14:10'),
+(139, 1, 6, 2026, 200000.00, 'Potongan kontrak bulan ke-4 dari 5', '2026-04-18 11:14:10', '2026-04-18 11:14:10'),
+(140, 1, 7, 2026, 200000.00, 'Potongan kontrak bulan ke-5 dari 5', '2026-04-18 11:14:10', '2026-04-18 11:14:10'),
+(141, 3, 6, 2026, 200000.00, 'Potongan kontrak bulan ke-1 dari 5', '2026-04-21 12:57:30', '2026-04-21 12:57:30'),
+(142, 3, 7, 2026, 200000.00, 'Potongan kontrak bulan ke-2 dari 5', '2026-04-21 12:57:30', '2026-04-21 12:57:30'),
+(143, 3, 8, 2026, 200000.00, 'Potongan kontrak bulan ke-3 dari 5', '2026-04-21 12:57:30', '2026-04-21 12:57:30'),
+(144, 3, 9, 2026, 200000.00, 'Potongan kontrak bulan ke-4 dari 5', '2026-04-21 12:57:30', '2026-04-21 12:57:30'),
+(145, 3, 10, 2026, 200000.00, 'Potongan kontrak bulan ke-5 dari 5', '2026-04-21 12:57:30', '2026-04-21 12:57:30');
 
 -- --------------------------------------------------------
 
@@ -475,7 +506,8 @@ INSERT INTO `users` (`id`, `nama`, `email`, `password`, `role`, `status_aktif`, 
 (2, 'ZEXO', 'zexo@gmail.com', '120eb43c9db4d2c719ec1a16519976bf3cbf59bff9f7cdf8745f4944db48d481', 'karyawan', 1, '2026-03-10 15:46:18', '2026-03-10 15:46:18'),
 (3, 'ZETACO', 'zetaco@gmail.com', 'f87ddab125c15f8b9c73a89a2c4ba6ae145ff33d1e6a57629e4b403026a83382', 'karyawan', 1, '2026-03-10 16:14:08', '2026-03-10 16:14:08'),
 (4, 'LEIF', 'leif@gmail.com', '5d00fdccb9467908ee514ef6516d24e04cd473d063796b9511d0e98c4bf62325', 'karyawan', 1, '2026-03-10 16:29:54', '2026-03-10 16:29:54'),
-(5, 'ezranhmry', 'ezranhmry@gmail.com', '437a70301fed0618c6c3375402de28fef9248362aafdc3070046339b4501195c', 'karyawan', 1, '2026-04-07 10:19:21', '2026-04-07 10:19:21');
+(5, 'ezranhmry', 'ezranhmry@gmail.com', '437a70301fed0618c6c3375402de28fef9248362aafdc3070046339b4501195c', 'karyawan', 1, '2026-04-07 10:19:21', '2026-04-07 10:19:21'),
+(6, 'avagrouphrd', 'avagrouphrd@gmail.com', 'af4e76dcf9ca1021e3846b85ee029e187810c4dc3f2f23d5477e0feda6e5068f', 'karyawan', 1, '2026-04-18 09:18:49', '2026-04-18 09:18:49');
 
 --
 -- Indexes for dumped tables
@@ -513,6 +545,14 @@ ALTER TABLE `karyawan`
   ADD KEY `idx_karyawan_status_kepegawaian` (`status_kepegawaian`),
   ADD KEY `idx_karyawan_status_kerja` (`status_kerja`),
   ADD KEY `idx_karyawan_status_data` (`status_data`);
+
+--
+-- Indexes for table `laporan_kunjungan`
+--
+ALTER TABLE `laporan_kunjungan`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_laporan_kunjungan_karyawan_tanggal` (`karyawan_id`,`tanggal`),
+  ADD KEY `idx_laporan_kunjungan_tanggal` (`tanggal`);
 
 --
 -- Indexes for table `lembur`
@@ -622,7 +662,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `absensi`
 --
 ALTER TABLE `absensi`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `finance_lembur_tambahan`
@@ -634,7 +674,13 @@ ALTER TABLE `finance_lembur_tambahan`
 -- AUTO_INCREMENT for table `karyawan`
 --
 ALTER TABLE `karyawan`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT for table `laporan_kunjungan`
+--
+ALTER TABLE `laporan_kunjungan`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `lembur`
@@ -658,7 +704,7 @@ ALTER TABLE `omzet_bulanan`
 -- AUTO_INCREMENT for table `otp_codes`
 --
 ALTER TABLE `otp_codes`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `payroll`
@@ -694,7 +740,7 @@ ALTER TABLE `pinjaman_cicilan`
 -- AUTO_INCREMENT for table `potongan_kontrak`
 --
 ALTER TABLE `potongan_kontrak`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=111;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=146;
 
 --
 -- AUTO_INCREMENT for table `slip_gaji`
@@ -706,7 +752,7 @@ ALTER TABLE `slip_gaji`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- Constraints for dumped tables

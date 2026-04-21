@@ -235,7 +235,11 @@ function getOmzetFactor(role: string | null | undefined, employmentStatus?: stri
     return 0.7;
   }
 
-  if (normalized.includes("supervisor") || normalized.includes("admin")) {
+  if (
+    normalized.includes("supervisor") ||
+    normalized.includes("admin") ||
+    normalized.includes("sales area")
+  ) {
     return 0.5;
   }
 

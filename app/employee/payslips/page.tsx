@@ -15,6 +15,7 @@ export default async function EmployeePayslipsPage() {
       employeeName={employee.nama}
       employeeMeta={`${employee.no_karyawan} • ${employee.jabatan}`}
       currentPath="/employee/payslips"
+      employeeRole={employee.jabatan}
     >
       <div className="grid gap-4 md:grid-cols-2">
         {rows.map((row) => (
