@@ -54,6 +54,8 @@ function validatePayrollPayload(body: Record<string, unknown>) {
     bonusPerforma: parseCurrency(body.bonusPerforma),
     insentif: parseCurrency(body.insentif),
     uangTransport: parseCurrency(body.uangTransport),
+    kendaraan: parseCurrency(body.kendaraan),
+    perjalananDinasReimburse: parseCurrency(body.perjalananDinasReimburse),
     overrideMasuk: parseOverride(body.overrideMasuk),
     overrideLembur: parseOverride(body.overrideLembur),
     overrideIzin: parseOverride(body.overrideIzin),
@@ -68,7 +70,8 @@ function validatePayrollPayload(body: Record<string, unknown>) {
 
   if ([
     values.gajiPerDay, values.tunjanganJabatan, values.uangMakan, values.subsidi, 
-    values.uangKerajinan, values.bpjs, values.bonusPerforma, values.insentif, values.uangTransport
+    values.uangKerajinan, values.bpjs, values.bonusPerforma, values.insentif, values.uangTransport,
+    values.kendaraan, values.perjalananDinasReimburse
   ].some((value) => value === null)) {
     return { error: "Semua nominal payroll harus berupa angka valid dan tidak boleh negatif." };
   }
@@ -86,6 +89,8 @@ function validatePayrollPayload(body: Record<string, unknown>) {
     totalOmzet: 0,
     insentif: values.insentif ?? 0,
     uangTransport: values.uangTransport ?? 0,
+    kendaraan: values.kendaraan ?? 0,
+    perjalananDinasReimburse: values.perjalananDinasReimburse ?? 0,
     overrideMasuk: values.overrideMasuk,
     overrideLembur: values.overrideLembur,
     overrideIzin: values.overrideIzin,

@@ -2,6 +2,7 @@ import Image from "next/image";
 
 import PayslipPdfExportButton, { type PayslipPdfPayload } from "@/components/PayslipPdfExportButton";
 import type { AdminPayrollSummarySheetRow } from "@/lib/payroll-summary";
+import { isSalesNasionalRole } from "@/lib/sales-roles";
 
 type PayslipSheetProps = {
   row: AdminPayrollSummarySheetRow;
@@ -114,6 +115,7 @@ function PrintSignatureBlock({ title, name }: { title: string; name: string }) {
 
 export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSheetProps) {
   const slipTypeLabel = row.payrollType === "sales" ? "Slip Gaji Sales" : "Slip Gaji Karyawan";
+  const isSalesNasional = isSalesNasionalRole(row.role);
   const tunjanganLainLain = row.mealAllowance + row.bpjs + row.omzetBonus + row.fixedDiligenceAllowance + row.subsidy;
   const totalPinjaman = row.companyLoan + row.personalLoan;
   const exportFileName = `${slipTypeLabel}-${row.name}-${periodLabel}`.replace(/[\\/:*?"<>|]+/g, "-");
@@ -125,7 +127,13 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
           { label: "Tunjangan Jabatan", value: row.positionAllowance },
           { label: "Tunjangan Lain-Lain", value: tunjanganLainLain },
           { label: "Transport", value: row.transportAllowance },
-          { label: "Insentif", value: row.incentive },
+          ...(isSalesNasional
+            ? [
+                { label: "Kendaraan", value: row.vehicleAllowance },
+                { label: "Perjalanan Dinas", value: row.travelReimbursement },
+                { label: "Bonus", value: row.performanceBonus },
+              ]
+            : [{ label: "Insentif", value: row.incentive }]),
         ]
       : [
           { label: "Gaji Pokok", value: row.totalBaseSalary },

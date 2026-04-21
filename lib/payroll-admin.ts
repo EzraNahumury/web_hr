@@ -1,4 +1,4 @@
-import { ResultSetHeader, RowDataPacket } from "mysql2/promise";
+import type { PoolConnection, ResultSetHeader, RowDataPacket } from "mysql2/promise";
 
 import { pool } from "@/lib/db";
 import {
@@ -7,6 +7,11 @@ import {
   ensureLoanSupportTables,
   getLoanDeductionForPeriod,
 } from "@/lib/loans";
+import {
+  ensureReimbursementSchema,
+  getApprovedReimbursementTotalForPeriod,
+} from "@/lib/reimbursements";
+import { isSalesNasionalRole } from "@/lib/sales-roles";
 
 type PayrollEmployeeOptionRow = RowDataPacket & {
   employee_id: number;
@@ -88,6 +93,8 @@ export type PayrollFormPayload = {
   totalOmzet: number;
   insentif: number;
   uangTransport: number;
+  kendaraan: number;
+  perjalananDinasReimburse: number;
   overrideMasuk?: number | null;
   overrideLembur?: number | null;
   overrideIzin?: number | null;
@@ -261,7 +268,15 @@ export function isSalesEmployeeFromValues(role: string | null | undefined, divis
   );
 }
 
-export async function ensurePayrollSupportTables(connection?: any) {
+type QueryExecutor = PoolConnection | typeof pool;
+
+function getMysqlErrorCode(error: unknown) {
+  return typeof error === "object" && error !== null && "code" in error
+    ? (error as { code?: string }).code
+    : undefined;
+}
+
+export async function ensurePayrollSupportTables(connection?: QueryExecutor) {
   const executor = connection ?? pool;
 
   await executor.query(`
@@ -325,6 +340,8 @@ export async function ensurePayrollSupportTables(connection?: any) {
       bonus_performa DECIMAL(14,2) NOT NULL DEFAULT 0.00,
       insentif DECIMAL(14,2) NOT NULL DEFAULT 0.00,
       uang_transport DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+      kendaraan DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+      perjalanan_dinas_reimburse DECIMAL(14,2) NOT NULL DEFAULT 0.00,
       override_masuk INT NULL DEFAULT NULL,
       override_lembur DECIMAL(14,2) NULL DEFAULT NULL,
       override_izin INT NULL DEFAULT NULL,
@@ -355,8 +372,8 @@ export async function ensurePayrollSupportTables(connection?: any) {
       ADD COLUMN override_sakit_tanpa_surat INT NULL DEFAULT NULL,
       ADD COLUMN override_setengah_hari INT NULL DEFAULT NULL
     `);
-  } catch (err: any) {
-    if (err.code !== 'ER_DUP_FIELDNAME') {
+  } catch (err: unknown) {
+    if (getMysqlErrorCode(err) !== 'ER_DUP_FIELDNAME') {
       console.error("Migration warning for payroll_employee_input:", err);
     }
   }
@@ -368,8 +385,8 @@ export async function ensurePayrollSupportTables(connection?: any) {
       ADD COLUMN override_pinjaman DECIMAL(14,2) NULL DEFAULT NULL,
       ADD COLUMN override_pinjaman_pribadi DECIMAL(14,2) NULL DEFAULT NULL
     `);
-  } catch (err: any) {
-    if (err.code !== 'ER_DUP_FIELDNAME') {
+  } catch (err: unknown) {
+    if (getMysqlErrorCode(err) !== 'ER_DUP_FIELDNAME') {
       console.error("Migration warning for deduction overrides:", err);
     }
   }
@@ -379,9 +396,21 @@ export async function ensurePayrollSupportTables(connection?: any) {
       ALTER TABLE payroll_employee_input 
       ADD COLUMN override_gaji_pokok DECIMAL(14,2) NULL DEFAULT NULL
     `);
-  } catch (err: any) {
-    if (err.code !== 'ER_DUP_FIELDNAME') {
+  } catch (err: unknown) {
+    if (getMysqlErrorCode(err) !== 'ER_DUP_FIELDNAME') {
       console.error("Migration warning for override_gaji_pokok:", err);
+    }
+  }
+
+  try {
+    await executor.query(`
+      ALTER TABLE payroll_employee_input
+      ADD COLUMN kendaraan DECIMAL(14,2) NOT NULL DEFAULT 0.00 AFTER uang_transport,
+      ADD COLUMN perjalanan_dinas_reimburse DECIMAL(14,2) NOT NULL DEFAULT 0.00 AFTER kendaraan
+    `);
+  } catch (err: unknown) {
+    if (getMysqlErrorCode(err) !== 'ER_DUP_FIELDNAME') {
+      console.error("Migration warning for sales nasional payroll fields:", err);
     }
   }
 }
@@ -583,6 +612,7 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
     await connection.beginTransaction();
     await ensurePayrollSupportTables(connection);
     await ensureLoanSupportTables(connection);
+    await ensureReimbursementSchema();
 
     const [employees] = await connection.query<PayrollEmployeeRow[]>(
       `
@@ -608,6 +638,7 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
     const payrollType = isSalesEmployeeFromValues(employee.jabatan, employee.divisi, employee.sub_divisi)
       ? "sales"
       : "non_sales";
+    const isSalesNasional = isSalesNasionalRole(employee.jabatan);
     const resolved = resolvePayrollPeriod(period);
     const range = getPayrollDateRange(resolved.month, resolved.year);
     const workDays = countWorkDays(range.start, range.end);
@@ -664,11 +695,19 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
       resolved.year,
       connection,
     );
+    const automaticTravelReimbursement = await getApprovedReimbursementTotalForPeriod(
+      payload.employeeId,
+      range.startSql,
+      range.endSql,
+      connection,
+    );
 
     const presentDays = payload.overrideMasuk ?? attendance.present_count ?? 0;
     const leaveCount = payload.overrideIzin ?? attendance.leave_count ?? 0;
     const sickCount = payload.overrideSakit ?? attendance.sick_count ?? 0;
     const sickWithoutNoteCount = payload.overrideSakitTanpaSurat ?? attendance.sick_without_note_count ?? 0;
+    void leaveCount;
+    void sickWithoutNoteCount;
     const halfDayCount = payload.overrideSetengahHari ?? attendance.half_day_count ?? 0;
     const lateCount = attendance.late_count ?? 0;
     const overtimeHours = payload.overrideLembur ?? toNumber(overtimeRows[0]?.total_jam);
@@ -683,7 +722,9 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
     const uangMakanTotal = uangMakanPerDay * presentDays;
     const uangKerajinan = payload.uangKerajinan;
     const bpjs = payload.bpjs;
-    const bonusPerforma = payrollType === "sales" ? 0 : payload.bonusPerforma;
+    const bonusPerforma = payrollType === "sales" && !isSalesNasional ? 0 : payload.bonusPerforma;
+    const kendaraan = isSalesNasional ? payload.kendaraan : 0;
+    const perjalananDinasReimburse = isSalesNasional ? toNumber(automaticTravelReimbursement) : 0;
     const diligenceAllowance = presentDays + sickCount >= workDays ? uangKerajinan : 0;
     const diligenceCut = Math.max(uangKerajinan - diligenceAllowance, 0);
     const overtimeBonus = overtimeHours * 20000;
@@ -699,7 +740,9 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
       diligenceAllowance +
       bpjs +
       overtimeBonus +
-      (payrollType === "sales" ? payload.insentif + payload.uangTransport : 0);
+      (payrollType === "sales" ? payload.insentif + payload.uangTransport : 0) +
+      kendaraan +
+      perjalananDinasReimburse;
     const totalSalary = totalSalaryBeforeDeduction - halfDayDeduction - lateDeduction;
     const totalPotongan = halfDayDeduction + lateDeduction + diligenceCut + contractCut + loanCut + personalLoanCut;
     const netIncome = totalSalary - contractCut - loanCut - personalLoanCut;
@@ -811,6 +854,8 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
           bonus_performa,
           insentif,
           uang_transport,
+          kendaraan,
+          perjalanan_dinas_reimburse,
           override_masuk,
           override_lembur,
           override_izin,
@@ -821,7 +866,7 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
           override_pinjaman,
           override_pinjaman_pribadi,
           override_gaji_pokok
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           payroll_type = VALUES(payroll_type),
           gaji_pokok_per_hari = VALUES(gaji_pokok_per_hari),
@@ -832,6 +877,8 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
           bonus_performa = VALUES(bonus_performa),
           insentif = VALUES(insentif),
           uang_transport = VALUES(uang_transport),
+          kendaraan = VALUES(kendaraan),
+          perjalanan_dinas_reimburse = VALUES(perjalanan_dinas_reimburse),
           override_masuk = VALUES(override_masuk),
           override_lembur = VALUES(override_lembur),
           override_izin = VALUES(override_izin),
@@ -855,6 +902,8 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
         bonusPerforma,
         payrollType === "sales" ? payload.insentif : 0,
         payrollType === "sales" ? payload.uangTransport : 0,
+        kendaraan,
+        perjalananDinasReimburse,
         payload.overrideMasuk ?? null,
         payload.overrideLembur ?? null,
         payload.overrideIzin ?? null,

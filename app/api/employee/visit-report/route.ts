@@ -9,10 +9,7 @@ import {
   listVisitReportsForEmployee,
   saveVisitReportPhoto,
 } from "@/lib/visit-reports";
-
-function isSalesAreaRole(role: string | null | undefined) {
-  return (role ?? "").trim().toLowerCase() === "sales area";
-}
+import { isSalesFieldRole } from "@/lib/sales-roles";
 
 export async function POST(request: Request) {
   try {
@@ -33,9 +30,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!isSalesAreaRole(employee.role)) {
+    if (!isSalesFieldRole(employee.role)) {
       return NextResponse.json(
-        { message: "Laporan kunjungan hanya untuk jabatan Sales Area." },
+        { message: "Laporan kunjungan hanya untuk jabatan sales." },
         { status: 403 },
       );
     }
@@ -120,7 +117,7 @@ export async function GET() {
       );
     }
 
-    if (!isSalesAreaRole(employee.role)) {
+    if (!isSalesFieldRole(employee.role)) {
       return NextResponse.json({ reports: [] });
     }
 

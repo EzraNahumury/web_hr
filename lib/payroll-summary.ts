@@ -12,6 +12,11 @@ import {
   getPayrollDateRange,
   isSalesEmployeeFromValues,
 } from "@/lib/payroll-admin";
+import {
+  ensureReimbursementSchema,
+  getApprovedReimbursementRowsForPeriod,
+} from "@/lib/reimbursements";
+import { isSalesNasionalRole } from "@/lib/sales-roles";
 
 type LatestPeriodRow = RowDataPacket & {
   periode_bulan: number;
@@ -57,6 +62,8 @@ type PayrollSheetBaseRow = RowDataPacket & {
   raw_bonus_performa: string | null;
   raw_insentif: string | null;
   raw_uang_transport: string | null;
+  raw_kendaraan: string | null;
+  raw_perjalanan_dinas_reimburse: string | null;
   raw_override_masuk: number | null;
   raw_override_lembur: string | null;
   raw_override_izin: number | null;
@@ -128,6 +135,8 @@ export type AdminPayrollSummarySheetRow = {
   performanceBonus: number;
   transportAllowance: number;
   incentive: number;
+  vehicleAllowance: number;
+  travelReimbursement: number;
   workDays: number;
   presentDays: number;
   totalBaseSalary: number;
@@ -162,6 +171,8 @@ export type AdminPayrollSummarySheetRow = {
   inputBonusPerforma: number;
   inputInsentif: number;
   inputUangTransport: number;
+  inputKendaraan: number;
+  inputPerjalananDinasReimburse: number;
   inputOverrideMasuk: number | null;
   inputOverrideLembur: number | null;
   inputOverrideIzin: number | null;
@@ -260,7 +271,7 @@ export async function getAdminPayrollSummarySheet(period?: {
   month?: number;
   year?: number;
 }) {
-  await Promise.all([ensurePayrollSupportTables(), ensureLoanSupportTables()]);
+  await Promise.all([ensurePayrollSupportTables(), ensureLoanSupportTables(), ensureReimbursementSchema()]);
   const activePeriod = {
     month: period?.month ?? getActivePayrollPeriod().month,
     year: period?.year ?? getActivePayrollPeriod().year,
@@ -326,6 +337,8 @@ export async function getAdminPayrollSummarySheet(period?: {
         pei.bonus_performa AS raw_bonus_performa,
         pei.insentif AS raw_insentif,
         pei.uang_transport AS raw_uang_transport,
+        pei.kendaraan AS raw_kendaraan,
+        pei.perjalanan_dinas_reimburse AS raw_perjalanan_dinas_reimburse,
         pei.override_masuk AS raw_override_masuk,
         pei.override_lembur AS raw_override_lembur,
         pei.override_izin AS raw_override_izin,
@@ -359,6 +372,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     overtimeResult,
     contractResult,
     loanResult,
+    reimbursementResult,
     totalEmployeeResult,
     omzetUnitResult,
     employeeUnitCountResult,
@@ -402,6 +416,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       [...employeeIds, periodMonth, periodYear],
     ),
     getLoanDeductionRowsForPeriod(employeeIds, periodMonth, periodYear),
+    getApprovedReimbursementRowsForPeriod(employeeIds, range.startSql, range.endSql),
     pool.query<TotalEmployeeCountRow[]>(
       `SELECT COUNT(*) AS total FROM karyawan
         WHERE status_data = 'aktif'
@@ -488,6 +503,11 @@ export async function getAdminPayrollSummarySheet(period?: {
     loanMap.set(row.employeeId, toNumber(row.totalDeduction));
   }
 
+  const reimbursementMap = new Map<number, number>();
+  for (const row of reimbursementResult) {
+    reimbursementMap.set(row.employeeId, toNumber(row.totalReimbursement));
+  }
+
   // Bonus omzet di-pool per group (mis. "AVA+Ayres" gabung; "JNE" terpisah)
   const omzetByGroup = new Map<string, { totalOmzet: number; bonusPool: number }>();
   let totalOmzetAll = 0;
@@ -568,6 +588,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       (isSalesEmployeeFromValues(row.jabatan, row.divisi, row.sub_divisi)
         ? "sales"
         : "non_sales");
+    const isSalesNasional = isSalesNasionalRole(row.jabatan);
     const workDays = row.hari_kerja ?? 0;
     const presentDays =
       inputOverrideMasuk ?? (attendance.present || row.total_masuk || 0);
@@ -584,7 +605,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     const fixedDiligenceAllowance = toNumber(row.raw_uang_kerajinan);
     const bpjs = toNumber(row.raw_bpjs) || toNumber(row.bpjs);
     const performanceBonus =
-      payrollType === "sales"
+      payrollType === "sales" && !isSalesNasional
         ? 0
         : toNumber(row.raw_bonus_performa) || toNumber(row.bonus_performa);
     const transportAllowance =
@@ -595,6 +616,8 @@ export async function getAdminPayrollSummarySheet(period?: {
       payrollType === "sales"
         ? toNumber(row.raw_insentif) || toNumber(row.insentif)
         : 0;
+    const vehicleAllowance = isSalesNasional ? toNumber(row.raw_kendaraan) : 0;
+    const travelReimbursement = isSalesNasional ? (reimbursementMap.get(row.employee_id) ?? 0) : 0;
     const totalBaseSalary = dailyBaseSalary * presentDays;
     const roleFactor = getOmzetFactor(row.jabatan, row.status_kepegawaian);
     const employeeGroupKey = getOmzetGroupKeyForUnit(row.unit);
@@ -636,7 +659,9 @@ export async function getAdminPayrollSummarySheet(period?: {
       overtimeBonus +
       omzetBonus +
       incentive +
-      transportAllowance;
+      transportAllowance +
+      vehicleAllowance +
+      travelReimbursement;
     const totalSalary =
       totalSalaryBeforeDeduction - halfDayDeduction - lateDeduction;
     const contractDeduction =
@@ -680,6 +705,8 @@ export async function getAdminPayrollSummarySheet(period?: {
       performanceBonus,
       transportAllowance,
       incentive,
+      vehicleAllowance,
+      travelReimbursement,
       workDays,
       presentDays,
       totalBaseSalary,
@@ -714,6 +741,8 @@ export async function getAdminPayrollSummarySheet(period?: {
       inputBonusPerforma: toNumber(row.raw_bonus_performa),
       inputInsentif: toNumber(row.raw_insentif),
       inputUangTransport: toNumber(row.raw_uang_transport),
+      inputKendaraan: toNumber(row.raw_kendaraan),
+      inputPerjalananDinasReimburse: travelReimbursement,
       inputOverrideMasuk,
       inputOverrideLembur,
       inputOverrideIzin,

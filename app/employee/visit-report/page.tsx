@@ -4,6 +4,7 @@ import EmployeeShell from "@/components/EmployeeShell";
 import EmployeeVisitReportCapture from "@/components/EmployeeVisitReportCapture";
 import { requireEmployeeSession } from "@/lib/auth";
 import { getEmployeeByUserId } from "@/lib/hris";
+import { isSalesFieldRole } from "@/lib/sales-roles";
 
 export default async function EmployeeVisitReportPage() {
   const session = await requireEmployeeSession();
@@ -13,7 +14,7 @@ export default async function EmployeeVisitReportPage() {
     return <main className="p-10">Data karyawan tidak ditemukan.</main>;
   }
 
-  if ((employee.jabatan ?? "").trim().toLowerCase() !== "sales area") {
+  if (!isSalesFieldRole(employee.jabatan)) {
     redirect("/employee");
   }
 

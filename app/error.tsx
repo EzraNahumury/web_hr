@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 
 export default function GlobalError({
   error,
@@ -28,12 +29,12 @@ export default function GlobalError({
           >
             Coba Lagi
           </button>
-          <a
+          <Link
             href="/"
             className="inline-flex h-11 items-center justify-center rounded-xl border border-white/15 bg-white/[0.04] px-5 text-sm font-semibold text-white/80 transition hover:border-white/30"
           >
             Kembali ke Login
-          </a>
+          </Link>
         </div>
       </div>
     </main>

@@ -2,11 +2,13 @@ import AdminPayrollSummaryManager from "@/components/AdminPayrollSummaryManager"
 import AdminShell from "@/components/AdminShell";
 import { requireAdminSession } from "@/lib/auth";
 import {
+  getPayrollDateRange,
   getPayrollOmzetPeriod,
   listPayrollEmployeeOptions,
   listPayrollPeriods,
 } from "@/lib/payroll-admin";
 import { getAdminPayrollSummarySheet, type AdminPayrollSummarySheet } from "@/lib/payroll-summary";
+import { getApprovedReimbursementRowsForPeriod } from "@/lib/reimbursements";
 import { isSalesNasionalRole } from "@/lib/sales-roles";
 
 function parsePositiveInt(value: string | string[] | undefined) {
@@ -18,13 +20,13 @@ function parsePositiveInt(value: string | string[] | undefined) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-function excludeSalesNasionalSheet(sheet: AdminPayrollSummarySheet | null) {
+function filterSalesNasionalSheet(sheet: AdminPayrollSummarySheet | null) {
   if (!sheet) {
     return null;
   }
 
   const rows = sheet.rows
-    .filter((row) => !isSalesNasionalRole(row.role))
+    .filter((row) => isSalesNasionalRole(row.role))
     .map((row, index) => ({ ...row, number: index + 1 }));
 
   return {
@@ -38,7 +40,7 @@ function excludeSalesNasionalSheet(sheet: AdminPayrollSummarySheet | null) {
   };
 }
 
-export default async function AdminPayrollSummaryPage({
+export default async function AdminSalesNasionalPayrollSummaryPage({
   searchParams,
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -58,20 +60,33 @@ export default async function AdminPayrollSummaryPage({
     getPayrollOmzetPeriod(period),
     listPayrollPeriods(),
   ]);
+  const salesNasionalEmployeeOptions = employeeOptions.filter((employee) => isSalesNasionalRole(employee.role));
+  const range = getPayrollDateRange(omzetPeriod.periodMonth, omzetPeriod.periodYear);
+  const reimbursementRows = await getApprovedReimbursementRowsForPeriod(
+    salesNasionalEmployeeOptions.map((employee) => employee.employeeId),
+    range.startSql,
+    range.endSql,
+  );
+  const automaticTravelReimbursements = Object.fromEntries(
+    reimbursementRows.map((row) => [row.employeeId, Number(row.totalReimbursement)]),
+  );
 
   return (
     <AdminShell
-      title="Summary Payroll"
-      description="Input payroll per karyawan, bedakan sales dan non-sales, lalu cek rekap payroll aktif dalam satu halaman."
+      title="Summary Payroll Sales Nasional"
+      description="Input dan rekap payroll khusus Sales Nasional: gaji pokok, transport, BPJS, kendaraan, perjalanan dinas reimburse, dan bonus opsional."
       adminName={admin.fullName}
       adminEmail={admin.email}
-      currentPath="/admin/payroll-summary"
+      currentPath="/admin/payroll-summary/sales-nasional"
     >
       <AdminPayrollSummaryManager
-        sheet={excludeSalesNasionalSheet(sheet)}
-        employeeOptions={employeeOptions.filter((employee) => !isSalesNasionalRole(employee.role))}
+        sheet={filterSalesNasionalSheet(sheet)}
+        employeeOptions={salesNasionalEmployeeOptions}
         omzetPeriod={omzetPeriod}
         periodOptions={periodOptions}
+        basePath="/admin/payroll-summary/sales-nasional"
+        variant="sales-nasional"
+        automaticTravelReimbursements={automaticTravelReimbursements}
       />
     </AdminShell>
   );

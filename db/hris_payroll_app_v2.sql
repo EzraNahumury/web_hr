@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 21, 2026 at 08:01 AM
+-- Generation Time: Apr 21, 2026 at 09:44 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -131,7 +131,7 @@ CREATE TABLE `karyawan` (
 --
 
 INSERT INTO `karyawan` (`id`, `user_id`, `no_karyawan`, `nama`, `unit`, `jabatan`, `departemen`, `divisi`, `sub_divisi`, `penempatan`, `pembagian_rekapan`, `pembebanan`, `bank`, `no_rekening`, `jenis_kelamin`, `tempat_lahir`, `tanggal_lahir`, `nik`, `agama`, `alamat_ktp`, `alamat_rumah_kost`, `nomor_telepon`, `foto_ktp`, `status_kepegawaian`, `status_kerja`, `status_data`, `tanggal_masuk_pertama`, `tanggal_kontrak`, `tanggal_selesai_kontrak`, `kenaikan_tiap_tahun`, `created_at`, `updated_at`) VALUES
-(1, 2, '0001', 'ZEXO', 'Ayres Apparel', 'Staff', 'Secretary', 'Marketing & Media', 'Media', 'Office', NULL, 'produksi ayres', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '/uploads/ktp/1773132378887-ABSENSI.drawio.png', 'kontrak', 'kontrak', 'aktif', '2025-12-10', '2026-03-10', '2027-03-10', 999999999999.99, '2026-03-10 15:46:18', '2026-04-18 11:14:10'),
+(1, 2, '0001', 'ZEXO', 'Ayres Apparel', 'Sales Nasional', 'Marketing', 'Sales & Retail', 'Media', 'Office', NULL, 'produksi ayres', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '/uploads/ktp/1773132378887-ABSENSI.drawio.png', 'kontrak', 'kontrak', 'aktif', '2025-12-10', '2026-03-10', '2027-03-10', 999999999999.99, '2026-03-10 15:46:18', '2026-04-21 14:30:59'),
 (2, 3, '0002', 'ZETACO', 'AVA Sportivo', 'Supervisor', 'Finance', 'RnD', 'Customer Service', 'Office', NULL, 'penjualan ayres', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '/uploads/ktp/1773134048617-Mar06-02_09.jpg.jpeg', 'tetap', 'tetap', 'aktif', '2026-03-10', '2026-06-10', '2027-06-10', 999999999999.99, '2026-03-10 16:14:08', '2026-04-18 11:11:27'),
 (3, 4, '0003', 'LEIF', 'AVA Sportivo', 'Sales Area', 'Marketing', 'Sales & Retail', 'Finishing', 'Toko', NULL, 'penjualan ava', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '/uploads/ktp/1773134994321-AdiVira-01.jpg.jpeg', 'tetap', 'tetap', 'aktif', '2026-03-11', '2026-06-11', '2027-06-11', 999999999999.99, '2026-03-10 16:29:54', '2026-04-21 12:57:30'),
 (4, 5, NULL, 'ezranhmry', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'BNI', '222', 'laki-laki', 'ddd', '2026-04-08', '333', 'Kristen', '3', '3', '3333', '33', '', '', 'aktif', NULL, NULL, NULL, 0.00, '2026-04-07 10:19:21', '2026-04-07 11:00:06'),
@@ -160,7 +160,8 @@ CREATE TABLE `laporan_kunjungan` (
 --
 
 INSERT INTO `laporan_kunjungan` (`id`, `karyawan_id`, `tanggal`, `waktu_submit`, `nama_toko`, `foto_path`, `latitude`, `longitude`, `created_at`) VALUES
-(1, 3, '2026-04-21', '2026-04-21 12:58:07', 'Toko Lampu', '/uploads/visit-reports/visit-3-1776751087422.jpg', -7.8025077, 110.4067648, '2026-04-21 12:58:07');
+(1, 3, '2026-04-21', '2026-04-21 12:58:07', 'Toko Lampu', '/uploads/visit-reports/visit-3-1776751087422.jpg', -7.8025077, 110.4067648, '2026-04-21 12:58:07'),
+(2, 1, '2026-04-21', '2026-04-21 14:31:47', 'TOKO MAWAR', '/uploads/visit-reports/visit-1-1776756707076.jpg', -7.8025077, 110.4067648, '2026-04-21 14:31:47');
 
 -- --------------------------------------------------------
 
@@ -323,6 +324,8 @@ CREATE TABLE `payroll_employee_input` (
   `bonus_performa` decimal(14,2) NOT NULL DEFAULT 0.00,
   `insentif` decimal(14,2) NOT NULL DEFAULT 0.00,
   `uang_transport` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `kendaraan` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `perjalanan_dinas_reimburse` decimal(14,2) NOT NULL DEFAULT 0.00,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `override_masuk` int(11) DEFAULT NULL,
@@ -341,10 +344,10 @@ CREATE TABLE `payroll_employee_input` (
 -- Dumping data for table `payroll_employee_input`
 --
 
-INSERT INTO `payroll_employee_input` (`id`, `payroll_id`, `karyawan_id`, `payroll_type`, `gaji_pokok_per_hari`, `uang_makan_per_hari`, `subsidi`, `uang_kerajinan`, `bpjs`, `bonus_performa`, `insentif`, `uang_transport`, `created_at`, `updated_at`, `override_masuk`, `override_lembur`, `override_izin`, `override_sakit`, `override_sakit_tanpa_surat`, `override_setengah_hari`, `override_kontrak`, `override_pinjaman`, `override_pinjaman_pribadi`, `override_gaji_pokok`) VALUES
-(1, 1, 3, 'non_sales', 100000.00, 70000.00, 380998.00, 600000.00, 25000.00, 0.00, 0.00, 0.00, '2026-03-11 16:08:42', '2026-03-12 10:57:01', 24, 4.00, 0, 1, 0, 1, NULL, 700000.00, NULL, 6000000.00),
-(21, 21, 2, 'non_sales', 300000.00, 150000.00, 736996.00, 1500000.00, 25000.00, 0.00, 0.00, 0.00, '2026-03-12 11:17:23', '2026-03-12 11:17:23', 22, 2.00, 1, 1, 1, 0, 200000.00, NULL, NULL, 15000000.00),
-(26, 26, 1, 'non_sales', 100000.00, 10000.00, 10000.00, 10000.00, 25000.00, 0.00, 0.00, 0.00, '2026-03-12 15:17:22', '2026-03-13 10:32:34', 10, 0.00, 0, 0, 0, 0, NULL, NULL, NULL, 2000000.00);
+INSERT INTO `payroll_employee_input` (`id`, `payroll_id`, `karyawan_id`, `payroll_type`, `gaji_pokok_per_hari`, `uang_makan_per_hari`, `subsidi`, `uang_kerajinan`, `bpjs`, `bonus_performa`, `insentif`, `uang_transport`, `kendaraan`, `perjalanan_dinas_reimburse`, `created_at`, `updated_at`, `override_masuk`, `override_lembur`, `override_izin`, `override_sakit`, `override_sakit_tanpa_surat`, `override_setengah_hari`, `override_kontrak`, `override_pinjaman`, `override_pinjaman_pribadi`, `override_gaji_pokok`) VALUES
+(1, 1, 3, 'non_sales', 100000.00, 70000.00, 380998.00, 600000.00, 25000.00, 0.00, 0.00, 0.00, 0.00, 0.00, '2026-03-11 16:08:42', '2026-03-12 10:57:01', 24, 4.00, 0, 1, 0, 1, NULL, 700000.00, NULL, 6000000.00),
+(21, 21, 2, 'non_sales', 300000.00, 150000.00, 736996.00, 1500000.00, 25000.00, 0.00, 0.00, 0.00, 0.00, 0.00, '2026-03-12 11:17:23', '2026-03-12 11:17:23', 22, 2.00, 1, 1, 1, 0, 200000.00, NULL, NULL, 15000000.00),
+(26, 26, 1, 'non_sales', 100000.00, 10000.00, 10000.00, 10000.00, 25000.00, 0.00, 0.00, 0.00, 0.00, 0.00, '2026-03-12 15:17:22', '2026-03-13 10:32:34', 10, 0.00, 0, 0, 0, 0, NULL, NULL, NULL, 2000000.00);
 
 -- --------------------------------------------------------
 
@@ -452,16 +455,46 @@ INSERT INTO `potongan_kontrak` (`id`, `karyawan_id`, `bulan`, `tahun`, `nominal_
 (133, 2, 8, 2026, 200000.00, 'Potongan kontrak bulan ke-3 dari 5', '2026-04-18 11:11:27', '2026-04-18 11:11:27'),
 (134, 2, 9, 2026, 200000.00, 'Potongan kontrak bulan ke-4 dari 5', '2026-04-18 11:11:27', '2026-04-18 11:11:27'),
 (135, 2, 10, 2026, 200000.00, 'Potongan kontrak bulan ke-5 dari 5', '2026-04-18 11:11:27', '2026-04-18 11:11:27'),
-(136, 1, 3, 2026, 200000.00, 'Potongan kontrak bulan ke-1 dari 5', '2026-04-18 11:14:10', '2026-04-18 11:14:10'),
-(137, 1, 4, 2026, 200000.00, 'Potongan kontrak bulan ke-2 dari 5', '2026-04-18 11:14:10', '2026-04-18 11:14:10'),
-(138, 1, 5, 2026, 200000.00, 'Potongan kontrak bulan ke-3 dari 5', '2026-04-18 11:14:10', '2026-04-18 11:14:10'),
-(139, 1, 6, 2026, 200000.00, 'Potongan kontrak bulan ke-4 dari 5', '2026-04-18 11:14:10', '2026-04-18 11:14:10'),
-(140, 1, 7, 2026, 200000.00, 'Potongan kontrak bulan ke-5 dari 5', '2026-04-18 11:14:10', '2026-04-18 11:14:10'),
 (141, 3, 6, 2026, 200000.00, 'Potongan kontrak bulan ke-1 dari 5', '2026-04-21 12:57:30', '2026-04-21 12:57:30'),
 (142, 3, 7, 2026, 200000.00, 'Potongan kontrak bulan ke-2 dari 5', '2026-04-21 12:57:30', '2026-04-21 12:57:30'),
 (143, 3, 8, 2026, 200000.00, 'Potongan kontrak bulan ke-3 dari 5', '2026-04-21 12:57:30', '2026-04-21 12:57:30'),
 (144, 3, 9, 2026, 200000.00, 'Potongan kontrak bulan ke-4 dari 5', '2026-04-21 12:57:30', '2026-04-21 12:57:30'),
-(145, 3, 10, 2026, 200000.00, 'Potongan kontrak bulan ke-5 dari 5', '2026-04-21 12:57:30', '2026-04-21 12:57:30');
+(145, 3, 10, 2026, 200000.00, 'Potongan kontrak bulan ke-5 dari 5', '2026-04-21 12:57:30', '2026-04-21 12:57:30'),
+(146, 1, 3, 2026, 200000.00, 'Potongan kontrak bulan ke-1 dari 5', '2026-04-21 14:30:59', '2026-04-21 14:30:59'),
+(147, 1, 4, 2026, 200000.00, 'Potongan kontrak bulan ke-2 dari 5', '2026-04-21 14:30:59', '2026-04-21 14:30:59'),
+(148, 1, 5, 2026, 200000.00, 'Potongan kontrak bulan ke-3 dari 5', '2026-04-21 14:30:59', '2026-04-21 14:30:59'),
+(149, 1, 6, 2026, 200000.00, 'Potongan kontrak bulan ke-4 dari 5', '2026-04-21 14:30:59', '2026-04-21 14:30:59'),
+(150, 1, 7, 2026, 200000.00, 'Potongan kontrak bulan ke-5 dari 5', '2026-04-21 14:30:59', '2026-04-21 14:30:59');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `reimbursements`
+--
+
+CREATE TABLE `reimbursements` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `karyawan_id` bigint(20) UNSIGNED NOT NULL,
+  `tanggal_pengajuan` date NOT NULL,
+  `tanggal_biaya` date NOT NULL,
+  `kategori` varchar(100) NOT NULL DEFAULT 'Perjalanan Dinas',
+  `keterangan` text DEFAULT NULL,
+  `nominal` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `nota_path` varchar(500) NOT NULL,
+  `status_approval` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  `approved_by` bigint(20) UNSIGNED DEFAULT NULL,
+  `approved_at` datetime DEFAULT NULL,
+  `catatan_admin` varchar(255) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `reimbursements`
+--
+
+INSERT INTO `reimbursements` (`id`, `karyawan_id`, `tanggal_pengajuan`, `tanggal_biaya`, `kategori`, `keterangan`, `nominal`, `nota_path`, `status_approval`, `approved_by`, `approved_at`, `catatan_admin`, `created_at`, `updated_at`) VALUES
+(1, 1, '2026-04-21', '2026-04-21', 'Perjalanan Dinas', '-', 200000.00, '/uploads/reimbursements/1776756726588-pelatih2.png', 'approved', 1, '2026-04-21 14:32:42', NULL, '2026-04-21 14:32:06', '2026-04-21 14:32:42');
 
 -- --------------------------------------------------------
 
@@ -638,6 +671,15 @@ ALTER TABLE `potongan_kontrak`
   ADD KEY `idx_potongan_kontrak_periode` (`tahun`,`bulan`);
 
 --
+-- Indexes for table `reimbursements`
+--
+ALTER TABLE `reimbursements`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_reimbursements_karyawan` (`karyawan_id`),
+  ADD KEY `idx_reimbursements_status` (`status_approval`),
+  ADD KEY `idx_reimbursements_tanggal_biaya` (`tanggal_biaya`);
+
+--
 -- Indexes for table `slip_gaji`
 --
 ALTER TABLE `slip_gaji`
@@ -680,7 +722,7 @@ ALTER TABLE `karyawan`
 -- AUTO_INCREMENT for table `laporan_kunjungan`
 --
 ALTER TABLE `laporan_kunjungan`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `lembur`
@@ -740,7 +782,13 @@ ALTER TABLE `pinjaman_cicilan`
 -- AUTO_INCREMENT for table `potongan_kontrak`
 --
 ALTER TABLE `potongan_kontrak`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=146;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=151;
+
+--
+-- AUTO_INCREMENT for table `reimbursements`
+--
+ALTER TABLE `reimbursements`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `slip_gaji`
@@ -815,6 +863,12 @@ ALTER TABLE `pinjaman_cicilan`
 --
 ALTER TABLE `potongan_kontrak`
   ADD CONSTRAINT `fk_potongan_kontrak_karyawan` FOREIGN KEY (`karyawan_id`) REFERENCES `karyawan` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `reimbursements`
+--
+ALTER TABLE `reimbursements`
+  ADD CONSTRAINT `fk_reimbursements_karyawan` FOREIGN KEY (`karyawan_id`) REFERENCES `karyawan` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `slip_gaji`

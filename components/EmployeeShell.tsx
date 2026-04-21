@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import LogoutButton from "@/components/LogoutButton";
+import { isSalesFieldRole } from "@/lib/sales-roles";
 
 type Props = {
   title: string;
@@ -43,6 +44,7 @@ const baseMenuItems: MenuItem[] = [
   { label: "Status Pinjaman", href: "/employee/loans", description: "Sisa pinjaman dan cicilan" },
   { label: "Informasi Kontrak", href: "/employee/contract", description: "Kontrak dan potongan kerja" },
   { label: "Slip Gaji", href: "/employee/payslips", description: "Daftar slip gaji pribadi" },
+  { label: "Pengajuan Reimburse", href: "/employee/reimbursements", description: "Upload nota reimbursement" },
 ];
 
 const visitReportMenu: MenuItem = {
@@ -52,8 +54,7 @@ const visitReportMenu: MenuItem = {
 };
 
 function buildMenuItems(role: string | null | undefined): MenuItem[] {
-  const isSalesArea = (role ?? "").trim().toLowerCase() === "sales area";
-  if (!isSalesArea) return baseMenuItems;
+  if (!isSalesFieldRole(role)) return baseMenuItems;
   const insertAfter = "Riwayat Absensi";
   const result: MenuItem[] = [];
   for (const item of baseMenuItems) {

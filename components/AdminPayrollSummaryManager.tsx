@@ -5,12 +5,16 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 
 import type { PayrollEmployeeOption, PayrollOmzetPeriod, PayrollPeriodOption } from "@/lib/payroll-admin";
 import type { AdminPayrollSummarySheet, AdminPayrollSummarySheetRow } from "@/lib/payroll-summary";
+import { isSalesNasionalRole } from "@/lib/sales-roles";
 
 type Props = {
   sheet: AdminPayrollSummarySheet | null;
   employeeOptions: PayrollEmployeeOption[];
   omzetPeriod: PayrollOmzetPeriod;
   periodOptions: PayrollPeriodOption[];
+  basePath?: string;
+  variant?: "default" | "sales-nasional";
+  automaticTravelReimbursements?: Record<number, number>;
 };
 
 type FormState = {
@@ -24,6 +28,8 @@ type FormState = {
   bonusPerforma: string;
   insentif: string;
   uangTransport: string;
+  kendaraan: string;
+  perjalananDinasReimburse: string;
   overrideMasuk: string;
   overrideLembur: string;
   overrideIzin: string;
@@ -62,7 +68,7 @@ function parseNumber(value: string) {
 }
 
 function emptyForm(employeeId = ""): FormState {
-  return { employeeId, gajiPerDay: "", tunjanganJabatan: "", uangMakan: "", subsidi: "", uangKerajinan: "", bpjs: "", bonusPerforma: "", insentif: "", uangTransport: "", overrideMasuk: "", overrideLembur: "", overrideIzin: "", overrideSakit: "", overrideSakitTanpaSurat: "", overrideSetengahHari: "", overrideKontrak: "", overridePinjaman: "", overridePinjamanPribadi: "", overrideGajiPokok: "" };
+  return { employeeId, gajiPerDay: "", tunjanganJabatan: "", uangMakan: "", subsidi: "", uangKerajinan: "", bpjs: "", bonusPerforma: "", insentif: "", uangTransport: "", kendaraan: "", perjalananDinasReimburse: "", overrideMasuk: "", overrideLembur: "", overrideIzin: "", overrideSakit: "", overrideSakitTanpaSurat: "", overrideSetengahHari: "", overrideKontrak: "", overridePinjaman: "", overridePinjamanPribadi: "", overrideGajiPokok: "" };
 }
 
 function formatFormValue(value: number) {
@@ -85,6 +91,8 @@ function buildFormFromRow(row: AdminPayrollSummarySheetRow): FormState {
     bonusPerforma: formatFormValue(row.inputBonusPerforma),
     insentif: formatFormValue(row.inputInsentif),
     uangTransport: formatFormValue(row.inputUangTransport),
+    kendaraan: formatFormValue(row.inputKendaraan),
+    perjalananDinasReimburse: formatFormValue(row.inputPerjalananDinasReimburse),
     overrideMasuk: formatOverrideValue(row.inputOverrideMasuk),
     overrideLembur: formatOverrideValue(row.inputOverrideLembur),
     overrideIzin: formatOverrideValue(row.inputOverrideIzin),
@@ -102,7 +110,15 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <label className="block space-y-2"><span className="block text-[13px] font-semibold text-[#466668]">{label}</span>{children}</label>;
 }
 
-export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omzetPeriod, periodOptions }: Props) {
+export default function AdminPayrollSummaryManager({
+  sheet,
+  employeeOptions,
+  omzetPeriod,
+  periodOptions,
+  basePath = "/admin/payroll-summary",
+  variant = "default",
+  automaticTravelReimbursements = {},
+}: Props) {
   const router = useRouter();
   const [isPayrollPending, startPayrollTransition] = useTransition();
   const [isOmzetPending, startOmzetTransition] = useTransition();
@@ -140,6 +156,8 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
 
   const selectedEmployee = useMemo(() => employeeOptions.find((employee) => employee.employeeId === Number(form.employeeId)) ?? null, [employeeOptions, form.employeeId]);
   const isSales = selectedEmployee?.isSales ?? false;
+  const isSalesNasional = isSalesNasionalRole(selectedEmployee?.role);
+  const isSalesNasionalSummary = variant === "sales-nasional";
   const bonusOmzetPerUnit = useMemo(
     () => omzetInputs.map((item) => {
       const value = parseNumber(item.totalOmzet);
@@ -190,6 +208,22 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function handleEmployeeChange(employeeId: string) {
+    setForm((current) => ({
+      ...current,
+      employeeId,
+      perjalananDinasReimburse:
+        isSalesNasionalSummary && employeeId
+          ? formatFormValue(automaticTravelReimbursements[Number(employeeId)] ?? 0)
+          : current.perjalananDinasReimburse,
+    }));
+  }
+
+  function handleEmployeeSelectFocus() {
+    if (!isSalesNasionalSummary) return;
+    setForm((current) => ({ ...current, perjalananDinasReimburse: "" }));
+  }
+
   function resetForm(nextEmployeeId?: string) {
     setEditingPayrollId(null);
     setForm(emptyForm(nextEmployeeId ?? ""));
@@ -201,7 +235,7 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
     setPayrollMessage(null);
     setOmzetMessage(null);
     const [year, month] = value.split("-");
-    router.push(`/admin/payroll-summary?month=${month}&year=${year}`);
+    router.push(`${basePath}?month=${month}&year=${year}`);
   }
 
   function handleEditRow(row: AdminPayrollSummarySheetRow) {
@@ -233,9 +267,11 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
     setPayrollMessage(null);
     const payload = {
       action: "save_payroll", month: periodMonth, year: periodYear, employeeId: Number(form.employeeId),
-      gajiPerDay: parseNumber(form.gajiPerDay), tunjanganJabatan: parseNumber(form.tunjanganJabatan),
+      gajiPerDay: isSalesNasionalSummary ? 0 : parseNumber(form.gajiPerDay),
+      tunjanganJabatan: parseNumber(form.tunjanganJabatan),
       uangMakan: parseNumber(form.uangMakan), subsidi: parseNumber(form.subsidi), uangKerajinan: parseNumber(form.uangKerajinan),
       bpjs: parseNumber(form.bpjs), bonusPerforma: parseNumber(form.bonusPerforma), insentif: parseNumber(form.insentif), uangTransport: parseNumber(form.uangTransport),
+      kendaraan: parseNumber(form.kendaraan), perjalananDinasReimburse: parseNumber(form.perjalananDinasReimburse),
       overrideMasuk: form.overrideMasuk !== "" ? parseNumber(form.overrideMasuk) : null,
       overrideLembur: form.overrideLembur !== "" ? parseNumber(form.overrideLembur) : null,
       overrideIzin: form.overrideIzin !== "" ? parseNumber(form.overrideIzin) : null,
@@ -245,7 +281,7 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
       overrideKontrak: form.overrideKontrak !== "" ? parseNumber(form.overrideKontrak) : null,
       overridePinjaman: form.overridePinjaman !== "" ? parseNumber(form.overridePinjaman) : null,
       overridePinjamanPribadi: form.overridePinjamanPribadi !== "" ? parseNumber(form.overridePinjamanPribadi) : null,
-      overrideGajiPokok: form.overrideGajiPokok !== "" ? parseNumber(form.overrideGajiPokok) : null,
+      overrideGajiPokok: isSalesNasionalSummary ? parseNumber(form.overrideGajiPokok) : form.overrideGajiPokok !== "" ? parseNumber(form.overrideGajiPokok) : null,
     };
     startPayrollTransition(async () => {
       try {
@@ -313,7 +349,7 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
         </div>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <section className={isSalesNasionalSummary ? "grid gap-5" : "grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]"}>
         <form onSubmit={handlePayrollSubmit} className="rounded-[32px] border border-[#cfeaec] bg-[linear-gradient(180deg,#f9ffff_0%,#f2fcfc_100%)] p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -326,7 +362,14 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
 
           <div className="mt-6 space-y-5">
             <Field label="Nama Karyawan">
-              <select value={form.employeeId} onChange={(event) => updateField("employeeId", event.target.value)} className={selectClassName} required>
+              <select
+                value={form.employeeId}
+                onFocus={handleEmployeeSelectFocus}
+                onMouseDown={handleEmployeeSelectFocus}
+                onChange={(event) => handleEmployeeChange(event.target.value)}
+                className={selectClassName}
+                required
+              >
                 <option value="">Pilih karyawan</option>
                 {availableEmployeeOptions.map((employee) => <option key={employee.employeeId} value={employee.employeeId}>{employee.name} - {employee.role}</option>)}
               </select>
@@ -338,17 +381,51 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
             {selectedEmployee ? <div className="mt-1 rounded-[24px] border border-[#d5e9ea] bg-white px-5 py-5 text-sm text-[#35585b]"><p className="font-semibold text-[#19393d]">{selectedEmployee.name}</p><p className="mt-2">{selectedEmployee.role} | {selectedEmployee.division} | {selectedEmployee.department}</p><p className="mt-2">Pembagian rekapan: {selectedEmployee.recapGroup}</p></div> : null}
 
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Gaji Pokok Perhari / Perjam"><input value={form.gajiPerDay} onChange={(event) => updateField("gajiPerDay", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
-              <Field label="Tunjangan Jabatan"><input value={form.tunjanganJabatan} onChange={(event) => updateField("tunjanganJabatan", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
-              <Field label="Uang Makan"><input value={form.uangMakan} onChange={(event) => updateField("uangMakan", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
-              <Field label="Subsidi"><input value={form.subsidi} onChange={(event) => updateField("subsidi", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
-              <Field label="Uang Kerajinan"><input value={form.uangKerajinan} onChange={(event) => updateField("uangKerajinan", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
-              <Field label="BPJS"><input value={form.bpjs} onChange={(event) => updateField("bpjs", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
-              {isSales ? <><Field label="Insentif"><input value={form.insentif} onChange={(event) => updateField("insentif", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field><Field label="Uang Transport"><input value={form.uangTransport} onChange={(event) => updateField("uangTransport", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field></> : <Field label="Bonus Performa"><input value={form.bonusPerforma} onChange={(event) => updateField("bonusPerforma", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>}
-              <Field label="Gaji Pokok (Bulanan)"><input value={form.overrideGajiPokok} onChange={(event) => updateField("overrideGajiPokok", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" /></Field>
+              {isSalesNasionalSummary ? (
+                <>
+                  <Field label="Gaji Pokok"><input value={form.overrideGajiPokok} onChange={(event) => updateField("overrideGajiPokok", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
+                  <Field label="Transport"><input value={form.uangTransport} onChange={(event) => updateField("uangTransport", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
+                  <Field label="BPJS"><input value={form.bpjs} onChange={(event) => updateField("bpjs", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
+                  <Field label="Kendaraan"><input value={form.kendaraan} onChange={(event) => updateField("kendaraan", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
+                  <Field label="Perjalanan Dinas (Reimburse)">
+                    <input
+                      value={form.perjalananDinasReimburse}
+                      readOnly
+                      placeholder="Otomatis dari reimburse approved"
+                      className={`${inputClassName} bg-[#eef8f8] text-[#40676a]`}
+                      inputMode="numeric"
+                    />
+                    <span className="block text-xs leading-5 text-[#628083]">
+                      Otomatis dari total reimburse approved pada periode payroll ini.
+                    </span>
+                  </Field>
+                  <Field label="Bonus Opsional"><input value={form.bonusPerforma} onChange={(event) => updateField("bonusPerforma", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" /></Field>
+                </>
+              ) : (
+                <>
+                  <Field label="Gaji Pokok Perhari / Perjam"><input value={form.gajiPerDay} onChange={(event) => updateField("gajiPerDay", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
+                  {!isSalesNasional ? (
+                    <>
+                      <Field label="Tunjangan Jabatan"><input value={form.tunjanganJabatan} onChange={(event) => updateField("tunjanganJabatan", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
+                      <Field label="Uang Makan"><input value={form.uangMakan} onChange={(event) => updateField("uangMakan", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
+                      <Field label="Subsidi"><input value={form.subsidi} onChange={(event) => updateField("subsidi", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
+                      <Field label="Uang Kerajinan"><input value={form.uangKerajinan} onChange={(event) => updateField("uangKerajinan", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
+                    </>
+                  ) : null}
+                  <Field label="BPJS"><input value={form.bpjs} onChange={(event) => updateField("bpjs", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
+                  {isSales ? (
+                    <>
+                      {isSalesNasional ? <Field label="Bonus Opsional"><input value={form.bonusPerforma} onChange={(event) => updateField("bonusPerforma", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" /></Field> : <Field label="Insentif"><input value={form.insentif} onChange={(event) => updateField("insentif", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>}
+                      <Field label="Transport"><input value={form.uangTransport} onChange={(event) => updateField("uangTransport", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
+                      {isSalesNasional ? <><Field label="Kendaraan"><input value={form.kendaraan} onChange={(event) => updateField("kendaraan", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" /></Field><Field label="Perjalanan Dinas (Reimburse)"><input value={form.perjalananDinasReimburse} onChange={(event) => updateField("perjalananDinasReimburse", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" /></Field></> : null}
+                    </>
+                  ) : <Field label="Bonus Performa"><input value={form.bonusPerforma} onChange={(event) => updateField("bonusPerforma", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>}
+                  <Field label="Gaji Pokok (Bulanan)"><input value={form.overrideGajiPokok} onChange={(event) => updateField("overrideGajiPokok", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" /></Field>
+                </>
+              )}
             </div>
 
-            <div className="mt-8">
+            {!isSalesNasionalSummary ? <div className="mt-8">
               <p className="mb-4 text-sm font-semibold text-[#123336]">Override Kehadiran (Opsional, kosongkan jika ingin menggunakan data sistem)</p>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <Field label="Masuk (Hari)"><input value={form.overrideMasuk} onChange={(event) => updateField("overrideMasuk", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
@@ -358,16 +435,16 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
                 <Field label="Sakit Tanpa Surat (Hari)"><input value={form.overrideSakitTanpaSurat} onChange={(event) => updateField("overrideSakitTanpaSurat", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
                 <Field label="1/2 Hari (Hari)"><input value={form.overrideSetengahHari} onChange={(event) => updateField("overrideSetengahHari", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
               </div>
-            </div>
+            </div> : null}
 
-            <div className="mt-8">
+            {!isSalesNasionalSummary ? <div className="mt-8">
               <p className="mb-4 text-sm font-semibold text-[#123336]">Override Potongan (Opsional, kosongkan jika ingin menggunakan data sistem)</p>
               <div className="grid gap-4 md:grid-cols-3">
                 <Field label="Kontrak"><input value={form.overrideKontrak} onChange={(event) => updateField("overrideKontrak", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
                 <Field label="Pinjaman Perusahaan"><input value={form.overridePinjaman} onChange={(event) => updateField("overridePinjaman", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
                 <Field label="Pinjaman Pribadi"><input value={form.overridePinjamanPribadi} onChange={(event) => updateField("overridePinjamanPribadi", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
               </div>
-            </div>
+            </div> : null}
           </div>
 
           {editingPayrollId ? <div className="mt-5 rounded-2xl bg-[#fff5e8] px-4 py-3 text-sm text-[#875100]">Mode edit aktif. Hanya field input payroll di form yang bisa diubah; kolom hasil hitung tetap mengikuti sistem untuk periode {periodMonth}/{periodYear}.</div> : null}
@@ -379,7 +456,7 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
           </div>
         </form>
 
-        <div className="space-y-4">
+        {!isSalesNasionalSummary ? <div className="space-y-4">
           <form onSubmit={handleOmzetSubmit} className="rounded-[32px] border border-[#cfeaec] bg-[linear-gradient(180deg,#f9ffff_0%,#f2fcfc_100%)] p-6">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0c8087]">Omzet per Group</p>
             <h2 className="mt-3 text-2xl font-semibold text-[#123336]">Input Omzet Bulanan</h2>
@@ -438,7 +515,7 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
           <section className="grid gap-4">
             <article className="rounded-[30px] border border-[#ead7ce] bg-[linear-gradient(180deg,#fffdfb_0%,#fff6ef_100%)] px-6 py-5"><p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#a16f63]">Periode Payroll</p><h2 className="mt-3 text-2xl font-semibold text-[#241716]">{selectedPeriodLabel}</h2><p className="mt-2 text-sm text-[#7a6059]">Rentang absensi {displayedRange}</p></article>
           </section>
-        </div>
+        </div> : null}
       </section>
 
       {sheet ? (
@@ -483,6 +560,8 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Uang Makan</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Kerajinan</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Transport</th>
+                    <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Kendaraan</th>
+                    <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Perjalanan Dinas</th>
                     <th colSpan={2} className="border border-[#a8ebef] px-3 py-3">Lembur</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Izin / Off</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Sakit</th>
@@ -548,6 +627,8 @@ export default function AdminPayrollSummaryManager({ sheet, employeeOptions, omz
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.mealAllowance)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.diligenceAllowance)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.transportAllowance)}</td>
+                      <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.vehicleAllowance)}</td>
+                      <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.travelReimbursement)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-center">{formatNumber(row.overtimeHours)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.overtimeBonus)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-center">{row.leaveCount}</td>

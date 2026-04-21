@@ -242,7 +242,7 @@ export async function listSalesAreaEmployees() {
     `
       SELECT id, nama FROM karyawan
       WHERE status_data = 'aktif'
-        AND LOWER(TRIM(jabatan)) = 'sales area'
+        AND LOWER(TRIM(jabatan)) IN ('sales area', 'sales nasional')
       ORDER BY nama ASC
     `,
   );
