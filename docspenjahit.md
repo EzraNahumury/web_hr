@@ -57,14 +57,6 @@ Hasil:
 
 ---
 
-## Catatan
-
-- Kolom baru di tabel `karyawan`: `penjahit_payroll_type` ENUM('weekly', 'monthly')
-- Cicilan pinjaman per minggu = cicilan_bulanan / 4
-- Potongan di tgl 25 = attendance + kontrak + faktor lain (proporsional)
-
----
-
 ## Payroll Summary
 
 - Payroll Summary **Staff** → existing
