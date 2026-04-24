@@ -231,6 +231,9 @@ export default function AdminPenjahitPayrollSummary({ sheet, periodOptions, empl
     });
   }
 
+  const existingIds = new Set(sheet?.rows.map((r) => r.employeeId) ?? []);
+  const availableEmployeeOptions = employeeOptions.filter((e) => !existingIds.has(e.employeeId));
+
   const currentPeriodValue = sheet ? `${sheet.periodMonth}-${sheet.periodYear}` : "";
   const dialogTitle =
     dialog.open && dialog.mode === "edit"
@@ -545,7 +548,7 @@ export default function AdminPenjahitPayrollSummary({ sheet, periodOptions, empl
                     className={inputCls + " appearance-none"}
                   >
                     <option value="">Pilih karyawan penjahit...</option>
-                    {employeeOptions.map((emp) => (
+                    {availableEmployeeOptions.map((emp) => (
                       <option key={emp.employeeId} value={emp.employeeId}>
                         {emp.name}
                       </option>
