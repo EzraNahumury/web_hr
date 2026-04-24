@@ -38,6 +38,7 @@ export type EmployeeListItem = {
   contractEndDate: string | null;
   annualRaise: string;
   userActive: boolean;
+  penjahitPayrollType: "mingguan" | "bulanan" | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -57,6 +58,7 @@ export const EMPLOYEE_ROLES = [
   "Freelance",
   "Sales Area",
   "Sales Nasional",
+  "Penjahit",
 ] as const;
 export const EMPLOYEE_DEPARTMENTS = [
   "Secretary",
@@ -164,6 +166,7 @@ export type EmployeePayload = {
   contractEndDate: string | null;
   annualRaise: number;
   userActive: boolean;
+  penjahitPayrollType: "mingguan" | "bulanan" | null;
 };
 
 type EmployeeRow = RowDataPacket & {
@@ -198,6 +201,7 @@ type EmployeeRow = RowDataPacket & {
   tanggal_kontrak: string | null;
   tanggal_selesai_kontrak: string | null;
   kenaikan_tiap_tahun: string;
+  tipe_payroll_penjahit: "mingguan" | "bulanan" | null;
   status_aktif: number;
   created_at: string;
   updated_at: string;
@@ -246,6 +250,7 @@ function mapEmployee(row: EmployeeRow): EmployeeListItem {
     contractEndDate: row.tanggal_selesai_kontrak,
     annualRaise: row.kenaikan_tiap_tahun,
     userActive: row.status_aktif === 1,
+    penjahitPayrollType: row.tipe_payroll_penjahit ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -304,6 +309,7 @@ const employeeSelectQuery = `
     DATE_FORMAT(k.tanggal_kontrak, '%Y-%m-%d') AS tanggal_kontrak,
     DATE_FORMAT(k.tanggal_selesai_kontrak, '%Y-%m-%d') AS tanggal_selesai_kontrak,
     k.kenaikan_tiap_tahun,
+    k.tipe_payroll_penjahit,
     u.status_aktif,
     DATE_FORMAT(k.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
     DATE_FORMAT(k.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
@@ -346,6 +352,9 @@ async function ensureEmployeeSchemaSupport() {
       );
       await safeMigrate(
         `ALTER TABLE karyawan MODIFY COLUMN status_kerja ENUM('training','kontrak','tetap','freelance','magang','resign') NOT NULL DEFAULT 'kontrak'`,
+      );
+      await safeMigrate(
+        `ALTER TABLE karyawan ADD COLUMN tipe_payroll_penjahit ENUM('mingguan','bulanan') NULL AFTER jabatan`,
       );
     })();
   }
@@ -522,8 +531,9 @@ export async function insertEmployee(payload: EmployeePayload) {
           tanggal_masuk_pertama,
           tanggal_kontrak,
           tanggal_selesai_kontrak,
-          kenaikan_tiap_tahun
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          kenaikan_tiap_tahun,
+          tipe_payroll_penjahit
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         userId,
@@ -555,6 +565,7 @@ export async function insertEmployee(payload: EmployeePayload) {
         resolvedTimeline.contractDate,
         resolvedTimeline.contractEndDate,
         payload.annualRaise,
+        payload.penjahitPayrollType ?? null,
       ],
     );
 
@@ -656,7 +667,8 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
           tanggal_masuk_pertama = ?,
           tanggal_kontrak = ?,
           tanggal_selesai_kontrak = ?,
-          kenaikan_tiap_tahun = ?
+          kenaikan_tiap_tahun = ?,
+          tipe_payroll_penjahit = ?
         WHERE id = ?
       `,
       [
@@ -688,6 +700,7 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
         resolvedTimeline.contractDate,
         resolvedTimeline.contractEndDate,
         payload.annualRaise,
+        payload.penjahitPayrollType ?? null,
         id,
       ],
     );

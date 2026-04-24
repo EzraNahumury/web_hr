@@ -128,6 +128,10 @@ function validatePayload(body: Record<string, unknown>) {
     contractEndDate: normalizeText(body.contractEndDate),
     annualRaise: Number(body.annualRaise ?? 0) || 0,
     userActive: body.userActive === false ? false : true,
+    penjahitPayrollType:
+      body.penjahitPayrollType === "mingguan" || body.penjahitPayrollType === "bulanan"
+        ? (body.penjahitPayrollType as "mingguan" | "bulanan")
+        : null,
   };
 
   return { payload };

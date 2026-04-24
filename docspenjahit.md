@@ -57,8 +57,3 @@ Hasil:
 
 ---
 
-## Payroll Summary
-
-- Payroll Summary **Staff** → existing
-- Payroll Summary **Sales Nasional** → existing
-- Payroll Summary **Penjahit** → **BARU**, terpisah

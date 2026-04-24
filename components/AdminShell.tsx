@@ -31,6 +31,7 @@ const menuItems: MenuItem[] = [
   { label: "Potongan Kontrak", href: "/admin/contract-deductions", description: "Potongan per bulan" },
   { label: "Summary Payroll", href: "/admin/payroll-summary", description: "Ringkasan payroll" },
   { label: "Summary Sales Nasional", href: "/admin/payroll-summary/sales-nasional", description: "Payroll khusus Sales Nasional" },
+  { label: "Summary Penjahit", href: "/admin/payroll-summary/penjahit", description: "Payroll khusus Penjahit (mingguan & bulanan)" },
   { label: "Finance", href: "/admin/finance", description: "Pembebanan dan pencairan" },
   { label: "Slip Gaji", href: "/admin/payslips", description: "Detail slip gaji" },
   { label: "Distribusi Slip", href: "/admin/payslip-distribution", description: "Log distribusi slip" },

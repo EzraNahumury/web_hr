@@ -363,14 +363,20 @@ export default function AdminRolesManager({ initialRows, currentAdminId }: Props
                     autoComplete="new-password"
                   />
                 </label>
-                <label className="flex items-center gap-2 pt-1">
+                <label className={`flex items-center gap-2 pt-1 ${dialog.mode === "edit" && dialog.row.id === currentAdminId ? "opacity-50 cursor-not-allowed" : ""}`}>
                   <input
                     type="checkbox"
                     checked={form.isActive}
                     onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))}
-                    className="h-4 w-4 rounded border-[#ead7ce] text-[#8f1d22] focus:ring-[#c8716d]"
+                    disabled={dialog.mode === "edit" && dialog.row.id === currentAdminId}
+                    className="h-4 w-4 rounded border-[#ead7ce] text-[#8f1d22] focus:ring-[#c8716d] disabled:cursor-not-allowed"
                   />
-                  <span className="text-sm text-[#2d1b18]">Status akun aktif</span>
+                  <span className="text-sm text-[#2d1b18]">
+                    Status akun aktif
+                    {dialog.mode === "edit" && dialog.row.id === currentAdminId
+                      ? <span className="ml-1 text-xs text-[#a16f63]">(tidak dapat diubah untuk akun sendiri)</span>
+                      : null}
+                  </span>
                 </label>
               </div>
 
