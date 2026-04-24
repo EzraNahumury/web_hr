@@ -227,6 +227,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
   }, [employees, search]);
 
   const timelinePreview = form.firstJoinDate ? calculateEmploymentTimeline(form.firstJoinDate) : null;
+  const isTetap = form.employmentStatus === "tetap";
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => {
@@ -485,12 +486,17 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                 <Field label="Kenaikan Tiap Tahun"><input value={form.annualRaise} onChange={(event) => updateField("annualRaise", formatRupiahInput(event.target.value))} className={inputClassName} inputMode="numeric" /></Field>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className={`grid gap-4 md:grid-cols-2 ${isTetap ? "" : "xl:grid-cols-3"}`}>
                 <Field label="Tanggal Pertama Masuk"><input type="date" value={form.firstJoinDate} onChange={(event) => updateField("firstJoinDate", event.target.value)} className={inputClassName} required /></Field>
-                <Field label="Tanggal Kontrak"><input type="date" value={form.contractDate} onChange={(event) => updateField("contractDate", event.target.value)} className={inputClassName} disabled={!editingId} /></Field>
-                <Field label="Tanggal Selesai Kontrak"><input type="date" value={form.contractEndDate} onChange={(event) => updateField("contractEndDate", event.target.value)} className={inputClassName} disabled={!editingId} /></Field>
+                {!isTetap && (
+                  <Field label="Tanggal Kontrak"><input type="date" value={form.contractDate} onChange={(event) => updateField("contractDate", event.target.value)} className={inputClassName} disabled={!editingId} /></Field>
+                )}
+                {!isTetap && (
+                  <Field label="Tanggal Selesai Kontrak"><input type="date" value={form.contractEndDate} onChange={(event) => updateField("contractEndDate", event.target.value)} className={inputClassName} disabled={!editingId} /></Field>
+                )}
               </div>
 
+              {!isTetap && (
               <div className="rounded-[28px] border border-[#ead7ce] bg-white/70 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">Timeline Otomatis</p>
                 <p className="mt-2 text-sm text-[#6f5a54]">
@@ -521,6 +527,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                   </div>
                 </div>
               </div>
+              )}
             </div>
 
             <label className="flex items-center gap-3 rounded-2xl border border-[#ead7ce] bg-white px-4 py-3 text-sm font-medium text-[#5f4a45]">

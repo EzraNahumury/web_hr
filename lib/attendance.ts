@@ -1,3 +1,4 @@
+import { pool } from "@/lib/db";
 import { saveBufferToUploads } from "@/lib/uploads";
 
 function getJakartaParts() {
@@ -35,11 +36,54 @@ export function getJakartaDateTime() {
   return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
 }
 
+export type AttendanceShift = "pagi" | "lembur" | "siang";
+
+const SHIFT_START: Record<AttendanceShift, number> = {
+  pagi: 8 * 60 + 30,   // 08:30
+  lembur: 10 * 60,     // 10:00
+  siang: 12 * 60,      // 12:00
+};
+
+export function detectTokoGudangShift(time: string): AttendanceShift {
+  const [h, m] = time.split(":").map(Number);
+  const mins = h * 60 + m;
+  if (mins >= 9 * 60 + 45 && mins <= 10 * 60 + 15) return "lembur";
+  if (mins >= 11 * 60 + 45 && mins <= 12 * 60 + 15) return "siang";
+  return "pagi";
+}
+
+export function getShiftLateMinutes(time: string, shift: AttendanceShift): number {
+  const [h, m] = time.split(":").map(Number);
+  const mins = h * 60 + m;
+  return Math.max(mins - SHIFT_START[shift], 0);
+}
+
 export function getCheckInLateMinutes(time: string) {
-  const [hourString, minuteString] = time.split(":");
-  const minutes = Number(hourString) * 60 + Number(minuteString);
-  const expectedMinutes = 8 * 60 + 30;
-  return Math.max(minutes - expectedMinutes, 0);
+  return getShiftLateMinutes(time, "pagi");
+}
+
+const TOKO_GUDANG_PLACEMENTS = new Set(["Toko", "Gudang"]);
+
+export function isTokoGudangPlacement(penempatan: string | null | undefined): boolean {
+  return TOKO_GUDANG_PLACEMENTS.has(penempatan ?? "");
+}
+
+let shiftColumnReady: Promise<void> | null = null;
+
+export function ensureAttendanceShiftSupport(): Promise<void> {
+  if (!shiftColumnReady) {
+    shiftColumnReady = (async () => {
+      try {
+        await pool.query(
+          `ALTER TABLE absensi ADD COLUMN shift ENUM('pagi','lembur','siang') NULL AFTER kode_absensi`,
+        );
+      } catch (err: unknown) {
+        const code = typeof err === "object" && err !== null && "code" in err ? (err as { code: string }).code : "";
+        if (code !== "ER_DUP_FIELDNAME") throw err;
+      }
+    })();
+  }
+  return shiftColumnReady;
 }
 
 export async function saveAttendancePhoto(dataUrl: string, employeeId: number, mode: "in" | "out") {

@@ -7,10 +7,7 @@ import {
   ensureLoanSupportTables,
   getLoanDeductionForPeriod,
 } from "@/lib/loans";
-import {
-  ensureReimbursementSchema,
-  getApprovedReimbursementTotalForPeriod,
-} from "@/lib/reimbursements";
+import { ensureReimbursementSchema } from "@/lib/reimbursements";
 import { isSalesNasionalRole } from "@/lib/sales-roles";
 
 type PayrollEmployeeOptionRow = RowDataPacket & {
@@ -695,13 +692,6 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
       resolved.year,
       connection,
     );
-    const automaticTravelReimbursement = await getApprovedReimbursementTotalForPeriod(
-      payload.employeeId,
-      range.startSql,
-      range.endSql,
-      connection,
-    );
-
     const presentDays = payload.overrideMasuk ?? attendance.present_count ?? 0;
     const leaveCount = payload.overrideIzin ?? attendance.leave_count ?? 0;
     const sickCount = payload.overrideSakit ?? attendance.sick_count ?? 0;
@@ -724,7 +714,7 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
     const bpjs = payload.bpjs;
     const bonusPerforma = payrollType === "sales" && !isSalesNasional ? 0 : payload.bonusPerforma;
     const kendaraan = isSalesNasional ? payload.kendaraan : 0;
-    const perjalananDinasReimburse = isSalesNasional ? toNumber(automaticTravelReimbursement) : 0;
+    const perjalananDinasReimburse = 0;
     const diligenceAllowance = presentDays + sickCount >= workDays ? uangKerajinan : 0;
     const diligenceCut = Math.max(uangKerajinan - diligenceAllowance, 0);
     const overtimeBonus = overtimeHours * 20000;

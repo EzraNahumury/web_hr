@@ -1,14 +1,8 @@
-import AdminPayrollSummaryManager from "@/components/AdminPayrollSummaryManager";
+import AdminSalesNasionalPayrollSummary from "@/components/AdminSalesNasionalPayrollSummary";
 import AdminShell from "@/components/AdminShell";
 import { requireAdminSession } from "@/lib/auth";
-import {
-  getPayrollDateRange,
-  getPayrollOmzetPeriod,
-  listPayrollEmployeeOptions,
-  listPayrollPeriods,
-} from "@/lib/payroll-admin";
+import { listPayrollEmployeeOptions, listPayrollPeriods } from "@/lib/payroll-admin";
 import { getAdminPayrollSummarySheet, type AdminPayrollSummarySheet } from "@/lib/payroll-summary";
-import { getApprovedReimbursementRowsForPeriod } from "@/lib/reimbursements";
 import { isSalesNasionalRole } from "@/lib/sales-roles";
 
 function parsePositiveInt(value: string | string[] | undefined) {
@@ -54,22 +48,12 @@ export default async function AdminSalesNasionalPayrollSummaryPage({
     year: year ?? undefined,
   };
 
-  const [sheet, employeeOptions, omzetPeriod, periodOptions] = await Promise.all([
+  const [sheet, employeeOptions, periodOptions] = await Promise.all([
     getAdminPayrollSummarySheet(period),
     listPayrollEmployeeOptions(),
-    getPayrollOmzetPeriod(period),
     listPayrollPeriods(),
   ]);
   const salesNasionalEmployeeOptions = employeeOptions.filter((employee) => isSalesNasionalRole(employee.role));
-  const range = getPayrollDateRange(omzetPeriod.periodMonth, omzetPeriod.periodYear);
-  const reimbursementRows = await getApprovedReimbursementRowsForPeriod(
-    salesNasionalEmployeeOptions.map((employee) => employee.employeeId),
-    range.startSql,
-    range.endSql,
-  );
-  const automaticTravelReimbursements = Object.fromEntries(
-    reimbursementRows.map((row) => [row.employeeId, Number(row.totalReimbursement)]),
-  );
 
   return (
     <AdminShell
@@ -79,14 +63,10 @@ export default async function AdminSalesNasionalPayrollSummaryPage({
       adminEmail={admin.email}
       currentPath="/admin/payroll-summary/sales-nasional"
     >
-      <AdminPayrollSummaryManager
+      <AdminSalesNasionalPayrollSummary
         sheet={filterSalesNasionalSheet(sheet)}
         employeeOptions={salesNasionalEmployeeOptions}
-        omzetPeriod={omzetPeriod}
         periodOptions={periodOptions}
-        basePath="/admin/payroll-summary/sales-nasional"
-        variant="sales-nasional"
-        automaticTravelReimbursements={automaticTravelReimbursements}
       />
     </AdminShell>
   );
