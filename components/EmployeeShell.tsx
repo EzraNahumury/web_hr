@@ -40,6 +40,7 @@ const baseMenuItems: MenuItem[] = [
     ],
   },
   { label: "Riwayat Absensi", href: "/employee/attendance-history", description: "Rekap kehadiran pribadi" },
+  { label: "Perjalanan Dinas", href: "/employee/business-trips", description: "Pengajuan dinas luar kota" },
   { label: "Data Lembur", href: "/employee/overtime", description: "Pengajuan dan status lembur" },
   { label: "Status Pinjaman", href: "/employee/loans", description: "Sisa pinjaman dan cicilan" },
   { label: "Informasi Kontrak", href: "/employee/contract", description: "Kontrak dan potongan kerja" },

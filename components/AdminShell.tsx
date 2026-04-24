@@ -26,6 +26,7 @@ const menuItems: MenuItem[] = [
   { label: "Absensi", href: "/admin/attendance", description: "Presensi dan keterlambatan" },
   { label: "Laporan Kunjungan", href: "/admin/visit-reports", description: "Timeline kunjungan Sales Area" },
   { label: "Lembur", href: "/admin/overtime", description: "Approval dan rekap lembur" },
+  { label: "Approval Perjalanan Dinas", href: "/admin/business-trips", description: "Approval dinas luar kota karyawan" },
   { label: "Approval Reimburse", href: "/admin/reimbursements", description: "Approve nota reimburse" },
   { label: "Pinjaman", href: "/admin/loans", description: "Pinjaman karyawan" },
   { label: "Potongan Kontrak", href: "/admin/contract-deductions", description: "Potongan per bulan" },
