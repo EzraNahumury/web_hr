@@ -36,6 +36,9 @@ function validatePayload(body: Record<string, unknown>) {
   const role = normalizeText(body.role);
   const subDivision = normalizeText(body.subDivision);
   const placement = normalizeText(body.placement);
+  const extraPlacements = Array.isArray(body.extraPlacements)
+    ? (body.extraPlacements as unknown[]).map((v) => normalizeText(v)).filter((v): v is string => v !== null)
+    : [];
   const division = normalizeText(body.division);
   const department = normalizeText(body.department);
   const costAllocation = normalizeText(body.costAllocation);
@@ -79,6 +82,12 @@ function validatePayload(body: Record<string, unknown>) {
     return { error: "Penempatan tidak valid." };
   }
 
+  for (const ep of extraPlacements) {
+    if (!EMPLOYEE_PLACEMENTS.includes(ep as (typeof EMPLOYEE_PLACEMENTS)[number])) {
+      return { error: `Penempatan tambahan "${ep}" tidak valid.` };
+    }
+  }
+
   if (
     costAllocation &&
     !EMPLOYEE_COST_ALLOCATIONS.includes(costAllocation as (typeof EMPLOYEE_COST_ALLOCATIONS)[number])
@@ -109,6 +118,7 @@ function validatePayload(body: Record<string, unknown>) {
       role: role ?? "",
       subDivision,
       placement,
+      extraPlacements,
       division: division ?? "",
       department: department ?? "",
       recapGroup: null,

@@ -101,11 +101,17 @@ export function haversineDistanceMeters(
 }
 
 export function checkGeofence(
-  placement: string | null | undefined,
+  placementInput: string | string[] | null | undefined,
   latitude: number,
   longitude: number,
 ): GeofenceResult {
-  if (!placement) {
+  const placements = Array.isArray(placementInput)
+    ? placementInput.filter(Boolean)
+    : placementInput
+      ? [placementInput]
+      : [];
+
+  if (placements.length === 0) {
     return {
       valid: false,
       bypass: false,
@@ -118,67 +124,71 @@ export function checkGeofence(
     };
   }
 
-  if (placement === WFA_PLACEMENT) {
+  // WFA bypass if any placement is WFA
+  if (placements.includes(WFA_PLACEMENT)) {
     return {
       valid: true,
       bypass: true,
       reason: "wfa",
       distanceMeters: null,
       location: null,
-      placement,
+      placement: WFA_PLACEMENT,
     };
   }
 
-  const locations = WORK_LOCATIONS[placement];
-  if (!locations || locations.length === 0) {
-    return {
-      valid: false,
-      bypass: false,
-      reason: "unknown_placement",
-      distanceMeters: null,
-      location: null,
-      placement,
-      message: `Lokasi untuk penempatan "${placement}" belum terdaftar. Hubungi HR.`,
-    };
-  }
+  // Find the single closest valid location across all placements
+  let bestValid: { placement: string; location: WorkLocation; distance: number } | null = null;
+  let bestInvalid: { placement: string; location: WorkLocation; distance: number } | null = null;
 
-  let nearest = locations[0];
-  let nearestDistance = haversineDistanceMeters(
-    latitude,
-    longitude,
-    nearest.latitude,
-    nearest.longitude,
-  );
-  for (let i = 1; i < locations.length; i += 1) {
-    const d = haversineDistanceMeters(
-      latitude,
-      longitude,
-      locations[i].latitude,
-      locations[i].longitude,
-    );
-    if (d < nearestDistance) {
-      nearest = locations[i];
-      nearestDistance = d;
+  for (const placement of placements) {
+    const locations = WORK_LOCATIONS[placement];
+    if (!locations || locations.length === 0) continue;
+
+    for (const loc of locations) {
+      const d = haversineDistanceMeters(latitude, longitude, loc.latitude, loc.longitude);
+      if (d <= MAX_GEOFENCE_RADIUS_METERS) {
+        if (!bestValid || d < bestValid.distance) {
+          bestValid = { placement, location: loc, distance: d };
+        }
+      } else {
+        if (!bestInvalid || d < bestInvalid.distance) {
+          bestInvalid = { placement, location: loc, distance: d };
+        }
+      }
     }
   }
 
-  if (nearestDistance > MAX_GEOFENCE_RADIUS_METERS) {
+  if (bestValid) {
+    return {
+      valid: true,
+      bypass: false,
+      distanceMeters: bestValid.distance,
+      location: bestValid.location,
+      placement: bestValid.placement,
+    };
+  }
+
+  // All placements out of range — report closest
+  if (bestInvalid) {
     return {
       valid: false,
       bypass: false,
       reason: "out_of_range",
-      distanceMeters: nearestDistance,
-      location: nearest,
-      placement,
-      message: `Anda berada ${Math.round(nearestDistance)} meter dari ${nearest.label} (lokasi terdekat dari penempatan ${placement}). Maksimal jarak presensi adalah ${MAX_GEOFENCE_RADIUS_METERS} meter.`,
+      distanceMeters: bestInvalid.distance,
+      location: bestInvalid.location,
+      placement: bestInvalid.placement,
+      message: `Anda berada ${Math.round(bestInvalid.distance)} meter dari ${bestInvalid.location.label} (lokasi terdekat). Maksimal jarak presensi adalah ${MAX_GEOFENCE_RADIUS_METERS} meter.`,
     };
   }
 
+  // All placement names unknown
   return {
-    valid: true,
+    valid: false,
     bypass: false,
-    distanceMeters: nearestDistance,
-    location: nearest,
-    placement,
+    reason: "unknown_placement",
+    distanceMeters: null,
+    location: null,
+    placement: placements[0],
+    message: `Lokasi untuk penempatan "${placements.join(", ")}" belum terdaftar. Hubungi HR.`,
   };
 }

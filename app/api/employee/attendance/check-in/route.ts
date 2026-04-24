@@ -18,6 +18,7 @@ import { checkGeofence, MAX_GEOFENCE_RADIUS_METERS } from "@/lib/geofence";
 type EmployeeRow = RowDataPacket & {
   id: number;
   penempatan: string | null;
+  penempatan_extra: string | null;
 };
 
 type AttendanceRow = RowDataPacket & {
@@ -95,7 +96,7 @@ export async function POST(request: Request) {
     }
 
     const [employeeRows] = await pool.query<EmployeeRow[]>(
-      "SELECT id, penempatan FROM karyawan WHERE user_id = ? LIMIT 1",
+      "SELECT id, penempatan, penempatan_extra FROM karyawan WHERE user_id = ? LIMIT 1",
       [session.userId],
     );
 
@@ -105,8 +106,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Data karyawan tidak ditemukan." }, { status: 404 });
     }
 
+    const allPlacements = [
+      employee.penempatan,
+      ...(employee.penempatan_extra ? employee.penempatan_extra.split(",").map((s) => s.trim()) : []),
+    ].filter(Boolean) as string[];
+
     if (requiresSelfie) {
-      const geofence = checkGeofence(employee.penempatan, latitude, longitude);
+      const geofence = checkGeofence(allPlacements, latitude, longitude);
       if (!geofence.valid) {
         return NextResponse.json(
           {
@@ -152,7 +158,10 @@ export async function POST(request: Request) {
       : requiresSickProof
         ? await saveUploadedFile(sickProof as File, "attendance")
         : null;
-    const detectedShift: AttendanceShift | null = requiresSelfie && isTokoGudangPlacement(employee.penempatan)
+    const detectedPlacement = requiresSelfie
+      ? (checkGeofence(allPlacements, latitude, longitude).placement ?? employee.penempatan)
+      : employee.penempatan;
+    const detectedShift: AttendanceShift | null = requiresSelfie && isTokoGudangPlacement(detectedPlacement)
       ? detectTokoGudangShift(currentTime)
       : null;
     const lateMinutes = requiresSelfie

@@ -17,6 +17,7 @@ export type EmployeeListItem = {
   division: string;
   subDivision: string | null;
   placement: string | null;
+  extraPlacements: string[];
   recapGroup: string | null;
   costAllocation: string | null;
   bank: string | null;
@@ -145,6 +146,7 @@ export type EmployeePayload = {
   division: string;
   subDivision: string | null;
   placement: string | null;
+  extraPlacements?: string[];
   recapGroup: string | null;
   costAllocation: string | null;
   bank: string | null;
@@ -202,6 +204,7 @@ type EmployeeRow = RowDataPacket & {
   tanggal_selesai_kontrak: string | null;
   kenaikan_tiap_tahun: string;
   tipe_payroll_penjahit: "mingguan" | "bulanan" | null;
+  penempatan_extra: string | null;
   status_aktif: number;
   created_at: string;
   updated_at: string;
@@ -229,6 +232,9 @@ function mapEmployee(row: EmployeeRow): EmployeeListItem {
     division: row.divisi,
     subDivision: row.sub_divisi,
     placement: row.penempatan,
+    extraPlacements: row.penempatan_extra
+      ? row.penempatan_extra.split(",").map((s) => s.trim()).filter(Boolean)
+      : [],
     recapGroup: row.pembagian_rekapan,
     costAllocation: row.pembebanan,
     bank: row.bank,
@@ -289,6 +295,7 @@ const employeeSelectQuery = `
     k.divisi,
     k.sub_divisi,
     k.penempatan,
+    k.penempatan_extra,
     k.pembagian_rekapan,
     k.pembebanan,
     k.bank,
@@ -355,6 +362,9 @@ async function ensureEmployeeSchemaSupport() {
       );
       await safeMigrate(
         `ALTER TABLE karyawan ADD COLUMN tipe_payroll_penjahit ENUM('mingguan','bulanan') NULL AFTER jabatan`,
+      );
+      await safeMigrate(
+        `ALTER TABLE karyawan ADD COLUMN penempatan_extra VARCHAR(500) NULL AFTER penempatan`,
       );
     })();
   }
@@ -512,6 +522,7 @@ export async function insertEmployee(payload: EmployeePayload) {
           divisi,
           sub_divisi,
           penempatan,
+          penempatan_extra,
           pembagian_rekapan,
           pembebanan,
           bank,
@@ -533,7 +544,7 @@ export async function insertEmployee(payload: EmployeePayload) {
           tanggal_selesai_kontrak,
           kenaikan_tiap_tahun,
           tipe_payroll_penjahit
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         userId,
@@ -545,6 +556,7 @@ export async function insertEmployee(payload: EmployeePayload) {
         payload.division,
         payload.subDivision,
         payload.placement,
+        payload.extraPlacements?.filter(Boolean).join(",") || null,
         payload.recapGroup,
         payload.costAllocation,
         payload.bank,
@@ -648,6 +660,7 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
           divisi = ?,
           sub_divisi = ?,
           penempatan = ?,
+          penempatan_extra = ?,
           pembagian_rekapan = ?,
           pembebanan = ?,
           bank = ?,
@@ -680,6 +693,7 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
         payload.division,
         payload.subDivision,
         payload.placement,
+        payload.extraPlacements?.filter(Boolean).join(",") || null,
         payload.recapGroup,
         payload.costAllocation,
         payload.bank,

@@ -38,7 +38,7 @@ type FormState = {
   department: string;
   division: string;
   subDivision: string;
-  placement: string;
+  placements: string[];
   costAllocation: string;
   employmentStatus: "training" | "tetap" | "kontrak" | "freelance";
   dataStatus: "aktif" | "nonaktif";
@@ -58,7 +58,7 @@ const emptyForm: FormState = {
   department: "",
   division: "",
   subDivision: "",
-  placement: "",
+  placements: [""],
   costAllocation: "",
   employmentStatus: "kontrak",
   dataStatus: "aktif",
@@ -178,7 +178,7 @@ function toFormState(employee: EmployeeListItem): FormState {
     department: employee.department ?? "",
     division: employee.division ?? "",
     subDivision: employee.subDivision ?? "",
-    placement: employee.placement ?? "",
+    placements: [employee.placement ?? "", ...employee.extraPlacements],
     costAllocation: employee.costAllocation ?? "",
     employmentStatus: employee.employmentStatus,
     dataStatus: employee.dataStatus,
@@ -280,7 +280,8 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
         department: form.department,
         division: form.division,
         subDivision: form.subDivision,
-        placement: form.placement,
+        placement: form.placements[0] ?? "",
+        extraPlacements: form.placements.slice(1).filter(Boolean),
         costAllocation: form.costAllocation,
         employmentStatus: form.employmentStatus,
         workStatus: form.employmentStatus,
@@ -459,7 +460,45 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
               <Field label="Departemen"><select value={form.department} onChange={(event) => updateField("department", event.target.value)} className={selectClassName}><option value="">Pilih departemen</option>{lookups.departments.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
               <Field label="Divisi"><select value={form.division} onChange={(event) => updateField("division", event.target.value)} className={selectClassName}><option value="">Pilih divisi</option>{lookups.divisions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
               <Field label="Sub Divisi"><select value={form.subDivision} onChange={(event) => updateField("subDivision", event.target.value)} className={selectClassName}><option value="">Pilih sub divisi</option>{lookups.subDivisions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
-              <Field label="Penempatan"><select value={form.placement} onChange={(event) => updateField("placement", event.target.value)} className={selectClassName}><option value="">Pilih penempatan</option>{lookups.placements.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+              <div className="space-y-2">
+                <span className="block text-sm font-medium text-[#4a3430]">Penempatan</span>
+                {form.placements.map((p, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <select
+                      value={p}
+                      onChange={(event) => {
+                        const next = [...form.placements];
+                        next[idx] = event.target.value;
+                        updateField("placements", next);
+                      }}
+                      className={selectClassName + " flex-1"}
+                    >
+                      <option value="">Pilih penempatan</option>
+                      {lookups.placements.map((item) => (
+                        <option key={item.value} value={item.value}>{item.label}</option>
+                      ))}
+                    </select>
+                    {idx > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => updateField("placements", form.placements.filter((_, i) => i !== idx))}
+                        className="h-12 w-12 flex-shrink-0 rounded-2xl border border-[#f1d0c9] bg-white text-[#b94040] hover:bg-[#fff2f0] text-lg leading-none"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {form.placements.length < lookups.placements.length && (
+                  <button
+                    type="button"
+                    onClick={() => updateField("placements", [...form.placements, ""])}
+                    className="h-9 rounded-xl border border-[#ead7ce] bg-white px-4 text-xs font-semibold text-[#8f1d22] hover:bg-[#fff5f2]"
+                  >
+                    + Tambah Penempatan
+                  </button>
+                )}
+              </div>
               <Field label="Pembebanan"><select value={form.costAllocation} onChange={(event) => updateField("costAllocation", event.target.value)} className={selectClassName}><option value="">Pilih pembebanan</option>{lookups.costAllocations.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
             </div>
 
