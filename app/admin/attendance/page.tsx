@@ -55,7 +55,7 @@ export default async function AdminAttendancePage({
   return (
     <AdminShell
       title="Manajemen Absensi"
-      description="Rekap absensi bisa dilihat dalam mode bulanan atau mingguan. Data ditarik langsung dari tabel absensi, karyawan, dan users."
+      description="Rekap absensi mengikuti periode payroll (tgl 26 bulan sebelumnya s/d tgl 25 bulan dipilih). Bisa dilihat dalam mode bulanan atau mingguan."
       adminName={admin.fullName}
       adminEmail={admin.email}
       currentPath="/admin/attendance"
@@ -90,6 +90,9 @@ export default async function AdminAttendancePage({
               <h3 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-[#241716]">
                 Rekap Absensi {sheet.month}/{sheet.year}
               </h3>
+              <p className="mt-1 text-xs text-[#a16f63]">
+                Periode payroll: 26 {monthNames[((sheet.month + 10) % 12)]} {sheet.month === 1 ? sheet.year - 1 : sheet.year} – 25 {monthNames[sheet.month - 1]} {sheet.year}
+              </p>
               {sheet.view === "week" ? (
                 <p className="mt-2 text-sm text-[#7a6059]">Tampilan minggu ke-{sheet.week}</p>
               ) : null}

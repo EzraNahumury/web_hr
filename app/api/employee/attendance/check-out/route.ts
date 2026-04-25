@@ -2,7 +2,14 @@ import { NextResponse } from "next/server";
 import { RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
 import { getCurrentEmployeeSession } from "@/lib/auth";
-import { getJakartaDate, getJakartaDateTime, saveAttendancePhoto } from "@/lib/attendance";
+import {
+  detectTokoGudangShiftFinal,
+  ensureAttendanceShiftSupport,
+  getJakartaDate,
+  getJakartaDateTime,
+  isTokoGudangPlacement,
+  saveAttendancePhoto,
+} from "@/lib/attendance";
 import { checkGeofence, MAX_GEOFENCE_RADIUS_METERS } from "@/lib/geofence";
 
 type EmployeeRow = RowDataPacket & {
@@ -13,12 +20,15 @@ type EmployeeRow = RowDataPacket & {
 type AttendanceRow = RowDataPacket & {
   id: number;
   jam_masuk: Date | null;
+  jam_masuk_str: string | null;
   jam_pulang: Date | null;
   status_absensi: string | null;
 };
 
 export async function POST(request: Request) {
   try {
+    await ensureAttendanceShiftSupport();
+
     const session = await getCurrentEmployeeSession();
 
     if (!session) {
@@ -73,8 +83,8 @@ export async function POST(request: Request) {
 
     const [attendanceRows] = await pool.query<AttendanceRow[]>(
       `
-        SELECT id, jam_masuk, jam_pulang
-             , status_absensi
+        SELECT id, jam_masuk, jam_pulang, status_absensi,
+               DATE_FORMAT(jam_masuk, '%H:%i') AS jam_masuk_str
         FROM absensi
         WHERE karyawan_id = ? AND tanggal = ?
         LIMIT 1
@@ -113,19 +123,48 @@ export async function POST(request: Request) {
     }
 
     const photoPath = await saveAttendancePhoto(body.photoDataUrl, employee.id, "out");
+    const checkOutTime = attendanceDateTime.split(" ")[1];
 
-    await pool.query(
-      `
-        UPDATE absensi
-        SET
-          jam_pulang = ?,
-          foto_pulang = ?,
-          latitude_pulang = ?,
-          longitude_pulang = ?
-        WHERE id = ?
-      `,
-      [attendanceDateTime, photoPath, body.latitude, body.longitude, attendance.id],
-    );
+    if (isTokoGudangPlacement(employee.penempatan) && attendance.jam_masuk_str) {
+      const finalShift = detectTokoGudangShiftFinal(
+        attendance.jam_masuk_str,
+        checkOutTime,
+      );
+
+      await pool.query(
+        `
+          UPDATE absensi
+          SET
+            jam_pulang = ?,
+            foto_pulang = ?,
+            latitude_pulang = ?,
+            longitude_pulang = ?,
+            shift = ?
+          WHERE id = ?
+        `,
+        [
+          attendanceDateTime,
+          photoPath,
+          body.latitude,
+          body.longitude,
+          finalShift,
+          attendance.id,
+        ],
+      );
+    } else {
+      await pool.query(
+        `
+          UPDATE absensi
+          SET
+            jam_pulang = ?,
+            foto_pulang = ?,
+            latitude_pulang = ?,
+            longitude_pulang = ?
+          WHERE id = ?
+        `,
+        [attendanceDateTime, photoPath, body.latitude, body.longitude, attendance.id],
+      );
+    }
 
     return NextResponse.json({ message: "Presensi pulang berhasil disimpan." });
   } catch (error) {

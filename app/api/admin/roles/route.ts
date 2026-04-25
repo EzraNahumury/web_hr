@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentAdminSession } from "@/lib/auth";
-import { createAdmin, emailExists, listAdmins } from "@/lib/admins";
+import {
+  createAdmin,
+  emailExists,
+  listAdmins,
+  MANAGED_ROLES,
+  type ManagedRole,
+} from "@/lib/admins";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,6 +37,8 @@ export async function POST(request: Request) {
     const name = normalizeString(body.name);
     const email = normalizeString(body.email).toLowerCase();
     const password = normalizeString(body.password);
+    const roleInput = normalizeString(body.role) as ManagedRole;
+    const role: ManagedRole = MANAGED_ROLES.includes(roleInput) ? roleInput : "admin";
     const isActive = body.isActive === undefined ? true : Boolean(body.isActive);
 
     if (!name) {
@@ -53,7 +61,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const row = await createAdmin({ name, email, password, isActive });
+    const row = await createAdmin({ name, email, password, role, isActive });
     return NextResponse.json(
       { message: "Akun admin berhasil dibuat.", row },
       { status: 201 },

@@ -185,7 +185,9 @@ export default function AdminAttendanceSheet({ days, rows }: Props) {
         <table className="min-w-[1800px] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-[#efe0d8] bg-[#fff8f4] text-xs uppercase tracking-[0.18em] text-[#9e7467]">
-              <th className="px-4 py-4">Nama</th>
+              <th className="sticky left-0 z-20 min-w-[200px] bg-[#fff8f4] px-4 py-4 shadow-[2px_0_0_0_#efe0d8]">
+                Nama
+              </th>
               <th className="px-4 py-4">NIP</th>
               <th className="px-4 py-4">Jabatan</th>
               <th className="px-4 py-4">Divisi</th>
@@ -202,7 +204,9 @@ export default function AdminAttendanceSheet({ days, rows }: Props) {
           <tbody>
             {rows.map((row) => (
               <tr key={row.employeeId} className="border-b border-[#f1e5de] text-[#513d39]">
-                <td className="px-4 py-4 font-semibold text-[#241716]">{row.name}</td>
+                <td className="sticky left-0 z-10 min-w-[200px] bg-white px-4 py-4 font-semibold text-[#241716] shadow-[2px_0_0_0_#f1e5de]">
+                  {row.name}
+                </td>
                 <td className="px-4 py-4">{row.nip}</td>
                 <td className="px-4 py-4">{row.role}</td>
                 <td className="px-4 py-4">{row.division}</td>

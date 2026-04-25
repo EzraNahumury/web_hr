@@ -6,7 +6,9 @@ import {
   deleteAdmin,
   emailExists,
   getAdminById,
+  MANAGED_ROLES,
   updateAdmin,
+  type ManagedRole,
 } from "@/lib/admins";
 
 export const runtime = "nodejs";
@@ -49,6 +51,8 @@ export async function PUT(
     const name = normalizeString(body.name);
     const email = normalizeString(body.email).toLowerCase();
     const password = normalizeString(body.password);
+    const roleInput = normalizeString(body.role) as ManagedRole;
+    const role: ManagedRole = MANAGED_ROLES.includes(roleInput) ? roleInput : current.role;
     const isActive = body.isActive === undefined ? current.isActive : Boolean(body.isActive);
 
     if (!name) {
@@ -71,6 +75,27 @@ export async function PUT(
       );
     }
 
+    if (
+      current.role === "admin" &&
+      role !== "admin" &&
+      id === session.id
+    ) {
+      return NextResponse.json(
+        { message: "Tidak dapat mengubah role akun yang sedang digunakan." },
+        { status: 400 },
+      );
+    }
+
+    if (current.role === "admin" && role !== "admin") {
+      const active = await countActiveAdmins();
+      if (active <= 1) {
+        return NextResponse.json(
+          { message: "Minimal harus ada satu admin aktif." },
+          { status: 400 },
+        );
+      }
+    }
+
     if (current.isActive && !isActive && id === session.id) {
       return NextResponse.json(
         { message: "Tidak dapat menonaktifkan akun yang sedang digunakan." },
@@ -78,7 +103,7 @@ export async function PUT(
       );
     }
 
-    if (current.isActive && !isActive) {
+    if (current.isActive && !isActive && current.role === "admin") {
       const active = await countActiveAdmins();
       if (active <= 1) {
         return NextResponse.json(
@@ -92,6 +117,7 @@ export async function PUT(
       name,
       email,
       password: password || null,
+      role,
       isActive,
     });
     return NextResponse.json({ message: "Akun admin berhasil diperbarui.", row });
@@ -134,7 +160,7 @@ export async function DELETE(
     );
   }
 
-  if (current.isActive) {
+  if (current.isActive && current.role === "admin") {
     const active = await countActiveAdmins();
     if (active <= 1) {
       return NextResponse.json(

@@ -272,7 +272,11 @@ export default function EmployeeAttendanceCapture({
       return;
     }
 
+    context.save();
+    context.translate(canvas.width, 0);
+    context.scale(-1, 1);
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    context.restore();
     setPhotoDataUrl(canvas.toDataURL("image/jpeg", 0.9));
     setErrorMessage("");
   }
@@ -626,7 +630,7 @@ export default function EmployeeAttendanceCapture({
                     autoPlay
                     playsInline
                     muted
-                    className="aspect-[4/5] w-full bg-black object-cover"
+                    className="aspect-[4/5] w-full -scale-x-100 bg-black object-cover"
                   />
                 ) : (
                   <Image

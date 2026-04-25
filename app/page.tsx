@@ -45,7 +45,7 @@ export default function Home() {
     e.preventDefault(); setIsSubmitting(true); setErrorMessage("");
     try {
       const res = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
-      const r = (await res.json()) as { message?: string; redirectTo?: string; role?: "admin" | "karyawan" };
+      const r = (await res.json()) as { message?: string; redirectTo?: string; role?: "admin" | "karyawan" | "spv" };
       if (!res.ok) throw new Error(r.message || "Login gagal.");
       if (r.role === "karyawan") {
         try { await requestLoginLocation(); } catch { /* biarkan login lanjut */ }

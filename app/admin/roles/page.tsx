@@ -11,8 +11,8 @@ export default async function AdminRolesPage() {
 
   return (
     <AdminShell
-      title="Role Admin"
-      description="Kelola akun admin yang dapat mengakses HR Payroll System."
+      title="Role Admin & SPV"
+      description="Kelola akun admin (panel HR penuh) dan SPV (khusus jadwal Toko/Gudang)."
       adminName={admin.fullName}
       adminEmail={admin.email}
       currentPath="/admin/roles"

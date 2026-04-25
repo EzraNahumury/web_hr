@@ -1,14 +1,19 @@
 import { NextResponse } from "next/server";
 import { RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
-import { clearAllSessionCookies, setAdminSessionCookie, setEmployeeSessionCookie } from "@/lib/auth";
+import {
+  clearAllSessionCookies,
+  setAdminSessionCookie,
+  setEmployeeSessionCookie,
+  setSpvSessionCookie,
+} from "@/lib/auth";
 
 type UserRow = RowDataPacket & {
   id: number;
   nama: string;
   email: string;
   password: string;
-  role: "admin" | "karyawan";
+  role: "admin" | "karyawan" | "spv";
   status_aktif: number;
   status_data: string | null;
 };
@@ -88,6 +93,20 @@ export async function POST(request: Request) {
         message: "Login admin berhasil.",
         role: "admin",
         redirectTo: "/admin",
+      });
+    }
+
+    if (user.role === "spv") {
+      await setSpvSessionCookie({
+        id: user.id,
+        email: user.email,
+        fullName: user.nama,
+      });
+
+      return NextResponse.json({
+        message: "Login SPV berhasil.",
+        role: "spv",
+        redirectTo: "/spv/jadwal",
       });
     }
 

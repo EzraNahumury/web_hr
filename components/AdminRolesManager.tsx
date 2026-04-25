@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import type { AdminItem } from "@/lib/admins";
+import type { AdminItem, ManagedRole } from "@/lib/admins";
 
 type Props = {
   initialRows: AdminItem[];
@@ -13,7 +13,13 @@ type FormState = {
   name: string;
   email: string;
   password: string;
+  role: ManagedRole;
   isActive: boolean;
+};
+
+const ROLE_LABEL: Record<ManagedRole, string> = {
+  admin: "Admin",
+  spv: "SPV (Jadwal Toko/Gudang)",
 };
 
 type DialogState =
@@ -29,6 +35,7 @@ const emptyForm: FormState = {
   name: "",
   email: "",
   password: "",
+  role: "admin",
   isActive: true,
 };
 
@@ -63,11 +70,13 @@ export default function AdminRolesManager({ initialRows, currentAdminId }: Props
     const keyword = search.trim().toLowerCase();
     if (!keyword) return rows;
     return rows.filter((row) =>
-      [row.name, row.email].join(" ").toLowerCase().includes(keyword),
+      [row.name, row.email, ROLE_LABEL[row.role]].join(" ").toLowerCase().includes(keyword),
     );
   }, [rows, search]);
 
   const activeCount = useMemo(() => rows.filter((row) => row.isActive).length, [rows]);
+  const adminCount = useMemo(() => rows.filter((row) => row.role === "admin").length, [rows]);
+  const spvCount = useMemo(() => rows.filter((row) => row.role === "spv").length, [rows]);
 
   function openCreate() {
     setForm(emptyForm);
@@ -79,6 +88,7 @@ export default function AdminRolesManager({ initialRows, currentAdminId }: Props
       name: row.name,
       email: row.email,
       password: "",
+      role: row.role,
       isActive: row.isActive,
     });
     setDialog({ mode: "edit", row });
@@ -138,6 +148,7 @@ export default function AdminRolesManager({ initialRows, currentAdminId }: Props
           name,
           email,
           password: password || undefined,
+          role: form.role,
           isActive: form.isActive,
         }),
       });
@@ -198,15 +209,17 @@ export default function AdminRolesManager({ initialRows, currentAdminId }: Props
               Manajemen Role
             </div>
             <h3 className="mt-4 text-2xl font-semibold tracking-[-0.04em] text-[#241716]">
-              Akun Admin
+              Akun Admin & SPV
             </h3>
             <p className="mt-2 text-sm leading-6 text-[#7a6059]">
-              Buat, ubah, atau hapus akun admin untuk mengelola HR Payroll System.
+              Buat, ubah, atau hapus akun admin dan SPV. SPV hanya bisa akses jadwal Toko/Gudang.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="rounded-2xl border border-[#ead7ce] bg-white px-4 py-2.5 text-sm text-[#7a6059]">
-              Total Admin: <span className="font-semibold text-[#241716]">{rows.length}</span>
+              Admin: <span className="font-semibold text-[#241716]">{adminCount}</span>
+              <span className="mx-2 text-[#ead7ce]">|</span>
+              SPV: <span className="font-semibold text-[#241716]">{spvCount}</span>
               <span className="mx-2 text-[#ead7ce]">|</span>
               Aktif: <span className="font-semibold text-emerald-700">{activeCount}</span>
             </div>
@@ -219,7 +232,7 @@ export default function AdminRolesManager({ initialRows, currentAdminId }: Props
                 <path d="M12 5v14" />
                 <path d="M5 12h14" />
               </svg>
-              Tambah Admin
+              Tambah Akun
             </button>
           </div>
         </div>
@@ -228,7 +241,7 @@ export default function AdminRolesManager({ initialRows, currentAdminId }: Props
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari nama atau email admin..."
+            placeholder="Cari nama, email, atau role..."
             className={`${inputClassName} md:max-w-md`}
           />
         </div>
@@ -239,6 +252,7 @@ export default function AdminRolesManager({ initialRows, currentAdminId }: Props
               <tr className="border-b border-[#efe0d8] bg-[#fff2ec] text-xs uppercase tracking-[0.16em] text-[#7a6059]">
                 <th className="px-6 py-4 font-semibold">Nama</th>
                 <th className="px-6 py-4 font-semibold">Email</th>
+                <th className="px-6 py-4 font-semibold">Role</th>
                 <th className="px-6 py-4 font-semibold">Status</th>
                 <th className="px-6 py-4 font-semibold">Dibuat</th>
                 <th className="px-6 py-4 font-semibold text-right">Aksi</th>
@@ -262,6 +276,17 @@ export default function AdminRolesManager({ initialRows, currentAdminId }: Props
                       </div>
                     </td>
                     <td className="px-6 py-4">{row.email}</td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={
+                          row.role === "admin"
+                            ? "inline-flex items-center rounded-full bg-[#fdecec] px-3 py-1 text-xs font-semibold text-[#8f1d22]"
+                            : "inline-flex items-center rounded-full bg-[#eef2ff] px-3 py-1 text-xs font-semibold text-[#3949ab]"
+                        }
+                      >
+                        {ROLE_LABEL[row.role]}
+                      </span>
+                    </td>
                     <td className="px-6 py-4">
                       <span
                         className={
@@ -298,10 +323,10 @@ export default function AdminRolesManager({ initialRows, currentAdminId }: Props
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-16 text-center">
-                    <p className="text-base font-semibold text-[#3b2723]">Belum ada akun admin</p>
+                  <td colSpan={6} className="px-6 py-16 text-center">
+                    <p className="text-base font-semibold text-[#3b2723]">Belum ada akun</p>
                     <p className="mt-2 text-sm text-[#8a6f68]">
-                      Tambahkan akun admin baru untuk mengakses panel HR Payroll System.
+                      Tambahkan akun admin atau SPV baru.
                     </p>
                   </td>
                 </tr>
@@ -317,23 +342,42 @@ export default function AdminRolesManager({ initialRows, currentAdminId }: Props
             <form onSubmit={handleSubmit}>
               <div className="border-b border-[#f3dcd4] px-6 py-5">
                 <h4 className="text-lg font-semibold text-[#241716]">
-                  {dialog.mode === "create" ? "Tambah Admin Baru" : "Ubah Akun Admin"}
+                  {dialog.mode === "create" ? "Tambah Akun Baru" : "Ubah Akun"}
                 </h4>
                 <p className="mt-1 text-sm text-[#7a6059]">
                   {dialog.mode === "create"
-                    ? "Isi detail akun admin baru yang akan mengakses sistem."
-                    : "Perbarui informasi akun admin. Kosongkan password jika tidak ingin mengubah."}
+                    ? "Pilih role akun: Admin (panel HR penuh) atau SPV (khusus jadwal Toko/Gudang)."
+                    : "Perbarui informasi akun. Kosongkan password jika tidak ingin mengubah."}
                 </p>
               </div>
 
               <div className="space-y-4 px-6 py-5">
+                <label className="block space-y-2">
+                  <span className="text-[13px] font-semibold text-[#6f5a54]">Role *</span>
+                  <select
+                    value={form.role}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, role: e.target.value as ManagedRole }))
+                    }
+                    disabled={dialog.mode === "edit" && dialog.row.id === currentAdminId}
+                    className={`${inputClassName} disabled:opacity-60 disabled:cursor-not-allowed`}
+                  >
+                    <option value="admin">Admin — akses penuh panel HR</option>
+                    <option value="spv">SPV — hanya kelola jadwal Toko/Gudang</option>
+                  </select>
+                  {dialog.mode === "edit" && dialog.row.id === currentAdminId ? (
+                    <span className="block text-xs text-[#a16f63]">
+                      Role akun sendiri tidak dapat diubah.
+                    </span>
+                  ) : null}
+                </label>
                 <label className="block space-y-2">
                   <span className="text-[13px] font-semibold text-[#6f5a54]">Nama Lengkap *</span>
                   <input
                     value={form.name}
                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                     className={inputClassName}
-                    placeholder="Nama admin"
+                    placeholder="Nama akun"
                   />
                 </label>
                 <label className="block space-y-2">
@@ -414,9 +458,9 @@ export default function AdminRolesManager({ initialRows, currentAdminId }: Props
                 </svg>
               </div>
               <div>
-                <h4 className="text-lg font-semibold text-[#241716]">Hapus Akun Admin</h4>
+                <h4 className="text-lg font-semibold text-[#241716]">Hapus Akun</h4>
                 <p className="mt-1 text-sm text-[#7a6059]">
-                  Apakah Anda yakin ingin menghapus akun <span className="font-semibold text-[#241716]">{dialog.row.name}</span> ({dialog.row.email})? Tindakan ini tidak bisa dibatalkan.
+                  Apakah Anda yakin ingin menghapus akun {ROLE_LABEL[dialog.row.role]} <span className="font-semibold text-[#241716]">{dialog.row.name}</span> ({dialog.row.email})? Tindakan ini tidak bisa dibatalkan.
                 </p>
               </div>
             </div>

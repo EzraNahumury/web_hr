@@ -2,6 +2,10 @@ import { RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
 import { getEmployeeRemainingLoanTotal } from "@/lib/loans";
 import { getAdminPayrollSummarySheet } from "@/lib/payroll-summary";
+import {
+  ensureJadwalKaryawanSchema,
+  JADWAL_EFFECTIVE_FROM,
+} from "@/lib/jadwal-karyawan";
 
 type CountRow = RowDataPacket & { total: number };
 
@@ -184,10 +188,28 @@ function mapAttendanceCode(
   }
 }
 
+function getPayrollPeriodRange(year: number, month: number) {
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  const startDate = `${prevYear}-${String(prevMonth).padStart(2, "0")}-26`;
+  const endDate = `${year}-${String(month).padStart(2, "0")}-25`;
+  return { startDate, endDate, prevMonth, prevYear };
+}
+
+function buildPeriodDays(year: number, month: number) {
+  const { prevMonth, prevYear } = getPayrollPeriodRange(year, month);
+  const daysInPrevMonth = new Date(prevYear, prevMonth, 0).getDate();
+  const days: number[] = [];
+  for (let d = 26; d <= daysInPrevMonth; d++) days.push(d);
+  for (let d = 1; d <= 25; d++) days.push(d);
+  return days;
+}
+
 export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
   const month = options.month ?? 3;
   const year = options.year ?? 2026;
   const view = options.view === "week" ? "week" : "month";
+  const { startDate, endDate } = getPayrollPeriodRange(year, month);
   const [rows] = await pool.query<AttendanceRow[]>(
     `
       SELECT
@@ -216,25 +238,22 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
       INNER JOIN users u ON u.id = k.user_id
       LEFT JOIN absensi a
         ON a.karyawan_id = k.id
-        AND MONTH(a.tanggal) = ?
-        AND YEAR(a.tanggal) = ?
+        AND a.tanggal BETWEEN ? AND ?
       ORDER BY k.nama ASC, a.tanggal ASC
     `,
-    [month, year],
+    [startDate, endDate],
   );
 
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const totalWeeks = Math.ceil(daysInMonth / 7);
+  const periodDays = buildPeriodDays(year, month);
+  const totalDays = periodDays.length;
+  const totalWeeks = Math.ceil(totalDays / 7);
   const selectedWeek = Math.min(Math.max(options.week ?? 1, 1), totalWeeks);
-  const weekStartDay = (selectedWeek - 1) * 7 + 1;
-  const weekEndDay = Math.min(weekStartDay + 6, daysInMonth);
+  const weekStartIndex = (selectedWeek - 1) * 7;
+  const weekEndIndex = Math.min(weekStartIndex + 7, totalDays);
   const activeDays =
     view === "week"
-      ? Array.from(
-          { length: weekEndDay - weekStartDay + 1 },
-          (_, index) => weekStartDay + index,
-        )
-      : Array.from({ length: daysInMonth }, (_, index) => index + 1);
+      ? periodDays.slice(weekStartIndex, weekEndIndex)
+      : periodDays;
 
   const byEmployee = new Map<number, AttendanceSheetRow>();
 
@@ -269,6 +288,48 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         longitudeOut: row.longitude_pulang,
         lateMinutes: row.terlambat_menit,
         note: row.keterangan,
+      };
+    }
+  }
+
+  if (endDate >= JADWAL_EFFECTIVE_FROM) {
+    await ensureJadwalKaryawanSchema();
+    const [jadwalRows] = await pool.query<
+      (RowDataPacket & {
+        karyawan_id: number;
+        tanggal: string;
+        shift: string;
+      })[]
+    >(
+      `
+        SELECT karyawan_id, DATE_FORMAT(tanggal, '%Y-%m-%d') AS tanggal, shift
+        FROM jadwal_karyawan
+        WHERE tanggal BETWEEN ? AND ?
+          AND tanggal >= ?
+          AND shift = 'libur'
+      `,
+      [startDate, endDate, JADWAL_EFFECTIVE_FROM],
+    );
+
+    for (const j of jadwalRows) {
+      const row = byEmployee.get(j.karyawan_id);
+      if (!row) continue;
+      const day = Number(j.tanggal.split("-")[2]);
+      if (row.daily[day]) continue;
+      row.daily[day] = {
+        code: "L",
+        date: j.tanggal,
+        status: "libur",
+        timeIn: null,
+        timeOut: null,
+        photoIn: null,
+        photoOut: null,
+        latitudeIn: null,
+        longitudeIn: null,
+        latitudeOut: null,
+        longitudeOut: null,
+        lateMinutes: 0,
+        note: "Libur terjadwal",
       };
     }
   }
