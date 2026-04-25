@@ -36,6 +36,20 @@ type GeofencePopup = {
 
 const LOCATION_CACHE_KEY = "web_hr_last_location";
 const LOCATION_CACHE_MAX_AGE = 2 * 60 * 1000;
+
+type CameraFilter = { id: string; label: string; css: string };
+const CAMERA_FILTERS: CameraFilter[] = [
+  { id: "normal",    label: "Normal",    css: "none" },
+  { id: "clarendon", label: "Clarendon", css: "brightness(1.1) contrast(1.2) saturate(1.35)" },
+  { id: "gingham",   label: "Gingham",   css: "brightness(1.05) sepia(0.12) hue-rotate(-10deg)" },
+  { id: "moon",      label: "Moon",      css: "grayscale(1) brightness(1.1) contrast(1.1)" },
+  { id: "lark",      label: "Lark",      css: "brightness(1.12) contrast(0.88) saturate(1.2) hue-rotate(-5deg)" },
+  { id: "reyes",     label: "Reyes",     css: "sepia(0.22) brightness(1.1) contrast(0.85) saturate(0.75)" },
+  { id: "juno",      label: "Juno",      css: "saturate(1.4) contrast(1.08) brightness(1.05) hue-rotate(5deg)" },
+  { id: "slumber",   label: "Slumber",   css: "saturate(0.66) brightness(1.05) sepia(0.1)" },
+  { id: "valencia",  label: "Valencia",  css: "sepia(0.18) contrast(1.08) brightness(1.08) saturate(1.1)" },
+  { id: "xpro",      label: "X-Pro II",  css: "sepia(0.45) contrast(1.25) brightness(0.9) saturate(1.2)" },
+];
 const CHECK_IN_OPTIONS: Array<{
   value: CheckInStatus;
   label: string;
@@ -86,6 +100,7 @@ export default function EmployeeAttendanceCapture({
   const [sickFile, setSickFile] = useState<File | null>(null);
   const [sickNote, setSickNote] = useState("");
   const [geofencePopup, setGeofencePopup] = useState<GeofencePopup | null>(null);
+  const [selectedFilter, setSelectedFilter] = useState<CameraFilter>(CAMERA_FILTERS[0]);
   const needsSelfie = !isCheckIn || checkInStatus === "hadir" || checkInStatus === "setengah_hari";
   const needsSickProof = isCheckIn && checkInStatus === "sakit";
   const showsNote =
@@ -281,6 +296,7 @@ export default function EmployeeAttendanceCapture({
     context.save();
     context.translate(canvas.width, 0);
     context.scale(-1, 1);
+    context.filter = selectedFilter.css;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     context.restore();
     setPhotoDataUrl(canvas.toDataURL("image/jpeg", 0.9));
@@ -636,6 +652,7 @@ export default function EmployeeAttendanceCapture({
                     autoPlay
                     playsInline
                     muted
+                    style={{ filter: selectedFilter.css }}
                     className="aspect-[4/5] w-full -scale-x-100 bg-black object-cover"
                   />
                 ) : (
@@ -664,6 +681,48 @@ export default function EmployeeAttendanceCapture({
                 )}
               </div>
             </div>
+
+            {needsSelfie && !isCheckOutBlocked && !photoDataUrl ? (
+              <div className="mt-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="flex gap-3 pb-1 pt-0.5">
+                  {CAMERA_FILTERS.map((filter) => {
+                    const active = selectedFilter.id === filter.id;
+                    return (
+                      <button
+                        key={filter.id}
+                        type="button"
+                        onClick={() => setSelectedFilter(filter)}
+                        className="flex flex-none flex-col items-center gap-1.5"
+                      >
+                        <div
+                          className={`h-11 w-11 overflow-hidden rounded-xl border-2 transition ${
+                            active
+                              ? "border-[#8f1d22] shadow-[0_0_0_2px_rgba(143,29,34,0.15)]"
+                              : "border-transparent hover:border-[#d2b0a5]"
+                          }`}
+                        >
+                          <div
+                            className="h-full w-full"
+                            style={{
+                              background:
+                                "linear-gradient(135deg,#f5c8a0 0%,#a8d5c8 45%,#c8a8e8 100%)",
+                              filter: filter.css,
+                            }}
+                          />
+                        </div>
+                        <span
+                          className={`text-[9px] font-semibold leading-none ${
+                            active ? "text-[#8f1d22]" : "text-[#9a7a72]"
+                          }`}
+                        >
+                          {filter.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
 
             <canvas ref={canvasRef} className="hidden" />
 
