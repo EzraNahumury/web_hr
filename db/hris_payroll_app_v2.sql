@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 24, 2026 at 10:39 AM
+-- Generation Time: Apr 25, 2026 at 11:13 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -92,6 +92,22 @@ CREATE TABLE `finance_lembur_tambahan` (
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `jadwal_karyawan`
+--
+
+CREATE TABLE `jadwal_karyawan` (
+  `id` int(11) NOT NULL,
+  `karyawan_id` int(11) NOT NULL,
+  `tanggal` date NOT NULL,
+  `shift` enum('pagi','lembur','siang','setengah_1','setengah_2','libur') NOT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -594,7 +610,7 @@ CREATE TABLE `users` (
   `nama` varchar(150) NOT NULL,
   `email` varchar(190) NOT NULL,
   `password` varchar(255) NOT NULL,
-  `role` enum('admin','karyawan') NOT NULL,
+  `role` enum('admin','karyawan','spv') NOT NULL DEFAULT 'karyawan',
   `status_aktif` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
@@ -610,7 +626,8 @@ INSERT INTO `users` (`id`, `nama`, `email`, `password`, `role`, `status_aktif`, 
 (3, 'ZETACO', 'zetaco@gmail.com', 'f87ddab125c15f8b9c73a89a2c4ba6ae145ff33d1e6a57629e4b403026a83382', 'karyawan', 1, '2026-03-10 16:14:08', '2026-03-10 16:14:08'),
 (4, 'LEIF', 'leif@gmail.com', '5d00fdccb9467908ee514ef6516d24e04cd473d063796b9511d0e98c4bf62325', 'karyawan', 1, '2026-03-10 16:29:54', '2026-03-10 16:29:54'),
 (5, 'ezranhmry', 'ezranhmry@gmail.com', '437a70301fed0618c6c3375402de28fef9248362aafdc3070046339b4501195c', 'karyawan', 1, '2026-04-07 10:19:21', '2026-04-07 10:19:21'),
-(6, 'avagrouphrd', 'avagrouphrd@gmail.com', 'af4e76dcf9ca1021e3846b85ee029e187810c4dc3f2f23d5477e0feda6e5068f', 'karyawan', 1, '2026-04-18 09:18:49', '2026-04-18 09:18:49');
+(6, 'avagrouphrd', 'avagrouphrd@gmail.com', 'af4e76dcf9ca1021e3846b85ee029e187810c4dc3f2f23d5477e0feda6e5068f', 'karyawan', 1, '2026-04-18 09:18:49', '2026-04-18 09:18:49'),
+(9, 'ezra', 'spv@gmail.com', '437a70301fed0618c6c3375402de28fef9248362aafdc3070046339b4501195c', 'spv', 1, '2026-04-25 15:29:43', '2026-04-25 15:29:43');
 
 --
 -- Indexes for dumped tables
@@ -632,6 +649,14 @@ ALTER TABLE `absensi`
 ALTER TABLE `finance_lembur_tambahan`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uq_finance_lembur_unit` (`periode_bulan`,`periode_tahun`,`unit`);
+
+--
+-- Indexes for table `jadwal_karyawan`
+--
+ALTER TABLE `jadwal_karyawan`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_karyawan_tanggal` (`karyawan_id`,`tanggal`),
+  ADD KEY `idx_tanggal` (`tanggal`);
 
 --
 -- Indexes for table `karyawan`
@@ -800,6 +825,12 @@ ALTER TABLE `finance_lembur_tambahan`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `jadwal_karyawan`
+--
+ALTER TABLE `jadwal_karyawan`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `karyawan`
 --
 ALTER TABLE `karyawan`
@@ -899,7 +930,7 @@ ALTER TABLE `slip_gaji`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- Constraints for dumped tables
