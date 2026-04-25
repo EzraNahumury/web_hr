@@ -254,6 +254,12 @@ export default function EmployeeAttendanceCapture({
     };
   }, [startLocationTracking, stopLocationTracking]);
 
+  useEffect(() => {
+    if (!photoDataUrl && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+    }
+  }, [photoDataUrl]);
+
   function captureSelfie() {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -633,14 +639,28 @@ export default function EmployeeAttendanceCapture({
                     className="aspect-[4/5] w-full -scale-x-100 bg-black object-cover"
                   />
                 ) : (
-                  <Image
-                    src={photoDataUrl}
-                    alt="Selfie presensi"
-                    width={720}
-                    height={900}
-                    unoptimized
-                    className="aspect-[4/5] w-full object-cover"
-                  />
+                  <div className="relative">
+                    <Image
+                      src={photoDataUrl}
+                      alt="Selfie presensi"
+                      width={720}
+                      height={900}
+                      unoptimized
+                      className="aspect-[4/5] w-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPhotoDataUrl("")}
+                      aria-label="Ambil ulang foto"
+                      title="Ambil ulang foto"
+                      className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white shadow-[0_4px_12px_rgba(0,0,0,0.3)] backdrop-blur transition hover:bg-black/75 active:scale-95"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                        <path d="M21 12a9 9 0 1 1-3.51-7.13" />
+                        <path d="M21 4v5h-5" />
+                      </svg>
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
