@@ -2,6 +2,7 @@ import AdminShell from "@/components/AdminShell";
 import AdminAttendanceSheet from "@/components/AdminAttendanceSheet";
 import { requireAdminSession } from "@/lib/auth";
 import { getAttendanceSheet } from "@/lib/hris";
+import { getCurrentAttendancePeriod } from "@/lib/payroll-admin";
 import Link from "next/link";
 
 type SearchParams = Promise<{
@@ -35,10 +36,15 @@ export default async function AdminAttendancePage({
   const params = await searchParams;
   const view = params.view === "week" ? "week" : "month";
   const week = Number(params.week ?? "1");
-  const rawMonth = Number(params.month ?? "3");
-  const rawYear = Number(params.year ?? "2026");
-  const month = Number.isFinite(rawMonth) && rawMonth >= 1 && rawMonth <= 12 ? rawMonth : 3;
-  const year = Number.isFinite(rawYear) && rawYear >= 2000 ? rawYear : 2026;
+  const activePeriod = getCurrentAttendancePeriod();
+  const rawMonth = params.month !== undefined ? Number(params.month) : activePeriod.month;
+  const rawYear = params.year !== undefined ? Number(params.year) : activePeriod.year;
+  const month =
+    Number.isFinite(rawMonth) && rawMonth >= 1 && rawMonth <= 12
+      ? rawMonth
+      : activePeriod.month;
+  const year =
+    Number.isFinite(rawYear) && rawYear >= 2000 ? rawYear : activePeriod.year;
   const sheet = await getAttendanceSheet({
     month,
     year,

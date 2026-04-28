@@ -604,7 +604,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
             <table className="min-w-[1600px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-[#efe0d8] bg-[#fff8f4] text-xs uppercase tracking-[0.2em] text-[#9e7467]">
-                  <th className="px-6 py-4 font-semibold">Nama</th>
+                  <th className="sticky left-0 z-20 bg-[#fff8f4] px-6 py-4 font-semibold shadow-[2px_0_0_0_#efe0d8]">Nama</th>
                   <th className="px-6 py-4 font-semibold">NIP</th>
                   <th className="px-6 py-4 font-semibold">Unit</th>
                   <th className="px-6 py-4 font-semibold">Jabatan</th>
@@ -626,7 +626,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                 {filteredEmployees.length ? (
                   filteredEmployees.map((employee) => (
                     <tr key={employee.id} className="border-b border-[#f1e5de] text-sm text-[#513d39] hover:bg-[#fffaf7]">
-                      <td className="px-6 py-5 font-semibold text-[#241716]">{employee.name}</td>
+                      <td className="sticky left-0 z-10 bg-white px-6 py-5 font-semibold text-[#241716] shadow-[2px_0_0_0_#f1e5de]">{employee.name}</td>
                       <td className="px-6 py-5">{employee.nip}</td>
                       <td className="px-6 py-5">{employee.unit || "-"}</td>
                       <td className="px-6 py-5">{employee.role}</td>

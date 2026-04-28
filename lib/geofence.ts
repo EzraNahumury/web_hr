@@ -4,6 +4,8 @@ export type WorkLocation = {
   label: string;
   latitude: number;
   longitude: number;
+  // Radius khusus untuk lokasi ini; default ke MAX_GEOFENCE_RADIUS_METERS
+  radiusMeters?: number;
 };
 
 // Koordinat diambil dari Google Maps share link yang diberikan.
@@ -22,6 +24,14 @@ export const WORK_LOCATIONS: Record<string, WorkLocation[]> = {
       label: "Toko (AVA Sport Store)",
       latitude: -7.8026601,
       longitude: 110.4066919,
+    },
+  ],
+  "Toko Solo": [
+    {
+      label: "Toko Solo (Ruko Menco City, Kartasura)",
+      latitude: -7.5546186,
+      longitude: 110.7693092,
+      radiusMeters: 50,
     },
   ],
   Ayres: [
@@ -51,6 +61,10 @@ export const WORK_LOCATIONS: Record<string, WorkLocation[]> = {
     },
   ],
 };
+
+function getLocationRadius(location: WorkLocation): number {
+  return location.radiusMeters ?? MAX_GEOFENCE_RADIUS_METERS;
+}
 
 export const WFA_PLACEMENT = "WFA";
 
@@ -146,7 +160,8 @@ export function checkGeofence(
 
     for (const loc of locations) {
       const d = haversineDistanceMeters(latitude, longitude, loc.latitude, loc.longitude);
-      if (d <= MAX_GEOFENCE_RADIUS_METERS) {
+      const radius = getLocationRadius(loc);
+      if (d <= radius) {
         if (!bestValid || d < bestValid.distance) {
           bestValid = { placement, location: loc, distance: d };
         }
@@ -177,7 +192,7 @@ export function checkGeofence(
       distanceMeters: bestInvalid.distance,
       location: bestInvalid.location,
       placement: bestInvalid.placement,
-      message: `Anda berada ${Math.round(bestInvalid.distance)} meter dari ${bestInvalid.location.label} (lokasi terdekat). Maksimal jarak presensi adalah ${MAX_GEOFENCE_RADIUS_METERS} meter.`,
+      message: `Anda berada ${Math.round(bestInvalid.distance)} meter dari ${bestInvalid.location.label} (lokasi terdekat). Maksimal jarak presensi adalah ${getLocationRadius(bestInvalid.location)} meter.`,
     };
   }
 

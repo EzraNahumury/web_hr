@@ -202,6 +202,20 @@ export function getActivePayrollPeriod() {
   };
 }
 
+// Periode absensi yang sedang berjalan: tgl 26 (M-1) s/d tgl 25 M.
+// Jika hari ini > 25, periode aktif sudah pindah ke bulan berikutnya
+// (mis. 28 April → periode "Mei" = 26 Apr–25 Mei).
+export function getCurrentAttendancePeriod() {
+  const now = getJakartaNow();
+  if (now.day > 25) {
+    if (now.month === 12) {
+      return { month: 1, year: now.year + 1 };
+    }
+    return { month: now.month + 1, year: now.year };
+  }
+  return { month: now.month, year: now.year };
+}
+
 function resolvePayrollPeriod(period?: PayrollPeriodInput) {
   const active = getActivePayrollPeriod();
   return {

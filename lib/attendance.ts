@@ -106,7 +106,7 @@ export function getCheckInLateMinutes(time: string) {
   return getShiftLateMinutes(time, "pagi");
 }
 
-const TOKO_GUDANG_PLACEMENTS = new Set(["Toko", "Gudang"]);
+const TOKO_GUDANG_PLACEMENTS = new Set(["Toko", "Toko Solo", "Gudang"]);
 
 export function isTokoGudangPlacement(penempatan: string | null | undefined): boolean {
   return TOKO_GUDANG_PLACEMENTS.has(penempatan ?? "");

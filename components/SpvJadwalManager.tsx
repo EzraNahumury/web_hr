@@ -28,6 +28,18 @@ const SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
   { value: "libur", label: "Libur" },
 ];
 
+// Toko Solo hanya beroperasi shift Pagi (08.30-16.30); Libur dipertahankan
+// supaya bisa menandai hari off karyawan.
+const TOKO_SOLO_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
+  { value: "", label: "—" },
+  { value: "pagi", label: "Pagi" },
+  { value: "libur", label: "Libur" },
+];
+
+function getShiftOptionsForPenempatan(penempatan: string) {
+  return penempatan === "Toko Solo" ? TOKO_SOLO_SHIFT_OPTIONS : SHIFT_OPTIONS;
+}
+
 const SHIFT_COLOR: Record<JadwalShift, string> = {
   pagi: "bg-emerald-50 text-emerald-700 border-emerald-200",
   lembur: "bg-amber-50 text-amber-700 border-amber-200",
@@ -325,7 +337,9 @@ export default function SpvJadwalManager({
               </tr>
             </thead>
             <tbody>
-              {karyawanList.map((k) => (
+              {karyawanList.map((k) => {
+                const shiftOptions = getShiftOptionsForPenempatan(k.penempatan);
+                return (
                 <tr
                   key={k.id}
                   className="border-b border-[#f1e5de] text-sm hover:bg-[#fffaf7]"
@@ -350,7 +364,7 @@ export default function SpvJadwalManager({
                       className="h-9 w-full rounded-xl border border-[#ead7ce] bg-white px-2 text-xs text-[#2d1b18]"
                     >
                       <option value="">Isi semua...</option>
-                      {SHIFT_OPTIONS.filter((o) => o.value !== "").map((o) => (
+                      {shiftOptions.filter((o) => o.value !== "").map((o) => (
                         <option key={o.value} value={o.value}>
                           {o.label}
                         </option>
@@ -371,7 +385,7 @@ export default function SpvJadwalManager({
                               : "border-[#ead7ce] bg-white text-[#a3958f]"
                           }`}
                         >
-                          {SHIFT_OPTIONS.map((o) => (
+                          {shiftOptions.map((o) => (
                             <option key={o.value} value={o.value}>
                               {o.label}
                             </option>
@@ -381,7 +395,8 @@ export default function SpvJadwalManager({
                     );
                   })}
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </section>

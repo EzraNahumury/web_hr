@@ -139,7 +139,7 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
           <table className="min-w-[1880px] border-collapse text-left">
             <thead>
               <tr className="border-b border-[#efe0d8] bg-[#12dfe6] text-xs uppercase tracking-[0.16em] text-[#111111]">
-                <th className="px-6 py-4 font-semibold">Nama</th>
+                <th className="sticky left-0 z-20 bg-[#12dfe6] px-6 py-4 font-semibold shadow-[2px_0_0_0_#0fb6bc]">Nama</th>
                 <th className="px-6 py-4 font-semibold">NIP</th>
                 <th className="px-6 py-4 font-semibold">Jabatan</th>
                 <th className="px-6 py-4 font-semibold">Divisi</th>
@@ -160,7 +160,7 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
               {filteredRows.length ? (
                 filteredRows.map((row) => (
                   <tr key={row.employeeId} className="border-b border-[#f1e5de] text-sm text-[#513d39] hover:bg-[#fffaf7]">
-                    <td className="px-6 py-4 font-semibold text-[#241716]">{row.employeeName}</td>
+                    <td className="sticky left-0 z-10 bg-white px-6 py-4 font-semibold text-[#241716] shadow-[2px_0_0_0_#f1e5de]">{row.employeeName}</td>
                     <td className="px-6 py-4">{row.nip}</td>
                     <td className="px-6 py-4">{row.role}</td>
                     <td className="px-6 py-4">{row.division}</td>

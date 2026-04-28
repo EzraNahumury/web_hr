@@ -355,6 +355,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       INNER JOIN karyawan k ON k.id = p.karyawan_id
       LEFT JOIN payroll_employee_input pei ON pei.payroll_id = p.id
       WHERE p.periode_bulan = ? AND p.periode_tahun = ?
+        AND COALESCE(LOWER(k.jabatan), '') <> 'penjahit'
       ORDER BY k.nama ASC
     `,
     [periodMonth, periodYear],
@@ -420,7 +421,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     pool.query<TotalEmployeeCountRow[]>(
       `SELECT COUNT(*) AS total FROM karyawan
         WHERE status_data = 'aktif'
-          AND COALESCE(LOWER(jabatan), '') NOT IN ('ceo', 'freelance')
+          AND COALESCE(LOWER(jabatan), '') NOT IN ('ceo', 'freelance', 'penjahit')
           AND COALESCE(LOWER(status_kepegawaian), '') <> 'freelance'`,
     ),
     pool.query<OmzetUnitRow[]>(
@@ -432,7 +433,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     pool.query<EmployeeUnitCountRow[]>(
       `SELECT unit, COUNT(*) AS total FROM karyawan
         WHERE status_data = 'aktif'
-          AND COALESCE(LOWER(jabatan), '') NOT IN ('ceo', 'freelance')
+          AND COALESCE(LOWER(jabatan), '') NOT IN ('ceo', 'freelance', 'penjahit')
           AND COALESCE(LOWER(status_kepegawaian), '') <> 'freelance'
         GROUP BY unit`,
     ),

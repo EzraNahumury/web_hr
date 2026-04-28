@@ -48,7 +48,11 @@
       "Bash(cp /tmp/db-check.cjs D:/web_hr/db-check.cjs)",
       "Bash(rm -f D:/web_hr/db-check.cjs)",
       "Bash(kill %1)",
-      "Bash(pkill -f \"next dev\")"
+      "Bash(pkill -f \"next dev\")",
+      "Read(//c/laragon/bin/**)",
+      "Bash(ls /c/wamp*/bin/mysql/*/bin/mysql.exe)",
+      "Bash(npx --no-install tsc --noEmit)",
+      "Bash(curl -sLI \"https://maps.app.goo.gl/vEqbPEe4eHmUZxL5A\")"
     ]
   }
 }

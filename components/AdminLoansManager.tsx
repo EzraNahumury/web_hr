@@ -194,7 +194,7 @@ export default function AdminLoansManager({ initialRows }: Props) {
           <table className="min-w-[1760px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-[#efe0d8] bg-[#fff8f4] text-xs uppercase tracking-[0.18em] text-[#9e7467]">
-                <th className="px-6 py-4 font-semibold">Nama</th>
+                <th className="sticky left-0 z-20 bg-[#fff8f4] px-6 py-4 font-semibold shadow-[2px_0_0_0_#efe0d8]">Nama</th>
                 <th className="px-6 py-4 font-semibold">NIP</th>
                 <th className="px-6 py-4 font-semibold">Jabatan</th>
                 <th className="px-6 py-4 font-semibold">Total Pinjaman</th>
@@ -218,7 +218,7 @@ export default function AdminLoansManager({ initialRows }: Props) {
 
                   return (
                     <tr key={row.id} className="border-b border-[#f1e5de] align-top text-[#513d39] hover:bg-[#fffaf7]">
-                      <td className="px-6 py-5 font-semibold text-[#241716]">{row.employeeName}</td>
+                      <td className="sticky left-0 z-10 bg-white px-6 py-5 font-semibold text-[#241716] shadow-[2px_0_0_0_#f1e5de]">{row.employeeName}</td>
                       <td className="px-6 py-5">{row.nip}</td>
                       <td className="px-6 py-5">
                         <div>{row.role}</div>

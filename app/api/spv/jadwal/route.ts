@@ -87,11 +87,19 @@ export async function POST(request: Request) {
     const removeRaw = Array.isArray(body.removeKeys) ? body.removeKeys : [];
 
     const validKaryawanIds = new Set<number>();
+    const tokoSoloKaryawanIds = new Set<number>();
     {
-      const [rows] = await pool.query<(RowDataPacket & { id: number })[]>(
-        `SELECT id FROM karyawan WHERE penempatan IN ('Toko','Gudang') AND status_data = 'aktif'`,
+      const [rows] = await pool.query<
+        (RowDataPacket & { id: number; penempatan: string })[]
+      >(
+        `SELECT id, penempatan FROM karyawan WHERE penempatan IN ('Toko','Toko Solo','Gudang') AND status_data = 'aktif'`,
       );
-      for (const row of rows) validKaryawanIds.add(row.id);
+      for (const row of rows) {
+        validKaryawanIds.add(row.id);
+        if (row.penempatan === "Toko Solo") {
+          tokoSoloKaryawanIds.add(row.id);
+        }
+      }
     }
 
     const entries: { karyawanId: number; tanggal: string; shift: JadwalShift }[] = [];
@@ -116,6 +124,19 @@ export async function POST(request: Request) {
       if (!isValidShift(shift)) {
         return NextResponse.json(
           { message: `Shift tidak valid: ${String(shift)}` },
+          { status: 400 },
+        );
+      }
+      if (
+        tokoSoloKaryawanIds.has(karyawanId) &&
+        shift !== "pagi" &&
+        shift !== "libur"
+      ) {
+        return NextResponse.json(
+          {
+            message:
+              "Karyawan Toko Solo hanya boleh dijadwalkan shift Pagi atau Libur.",
+          },
           { status: 400 },
         );
       }

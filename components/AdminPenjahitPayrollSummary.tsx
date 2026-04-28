@@ -121,6 +121,7 @@ const inputCls =
 
 const thBase =
   "px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[#7a6059] whitespace-nowrap border border-[#ede0d8] bg-[#fff5f0]";
+const thSticky = `${thBase} sticky left-0 z-20`;
 const thGroup =
   "px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[#5a3028] bg-[#fde8df] border border-[#ede0d8] text-center";
 const thYellow =
@@ -128,6 +129,7 @@ const thYellow =
 const thYellowGroup =
   "px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[#7a6030] bg-[#fef08a] border border-[#ede8b0] text-center";
 const tdBase = "px-3 py-2.5 text-xs text-[#2d1b18] whitespace-nowrap border-b border-r border-[#f1e5de]";
+const tdSticky = `${tdBase} sticky left-0 z-10 bg-white`;
 const tdNum = `${tdBase} text-right tabular-nums`;
 const tdRed = `${tdNum} text-red-600`;
 const tdYellow = `${tdNum} bg-[#fefce8]`;
@@ -312,7 +314,7 @@ export default function AdminPenjahitPayrollSummary({ sheet, periodOptions, empl
                 {/* Row 1 — group labels */}
                 <tr>
                   <th className={thBase} rowSpan={2}>No</th>
-                  <th className={thBase} rowSpan={2}>Nama</th>
+                  <th className={thSticky} rowSpan={2}>Nama</th>
                   <th className={thBase} rowSpan={2}>Jabatan</th>
                   <th className={thBase} rowSpan={2}>Divisi / Sub</th>
                   <th className={thBase} rowSpan={2}>Pembagian Rekapan</th>
@@ -405,7 +407,7 @@ export default function AdminPenjahitPayrollSummary({ sheet, periodOptions, empl
                     <tr key={row.payrollId} className="hover:bg-[#fffaf7]">
                       {/* Employee info */}
                       <td className={tdBase + " text-[#a16f63]"}>{index + 1}</td>
-                      <td className={tdBase + " font-medium max-w-[160px] truncate"}>{row.nama}</td>
+                      <td className={tdSticky + " font-medium max-w-[160px] truncate"}>{row.nama}</td>
                       <td className={tdBase}>{row.jabatan}</td>
                       <td className={tdBase}>
                         {row.divisi}

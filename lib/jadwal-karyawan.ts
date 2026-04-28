@@ -154,7 +154,7 @@ export async function listTokoGudangKaryawan(): Promise<TokoGudangKaryawan[]> {
     `
       SELECT id, nama, no_karyawan, penempatan, jabatan
       FROM karyawan
-      WHERE penempatan IN ('Toko', 'Gudang')
+      WHERE penempatan IN ('Toko', 'Toko Solo', 'Gudang')
         AND status_data = 'aktif'
       ORDER BY penempatan ASC, nama ASC
     `,

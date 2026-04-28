@@ -435,19 +435,22 @@ export default function AdminPayrollSummaryManager({
               {omzetInputs.map((item) => {
                 const value = parseNumber(item.totalOmzet);
                 const bonusUnit = item.isCustomBonus ? value : value * 0.005;
+                const showCustomBonusToggle = item.unit !== "AVA+Ayres";
                 return (
                   <div key={item.unit} className="rounded-2xl border border-[#d5e9ea] bg-white px-4 py-4">
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-sm font-semibold text-[#123336]">{item.label}</p>
-                      <label className="inline-flex items-center gap-2 text-xs font-semibold text-[#466668]">
-                        <input
-                          type="checkbox"
-                          checked={item.isCustomBonus}
-                          onChange={(event) => updateOmzetUnit(item.unit, "isCustomBonus", event.target.checked)}
-                          className="h-4 w-4 rounded border-[#cfeaec] accent-[#0d7f86]"
-                        />
-                        Custom Bonus
-                      </label>
+                      {showCustomBonusToggle ? (
+                        <label className="inline-flex items-center gap-2 text-xs font-semibold text-[#466668]">
+                          <input
+                            type="checkbox"
+                            checked={item.isCustomBonus}
+                            onChange={(event) => updateOmzetUnit(item.unit, "isCustomBonus", event.target.checked)}
+                            className="h-4 w-4 rounded border-[#cfeaec] accent-[#0d7f86]"
+                          />
+                          Custom Bonus
+                        </label>
+                      ) : null}
                     </div>
                     <div className="mt-3 space-y-2">
                       <input
@@ -513,7 +516,7 @@ export default function AdminPayrollSummaryManager({
                 <thead>
                   <tr className="bg-[#19d7df] text-center text-xs font-semibold uppercase tracking-[0.14em] text-[#062e31]">
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">No</th>
-                    <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Nama</th>
+                    <th rowSpan={2} className="sticky left-0 z-20 border border-[#a8ebef] bg-[#19d7df] px-3 py-3">Nama</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Jabatan</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Divisi</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Pembagian Rekapan</th>
@@ -574,7 +577,7 @@ export default function AdminPayrollSummaryManager({
                   ) : filteredRows.map((row) => (
                     <tr key={row.id} className="text-[#3a2b27] odd:bg-white even:bg-[#fcfefe]">
                       <td className="border border-[#d7ecee] px-3 py-3 text-center">{row.number}</td>
-                      <td className="border border-[#d7ecee] px-3 py-3 font-semibold text-[#241716]">{row.name}</td>
+                      <td className="sticky left-0 z-10 border border-[#d7ecee] bg-white px-3 py-3 font-semibold text-[#241716]">{row.name}</td>
                       <td className="border border-[#d7ecee] px-3 py-3">{row.role}</td>
                       <td className="border border-[#d7ecee] px-3 py-3">{row.division}</td>
                       <td className="border border-[#d7ecee] px-3 py-3">{row.recapGroup}</td>

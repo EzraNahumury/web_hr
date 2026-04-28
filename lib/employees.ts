@@ -107,6 +107,7 @@ export const EMPLOYEE_PLACEMENTS = [
   "Office",
   "Ayres",
   "Toko",
+  "Toko Solo",
   "Gudang",
   "WFA",
   "JNE",

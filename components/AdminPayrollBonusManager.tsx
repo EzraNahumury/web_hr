@@ -315,7 +315,7 @@ export default function AdminPayrollBonusManager({
             <thead>
               <tr className="bg-[#19d7df] text-center text-xs font-semibold uppercase tracking-[0.14em] text-[#062e31]">
                 <th className="border border-[#a8ebef] px-3 py-3">No</th>
-                <th className="border border-[#a8ebef] px-3 py-3 text-left">Nama</th>
+                <th className="sticky left-0 z-20 border border-[#a8ebef] bg-[#19d7df] px-3 py-3 text-left">Nama</th>
                 <th className="border border-[#a8ebef] px-3 py-3 text-left">Jabatan</th>
                 <th className="border border-[#a8ebef] px-3 py-3 text-left">Divisi</th>
                 <th className="border border-[#a8ebef] px-3 py-3 text-left">Departemen</th>
@@ -336,7 +336,7 @@ export default function AdminPayrollBonusManager({
                 sheet.rows.map((row) => (
                   <tr key={row.id} className="text-[#3a2b27] odd:bg-white even:bg-[#fcfefe]">
                     <td className="border border-[#d7ecee] px-3 py-3 text-center">{row.number}</td>
-                    <td className="border border-[#d7ecee] px-3 py-3 font-semibold text-[#241716]">{row.name}</td>
+                    <td className="sticky left-0 z-10 border border-[#d7ecee] bg-white px-3 py-3 font-semibold text-[#241716]">{row.name}</td>
                     <td className="border border-[#d7ecee] px-3 py-3">{row.role}</td>
                     <td className="border border-[#d7ecee] px-3 py-3">{row.division}</td>
                     <td className="border border-[#d7ecee] px-3 py-3">{row.department}</td>
