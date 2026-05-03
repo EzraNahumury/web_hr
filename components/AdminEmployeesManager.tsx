@@ -204,6 +204,11 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
   const ghostScrollRef = useRef<HTMLDivElement | null>(null);
   const [tableScrollWidth, setTableScrollWidth] = useState(0);
+  const [ghostBar, setGhostBar] = useState<{ left: number; width: number; visible: boolean }>({
+    left: 0,
+    width: 0,
+    visible: false,
+  });
 
   useEffect(() => {
     if (!toast) return;
@@ -213,28 +218,57 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
 
   useEffect(() => {
     const tableEl = tableScrollRef.current;
-    const ghostEl = ghostScrollRef.current;
-    if (!tableEl || !ghostEl) return;
+    if (!tableEl) return;
 
-    const updateWidth = () => {
+    const recompute = () => {
+      const rect = tableEl.getBoundingClientRect();
+      const viewportH = window.innerHeight;
+      const hasOverflow = tableEl.scrollWidth - tableEl.clientWidth > 1;
+      const tableScrollbarVisible = rect.bottom <= viewportH;
+      const inView = rect.top < viewportH && rect.bottom > 0;
       setTableScrollWidth(tableEl.scrollWidth);
+      setGhostBar({
+        left: rect.left,
+        width: rect.width,
+        visible: hasOverflow && inView && !tableScrollbarVisible,
+      });
     };
-    updateWidth();
 
-    const ro = new ResizeObserver(updateWidth);
+    recompute();
+
+    const ro = new ResizeObserver(recompute);
     ro.observe(tableEl);
     const inner = tableEl.firstElementChild;
     if (inner) ro.observe(inner);
 
+    window.addEventListener("scroll", recompute, { passive: true });
+    window.addEventListener("resize", recompute);
+
     let lock = false;
     const syncFromTable = () => {
-      if (lock) return;
+      const ghostEl = ghostScrollRef.current;
+      if (!ghostEl || lock) return;
       lock = true;
       ghostEl.scrollLeft = tableEl.scrollLeft;
       requestAnimationFrame(() => {
         lock = false;
       });
     };
+    tableEl.addEventListener("scroll", syncFromTable, { passive: true });
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("scroll", recompute);
+      window.removeEventListener("resize", recompute);
+      tableEl.removeEventListener("scroll", syncFromTable);
+    };
+  }, []);
+
+  useEffect(() => {
+    const ghostEl = ghostScrollRef.current;
+    const tableEl = tableScrollRef.current;
+    if (!ghostEl || !tableEl) return;
+    let lock = false;
     const syncFromGhost = () => {
       if (lock) return;
       lock = true;
@@ -243,16 +277,9 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
         lock = false;
       });
     };
-
-    tableEl.addEventListener("scroll", syncFromTable, { passive: true });
     ghostEl.addEventListener("scroll", syncFromGhost, { passive: true });
-
-    return () => {
-      ro.disconnect();
-      tableEl.removeEventListener("scroll", syncFromTable);
-      ghostEl.removeEventListener("scroll", syncFromGhost);
-    };
-  }, []);
+    return () => ghostEl.removeEventListener("scroll", syncFromGhost);
+  }, [ghostBar.visible]);
 
   const filteredEmployees = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -632,7 +659,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
           </form>
         </section>
 
-        <section className="overflow-clip rounded-[32px] border border-[#ead7ce] bg-white">
+        <section className="overflow-hidden rounded-[32px] border border-[#ead7ce] bg-white">
           <div className="border-b border-[#eddad1] px-6 py-5">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
               <div>
@@ -647,7 +674,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
             </div>
           </div>
 
-          <div ref={tableScrollRef} className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div ref={tableScrollRef} className="overflow-x-auto">
             <table className="min-w-[1600px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-[#efe0d8] bg-[#fff8f4] text-xs uppercase tracking-[0.2em] text-[#9e7467]">
@@ -734,14 +761,21 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
               </tbody>
             </table>
           </div>
-          <div
-            ref={ghostScrollRef}
-            className="sticky bottom-0 z-30 overflow-x-auto border-t border-[#efe0d8] bg-[#fff8f4]/95 backdrop-blur [scrollbar-gutter:stable]"
-            aria-hidden="true"
-          >
-            <div style={{ width: tableScrollWidth, height: 1 }} aria-hidden="true" />
-          </div>
         </section>
+      </div>
+
+      <div
+        ref={ghostScrollRef}
+        className="fixed z-40 overflow-x-auto border-t border-[#efe0d8] bg-[#fff8f4]/95 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] backdrop-blur"
+        aria-hidden="true"
+        style={{
+          left: ghostBar.left,
+          width: ghostBar.width,
+          bottom: 0,
+          display: ghostBar.visible ? "block" : "none",
+        }}
+      >
+        <div style={{ width: tableScrollWidth, height: 1 }} aria-hidden="true" />
       </div>
 
       {viewingEmployee ? (
