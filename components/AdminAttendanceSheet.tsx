@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AttendanceDayDetail } from "@/lib/hris";
 
 type Row = {
@@ -178,10 +178,83 @@ function AttendanceDetailModal({
 
 export default function AdminAttendanceSheet({ days, rows }: Props) {
   const [selected, setSelected] = useState<SelectedAttendance>(null);
+  const tableScrollRef = useRef<HTMLDivElement | null>(null);
+  const ghostScrollRef = useRef<HTMLDivElement | null>(null);
+  const [tableScrollWidth, setTableScrollWidth] = useState(0);
+  const [ghostBar, setGhostBar] = useState<{ left: number; width: number; visible: boolean }>({
+    left: 0,
+    width: 0,
+    visible: false,
+  });
+
+  useEffect(() => {
+    const tableEl = tableScrollRef.current;
+    if (!tableEl) return;
+
+    const recompute = () => {
+      const rect = tableEl.getBoundingClientRect();
+      const viewportH = window.innerHeight;
+      const hasOverflow = tableEl.scrollWidth - tableEl.clientWidth > 1;
+      const tableScrollbarVisible = rect.bottom <= viewportH;
+      const inView = rect.top < viewportH && rect.bottom > 0;
+      setTableScrollWidth(tableEl.scrollWidth);
+      setGhostBar({
+        left: rect.left,
+        width: rect.width,
+        visible: hasOverflow && inView && !tableScrollbarVisible,
+      });
+    };
+
+    recompute();
+
+    const ro = new ResizeObserver(recompute);
+    ro.observe(tableEl);
+    const inner = tableEl.firstElementChild;
+    if (inner) ro.observe(inner);
+
+    window.addEventListener("scroll", recompute, { passive: true });
+    window.addEventListener("resize", recompute);
+
+    let lock = false;
+    const syncFromTable = () => {
+      const ghostEl = ghostScrollRef.current;
+      if (!ghostEl || lock) return;
+      lock = true;
+      ghostEl.scrollLeft = tableEl.scrollLeft;
+      requestAnimationFrame(() => {
+        lock = false;
+      });
+    };
+    tableEl.addEventListener("scroll", syncFromTable, { passive: true });
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("scroll", recompute);
+      window.removeEventListener("resize", recompute);
+      tableEl.removeEventListener("scroll", syncFromTable);
+    };
+  }, []);
+
+  useEffect(() => {
+    const ghostEl = ghostScrollRef.current;
+    const tableEl = tableScrollRef.current;
+    if (!ghostEl || !tableEl) return;
+    let lock = false;
+    const syncFromGhost = () => {
+      if (lock) return;
+      lock = true;
+      tableEl.scrollLeft = ghostEl.scrollLeft;
+      requestAnimationFrame(() => {
+        lock = false;
+      });
+    };
+    ghostEl.addEventListener("scroll", syncFromGhost, { passive: true });
+    return () => ghostEl.removeEventListener("scroll", syncFromGhost);
+  }, [ghostBar.visible]);
 
   return (
     <>
-      <div className="overflow-x-auto">
+      <div ref={tableScrollRef} className="overflow-x-auto">
         <table className="min-w-[1800px] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-[#efe0d8] bg-[#fff8f4] text-xs uppercase tracking-[0.18em] text-[#9e7467]">
@@ -256,6 +329,20 @@ export default function AdminAttendanceSheet({ days, rows }: Props) {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div
+        ref={ghostScrollRef}
+        className="fixed z-40 overflow-x-auto border-t border-[#efe0d8] bg-[#fff8f4]/95 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] backdrop-blur"
+        aria-hidden="true"
+        style={{
+          left: ghostBar.left,
+          width: ghostBar.width,
+          bottom: 0,
+          display: ghostBar.visible ? "block" : "none",
+        }}
+      >
+        <div style={{ width: tableScrollWidth, height: 1 }} aria-hidden="true" />
       </div>
 
       <AttendanceDetailModal selected={selected} onClose={() => setSelected(null)} />
