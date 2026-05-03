@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { addMonthsToIsoDate, calculateEmploymentTimeline } from "@/lib/contract-timeline";
 import type { EmployeeListItem, LookupOption } from "@/lib/employees";
 
@@ -201,11 +201,58 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [toast, setToast] = useState<{ title: string; description: string; type: "success" | "error" } | null>(null);
 
+  const tableScrollRef = useRef<HTMLDivElement | null>(null);
+  const ghostScrollRef = useRef<HTMLDivElement | null>(null);
+  const [tableScrollWidth, setTableScrollWidth] = useState(0);
+
   useEffect(() => {
     if (!toast) return;
     const timeout = window.setTimeout(() => setToast(null), 3000);
     return () => window.clearTimeout(timeout);
   }, [toast]);
+
+  useEffect(() => {
+    const tableEl = tableScrollRef.current;
+    const ghostEl = ghostScrollRef.current;
+    if (!tableEl || !ghostEl) return;
+
+    const updateWidth = () => {
+      setTableScrollWidth(tableEl.scrollWidth);
+    };
+    updateWidth();
+
+    const ro = new ResizeObserver(updateWidth);
+    ro.observe(tableEl);
+    const inner = tableEl.firstElementChild;
+    if (inner) ro.observe(inner);
+
+    let lock = false;
+    const syncFromTable = () => {
+      if (lock) return;
+      lock = true;
+      ghostEl.scrollLeft = tableEl.scrollLeft;
+      requestAnimationFrame(() => {
+        lock = false;
+      });
+    };
+    const syncFromGhost = () => {
+      if (lock) return;
+      lock = true;
+      tableEl.scrollLeft = ghostEl.scrollLeft;
+      requestAnimationFrame(() => {
+        lock = false;
+      });
+    };
+
+    tableEl.addEventListener("scroll", syncFromTable, { passive: true });
+    ghostEl.addEventListener("scroll", syncFromGhost, { passive: true });
+
+    return () => {
+      ro.disconnect();
+      tableEl.removeEventListener("scroll", syncFromTable);
+      ghostEl.removeEventListener("scroll", syncFromGhost);
+    };
+  }, []);
 
   const filteredEmployees = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -585,7 +632,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
           </form>
         </section>
 
-        <section className="overflow-hidden rounded-[32px] border border-[#ead7ce] bg-white">
+        <section className="overflow-clip rounded-[32px] border border-[#ead7ce] bg-white">
           <div className="border-b border-[#eddad1] px-6 py-5">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
               <div>
@@ -600,7 +647,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div ref={tableScrollRef} className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <table className="min-w-[1600px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-[#efe0d8] bg-[#fff8f4] text-xs uppercase tracking-[0.2em] text-[#9e7467]">
@@ -686,6 +733,13 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                 )}
               </tbody>
             </table>
+          </div>
+          <div
+            ref={ghostScrollRef}
+            className="sticky bottom-0 z-30 overflow-x-auto border-t border-[#efe0d8] bg-[#fff8f4]/95 backdrop-blur [scrollbar-gutter:stable]"
+            aria-hidden="true"
+          >
+            <div style={{ width: tableScrollWidth, height: 1 }} aria-hidden="true" />
           </div>
         </section>
       </div>
