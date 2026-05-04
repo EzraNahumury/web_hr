@@ -7,6 +7,23 @@ import { useRouter } from "next/navigation";
 
 const GridScan = dynamic(() => import("@/components/GridScan"), { ssr: false });
 
+function sanitizeInput(s: string): string {
+  return s
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/\u00A0/g, " ")
+    .trim();
+}
+
+function friendlyAuthError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : "Terjadi kesalahan.";
+  if (msg.includes("did not match the expected pattern")) {
+    return "Email atau password mengandung karakter tidak valid. Coba ketik ulang manual tanpa autofill.";
+  }
+  return msg;
+}
+
 export default function Home() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
@@ -44,27 +61,31 @@ export default function Home() {
   async function handleLogin(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); setIsSubmitting(true); setErrorMessage("");
     try {
-      const res = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
+      const cleanEmail = sanitizeInput(email);
+      const cleanPassword = sanitizeInput(password);
+      const res = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: cleanEmail, password: cleanPassword }) });
       const r = (await res.json()) as { message?: string; redirectTo?: string; role?: "admin" | "karyawan" | "spv" };
       if (!res.ok) throw new Error(r.message || "Login gagal.");
       if (r.role === "karyawan") {
         try { await requestLoginLocation(); } catch { /* biarkan login lanjut */ }
       }
       router.push(r.redirectTo || "/");
-    } catch (err) { setErrorMessage(err instanceof Error ? err.message : "Terjadi kesalahan."); }
+    } catch (err) { setErrorMessage(friendlyAuthError(err)); }
     finally { setIsSubmitting(false); }
   }
 
   async function handleSignupSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); setErrorMessage(""); setSuccessMessage("");
-    if (!signupEmail || !signupPassword) { setErrorMessage("Email dan password wajib diisi."); return; }
-    if (signupPassword.length < 6) { setErrorMessage("Password minimal 6 karakter."); return; }
+    const cleanEmail = sanitizeInput(signupEmail);
+    const cleanPassword = sanitizeInput(signupPassword);
+    if (!cleanEmail || !cleanPassword) { setErrorMessage("Email dan password wajib diisi."); return; }
+    if (cleanPassword.length < 6) { setErrorMessage("Password minimal 6 karakter."); return; }
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: signupEmail, password: signupPassword }) });
+      const res = await fetch("/api/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: cleanEmail, password: cleanPassword }) });
       const r = (await res.json()) as { message?: string }; if (!res.ok) throw new Error(r.message || "Gagal.");
       setSuccessMessage(r.message || "Pendaftaran berhasil!"); setSignupEmail(""); setSignupPassword("");
-    } catch (err) { setErrorMessage(err instanceof Error ? err.message : "Terjadi kesalahan."); } finally { setIsSubmitting(false); }
+    } catch (err) { setErrorMessage(friendlyAuthError(err)); } finally { setIsSubmitting(false); }
   }
 
   function switchTab(tab: "login" | "signup") { setActiveTab(tab); setErrorMessage(""); setSuccessMessage(""); }
