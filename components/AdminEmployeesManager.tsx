@@ -95,6 +95,18 @@ function formatRupiahInput(value: string) {
   return digits ? Number(digits).toLocaleString("id-ID") : "";
 }
 
+function formatRupiahDisplay(value: string | number | null | undefined) {
+  if (value === null || value === undefined || value === "") return "Rp 0";
+  const num = typeof value === "number" ? value : Number(String(value).replace(/[^\d.-]/g, ""));
+  if (!Number.isFinite(num)) return "Rp 0";
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(num);
+}
+
 function formatStatus(status: EmployeeListItem["employmentStatus"]) {
   if (status === "training") return "Training";
   if (status === "tetap") return "Tetap";
@@ -442,7 +454,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
     ? [
       { label: "Bank", value: viewingEmployee.bank || "-" },
       { label: "No Rekening", value: viewingEmployee.accountNumber || "-" },
-      { label: "Kenaikan / Tahun", value: viewingEmployee.annualRaise || "0" },
+      { label: "Kenaikan / Tahun", value: formatRupiahDisplay(viewingEmployee.annualRaise) },
     ]
     : [];
   const timelineEntries: Array<{ label: string; value: string }> = viewingEmployee
