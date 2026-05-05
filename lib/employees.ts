@@ -60,6 +60,7 @@ export const EMPLOYEE_ROLES = [
   "Sales Area",
   "Sales Nasional",
   "Penjahit",
+  "Organizational Development Officer",
 ] as const;
 export const EMPLOYEE_DEPARTMENTS = [
   "Secretary",
@@ -102,6 +103,7 @@ export const EMPLOYEE_SUB_DIVISIONS = [
   "Pajak",
   "HRD",
   "Ekspedisi",
+  "Hostlive",
 ] as const;
 export const EMPLOYEE_PLACEMENTS = [
   "Office",
