@@ -193,10 +193,25 @@ export async function PUT(
       return NextResponse.json({ message: result.error }, { status: 400 });
     }
 
+    const keepIfAbsent = <K extends keyof typeof result.payload>(
+      key: K,
+      currentValue: typeof result.payload[K],
+    ) => (key in body ? result.payload[key] : currentValue);
+
     const employee = await updateEmployee(id, {
       ...result.payload,
       email: current.email,
-      ktpPhoto: result.payload.ktpPhoto ?? current.ktpPhoto,
+      bank: keepIfAbsent("bank", current.bank),
+      accountNumber: keepIfAbsent("accountNumber", current.accountNumber),
+      gender: keepIfAbsent("gender", current.gender),
+      birthPlace: keepIfAbsent("birthPlace", current.birthPlace),
+      birthDate: keepIfAbsent("birthDate", current.birthDate),
+      nik: keepIfAbsent("nik", current.nik),
+      religion: keepIfAbsent("religion", current.religion),
+      addressKtp: keepIfAbsent("addressKtp", current.addressKtp),
+      addressCurrent: keepIfAbsent("addressCurrent", current.addressCurrent),
+      phoneNumber: keepIfAbsent("phoneNumber", current.phoneNumber),
+      ktpPhoto: keepIfAbsent("ktpPhoto", current.ktpPhoto) ?? current.ktpPhoto,
     });
 
     return NextResponse.json({
