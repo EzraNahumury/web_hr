@@ -277,7 +277,7 @@ export default function AdminAttendanceSheet({ days, rows }: Props) {
           <tbody>
             {rows.map((row) => (
               <tr key={row.employeeId} className="border-b border-[#f1e5de] text-[#513d39]">
-                <td className="sticky left-0 z-10 min-w-[200px] bg-white px-4 py-4 font-semibold text-[#241716] shadow-[2px_0_0_0_#f1e5de]">
+                <td className="sticky left-0 z-10 min-w-[200px] bg-white px-4 py-4 font-semibold uppercase text-[#241716] shadow-[2px_0_0_0_#f1e5de]">
                   {row.name}
                 </td>
                 <td className="px-4 py-4">{row.nip}</td>
