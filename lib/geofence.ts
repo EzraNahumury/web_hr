@@ -39,6 +39,7 @@ export const WORK_LOCATIONS: Record<string, WorkLocation[]> = {
       label: "Ayres Apparel",
       latitude: -7.8067173,
       longitude: 110.4056819,
+      radiusMeters: 50,
     },
   ],
   JNE: [
