@@ -145,10 +145,13 @@ function mapAttendanceCode(
   if (code) {
     switch (code) {
       case "O":
+      case "T":
       case "S":
       case "X":
       case "SX":
-        return code === "SX" && isHalfDay ? "H" : code;
+        if (code === "SX" && isHalfDay) return "H";
+        if (code === "T" && isHalfDay) return "H";
+        return code;
       case "H":
         return isHalfDay ? "H" : "O";
       case "M":

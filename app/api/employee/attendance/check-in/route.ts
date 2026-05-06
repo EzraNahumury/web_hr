@@ -184,7 +184,9 @@ export async function POST(request: Request) {
             ? "SX"
             : attendanceRequestStatus === "setengah_hari"
               ? "H"
-              : "O";
+              : lateMinutes > 0
+                ? "T"
+                : "O";
     const attendanceTime = requiresSelfie ? attendanceDateTime : null;
     const attendanceLatitude = requiresSelfie ? latitude : null;
     const attendanceLongitude = requiresSelfie ? longitude : null;
