@@ -207,6 +207,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
   const [employees, setEmployees] = useState(initialEmployees);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewingEmployee, setViewingEmployee] = useState<EmployeeListItem | null>(null);
   const [search, setSearch] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -352,6 +353,14 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
   function resetForm() {
     setForm(emptyForm);
     setEditingId(null);
+    setIsFormOpen(false);
+  }
+
+  function openAddForm() {
+    setForm(emptyForm);
+    setEditingId(null);
+    setIsFormOpen(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -414,6 +423,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
   function handleEdit(employee: EmployeeListItem) {
     setEditingId(employee.id);
     setForm(toFormState(employee));
+    setIsFormOpen(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -515,7 +525,8 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
         </article>
       </section>
 
-      <div className="grid gap-6 2xl:grid-cols-[680px,minmax(0,1fr)]">
+      <div className={isFormOpen ? "grid gap-6 2xl:grid-cols-[680px,minmax(0,1fr)]" : ""}>
+        {isFormOpen && (
         <section className="overflow-hidden rounded-[32px] border border-[#ead7ce] bg-[linear-gradient(180deg,#fffdfc_0%,#fff6f2_100%)]">
           <div className="border-b border-[#eddad1] px-6 py-6">
             <div className="inline-flex rounded-full border border-[#f0d8d1] bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.26em] text-[#a16f63]">
@@ -670,6 +681,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
             </div>
           </form>
         </section>
+        )}
 
         <section className="overflow-hidden rounded-[32px] border border-[#ead7ce] bg-white">
           <div className="border-b border-[#eddad1] px-6 py-5">
@@ -682,7 +694,18 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                   Schema Baru
                 </h3>
               </div>
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama, NIP, unit, jabatan..." className={`${inputClassName} xl:max-w-sm`} />
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+                <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama, NIP, unit, jabatan..." className={`${inputClassName} xl:max-w-sm`} />
+                {!isFormOpen && (
+                  <button
+                    type="button"
+                    onClick={openAddForm}
+                    className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#8f1d22] px-6 text-sm font-semibold text-white transition hover:bg-[#7a181c]"
+                  >
+                    + Tambah Karyawan
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
