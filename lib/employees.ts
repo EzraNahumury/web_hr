@@ -381,7 +381,7 @@ export async function listEmployees() {
   const [rows] = await pool.query<EmployeeRow[]>(
     `
       ${employeeSelectQuery}
-      ORDER BY k.created_at DESC, k.id DESC
+      ORDER BY k.nama ASC, k.id ASC
     `,
   );
 

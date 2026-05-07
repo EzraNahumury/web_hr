@@ -735,7 +735,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                 {filteredEmployees.length ? (
                   filteredEmployees.map((employee) => (
                     <tr key={employee.id} className="border-b border-[#f1e5de] text-sm text-[#513d39] hover:bg-[#fffaf7]">
-                      <td className="sticky left-0 z-10 bg-white px-6 py-5 font-semibold text-[#241716] shadow-[2px_0_0_0_#f1e5de]">{employee.name}</td>
+                      <td className="sticky left-0 z-10 bg-white px-6 py-5 font-semibold uppercase text-[#241716] shadow-[2px_0_0_0_#f1e5de]">{employee.name}</td>
                       <td className="px-6 py-5">{employee.nip}</td>
                       <td className="px-6 py-5">{employee.unit || "-"}</td>
                       <td className="px-6 py-5">{employee.role}</td>
