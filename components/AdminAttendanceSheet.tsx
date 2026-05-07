@@ -178,6 +178,7 @@ function AttendanceDetailModal({
 
 export default function AdminAttendanceSheet({ days, rows }: Props) {
   const [selected, setSelected] = useState<SelectedAttendance>(null);
+  const [search, setSearch] = useState("");
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
   const ghostScrollRef = useRef<HTMLDivElement | null>(null);
   const [tableScrollWidth, setTableScrollWidth] = useState(0);
@@ -252,8 +253,31 @@ export default function AdminAttendanceSheet({ days, rows }: Props) {
     return () => ghostEl.removeEventListener("scroll", syncFromGhost);
   }, [ghostBar.visible]);
 
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredRows = normalizedSearch
+    ? rows.filter((row) =>
+        [row.name, row.nip, row.role, row.division, row.department, row.email]
+          .filter(Boolean)
+          .some((field) => field.toLowerCase().includes(normalizedSearch)),
+      )
+    : rows;
+
   return (
     <>
+      <div className="mb-4 flex flex-col gap-2 px-1 sm:flex-row sm:items-center sm:justify-between">
+        <input
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Cari nama, NIP, jabatan, divisi, email..."
+          className="h-12 w-full rounded-2xl border border-[#ead7ce] bg-white px-4 text-sm text-[#2d1b18] outline-none placeholder:text-[#b1948d] focus:border-[#c8716d] focus:shadow-[0_0_0_4px_rgba(200,113,109,0.12)] sm:max-w-md"
+        />
+        {normalizedSearch && (
+          <p className="text-xs font-semibold text-[#7a6059]">
+            {filteredRows.length} dari {rows.length} karyawan
+          </p>
+        )}
+      </div>
       <div ref={tableScrollRef} className="overflow-x-auto">
         <table className="min-w-[1800px] border-collapse text-left text-sm">
           <thead>
@@ -275,7 +299,7 @@ export default function AdminAttendanceSheet({ days, rows }: Props) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {filteredRows.map((row) => (
               <tr key={row.employeeId} className="border-b border-[#f1e5de] text-[#513d39]">
                 <td className="sticky left-0 z-10 min-w-[200px] bg-white px-4 py-4 font-semibold uppercase text-[#241716] shadow-[2px_0_0_0_#f1e5de]">
                   {row.name}
