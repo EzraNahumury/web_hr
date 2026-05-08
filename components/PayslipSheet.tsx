@@ -153,10 +153,10 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
 
   const pdfData: PayslipPdfPayload = {
     rangeLabel,
-    employeeName: row.name,
+    employeeName: row.name.toUpperCase(),
     role: row.role,
     division: row.division,
-    bank: row.bank || "-",
+    bank: (row.bank || "-").toUpperCase(),
     accountNumber: row.accountNumber || "-",
     presentDays: row.presentDays,
     overtimeHours: row.overtimeHours,
@@ -226,9 +226,9 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
               <div className="rounded-[22px] border border-[#eadfd7] bg-[linear-gradient(180deg,#fffdfa_0%,#fff7f2_100%)] px-4 py-4 shadow-[0_12px_30px_rgba(102,64,44,0.06)] sm:px-5">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[#9a7f6e]">Data Karyawan</p>
                 <div className="mt-4 space-y-2.5">
-                  <DetailItem label="Nama Karyawan" value={row.name} />
+                  <DetailItem label="Nama Karyawan" value={row.name.toUpperCase()} />
                   <DetailItem label="Jabatan / Divisi" value={`${row.role} / ${row.division}`} />
-                  <DetailItem label="Bank" value={row.bank || "-"} />
+                  <DetailItem label="Bank" value={(row.bank || "-").toUpperCase()} />
                   <DetailItem label="No Rekening" value={row.accountNumber || "-"} />
                 </div>
               </div>
@@ -329,9 +329,9 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
 
         <div className="payslip-pdf-meta-grid">
           <section className="payslip-pdf-panel">
-            <PrintPairItem label="Nama Karyawan" value={row.name} />
+            <PrintPairItem label="Nama Karyawan" value={row.name.toUpperCase()} />
             <PrintPairItem label="Jabatan / Divisi" value={`${row.role} / ${row.division}`} />
-            <PrintPairItem label="Bank" value={row.bank || "-"} />
+            <PrintPairItem label="Bank" value={(row.bank || "-").toUpperCase()} />
             <PrintPairItem label="No Rekening" value={row.accountNumber || "-"} />
           </section>
 

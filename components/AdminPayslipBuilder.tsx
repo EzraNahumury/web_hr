@@ -17,7 +17,7 @@ const selectClassName =
   "h-12 w-full appearance-none rounded-2xl border border-[#d9cbc5] bg-[url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%238a5d52' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")] bg-[length:18px_18px] bg-[right_1rem_center] bg-no-repeat px-4 pr-11 text-[#241716] outline-none focus:border-[#c97f5b] focus:shadow-[0_0_0_4px_rgba(201,127,91,0.14)]";
 
 function buildEmployeeLabel(row: AdminPayrollSummarySheetRow) {
-  return `${row.name} / ${row.role} / ${row.payrollType === "sales" ? "Sales" : "Non Sales"}`;
+  return `${row.name.toUpperCase()} / ${row.role} / ${row.payrollType === "sales" ? "Sales" : "Non Sales"}`;
 }
 
 export default function AdminPayslipBuilder({ periodLabel, rangeLabel, rows, selectedEmployeeId }: Props) {

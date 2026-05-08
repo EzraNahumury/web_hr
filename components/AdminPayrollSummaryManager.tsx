@@ -353,7 +353,7 @@ export default function AdminPayrollSummaryManager({
                 required
               >
                 <option value="">Pilih karyawan</option>
-                {availableEmployeeOptions.map((employee) => <option key={employee.employeeId} value={employee.employeeId}>{employee.name} - {employee.role}</option>)}
+                {availableEmployeeOptions.map((employee) => <option key={employee.employeeId} value={employee.employeeId}>{employee.name.toUpperCase()} - {employee.role}</option>)}
               </select>
             </Field>
             {!editingPayrollId && savedEmployeeIds.size > 0 && employeeOptions.length > availableEmployeeOptions.length ? (
@@ -582,7 +582,7 @@ export default function AdminPayrollSummaryManager({
                       <td className="border border-[#d7ecee] px-3 py-3">{row.division}</td>
                       <td className="border border-[#d7ecee] px-3 py-3">{row.recapGroup}</td>
                       <td className="border border-[#d7ecee] px-3 py-3">{row.department}</td>
-                      <td className="border border-[#d7ecee] px-3 py-3">{row.bank}</td>
+                      <td className="border border-[#d7ecee] px-3 py-3 uppercase">{row.bank}</td>
                       <td className="border border-[#d7ecee] px-3 py-3">{row.accountNumber}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-center">{row.payrollType === "sales" ? "Sales" : "Non Sales"}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.monthlyBaseSalary)}</td>

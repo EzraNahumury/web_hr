@@ -224,7 +224,7 @@ export default function AdminPayrollBonusManager({
                 <option value="">Pilih karyawan</option>
                 {availableEmployeeOptions.map((employee) => (
                   <option key={employee.employeeId} value={employee.employeeId}>
-                    {employee.name} - {employee.role}
+                    {employee.name.toUpperCase()} - {employee.role}
                   </option>
                 ))}
               </select>

@@ -415,7 +415,7 @@ export default function AdminPenjahitPayrollSummary({ sheet, periodOptions, empl
                       </td>
                       <td className={tdBase}>{row.pembagianRekapan || "-"}</td>
                       <td className={tdBase}>{row.departemen}</td>
-                      <td className={tdBase}>{row.bank}</td>
+                      <td className={tdBase + " uppercase"}>{row.bank}</td>
                       <td className={tdBase}>{row.noRekening}</td>
 
                       {/* Nominal Tetap */}
@@ -552,7 +552,7 @@ export default function AdminPenjahitPayrollSummary({ sheet, periodOptions, empl
                     <option value="">Pilih karyawan penjahit...</option>
                     {availableEmployeeOptions.map((emp) => (
                       <option key={emp.employeeId} value={emp.employeeId}>
-                        {emp.name}
+                        {emp.name.toUpperCase()}
                       </option>
                     ))}
                   </select>

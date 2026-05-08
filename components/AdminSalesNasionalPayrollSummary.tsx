@@ -345,7 +345,7 @@ export default function AdminSalesNasionalPayrollSummary({
                       <td className={tdBase}>{row.role}</td>
                       <td className={tdBase}>{row.division}</td>
                       <td className={tdBase}>{row.department}</td>
-                      <td className={tdBase}>{row.bank}</td>
+                      <td className={tdBase + " uppercase"}>{row.bank}</td>
                       <td className={tdBase}>{row.accountNumber}</td>
 
                       {/* Nominal */}
@@ -420,7 +420,7 @@ export default function AdminSalesNasionalPayrollSummary({
                     <option value="">Pilih karyawan Sales Nasional...</option>
                     {availableOptions.map((emp) => (
                       <option key={emp.employeeId} value={emp.employeeId}>
-                        {emp.name}
+                        {emp.name.toUpperCase()}
                       </option>
                     ))}
                   </select>
