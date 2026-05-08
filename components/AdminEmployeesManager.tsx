@@ -197,7 +197,7 @@ function toFormState(employee: EmployeeListItem): FormState {
     firstJoinDate: employee.firstJoinDate ?? "",
     contractDate: employee.contractDate ?? "",
     contractEndDate: employee.contractEndDate ?? "",
-    annualRaise: employee.annualRaise.replace(/\./g, "").replace(",", "."),
+    annualRaise: formatRupiahInput(String(Math.trunc(Number(employee.annualRaise) || 0))),
     userActive: employee.userActive,
     penjahitPayrollType: employee.penjahitPayrollType ?? "",
   };
