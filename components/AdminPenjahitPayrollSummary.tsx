@@ -407,7 +407,7 @@ export default function AdminPenjahitPayrollSummary({ sheet, periodOptions, empl
                     <tr key={row.payrollId} className="hover:bg-[#fffaf7]">
                       {/* Employee info */}
                       <td className={tdBase + " text-[#a16f63]"}>{index + 1}</td>
-                      <td className={tdSticky + " font-medium max-w-[160px] truncate"}>{row.nama}</td>
+                      <td className={tdSticky + " font-medium uppercase max-w-[160px] truncate"}>{row.nama}</td>
                       <td className={tdBase}>{row.jabatan}</td>
                       <td className={tdBase}>
                         {row.divisi}

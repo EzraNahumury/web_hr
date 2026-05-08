@@ -336,7 +336,7 @@ export default function AdminPayrollBonusManager({
                 sheet.rows.map((row) => (
                   <tr key={row.id} className="text-[#3a2b27] odd:bg-white even:bg-[#fcfefe]">
                     <td className="border border-[#d7ecee] px-3 py-3 text-center">{row.number}</td>
-                    <td className="sticky left-0 z-10 border border-[#d7ecee] bg-white px-3 py-3 font-semibold text-[#241716]">{row.name}</td>
+                    <td className="sticky left-0 z-10 border border-[#d7ecee] bg-white px-3 py-3 font-semibold uppercase text-[#241716]">{row.name}</td>
                     <td className="border border-[#d7ecee] px-3 py-3">{row.role}</td>
                     <td className="border border-[#d7ecee] px-3 py-3">{row.division}</td>
                     <td className="border border-[#d7ecee] px-3 py-3">{row.department}</td>

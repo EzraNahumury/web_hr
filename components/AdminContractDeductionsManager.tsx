@@ -160,7 +160,7 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
               {filteredRows.length ? (
                 filteredRows.map((row) => (
                   <tr key={row.employeeId} className="border-b border-[#f1e5de] text-sm text-[#513d39] hover:bg-[#fffaf7]">
-                    <td className="sticky left-0 z-10 bg-white px-6 py-4 font-semibold text-[#241716] shadow-[2px_0_0_0_#f1e5de]">{row.employeeName}</td>
+                    <td className="sticky left-0 z-10 bg-white px-6 py-4 font-semibold uppercase text-[#241716] shadow-[2px_0_0_0_#f1e5de]">{row.employeeName}</td>
                     <td className="px-6 py-4">{row.nip}</td>
                     <td className="px-6 py-4">{row.role}</td>
                     <td className="px-6 py-4">{row.division}</td>

@@ -341,7 +341,7 @@ export default function AdminSalesNasionalPayrollSummary({
                   return (
                     <tr key={row.id} className="hover:bg-[#fffaf7]">
                       <td className={tdBase + " text-[#a16f63]"}>{i + 1}</td>
-                      <td className={tdSticky + " font-medium max-w-[160px] truncate"}>{row.name}</td>
+                      <td className={tdSticky + " font-medium uppercase max-w-[160px] truncate"}>{row.name}</td>
                       <td className={tdBase}>{row.role}</td>
                       <td className={tdBase}>{row.division}</td>
                       <td className={tdBase}>{row.department}</td>

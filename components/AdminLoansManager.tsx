@@ -218,7 +218,7 @@ export default function AdminLoansManager({ initialRows }: Props) {
 
                   return (
                     <tr key={row.id} className="border-b border-[#f1e5de] align-top text-[#513d39] hover:bg-[#fffaf7]">
-                      <td className="sticky left-0 z-10 bg-white px-6 py-5 font-semibold text-[#241716] shadow-[2px_0_0_0_#f1e5de]">{row.employeeName}</td>
+                      <td className="sticky left-0 z-10 bg-white px-6 py-5 font-semibold uppercase text-[#241716] shadow-[2px_0_0_0_#f1e5de]">{row.employeeName}</td>
                       <td className="px-6 py-5">{row.nip}</td>
                       <td className="px-6 py-5">
                         <div>{row.role}</div>
