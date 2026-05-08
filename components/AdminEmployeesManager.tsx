@@ -538,14 +538,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
           </div>
 
           <form className="space-y-6 px-6 py-6" onSubmit={handleSubmit}>
-            {editingId ? (
-              <div className="rounded-[22px] border border-[#ead7ce] bg-[#f9f3ef] px-5 py-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">Nama Karyawan</p>
-                <p className="mt-2 text-lg font-semibold text-[#241716]">{form.name || "-"}</p>
-              </div>
-            ) : (
-              <Field label="Nama"><input value={form.name} onChange={(event) => updateField("name", event.target.value)} className={inputClassName} required /></Field>
-            )}
+            <Field label="Nama"><input value={form.name} onChange={(event) => updateField("name", event.target.value)} className={inputClassName} required /></Field>
 
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="NIP / No Karyawan"><input value={form.nip} onChange={(event) => updateField("nip", event.target.value)} className={inputClassName} /></Field>
