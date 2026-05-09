@@ -1081,19 +1081,73 @@ type PendingSlipRow = RowDataPacket & {
   karyawan_id: number;
 };
 
-export async function distributePendingPayslips(adminUserId: number) {
+type PendingPayrollRow = RowDataPacket & {
+  payroll_id: number;
+  karyawan_id: number;
+  nama: string;
+  jabatan: string;
+  divisi: string;
+  periode_bulan: number;
+  periode_tahun: number;
+  periode_label: string;
+};
+
+export async function listPendingPayrollsForDistribution() {
+  const [rows] = await pool.query<PendingPayrollRow[]>(
+    `
+      SELECT
+        p.id AS payroll_id,
+        p.karyawan_id,
+        k.nama,
+        k.jabatan,
+        k.divisi,
+        p.periode_bulan,
+        p.periode_tahun,
+        CONCAT(p.periode_bulan, '/', p.periode_tahun) AS periode_label
+      FROM payroll p
+      INNER JOIN karyawan k ON k.id = p.karyawan_id
+      LEFT JOIN slip_gaji sg ON sg.payroll_id = p.id
+      WHERE sg.id IS NULL OR sg.status_distribusi = 'draft'
+      ORDER BY p.periode_tahun DESC, p.periode_bulan DESC, k.nama ASC
+    `,
+  );
+
+  return rows;
+}
+
+export async function distributePendingPayslips(adminUserId: number, payrollIds: number[]) {
+  if (payrollIds.length === 0) {
+    return { distributed: 0 };
+  }
+
   const connection = await pool.getConnection();
 
   try {
     await connection.beginTransaction();
+
+    await connection.query(
+      `
+        INSERT INTO slip_gaji (payroll_id, nomor_slip, status_distribusi, created_at)
+        SELECT
+          p.id,
+          CONCAT('SLP-', LPAD(p.periode_bulan, 2, '0'), p.periode_tahun, '-', p.karyawan_id),
+          'draft',
+          NOW()
+        FROM payroll p
+        LEFT JOIN slip_gaji sg ON sg.payroll_id = p.id
+        WHERE sg.id IS NULL AND p.id IN (?)
+      `,
+      [payrollIds],
+    );
 
     const [pendingRows] = await connection.query<PendingSlipRow[]>(
       `
         SELECT sg.id, p.karyawan_id
         FROM slip_gaji sg
         INNER JOIN payroll p ON p.id = sg.payroll_id
-        WHERE sg.status_distribusi = 'draft'
+        WHERE sg.status_distribusi = 'draft' AND p.id IN (?)
       `,
+      [payrollIds],
     );
 
     if (pendingRows.length === 0) {

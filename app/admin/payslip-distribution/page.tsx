@@ -1,54 +1,42 @@
+import AdminPayslipDistribution from "@/components/AdminPayslipDistribution";
 import AdminShell from "@/components/AdminShell";
-import DistributePayslipButton from "@/components/DistributePayslipButton";
 import { requireAdminSession } from "@/lib/auth";
-import { listPayslipDistribution } from "@/lib/hris";
+import { listPayslipDistribution, listPendingPayrollsForDistribution } from "@/lib/hris";
 
 export default async function AdminPayslipDistributionPage() {
   const admin = await requireAdminSession();
-  const rows = await listPayslipDistribution();
+  const [pendingRows, logRows] = await Promise.all([
+    listPendingPayrollsForDistribution(),
+    listPayslipDistribution(),
+  ]);
 
   return (
     <AdminShell
       title="Distribusi Slip Gaji"
-      description="Log distribusi slip dibaca dari tabel log_distribusi_slip dan slip_gaji untuk memantau status kirim dan baca."
+      description="Pilih karyawan yang akan menerima slip gaji, lalu klik Distribusi Slip Gaji untuk mengirim ke akun mereka."
       adminName={admin.fullName}
       adminEmail={admin.email}
       currentPath="/admin/payslip-distribution"
     >
-      <div className="mb-6 flex items-start justify-between gap-4 rounded-[28px] border border-[#ead7ce] bg-[#fff8f4] px-5 py-4">
-        <div>
-          <p className="text-sm font-semibold text-[#2f1f1d]">Distribusi Slip Gaji</p>
-          <p className="mt-1 text-sm text-[#7a6059]">Klik tombol untuk mendistribusikan semua slip berstatus draft. Setelah didistribusikan, slip akan muncul di halaman karyawan.</p>
-        </div>
-        <DistributePayslipButton />
-      </div>
-
-      <div className="overflow-hidden rounded-[32px] border border-[#ead7ce] bg-white">
-        <table className="min-w-full border-collapse text-left text-sm">
-          <thead>
-            <tr className="border-b border-[#efe0d8] bg-[#fff8f4] text-xs uppercase tracking-[0.18em] text-[#9e7467]">
-              <th className="px-6 py-4">Slip</th>
-              <th className="px-6 py-4">Karyawan</th>
-              <th className="px-6 py-4">Didistribusikan Oleh</th>
-              <th className="px-6 py-4">Tanggal Distribusi</th>
-              <th className="px-6 py-4">Status Slip</th>
-              <th className="px-6 py-4">Status Baca</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} className="border-b border-[#f1e5de] text-[#513d39]">
-                <td className="px-6 py-4 font-semibold text-[#241716]">{row.nomor_slip}</td>
-                <td className="px-6 py-4">{row.nama}</td>
-                <td className="px-6 py-4">{row.didistribusikan_oleh_nama}</td>
-                <td className="px-6 py-4">{row.tanggal_distribusi}</td>
-                <td className="px-6 py-4">{row.status_distribusi}</td>
-                <td className="px-6 py-4">{row.status_baca === 1 ? "Sudah dibaca" : "Belum dibaca"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <AdminPayslipDistribution
+        pending={pendingRows.map((row) => ({
+          payrollId: row.payroll_id,
+          employeeId: row.karyawan_id,
+          name: row.nama,
+          role: row.jabatan,
+          division: row.divisi,
+          periodLabel: row.periode_label,
+        }))}
+        logs={logRows.map((row) => ({
+          id: row.id,
+          nomorSlip: row.nomor_slip,
+          name: row.nama,
+          distributedBy: row.didistribusikan_oleh_nama,
+          distributedAt: row.tanggal_distribusi,
+          slipStatus: row.status_distribusi,
+          isRead: row.status_baca === 1,
+        }))}
+      />
     </AdminShell>
   );
 }

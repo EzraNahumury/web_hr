@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getCurrentAdminSession } from "@/lib/auth";
 import { distributePendingPayslips } from "@/lib/hris";
 
-export async function POST() {
+export async function POST(request: Request) {
   const admin = await getCurrentAdminSession();
 
   if (!admin) {
@@ -11,7 +11,20 @@ export async function POST() {
   }
 
   try {
-    const result = await distributePendingPayslips(admin.id);
+    const body = (await request.json().catch(() => ({}))) as { payrollIds?: unknown };
+    const rawIds = Array.isArray(body.payrollIds) ? body.payrollIds : [];
+    const payrollIds = rawIds
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value > 0);
+
+    if (payrollIds.length === 0) {
+      return NextResponse.json(
+        { message: "Pilih minimal satu karyawan untuk didistribusikan." },
+        { status: 400 },
+      );
+    }
+
+    const result = await distributePendingPayslips(admin.id, payrollIds);
 
     if (result.distributed === 0) {
       return NextResponse.json({
