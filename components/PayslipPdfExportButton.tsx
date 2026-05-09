@@ -141,7 +141,7 @@ async function buildPayslipPdf(fileName: string, pdfData: PayslipPdfPayload) {
 
   const [logoResult, ownerSignatureResult, hrSignatureResult] = await Promise.allSettled([
     loadAssetDataUrl("/logo/new logo.png"),
-    loadAssetDataUrl("/ttd/owner.png"),
+    loadAssetDataUrl("/ttd/owwner.png"),
     loadAssetDataUrl("/ttd/hr.png"),
   ]);
 

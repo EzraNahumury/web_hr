@@ -32,7 +32,7 @@ type PrintLineItemProps = {
 
 const OWNER_NAME = "Arya Rahadyan";
 const HR_COORDINATOR_NAME = "Elnida Rahma Dian";
-const OWNER_SIGNATURE_IMAGE = "/ttd/owner.png";
+const OWNER_SIGNATURE_IMAGE = "/ttd/owwner.png";
 const HR_SIGNATURE_IMAGE = "/ttd/hr.png";
 
 function formatCurrency(value: number) {
