@@ -32,7 +32,8 @@ type PrintLineItemProps = {
 
 const OWNER_NAME = "Arya Rahadyan";
 const HR_COORDINATOR_NAME = "Elnida Rahma Dian";
-const SIGNATURE_IMAGE = "/ttd/images.png";
+const OWNER_SIGNATURE_IMAGE = "/ttd/owner.png";
+const HR_SIGNATURE_IMAGE = "/ttd/hr.png";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -61,14 +62,14 @@ function MoneyItem({ label, value }: MoneyItemProps) {
   );
 }
 
-function SignatureBlock({ title, name }: { title: string; name: string }) {
+function SignatureBlock({ title, name, image }: { title: string; name: string; image: string }) {
   return (
     <div>
       <p className="text-sm text-[#6c564a]">Mengetahui,</p>
       <p className="mt-1 text-[15px] font-medium text-[#2c211a]">{title}</p>
       <div className="relative mx-auto mt-6 h-20 w-40 sm:h-24 sm:w-44">
         <Image
-          src={SIGNATURE_IMAGE}
+          src={image}
           alt={`Tanda tangan ${name}`}
           fill
           className="object-contain mix-blend-multiply"
@@ -99,13 +100,13 @@ function PrintLineItem({ label, value }: PrintLineItemProps) {
   );
 }
 
-function PrintSignatureBlock({ title, name }: { title: string; name: string }) {
+function PrintSignatureBlock({ title, name, image }: { title: string; name: string; image: string }) {
   return (
     <div className="payslip-pdf-signature-block">
       <p className="payslip-pdf-signature-caption">Mengetahui,</p>
       <p className="payslip-pdf-signature-title">{title}</p>
       <div className="payslip-pdf-signature-image">
-        <Image src={SIGNATURE_IMAGE} alt={`Tanda tangan ${name}`} fill className="object-contain mix-blend-multiply" />
+        <Image src={image} alt={`Tanda tangan ${name}`} fill className="object-contain mix-blend-multiply" />
       </div>
       <div className="payslip-pdf-signature-line" />
       <p className="payslip-pdf-signature-name">{name}</p>
@@ -306,8 +307,8 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
             </div>
 
             <div className="mt-10 grid gap-8 border-t border-dashed border-[#d8c9bf] pt-8 text-center sm:grid-cols-2 sm:gap-14">
-              <SignatureBlock title="Owner" name={OWNER_NAME} />
-              <SignatureBlock title="HR Coordinator" name={HR_COORDINATOR_NAME} />
+              <SignatureBlock title="Owner" name={OWNER_NAME} image={OWNER_SIGNATURE_IMAGE} />
+              <SignatureBlock title="HR Coordinator" name={HR_COORDINATOR_NAME} image={HR_SIGNATURE_IMAGE} />
             </div>
           </div>
         </article>
@@ -377,8 +378,8 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
         </div>
 
         <div className="payslip-pdf-signatures">
-          <PrintSignatureBlock title="Owner" name={OWNER_NAME} />
-          <PrintSignatureBlock title="HR Coordinator" name={HR_COORDINATOR_NAME} />
+          <PrintSignatureBlock title="Owner" name={OWNER_NAME} image={OWNER_SIGNATURE_IMAGE} />
+          <PrintSignatureBlock title="HR Coordinator" name={HR_COORDINATOR_NAME} image={HR_SIGNATURE_IMAGE} />
         </div>
       </article>
     </section>

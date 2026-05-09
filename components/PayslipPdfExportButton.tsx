@@ -139,13 +139,17 @@ async function buildPayslipPdf(fileName: string, pdfData: PayslipPdfPayload) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", compress: true });
 
-  const [logoResult, signatureResult] = await Promise.allSettled([
+  const [logoResult, ownerSignatureResult, hrSignatureResult] = await Promise.allSettled([
     loadAssetDataUrl("/logo/new logo.png"),
-    loadAssetDataUrl("/ttd/images.png"),
+    loadAssetDataUrl("/ttd/owner.png"),
+    loadAssetDataUrl("/ttd/hr.png"),
   ]);
 
   const logoDataUrl = logoResult.status === "fulfilled" ? logoResult.value : null;
-  const signatureDataUrl = signatureResult.status === "fulfilled" ? signatureResult.value : null;
+  const ownerSignatureDataUrl =
+    ownerSignatureResult.status === "fulfilled" ? ownerSignatureResult.value : null;
+  const hrSignatureDataUrl =
+    hrSignatureResult.status === "fulfilled" ? hrSignatureResult.value : null;
 
   doc.setProperties({ title: fileName, subject: "Slip Gaji", author: "web_hr" });
   doc.setDrawColor(17, 17, 17);
@@ -221,8 +225,8 @@ async function buildPayslipPdf(fileName: string, pdfData: PayslipPdfPayload) {
   doc.setFontSize(16.5);
   doc.text(formatCurrency(pdfData.netIncome), 191, 143.2, { align: "right" });
 
-  drawSignatureBlock(doc, 61, 195, "Owner", OWNER_NAME, signatureDataUrl);
-  drawSignatureBlock(doc, 149, 195, "HR Coordinator", HR_COORDINATOR_NAME, signatureDataUrl);
+  drawSignatureBlock(doc, 61, 195, "Owner", OWNER_NAME, ownerSignatureDataUrl);
+  drawSignatureBlock(doc, 149, 195, "HR Coordinator", HR_COORDINATOR_NAME, hrSignatureDataUrl);
 
   doc.save(createSafeFileName(fileName));
 }
