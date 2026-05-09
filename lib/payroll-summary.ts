@@ -107,6 +107,11 @@ type PeriodContractDeductionRow = RowDataPacket & {
   nominal_potongan: string;
 };
 
+type RemainingLoanRow = RowDataPacket & {
+  employee_id: number;
+  remaining_total: string | number | null;
+};
+
 type TotalEmployeeCountRow = RowDataPacket & {
   total: number;
 };
@@ -157,6 +162,7 @@ export type AdminPayrollSummarySheetRow = {
   contractDeduction: number;
   companyLoan: number;
   personalLoan: number;
+  remainingLoanBalance: number;
   fineDeduction: number;
   contractCut: number;
   loanCut: number;
@@ -373,6 +379,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     overtimeResult,
     contractResult,
     loanResult,
+    remainingLoanResult,
     reimbursementResult,
     totalEmployeeResult,
     omzetUnitResult,
@@ -417,6 +424,18 @@ export async function getAdminPayrollSummarySheet(period?: {
       [...employeeIds, periodMonth, periodYear],
     ),
     getLoanDeductionRowsForPeriod(employeeIds, periodMonth, periodYear),
+    pool.query<RemainingLoanRow[]>(
+      `
+        SELECT
+          karyawan_id AS employee_id,
+          COALESCE(SUM(sisa_pinjaman), 0) AS remaining_total
+        FROM pinjaman
+        WHERE karyawan_id IN (${placeholders})
+          AND status_pinjaman IN ('approved', 'berjalan')
+        GROUP BY karyawan_id
+      `,
+      employeeIds,
+    ),
     getApprovedReimbursementRowsForPeriod(employeeIds, range.startSql, range.endSql),
     pool.query<TotalEmployeeCountRow[]>(
       `SELECT COUNT(*) AS total FROM karyawan
@@ -502,6 +521,11 @@ export async function getAdminPayrollSummarySheet(period?: {
   const loanMap = new Map<number, number>();
   for (const row of loanResult) {
     loanMap.set(row.employeeId, toNumber(row.totalDeduction));
+  }
+
+  const remainingLoanMap = new Map<number, number>();
+  for (const row of remainingLoanResult[0]) {
+    remainingLoanMap.set(row.employee_id, toNumber(row.remaining_total));
   }
 
   const reimbursementMap = new Map<number, number>();
@@ -728,6 +752,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       contractDeduction,
       companyLoan,
       personalLoan,
+      remainingLoanBalance: remainingLoanMap.get(row.employee_id) ?? 0,
       fineDeduction,
       contractCut: contractDeduction,
       loanCut: companyLoan,

@@ -21,6 +21,7 @@ export type PayslipPdfPayload = {
   halfDayCount: number;
   earnings: PayslipPdfLineItem[];
   deductions: PayslipPdfLineItem[];
+  remainingLoan: number;
   netIncome: number;
 };
 
@@ -199,16 +200,26 @@ async function buildPayslipPdf(fileName: string, pdfData: PayslipPdfPayload) {
   drawMoneyColumn(doc, 19, 97, 98, pdfData.earnings);
   drawMoneyColumn(doc, 108, 97, 191, pdfData.deductions);
 
-  doc.line(19, 126.5, 191, 126.5);
+  const sisaY = 97 + pdfData.deductions.length * 5.2 + 4;
+  doc.setLineDashPattern([0.5, 0.5], 0);
+  doc.line(108, sisaY - 3, 191, sisaY - 3);
+  doc.setLineDashPattern([], 0);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.text("SISA PINJAMAN", 108, sisaY);
+  doc.text(formatCurrency(pdfData.remainingLoan), 191, sisaY, { align: "right" });
+
+  doc.setFontSize(9.5);
+  doc.line(19, 131, 191, 131);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.text("GAJI BERSIH", 19, 135);
+  doc.text("GAJI BERSIH", 19, 139);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.2);
-  doc.text("Slip ini dibuat dari rekap payroll untuk arsip internal perusahaan.", 19, 139.5);
+  doc.text("Slip ini dibuat dari rekap payroll untuk arsip internal perusahaan.", 19, 143.5);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16.5);
-  doc.text(formatCurrency(pdfData.netIncome), 191, 139.2, { align: "right" });
+  doc.text(formatCurrency(pdfData.netIncome), 191, 143.2, { align: "right" });
 
   drawSignatureBlock(doc, 61, 195, "Owner", OWNER_NAME, signatureDataUrl);
   drawSignatureBlock(doc, 149, 195, "HR Coordinator", HR_COORDINATOR_NAME, signatureDataUrl);

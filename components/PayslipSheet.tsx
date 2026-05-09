@@ -164,6 +164,7 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
     halfDayCount: row.halfDayCount,
     earnings: earningItems,
     deductions: deductionItems,
+    remainingLoan: row.remainingLoanBalance,
     netIncome: row.netIncome,
   };
 
@@ -283,6 +284,10 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
                   {deductionItems.map((item) => (
                     <MoneyItem key={item.label} label={item.label} value={item.value} />
                   ))}
+                </div>
+                <div className="mt-4 flex items-center justify-between border-t border-dashed border-[#d9cbc2] pt-3 text-sm">
+                  <span className="font-semibold uppercase tracking-[0.18em] text-[#9a7f6e]">Sisa Pinjaman</span>
+                  <span className="font-semibold tabular-nums text-[#1d1510]">{formatCurrency(row.remainingLoanBalance)}</span>
                 </div>
               </section>
             </div>
