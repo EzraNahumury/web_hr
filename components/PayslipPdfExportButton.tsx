@@ -23,6 +23,10 @@ export type PayslipPdfPayload = {
   deductions: PayslipPdfLineItem[];
   remainingLoan: number;
   netIncome: number;
+  pencairan?: {
+    type: "mingguan" | "bulanan";
+    items: PayslipPdfLineItem[];
+  };
 };
 
 type PayslipPdfExportButtonProps = {
@@ -224,6 +228,28 @@ async function buildPayslipPdf(fileName: string, pdfData: PayslipPdfPayload) {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16.5);
   doc.text(formatCurrency(pdfData.netIncome), 191, 143.2, { align: "right" });
+
+  if (pdfData.pencairan && pdfData.pencairan.items.length > 0) {
+    doc.setLineWidth(0.35);
+    doc.setDrawColor(160, 124, 0);
+    doc.rect(19, 152, 172, 30);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(160, 124, 0);
+    doc.text(`JADWAL PENCAIRAN (${pdfData.pencairan.type === "mingguan" ? "MINGGUAN" : "BULANAN"})`, 23, 158);
+    doc.setTextColor(17, 17, 17);
+    doc.setDrawColor(17, 17, 17);
+    const colWidth = 172 / pdfData.pencairan.items.length;
+    pdfData.pencairan.items.forEach((item, idx) => {
+      const colX = 19 + colWidth * idx;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.text(item.label, colX + colWidth / 2, 167, { align: "center" });
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9.5);
+      doc.text(formatCurrency(item.value), colX + colWidth / 2, 174.5, { align: "center" });
+    });
+  }
 
   drawSignatureBlock(doc, 61, 195, "Owner", OWNER_NAME, ownerSignatureDataUrl);
   drawSignatureBlock(doc, 149, 195, "HR Coordinator", HR_COORDINATOR_NAME, hrSignatureDataUrl);

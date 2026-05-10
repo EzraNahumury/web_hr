@@ -129,7 +129,16 @@ export type AdminPayrollSummarySheetRow = {
   department: string;
   bank: string;
   accountNumber: string;
-  payrollType: "non_sales" | "sales";
+  payrollType: "non_sales" | "sales" | "penjahit";
+  penjahitInfo?: {
+    tipe: "mingguan" | "bulanan";
+    pencairan: {
+      minggu1: number;
+      minggu2: number;
+      minggu3: number;
+      minggu4: number;
+    } | null;
+  };
   monthlyBaseSalary: number;
   dailyBaseSalary: number;
   positionAllowance: number;
@@ -276,7 +285,6 @@ function isOmzetEligible(role: string | null | undefined, employmentStatus?: str
 export async function getAdminPayrollSummarySheet(period?: {
   month?: number;
   year?: number;
-  includePenjahit?: boolean;
 }) {
   await Promise.all([ensurePayrollSupportTables(), ensureLoanSupportTables(), ensureReimbursementSchema()]);
   const activePeriod = {
@@ -362,7 +370,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       INNER JOIN karyawan k ON k.id = p.karyawan_id
       LEFT JOIN payroll_employee_input pei ON pei.payroll_id = p.id
       WHERE p.periode_bulan = ? AND p.periode_tahun = ?
-        ${period?.includePenjahit ? "" : "AND COALESCE(LOWER(k.jabatan), '') <> 'penjahit'"}
+        AND COALESCE(LOWER(k.jabatan), '') <> 'penjahit'
       ORDER BY k.nama ASC
     `,
     [periodMonth, periodYear],

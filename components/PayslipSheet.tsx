@@ -115,34 +115,51 @@ function PrintSignatureBlock({ title, name, image }: { title: string; name: stri
 }
 
 export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSheetProps) {
-  const slipTypeLabel = row.payrollType === "sales" ? "Slip Gaji Sales" : "Slip Gaji Karyawan";
+  const isPenjahit = row.payrollType === "penjahit";
+  const isSales = row.payrollType === "sales";
+  const slipTypeLabel = isPenjahit
+    ? "Slip Gaji Penjahit"
+    : isSales
+      ? "Slip Gaji Sales"
+      : "Slip Gaji Karyawan";
+  const typeBadgeLabel = isPenjahit ? "Penjahit" : isSales ? "Sales" : "Non Sales";
+  const sectionBadgeLabel = isPenjahit ? "Penjahit" : isSales ? "Sales" : "Karyawan";
   const isSalesNasional = isSalesNasionalRole(row.role);
   const tunjanganLainLain = row.mealAllowance + row.bpjs + row.omzetBonus + row.fixedDiligenceAllowance + row.subsidy;
   const totalPinjaman = row.companyLoan + row.personalLoan;
   const exportFileName = `${slipTypeLabel}-${row.name}-${periodLabel}`.replace(/[\\/:*?"<>|]+/g, "-");
 
-  const earningItems =
-    row.payrollType === "sales"
+  const earningItems = isSales
+    ? [
+        { label: "Gaji Pokok", value: row.totalBaseSalary },
+        { label: "Tunjangan Jabatan", value: row.positionAllowance },
+        { label: "Tunjangan Lain-Lain", value: tunjanganLainLain },
+        { label: "Transport", value: row.transportAllowance },
+        ...(isSalesNasional
+          ? [
+              { label: "Kendaraan", value: row.vehicleAllowance },
+              { label: "Perjalanan Dinas", value: row.travelReimbursement },
+              { label: "Bonus", value: row.performanceBonus },
+            ]
+          : [{ label: "Insentif", value: row.incentive }]),
+      ]
+    : [
+        { label: "Gaji Pokok", value: row.totalBaseSalary },
+        { label: "Tunjangan Jabatan", value: row.positionAllowance },
+        { label: "Tunjangan Lain-Lain", value: tunjanganLainLain },
+        { label: "Bonus Performa", value: row.performanceBonus },
+        { label: "Lembur", value: row.overtimeBonus },
+      ];
+
+  const pencairanItems =
+    isPenjahit && row.penjahitInfo?.tipe === "mingguan" && row.penjahitInfo.pencairan
       ? [
-          { label: "Gaji Pokok", value: row.totalBaseSalary },
-          { label: "Tunjangan Jabatan", value: row.positionAllowance },
-          { label: "Tunjangan Lain-Lain", value: tunjanganLainLain },
-          { label: "Transport", value: row.transportAllowance },
-          ...(isSalesNasional
-            ? [
-                { label: "Kendaraan", value: row.vehicleAllowance },
-                { label: "Perjalanan Dinas", value: row.travelReimbursement },
-                { label: "Bonus", value: row.performanceBonus },
-              ]
-            : [{ label: "Insentif", value: row.incentive }]),
+          { label: "Minggu 1 (Tgl 8)", value: Math.max(0, row.penjahitInfo.pencairan.minggu1) },
+          { label: "Minggu 2 (Tgl 16)", value: Math.max(0, row.penjahitInfo.pencairan.minggu2) },
+          { label: "Minggu 3 (Tgl 25)", value: Math.max(0, row.penjahitInfo.pencairan.minggu3) },
+          { label: "Minggu 4 (Tgl 1)", value: Math.max(0, row.penjahitInfo.pencairan.minggu4) },
         ]
-      : [
-          { label: "Gaji Pokok", value: row.totalBaseSalary },
-          { label: "Tunjangan Jabatan", value: row.positionAllowance },
-          { label: "Tunjangan Lain-Lain", value: tunjanganLainLain },
-          { label: "Bonus Performa", value: row.performanceBonus },
-          { label: "Lembur", value: row.overtimeBonus },
-        ];
+      : null;
 
   const deductionItems = [
     { label: "Keterlambatan", value: row.lateDeduction },
@@ -167,6 +184,12 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
     deductions: deductionItems,
     remainingLoan: row.remainingLoanBalance,
     netIncome: row.netIncome,
+    pencairan: isPenjahit
+      ? {
+          type: row.penjahitInfo?.tipe ?? "bulanan",
+          items: pencairanItems ?? [{ label: "Pencairan Tgl 25", value: row.netIncome }],
+        }
+      : undefined,
   };
 
   return (
@@ -178,8 +201,8 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
           <p className="mt-1 text-sm text-[#7b665d]">Preview slip formal berdasarkan hasil summary payroll.</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
-          <div className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] ${row.payrollType === "sales" ? "border-[#c8d8ca] bg-[#eef6ef] text-[#4b6d51]" : "border-[#ead7ce] bg-[#fff6f1] text-[#8a5d52]"}`}>
-            {row.payrollType === "sales" ? "Sales" : "Non Sales"}
+          <div className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] ${isSales ? "border-[#c8d8ca] bg-[#eef6ef] text-[#4b6d51]" : isPenjahit ? "border-[#e3d5a8] bg-[#fff7d6] text-[#7c5b00]" : "border-[#ead7ce] bg-[#fff6f1] text-[#8a5d52]"}`}>
+            {typeBadgeLabel}
           </div>
           <PayslipPdfExportButton fileName={exportFileName} pdfData={pdfData} />
         </div>
@@ -266,7 +289,7 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
                     <h4 className="mt-1 text-xl font-semibold uppercase tracking-[0.08em] text-[#1d1510]">Gaji</h4>
                   </div>
                   <div className="rounded-full bg-[#f6eee8] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7f6658]">
-                    {row.payrollType === "sales" ? "Sales" : "Karyawan"}
+                    {sectionBadgeLabel}
                   </div>
                 </div>
                 <div className="mt-4">
@@ -305,6 +328,37 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
                 </div>
               </div>
             </div>
+
+            {isPenjahit ? (
+              <div className="mt-6 rounded-[24px] border border-[#e3d5a8] bg-[linear-gradient(180deg,#fffdf0_0%,#fff7d6_100%)] px-5 py-5 shadow-[0_18px_36px_rgba(124,91,0,0.06)] sm:px-6 sm:py-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e3d5a8] pb-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[#a07c00]">Jadwal Pencairan</p>
+                    <h4 className="mt-1 text-xl font-semibold uppercase tracking-[0.08em] text-[#5b4400]">
+                      {row.penjahitInfo?.tipe === "mingguan" ? "Mingguan" : "Bulanan"}
+                    </h4>
+                  </div>
+                  <div className="rounded-full bg-[#fff7d6] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7c5b00]">
+                    {row.penjahitInfo?.tipe === "mingguan" ? "4 Termin" : "1 Termin"}
+                  </div>
+                </div>
+                {pencairanItems ? (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {pencairanItems.map((item) => (
+                      <div key={item.label} className="rounded-2xl border border-[#e3d5a8] bg-white/80 px-4 py-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a07c00]">{item.label}</p>
+                        <p className="mt-2 text-lg font-semibold tabular-nums text-[#3d2d00]">{formatCurrency(item.value)}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-2xl border border-[#e3d5a8] bg-white/80 px-4 py-3 text-sm text-[#5b4400]">
+                    <p className="font-semibold">Pencairan dilakukan sekali</p>
+                    <p className="mt-1 text-[#7c5b00]">Total <span className="font-semibold tabular-nums">{formatCurrency(row.netIncome)}</span> dibayarkan pada akhir periode (Tgl 25).</p>
+                  </div>
+                )}
+              </div>
+            ) : null}
 
             <div className="mt-10 grid gap-8 border-t border-dashed border-[#d8c9bf] pt-8 text-center sm:grid-cols-2 sm:gap-14">
               <SignatureBlock title="Owner" name={OWNER_NAME} image={OWNER_SIGNATURE_IMAGE} />
@@ -376,6 +430,23 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
           </div>
           <p className="payslip-pdf-total-value">{formatCurrency(row.netIncome)}</p>
         </div>
+
+        {isPenjahit ? (
+          <div className="payslip-pdf-finance-grid" style={{ marginTop: 12 }}>
+            <section className="payslip-pdf-finance-panel">
+              <h4 className="payslip-pdf-section-title">JADWAL PENCAIRAN ({row.penjahitInfo?.tipe === "mingguan" ? "MINGGUAN" : "BULANAN"})</h4>
+              <div className="payslip-pdf-lines">
+                {pencairanItems
+                  ? pencairanItems.map((item) => (
+                      <PrintLineItem key={item.label} label={item.label} value={item.value} />
+                    ))
+                  : (
+                      <PrintLineItem label="Pencairan Tgl 25" value={row.netIncome} />
+                    )}
+              </div>
+            </section>
+          </div>
+        ) : null}
 
         <div className="payslip-pdf-signatures">
           <PrintSignatureBlock title="Owner" name={OWNER_NAME} image={OWNER_SIGNATURE_IMAGE} />

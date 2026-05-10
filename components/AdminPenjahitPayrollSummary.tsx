@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
-import type { PenjahitComputedRow, PenjahitPayrollSummarySheet } from "@/app/admin/payroll-summary/penjahit/page";
+import type { PenjahitComputedRow, PenjahitPayrollSummarySheet } from "@/lib/payroll-penjahit";
 import type { PayrollEmployeeOption } from "@/lib/payroll-admin";
 
 type PeriodOption = { month: number; year: number; label: string };
