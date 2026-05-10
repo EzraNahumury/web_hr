@@ -19,6 +19,7 @@ type PenjahitPayrollRow = RowDataPacket & {
   departemen: string;
   bank: string | null;
   no_rekening: string | null;
+  status_kepegawaian: string | null;
   tipe_payroll_penjahit: "mingguan" | "bulanan" | null;
   gaji_pokok: string;
   hari_kerja: number;
@@ -167,7 +168,7 @@ export async function getPenjahitSheet(period?: {
         p.id AS payroll_id,
         k.id AS employee_id,
         k.nama, k.jabatan, k.divisi, k.sub_divisi, k.pembagian_rekapan, k.departemen,
-        k.bank, k.no_rekening, k.tipe_payroll_penjahit,
+        k.bank, k.no_rekening, k.status_kepegawaian, k.tipe_payroll_penjahit,
         p.gaji_pokok, p.hari_kerja, p.total_masuk, p.total_lembur_jam,
         p.total_terlambat, p.total_setengah_hari, p.tunjangan_jabatan,
         p.potongan_kontrak, p.potongan_pinjaman,
@@ -270,7 +271,12 @@ export async function getPenjahitSheet(period?: {
     const totalGaji = totalGajiSebelumPotongan - potonganSetengahHari - potonganTelat - (uangKerajinanNominal - kerajinanEarned);
     const potonganDenda = potonganSetengahHari + potonganTelat + (uangKerajinanNominal - kerajinanEarned);
 
-    const potonganKontrak = row.raw_override_kontrak !== null ? toNum(row.raw_override_kontrak) : toNum(row.potongan_kontrak);
+    const statusKepegawaianNorm = (row.status_kepegawaian ?? "").trim().toLowerCase();
+    const isContractWaived =
+      statusKepegawaianNorm === "tetap" || statusKepegawaianNorm === "freelance";
+    const rawPotonganKontrak =
+      row.raw_override_kontrak !== null ? toNum(row.raw_override_kontrak) : toNum(row.potongan_kontrak);
+    const potonganKontrak = isContractWaived ? 0 : rawPotonganKontrak;
     const potonganPinjaman = row.raw_override_pinjaman !== null ? toNum(row.raw_override_pinjaman) : (loanMap.get(row.employee_id) ?? toNum(row.potongan_pinjaman));
     const potonganLainLain = row.raw_override_pinjaman_pribadi !== null ? toNum(row.raw_override_pinjaman_pribadi) : 0;
     const cicilanPerMinggu = Math.round(potonganPinjaman / 4);

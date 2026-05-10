@@ -698,10 +698,16 @@ export async function getAdminPayrollSummarySheet(period?: {
       travelReimbursement;
     const totalSalary =
       totalSalaryBeforeDeduction - halfDayDeduction - lateDeduction;
-    const contractDeduction =
+    const statusKepegawaianNorm = (row.status_kepegawaian ?? "").trim().toLowerCase();
+    const isContractWaived =
+      statusKepegawaianNorm === "tetap" ||
+      statusKepegawaianNorm === "freelance" ||
+      isSalesNasional;
+    const rawContractDeduction =
       inputOverrideKontrak ??
       contractMap.get(row.employee_id) ??
       toNumber(row.potongan_kontrak);
+    const contractDeduction = isContractWaived ? 0 : rawContractDeduction;
     const companyLoan =
       inputOverridePinjaman ??
       loanMap.get(row.employee_id) ??
