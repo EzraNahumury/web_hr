@@ -117,10 +117,17 @@ export async function POST(request: Request) {
       fullName: user.nama,
     });
 
+    const todayJakarta = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }),
+    );
+    const isPayrollDay = todayJakarta.getDate() === 11;
+
     return NextResponse.json({
       message: "Login karyawan berhasil.",
       role: "karyawan",
       redirectTo: "/employee/check-in",
+      showPayrollGreeting: isPayrollDay,
+      employeeName: user.nama,
     });
   } catch (error) {
     console.error("Login error", error);

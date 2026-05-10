@@ -61,6 +61,82 @@ export type BonusSlipDataItem = {
   note: string | null;
 };
 
+type EmployeeBonusPeriodRow = RowDataPacket & {
+  month: number;
+  year: number;
+};
+
+export async function listEmployeeDistributedBonusPeriods(employeeId: number) {
+  await ensureBonusSlipTables();
+  const [rows] = await pool.query<EmployeeBonusPeriodRow[]>(
+    `
+      SELECT DISTINCT pb.periode_bulan AS month, pb.periode_tahun AS year
+      FROM slip_bonus sb
+      INNER JOIN payroll_bonus pb ON pb.id = sb.payroll_bonus_id
+      WHERE pb.karyawan_id = ?
+        AND sb.status_distribusi IN ('didistribusikan', 'dibaca')
+      ORDER BY pb.periode_tahun DESC, pb.periode_bulan DESC
+    `,
+    [employeeId],
+  );
+  return rows.map((r) => ({ month: r.month, year: r.year }));
+}
+
+type EmployeeBonusSlipRow = RowDataPacket & BonusSlipDataRow;
+
+export async function getEmployeeBonusSlipForPeriod(
+  employeeId: number,
+  month: number,
+  year: number,
+): Promise<BonusSlipDataItem | null> {
+  await ensureBonusSlipTables();
+  const [rows] = await pool.query<EmployeeBonusSlipRow[]>(
+    `
+      SELECT
+        pb.id,
+        pb.karyawan_id,
+        k.nama,
+        k.jabatan,
+        k.divisi,
+        k.departemen,
+        k.unit,
+        k.bank,
+        k.no_rekening,
+        pb.bonus_type,
+        pb.nominal_bonus,
+        pb.catatan
+      FROM payroll_bonus pb
+      INNER JOIN karyawan k ON k.id = pb.karyawan_id
+      INNER JOIN slip_bonus sb ON sb.payroll_bonus_id = pb.id
+      WHERE pb.karyawan_id = ?
+        AND pb.periode_bulan = ?
+        AND pb.periode_tahun = ?
+        AND sb.status_distribusi IN ('didistribusikan', 'dibaca')
+      LIMIT 1
+    `,
+    [employeeId, month, year],
+  );
+
+  const row = rows[0];
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    employeeId: row.karyawan_id,
+    name: row.nama,
+    role: row.jabatan ?? "-",
+    division: row.divisi ?? "-",
+    department: row.departemen ?? "-",
+    unit: row.unit,
+    bank: row.bank ?? "-",
+    accountNumber: row.no_rekening ?? "-",
+    bonusType: row.bonus_type,
+    bonusTypeLabel: getBonusTypeLabel(row.bonus_type),
+    amount: toNumber(row.nominal_bonus),
+    note: row.catatan,
+  };
+}
+
 export async function listBonusSlipsForPeriod(month: number, year: number): Promise<BonusSlipDataItem[]> {
   await ensureBonusSlipTables();
   const [rows] = await pool.query<BonusSlipDataRow[]>(

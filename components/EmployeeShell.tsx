@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import LogoutButton from "@/components/LogoutButton";
+import PayrollGreetingModal from "@/components/PayrollGreetingModal";
 import { isSalesFieldRole } from "@/lib/sales-roles";
 
 type Props = {
@@ -45,6 +46,7 @@ const baseMenuItems: MenuItem[] = [
   { label: "Status Pinjaman", href: "/employee/loans", description: "Sisa pinjaman dan cicilan" },
   { label: "Informasi Kontrak", href: "/employee/contract", description: "Kontrak dan potongan kerja" },
   { label: "Slip Gaji", href: "/employee/payslips", description: "Daftar slip gaji pribadi" },
+  { label: "Slip Bonus", href: "/employee/bonus-slips", description: "Daftar slip bonus pribadi" },
   { label: "Pengajuan Reimburse", href: "/employee/reimbursements", description: "Upload nota reimbursement" },
 ];
 
@@ -302,6 +304,7 @@ export default function EmployeeShell({
 
   return (
     <main className="min-h-screen bg-[#f5f2f1] text-[#141414]">
+      <PayrollGreetingModal />
       <section className="flex min-h-screen flex-col lg:flex-row">
         {/* Desktop sidebar */}
         <aside className="relative hidden w-[252px] flex-none overflow-hidden bg-[linear-gradient(180deg,#090909_0%,#111111_55%,#1a0608_100%)] text-white lg:sticky lg:top-0 lg:block lg:h-screen">

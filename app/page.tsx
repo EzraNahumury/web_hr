@@ -64,10 +64,15 @@ export default function Home() {
       const cleanEmail = sanitizeInput(email);
       const cleanPassword = sanitizeInput(password);
       const res = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: cleanEmail, password: cleanPassword }) });
-      const r = (await res.json()) as { message?: string; redirectTo?: string; role?: "admin" | "karyawan" | "spv" };
+      const r = (await res.json()) as { message?: string; redirectTo?: string; role?: "admin" | "karyawan" | "spv"; showPayrollGreeting?: boolean; employeeName?: string };
       if (!res.ok) throw new Error(r.message || "Login gagal.");
       if (r.role === "karyawan") {
         try { await requestLoginLocation(); } catch { /* biarkan login lanjut */ }
+        if (r.showPayrollGreeting) {
+          try {
+            sessionStorage.setItem("payrollGreeting", JSON.stringify({ name: r.employeeName ?? "" }));
+          } catch { /* sessionStorage may be unavailable */ }
+        }
       }
       router.push(r.redirectTo || "/");
     } catch (err) { setErrorMessage(friendlyAuthError(err)); }
