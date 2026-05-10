@@ -37,6 +37,8 @@ const menuItems: MenuItem[] = [
   { label: "Finance", href: "/admin/finance", description: "Pembebanan dan pencairan" },
   { label: "Slip Gaji", href: "/admin/payslips", description: "Detail slip gaji" },
   { label: "Distribusi Slip", href: "/admin/payslip-distribution", description: "Log distribusi slip" },
+  { label: "Slip Bonus", href: "/admin/bonus-slips", description: "Detail slip bonus" },
+  { label: "Distribusi Slip Bonus", href: "/admin/bonus-slip-distribution", description: "Log distribusi slip bonus" },
   { label: "Role", href: "/admin/roles", description: "Kelola akun admin & SPV" },
 ];
 
