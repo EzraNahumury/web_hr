@@ -27,11 +27,11 @@ export default async function AdminPayslipsPage({
 
   const loadSheet = async () => {
     if (requestedMonth && requestedYear) {
-      return getAdminPayrollSummarySheet({ month: requestedMonth, year: requestedYear });
+      return getAdminPayrollSummarySheet({ month: requestedMonth, year: requestedYear, includePenjahit: true });
     }
 
     for (const option of periodOptions) {
-      const sheet = await getAdminPayrollSummarySheet({ month: option.month, year: option.year });
+      const sheet = await getAdminPayrollSummarySheet({ month: option.month, year: option.year, includePenjahit: true });
       if (sheet) {
         return sheet;
       }

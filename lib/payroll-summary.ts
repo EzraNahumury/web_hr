@@ -276,6 +276,7 @@ function isOmzetEligible(role: string | null | undefined, employmentStatus?: str
 export async function getAdminPayrollSummarySheet(period?: {
   month?: number;
   year?: number;
+  includePenjahit?: boolean;
 }) {
   await Promise.all([ensurePayrollSupportTables(), ensureLoanSupportTables(), ensureReimbursementSchema()]);
   const activePeriod = {
@@ -361,7 +362,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       INNER JOIN karyawan k ON k.id = p.karyawan_id
       LEFT JOIN payroll_employee_input pei ON pei.payroll_id = p.id
       WHERE p.periode_bulan = ? AND p.periode_tahun = ?
-        AND COALESCE(LOWER(k.jabatan), '') <> 'penjahit'
+        ${period?.includePenjahit ? "" : "AND COALESCE(LOWER(k.jabatan), '') <> 'penjahit'"}
       ORDER BY k.nama ASC
     `,
     [periodMonth, periodYear],
