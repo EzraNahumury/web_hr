@@ -3,10 +3,10 @@ import AdminShell from "@/components/AdminShell";
 import { requireAdminSession } from "@/lib/auth";
 import { listPayrollPeriods } from "@/lib/payroll-admin";
 import { getPenjahitSheet, type PenjahitComputedRow } from "@/lib/payroll-penjahit";
+import { mapPenjahitRow } from "@/lib/payslip-row";
 import {
   getAdminPayrollSummarySheet,
   type AdminPayrollSummarySheet,
-  type AdminPayrollSummarySheetRow,
 } from "@/lib/payroll-summary";
 
 function parsePositiveInt(value: string | string[] | undefined) {
@@ -16,87 +16,6 @@ function parsePositiveInt(value: string | string[] | undefined) {
 
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-function mapPenjahitRow(row: PenjahitComputedRow): AdminPayrollSummarySheetRow {
-  return {
-    id: row.payrollId,
-    employeeId: row.employeeId,
-    number: 0,
-    name: row.nama,
-    role: row.jabatan,
-    division: row.divisi,
-    recapGroup: row.pembagianRekapan ?? "",
-    unit: null,
-    pembebanan: null,
-    department: row.departemen,
-    bank: row.bank,
-    accountNumber: row.noRekening,
-    payrollType: "penjahit",
-    penjahitInfo: {
-      tipe: row.tipePayroll,
-      pencairan: row.pencairan,
-    },
-    monthlyBaseSalary: row.gajiPokokMonthly,
-    dailyBaseSalary: row.gajiPokokPerHari,
-    positionAllowance: row.tunjanganJabatan,
-    fixedMealAllowance: row.uangAbsensiPerHari,
-    subsidy: 0,
-    fixedDiligenceAllowance: row.uangKerajinanNominal,
-    bpjs: row.bpjs,
-    performanceBonus: row.bonusPerforma,
-    transportAllowance: 0,
-    incentive: 0,
-    vehicleAllowance: 0,
-    travelReimbursement: 0,
-    workDays: row.hariKerja,
-    presentDays: row.masuk,
-    totalBaseSalary: row.totalGajiPokok,
-    omzetBonus: 0,
-    mealAllowance: row.uangAbsensiTotal,
-    diligenceAllowance: row.kerajinanEarned,
-    overtimeHours: row.lemburJam,
-    overtimeBonus: row.bonusLembur,
-    leaveCount: row.izin,
-    sickCount: row.sakit,
-    sickWithoutNoteCount: row.sakitTanpaSurat,
-    halfDayCount: row.setengahHari,
-    halfDayDeduction: row.potonganSetengahHari,
-    lateCount: row.telat,
-    lateDeduction: row.potonganTelat,
-    totalSalary: row.totalGaji,
-    totalSalaryBeforeDeduction: row.totalGajiSebelumPotongan,
-    contractDeduction: row.potonganKontrak,
-    companyLoan: row.potonganPinjaman,
-    personalLoan: row.potonganLainLain,
-    remainingLoanBalance: 0,
-    fineDeduction: row.potonganDenda,
-    contractCut: row.potonganKontrak,
-    loanCut: row.potonganPinjaman + row.potonganLainLain,
-    diligenceCut: row.uangKerajinanNominal - row.kerajinanEarned,
-    netIncome: row.penerimaanBersih,
-    inputGajiPerDay: row.inputGajiPerDay,
-    inputTunjanganJabatan: row.inputTunjanganJabatan,
-    inputUangMakan: row.inputUangMakan,
-    inputSubsidi: 0,
-    inputUangKerajinan: row.inputUangKerajinan,
-    inputBpjs: row.inputBpjs,
-    inputBonusPerforma: row.inputBonusPerforma,
-    inputInsentif: 0,
-    inputUangTransport: 0,
-    inputKendaraan: 0,
-    inputPerjalananDinasReimburse: 0,
-    inputOverrideMasuk: row.inputOverrideMasuk,
-    inputOverrideLembur: row.inputOverrideLembur,
-    inputOverrideIzin: row.inputOverrideIzin,
-    inputOverrideSakit: row.inputOverrideSakit,
-    inputOverrideSakitTanpaSurat: row.inputOverrideSakitTanpaSurat,
-    inputOverrideSetengahHari: row.inputOverrideSetengahHari,
-    inputOverrideKontrak: row.inputOverrideKontrak,
-    inputOverridePinjaman: row.inputOverridePinjaman,
-    inputOverridePinjamanPribadi: row.inputPotonganLainLain,
-    inputOverrideGajiPokok: row.inputOverrideGajiPokok,
-  };
 }
 
 function mergeWithPenjahit(
