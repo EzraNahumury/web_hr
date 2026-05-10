@@ -8,6 +8,7 @@ import {
   type JadwalShift,
   type TokoGudangKaryawan,
 } from "@/lib/jadwal-karyawan";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 type Props = {
   initialYear: number;
@@ -91,6 +92,7 @@ export default function SpvJadwalManager({
   initialJadwal,
 }: Props) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [year, setYear] = useState(initialYear);
   const [month, setMonth] = useState(initialMonth);
   const [jadwalMap, setJadwalMap] = useState<Map<string, JadwalShift>>(
@@ -124,9 +126,16 @@ export default function SpvJadwalManager({
     return years;
   }, []);
 
-  function changePeriod(newYear: number, newMonth: number) {
-    if (dirty && !window.confirm("Ada perubahan belum disimpan. Pindah bulan akan membuangnya. Lanjut?")) {
-      return;
+  async function changePeriod(newYear: number, newMonth: number) {
+    if (dirty) {
+      const ok = await confirm({
+        tone: "warning",
+        title: "Pindah bulan tanpa simpan?",
+        description: "Ada perubahan jadwal yang belum disimpan. Pindah bulan akan membuangnya.",
+        confirmLabel: "Pindah",
+        cancelLabel: "Batal",
+      });
+      if (!ok) return;
     }
     setYear(newYear);
     setMonth(newMonth);

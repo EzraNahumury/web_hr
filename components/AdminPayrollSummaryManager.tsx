@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import type { PayrollEmployeeOption, PayrollOmzetPeriod, PayrollPeriodOption } from "@/lib/payroll-admin";
 import type { AdminPayrollSummarySheet, AdminPayrollSummarySheetRow } from "@/lib/payroll-summary";
 import { isSalesNasionalRole } from "@/lib/sales-roles";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 type Props = {
   sheet: AdminPayrollSummarySheet | null;
@@ -116,6 +117,7 @@ export default function AdminPayrollSummaryManager({
   variant = "default",
 }: Props) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [isPayrollPending, startPayrollTransition] = useTransition();
   const [isOmzetPending, startOmzetTransition] = useTransition();
   const [isDeletePending, startDeleteTransition] = useTransition();
@@ -229,9 +231,17 @@ export default function AdminPayrollSummaryManager({
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function handleDeleteRow(payrollId: number) {
+  async function handleDeleteRow(payrollId: number) {
     const targetRow = sheet?.rows.find((row) => row.id === payrollId);
-    if (!targetRow || !window.confirm(`Hapus payroll ${targetRow.name} untuk periode ini?`)) return;
+    if (!targetRow) return;
+    const ok = await confirm({
+      tone: "danger",
+      title: "Hapus payroll karyawan?",
+      description: `Data payroll ${targetRow.name} untuk periode ini akan dihapus permanen.`,
+      confirmLabel: "Hapus",
+      cancelLabel: "Batal",
+    });
+    if (!ok) return;
     startDeleteTransition(async () => {
       try {
         const response = await fetch(`/api/admin/payroll-summary/${payrollId}`, { method: "DELETE" });

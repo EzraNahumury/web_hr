@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
+import { ConfirmDialogProvider } from "@/components/ConfirmDialog";
 
 export const metadata: Metadata = {
   title: "HR Portal Login",
@@ -61,7 +62,9 @@ export default function RootLayout({
           {ROUTER_GUARD_SCRIPT}
         </Script>
       </head>
-      <body>{children}</body>
+      <body>
+        <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
+      </body>
     </html>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addMonthsToIsoDate, calculateEmploymentTimeline } from "@/lib/contract-timeline";
+import { useConfirm } from "@/components/ConfirmDialog";
 import type { EmployeeListItem, LookupOption } from "@/lib/employees";
 
 type Lookups = {
@@ -204,6 +205,7 @@ function toFormState(employee: EmployeeListItem): FormState {
 }
 
 export default function AdminEmployeesManager({ initialEmployees, lookups, stats }: Props) {
+  const confirm = useConfirm();
   const [employees, setEmployees] = useState(initialEmployees);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -476,7 +478,14 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
     : [];
 
   async function handleDelete(employee: EmployeeListItem) {
-    if (!window.confirm(`Hapus ${employee.name} (${employee.nip})?`)) return;
+    const ok = await confirm({
+      tone: "danger",
+      title: "Hapus data karyawan?",
+      description: `Data karyawan ${employee.name} (NIP ${employee.nip}) akan dihapus permanen dan tidak bisa dikembalikan.`,
+      confirmLabel: "Hapus",
+      cancelLabel: "Batal",
+    });
+    if (!ok) return;
     setDeletingId(employee.id);
     try {
       const response = await fetch(`/api/admin/employees/${employee.id}`, { method: "DELETE" });

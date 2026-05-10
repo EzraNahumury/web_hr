@@ -9,6 +9,7 @@ import type {
   PayrollBonusSheet,
   PayrollBonusSheetRow,
 } from "@/lib/payroll-bonus";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 type Props = {
   sheet: PayrollBonusSheet | null;
@@ -67,6 +68,7 @@ export default function AdminPayrollBonusManager({
   basePath = "/admin/payroll-bonus",
 }: Props) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [isSubmitPending, startSubmitTransition] = useTransition();
   const [isDeletePending, startDeleteTransition] = useTransition();
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -119,9 +121,17 @@ export default function AdminPayrollBonusManager({
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function handleDeleteRow(rowId: number) {
+  async function handleDeleteRow(rowId: number) {
     const target = sheet?.rows.find((item) => item.id === rowId);
-    if (!target || !window.confirm(`Hapus bonus ${target.name} untuk periode ini?`)) return;
+    if (!target) return;
+    const ok = await confirm({
+      tone: "danger",
+      title: "Hapus payroll bonus?",
+      description: `Bonus untuk ${target.name} pada periode ini akan dihapus permanen.`,
+      confirmLabel: "Hapus",
+      cancelLabel: "Batal",
+    });
+    if (!ok) return;
 
     startDeleteTransition(async () => {
       try {
