@@ -286,7 +286,7 @@ async function getPenjahitSheet(period?: { month?: number; year?: number }): Pro
 
     let pencairan: PenjahitComputedRow["pencairan"] = null;
     if (tipePayroll === "mingguan") {
-      const weeklyBase = Math.round(gajiPokokMonthly / 4);
+      const weeklyBase = 800_000;
       const minggu1 = weeklyBase - cicilanPerMinggu;
       const minggu2 = weeklyBase - cicilanPerMinggu;
       const minggu3 = weeklyBase - cicilanPerMinggu - potonganKontrak;
