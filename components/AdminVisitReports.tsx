@@ -346,9 +346,9 @@ export default function AdminVisitReports({
             </p>
           ) : null}
 
-          <div className="mt-5 overflow-hidden rounded-2xl border border-[#ead7ce]">
+          <div className="mt-5 overflow-auto max-h-[calc(100vh-260px)] rounded-2xl border border-[#ead7ce]">
             <table className="w-full border-collapse text-left text-sm">
-              <thead className="bg-[#fff3ef] text-[12px] uppercase tracking-[0.12em] text-[#a16f63]">
+              <thead className="sticky top-0 z-20 bg-[#fff3ef] text-[12px] uppercase tracking-[0.12em] text-[#a16f63]">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Karyawan</th>
                   <th className="px-4 py-3 font-semibold">Jabatan</th>

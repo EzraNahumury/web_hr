@@ -246,9 +246,9 @@ export default function AdminRolesManager({ initialRows, currentAdminId }: Props
           />
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[calc(100vh-260px)]">
           <table className="min-w-[760px] border-collapse text-left">
-            <thead>
+            <thead className="sticky top-0 z-20">
               <tr className="border-b border-[#efe0d8] bg-[#fff2ec] text-xs uppercase tracking-[0.16em] text-[#7a6059]">
                 <th className="px-6 py-4 font-semibold">Nama</th>
                 <th className="px-6 py-4 font-semibold">Email</th>

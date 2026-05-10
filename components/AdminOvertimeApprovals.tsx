@@ -127,9 +127,9 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
           </p>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[calc(100vh-260px)]">
           <table className="min-w-full border-collapse text-left text-sm">
-            <thead>
+            <thead className="sticky top-0 z-20">
               <tr className="border-b border-[#e7edf5] bg-[#f8fafc] text-xs uppercase tracking-[0.18em] text-[#8a96ad]">
                 <th className="px-6 py-4">Nama</th>
                 <th className="px-6 py-4">Tanggal</th>

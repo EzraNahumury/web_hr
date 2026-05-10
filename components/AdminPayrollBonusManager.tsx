@@ -320,9 +320,9 @@ export default function AdminPayrollBonusManager({
       </section>
 
       <div className="overflow-hidden rounded-[32px] border border-[#d9efef] bg-white">
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[calc(100vh-260px)]">
           <table className="min-w-full border-collapse text-left text-sm text-[#1d1d1d]">
-            <thead>
+            <thead className="sticky top-0 z-20">
               <tr className="bg-[#19d7df] text-center text-xs font-semibold uppercase tracking-[0.14em] text-[#062e31]">
                 <th className="border border-[#a8ebef] px-3 py-3">No</th>
                 <th className="sticky left-0 z-20 border border-[#a8ebef] bg-[#19d7df] px-3 py-3 text-left">Nama</th>

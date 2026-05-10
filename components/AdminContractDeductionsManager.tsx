@@ -135,9 +135,9 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[calc(100vh-260px)]">
           <table className="min-w-[1880px] border-collapse text-left">
-            <thead>
+            <thead className="sticky top-0 z-20">
               <tr className="border-b border-[#efe0d8] bg-[#12dfe6] text-xs uppercase tracking-[0.16em] text-[#111111]">
                 <th className="sticky left-0 z-20 bg-[#12dfe6] px-6 py-4 font-semibold shadow-[2px_0_0_0_#0fb6bc]">Nama</th>
                 <th className="px-6 py-4 font-semibold">NIP</th>

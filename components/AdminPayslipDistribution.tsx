@@ -152,9 +152,9 @@ export default function AdminPayslipDistribution({ pending, logs }: Props) {
           </h3>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[calc(100vh-260px)]">
           <table className="min-w-full border-collapse text-left text-sm">
-            <thead>
+            <thead className="sticky top-0 z-20">
               <tr className="border-b border-[#efe0d8] bg-[#fff8f4] text-xs uppercase tracking-[0.18em] text-[#9e7467]">
                 <th className="px-6 py-4">Nama Karyawan</th>
                 <th className="px-6 py-4">Jabatan</th>
@@ -215,9 +215,9 @@ export default function AdminPayslipDistribution({ pending, logs }: Props) {
           </h3>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[calc(100vh-260px)]">
           <table className="min-w-full border-collapse text-left text-sm">
-            <thead>
+            <thead className="sticky top-0 z-20">
               <tr className="border-b border-[#efe0d8] bg-[#fff8f4] text-xs uppercase tracking-[0.18em] text-[#9e7467]">
                 <th className="px-6 py-4">Slip</th>
                 <th className="px-6 py-4">Karyawan</th>

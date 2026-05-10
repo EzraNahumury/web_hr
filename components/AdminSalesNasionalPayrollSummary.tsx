@@ -299,9 +299,9 @@ export default function AdminSalesNasionalPayrollSummary({
         </div>
       ) : (
         <section className="overflow-hidden rounded-[32px] border border-[#ead7ce] bg-white shadow-[0_8px_32px_rgba(96,45,34,0.06)]">
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[calc(100vh-260px)]">
             <table className="border-collapse text-left" style={{ minWidth: "1400px" }}>
-              <thead>
+              <thead className="sticky top-0 z-20">
                 <tr>
                   <th className={thBase} rowSpan={2}>No</th>
                   <th className={thSticky} rowSpan={2}>Nama</th>

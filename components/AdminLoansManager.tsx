@@ -190,9 +190,9 @@ export default function AdminLoansManager({ initialRows }: Props) {
           ) : null}
         </div>
 
-        <div className="overflow-x-auto border-t border-[#eddad1]">
+        <div className="overflow-auto max-h-[calc(100vh-260px)] border-t border-[#eddad1]">
           <table className="min-w-[1760px] border-collapse text-left text-sm">
-            <thead>
+            <thead className="sticky top-0 z-20">
               <tr className="border-b border-[#efe0d8] bg-[#fff8f4] text-xs uppercase tracking-[0.18em] text-[#9e7467]">
                 <th className="sticky left-0 z-20 bg-[#fff8f4] px-6 py-4 font-semibold shadow-[2px_0_0_0_#efe0d8]">Nama</th>
                 <th className="px-6 py-4 font-semibold">NIP</th>

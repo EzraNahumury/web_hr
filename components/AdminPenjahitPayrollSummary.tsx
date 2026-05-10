@@ -308,9 +308,9 @@ export default function AdminPenjahitPayrollSummary({ sheet, periodOptions, empl
       ) : (
         /* Main table */
         <section className="overflow-hidden rounded-[32px] border border-[#ead7ce] bg-white shadow-[0_8px_32px_rgba(96,45,34,0.06)]">
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[calc(100vh-260px)]">
             <table className="border-collapse text-left" style={{ minWidth: "3600px" }}>
-              <thead>
+              <thead className="sticky top-0 z-20">
                 {/* Row 1 — group labels */}
                 <tr>
                   <th className={thBase} rowSpan={2}>No</th>
