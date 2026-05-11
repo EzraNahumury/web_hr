@@ -53,6 +53,7 @@ export type ContractDeductionInstallment = {
   monthLabel: string;
   nominalDeduction: string | null;
   deductedAmount: string | null;
+  autoDeducted: boolean;
 };
 
 export type ContractDeductionPlanItem = {
@@ -173,6 +174,12 @@ function buildPlan(
   const deductionEndDate = addMonthsToIsoDate(employee.contractDate, 5);
   const defaultMonthlyDeduction = getContractDeductionNominalByRole(employee.role);
 
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  const isPastMonth = (month: number, year: number) =>
+    year < currentYear || (year === currentYear && month < currentMonth);
+
   const installments = periods.map((period) => {
     const matched = employeeRows.find(
       (row) => row.month === period.month && row.year === period.year,
@@ -180,6 +187,11 @@ function buildPlan(
     const usage = employeeUsages.find(
       (item) => item.month === period.month && item.year === period.year,
     );
+    const planned = matched?.nominalDeduction ?? String(defaultMonthlyDeduction);
+    const actualDeducted = usage?.deductedAmount ?? null;
+    const past = isPastMonth(period.month, period.year);
+    const autoDeducted = actualDeducted === null && past;
+    const effectiveDeducted = actualDeducted ?? (autoDeducted ? planned : null);
 
     return {
       id: matched?.id ?? null,
@@ -187,8 +199,9 @@ function buildPlan(
       month: period.month,
       year: period.year,
       monthLabel: period.monthLabel,
-      nominalDeduction: matched?.nominalDeduction ?? String(defaultMonthlyDeduction),
-      deductedAmount: usage?.deductedAmount ?? null,
+      nominalDeduction: planned,
+      deductedAmount: effectiveDeducted,
+      autoDeducted,
     } satisfies ContractDeductionInstallment;
   });
 

@@ -189,20 +189,35 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
                     </td>
                     {row.installments.map((installment) => {
                       const deductedAmount = toNumber(installment.deductedAmount);
+                      const isAuto = installment.autoDeducted;
+                      const hasValue = deductedAmount > 0;
+                      const bgClass = hasValue
+                        ? isAuto
+                          ? "bg-[#fff9e6]"
+                          : "bg-[#edf9f2]"
+                        : "bg-[#fff7f2]";
+                      const labelClass = hasValue
+                        ? isAuto
+                          ? "text-[#9a7b0d]"
+                          : "text-[#17603b]"
+                        : "text-[#b1948d]";
+                      const labelText = hasValue
+                        ? isAuto
+                          ? `Otomatis: ${formatMoney(installment.deductedAmount)}`
+                          : `Payroll: ${formatMoney(installment.deductedAmount)}`
+                        : "Belum dipotong";
 
                       return (
                         <td key={`${row.employeeId}-${installment.sequence}`} className="px-4 py-4">
-                          <div className={`min-w-[128px] rounded-2xl px-3 py-2 text-center ${deductedAmount > 0 ? "bg-[#edf9f2]" : "bg-[#fff7f2]"}`}>
+                          <div className={`min-w-[128px] rounded-2xl px-3 py-2 text-center ${bgClass}`}>
                             <div className="font-semibold text-[#241716]">
                               {formatMoney(installment.nominalDeduction)}
                             </div>
                             <div className="mt-1 text-xs text-[#7a6059]">
                               {installment.monthLabel}
                             </div>
-                            <div className={`mt-1 text-[11px] font-semibold ${deductedAmount > 0 ? "text-[#17603b]" : "text-[#b1948d]"}`}>
-                              {deductedAmount > 0
-                                ? `Payroll: ${formatMoney(installment.deductedAmount)}`
-                                : "Belum dipotong"}
+                            <div className={`mt-1 text-[11px] font-semibold ${labelClass}`}>
+                              {labelText}
                             </div>
                           </div>
                         </td>
