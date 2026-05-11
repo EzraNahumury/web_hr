@@ -38,7 +38,7 @@ function validatePayload(body: Record<string, unknown>) {
     : [];
   const division = normalizeText(body.division);
   const department = normalizeText(body.department);
-  const costAllocation = normalizeText(body.costAllocation);
+  const costAllocation = normalizeText(body.costAllocation) ?? "tidak keduanya";
   const gender: EmployeePayload["gender"] =
     body.gender === "laki-laki" || body.gender === "perempuan" ? body.gender : null;
   const employmentStatus = body.employmentStatus;

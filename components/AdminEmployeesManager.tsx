@@ -453,7 +453,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
       { label: "Divisi", value: viewingEmployee.division || "-" },
       { label: "Sub Divisi", value: viewingEmployee.subDivision || "-" },
       { label: "Penempatan", value: viewingEmployee.placement || "-" },
-      { label: "Pembebanan", value: viewingEmployee.costAllocation || "-" },
+      { label: "Pembebanan", value: viewingEmployee.costAllocation || "tidak keduanya" },
       { label: "Status Kepegawaian", value: formatStatus(viewingEmployee.employmentStatus) || "-" },
       { label: "Status Data", value: viewingEmployee.dataStatus || "-" },
       { label: "Akun", value: viewingEmployee.userActive ? "Aktif" : "Nonaktif" },
@@ -745,7 +745,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                       <td className="px-6 py-5">{employee.division}</td>
                       <td className="px-6 py-5">{employee.subDivision || "-"}</td>
                       <td className="px-6 py-5">{employee.placement || "-"}</td>
-                      <td className="px-6 py-5">{employee.costAllocation || "-"}</td>
+                      <td className="px-6 py-5">{employee.costAllocation || "tidak keduanya"}</td>
                       <td className="px-6 py-5">{formatStatus(employee.employmentStatus)}</td>
                       <td className="px-6 py-5">{employee.bank || "-"}</td>
                       <td className="px-6 py-5">{employee.accountNumber || "-"}</td>
