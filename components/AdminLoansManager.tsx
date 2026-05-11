@@ -5,12 +5,36 @@ import { useRouter } from "next/navigation";
 
 import type { LoanListItem } from "@/lib/loans";
 
+type EmployeeOption = {
+  employeeId: number;
+  name: string;
+  role: string;
+};
+
 type Props = {
   initialRows: LoanListItem[];
+  employeeOptions: EmployeeOption[];
 };
 
 const inputClassName =
   "h-12 w-full rounded-2xl border border-[#e3d5cf] bg-white px-4 text-[#2d1b18] outline-none placeholder:text-[#b1948d] focus:border-[#c8716d] focus:shadow-[0_0_0_4px_rgba(200,113,109,0.12)]";
+const selectClassName =
+  `${inputClassName} appearance-none bg-[url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23845b52' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")] bg-[length:18px_18px] bg-[right_1rem_center] bg-no-repeat pr-11`;
+
+function todayIsoDate() {
+  const now = new Date();
+  const offsetMs = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
+}
+
+function digitsOnly(value: string) {
+  return value.replace(/[^\d]/g, "");
+}
+
+function formatRupiahInput(value: string) {
+  const digits = digitsOnly(value);
+  return digits ? Number(digits).toLocaleString("id-ID") : "";
+}
 
 function toNumber(value: string | number | null | undefined) {
   if (typeof value === "number") {
@@ -55,13 +79,77 @@ function mapApprovalMessage(status: "approved" | "rejected") {
     : "Pengajuan pinjaman berhasil ditolak.";
 }
 
-export default function AdminLoansManager({ initialRows }: Props) {
+export default function AdminLoansManager({ initialRows, employeeOptions }: Props) {
   const router = useRouter();
   const [rows, setRows] = useState(initialRows);
   const [search, setSearch] = useState("");
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const [form, setForm] = useState({
+    employeeId: "",
+    totalLoan: "",
+    installmentCount: "",
+    requestDate: todayIsoDate(),
+  });
+  const [isCreating, setIsCreating] = useState(false);
+  const [formFeedback, setFormFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  function resetForm() {
+    setForm({
+      employeeId: "",
+      totalLoan: "",
+      installmentCount: "",
+      requestDate: todayIsoDate(),
+    });
+    setFormFeedback(null);
+  }
+
+  async function handleCreateLoan(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormFeedback(null);
+
+    const employeeId = Number(form.employeeId);
+    const totalLoan = Number(digitsOnly(form.totalLoan));
+    const installmentCount = Number(form.installmentCount);
+
+    if (!employeeId || !totalLoan || !installmentCount || !form.requestDate) {
+      setFormFeedback({ type: "error", text: "Lengkapi semua field terlebih dahulu." });
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const response = await fetch("/api/admin/loans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employeeId,
+          totalLoan,
+          installmentCount,
+          requestDate: form.requestDate,
+        }),
+      });
+      const result = (await response.json()) as { message?: string; loan?: LoanListItem };
+
+      if (!response.ok || !result.loan) {
+        throw new Error(result.message || "Gagal membuat pengajuan pinjaman.");
+      }
+
+      setRows((current) => [result.loan!, ...current]);
+      setFormFeedback({ type: "success", text: result.message || "Pengajuan pinjaman dibuat." });
+      resetForm();
+      router.refresh();
+    } catch (error) {
+      setFormFeedback({
+        type: "error",
+        text: error instanceof Error ? error.message : "Terjadi kesalahan saat membuat pengajuan.",
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  }
 
   const filteredRows = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -156,6 +244,105 @@ export default function AdminLoansManager({ initialRows }: Props) {
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/70">Sisa Tanggungan</p>
           <p className="mt-3 text-3xl font-semibold">Rp{formatMoney(summary.remaining)}</p>
         </article>
+      </section>
+
+      <section className="rounded-[32px] border border-[#ead7ce] bg-[linear-gradient(180deg,#fffdfc_0%,#fff6f2_100%)] shadow-[0_18px_50px_rgba(96,45,34,0.08)]">
+        <div className="border-b border-[#eddad1] px-6 py-6">
+          <div className="inline-flex rounded-full border border-[#f0d8d1] bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.26em] text-[#a16f63]">
+            Tambah Pinjaman
+          </div>
+          <h3 className="mt-4 text-2xl font-semibold tracking-[-0.04em] text-[#241716]">Form Pengajuan Pinjaman</h3>
+          <p className="mt-2 max-w-3xl text-sm leading-7 text-[#7a6059]">
+            Admin dapat membuat pengajuan pinjaman langsung untuk karyawan tertentu. Setelah submit, pengajuan masuk daftar di bawah dengan status pending dan siap di-approve.
+          </p>
+        </div>
+
+        <form onSubmit={handleCreateLoan} className="space-y-5 px-6 py-6">
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="space-y-2.5">
+              <span className="text-[13px] font-semibold text-[#6f5a54]">Nama Karyawan</span>
+              <select
+                value={form.employeeId}
+                onChange={(event) => setForm((p) => ({ ...p, employeeId: event.target.value }))}
+                className={selectClassName}
+                required
+              >
+                <option value="">Pilih karyawan</option>
+                {employeeOptions.map((emp) => (
+                  <option key={emp.employeeId} value={emp.employeeId}>
+                    {emp.name.toUpperCase()} {emp.role ? `— ${emp.role}` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2.5">
+              <span className="text-[13px] font-semibold text-[#6f5a54]">Tanggal Pengajuan</span>
+              <input
+                type="date"
+                value={form.requestDate}
+                onChange={(event) => setForm((p) => ({ ...p, requestDate: event.target.value }))}
+                className={inputClassName}
+                required
+              />
+            </label>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="space-y-2.5">
+              <span className="text-[13px] font-semibold text-[#6f5a54]">Jumlah Pinjaman</span>
+              <input
+                inputMode="numeric"
+                value={form.totalLoan}
+                onChange={(event) => setForm((p) => ({ ...p, totalLoan: formatRupiahInput(event.target.value) }))}
+                placeholder="Contoh: 5.000.000"
+                className={inputClassName}
+                required
+              />
+            </label>
+
+            <label className="space-y-2.5">
+              <span className="text-[13px] font-semibold text-[#6f5a54]">Jumlah Angsuran</span>
+              <input
+                inputMode="numeric"
+                value={form.installmentCount}
+                onChange={(event) => setForm((p) => ({ ...p, installmentCount: digitsOnly(event.target.value) }))}
+                placeholder="Contoh: 5"
+                className={inputClassName}
+                required
+              />
+            </label>
+          </div>
+
+          {formFeedback ? (
+            <div
+              className={`rounded-2xl px-4 py-3 text-sm ${
+                formFeedback.type === "success"
+                  ? "border border-[#cfe8d4] bg-[#f2fbf4] text-[#267344]"
+                  : "border border-[#f2c4c4] bg-[#fff4f4] text-[#b13232]"
+              }`}
+            >
+              {formFeedback.text}
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="submit"
+              disabled={isCreating}
+              className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#8f1d22] px-6 text-sm font-semibold text-white shadow-[0_2px_8px_rgba(143,29,34,0.25)] transition hover:bg-[#a12228] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isCreating ? "Mengirim..." : "Kirim Pengajuan"}
+            </button>
+            <button
+              type="button"
+              onClick={resetForm}
+              className="inline-flex h-12 items-center justify-center rounded-2xl border border-[#e7d4cb] bg-white px-6 text-sm font-semibold text-[#3b2622]"
+            >
+              Reset
+            </button>
+          </div>
+        </form>
       </section>
 
       <section className="rounded-[32px] border border-[#ead7ce] bg-[linear-gradient(180deg,#fffdfc_0%,#fff6f2_100%)] shadow-[0_18px_50px_rgba(96,45,34,0.08)]">
