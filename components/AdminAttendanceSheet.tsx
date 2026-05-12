@@ -1,8 +1,20 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
 import type { AttendanceDayDetail } from "@/lib/hris";
+
+const ATTENDANCE_CODE_OPTIONS: { code: string; label: string }[] = [
+  { code: "O", label: "Hadir (O)" },
+  { code: "T", label: "Terlambat (T)" },
+  { code: "H", label: "Setengah Hari (H)" },
+  { code: "S", label: "Sakit + Surat (S)" },
+  { code: "SX", label: "Sakit Tanpa Surat (SX)" },
+  { code: "I", label: "Izin (I)" },
+  { code: "A", label: "Alfa (A)" },
+  { code: "L", label: "Libur (L)" },
+];
 
 type Row = {
   employeeId: number;
@@ -22,6 +34,7 @@ type Props = {
 };
 
 type SelectedAttendance = {
+  employeeId: number;
   employeeName: string;
   day: number;
   detail: AttendanceDayDetail;
@@ -34,8 +47,56 @@ function AttendanceDetailModal({
   selected: SelectedAttendance;
   onClose: () => void;
 }) {
+  const router = useRouter();
+  const [pendingCode, setPendingCode] = useState<string>("");
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [isSaving, startSaveTransition] = useTransition();
+
+  useEffect(() => {
+    setPendingCode(selected?.detail.code || "");
+    setFeedback(null);
+  }, [selected]);
+
   if (!selected) {
     return null;
+  }
+
+  function handleSave() {
+    if (!selected) return;
+    if (!pendingCode) {
+      setFeedback({ type: "error", text: "Pilih kode absensi terlebih dahulu." });
+      return;
+    }
+    if (pendingCode === selected.detail.code) {
+      setFeedback({ type: "error", text: "Kode tidak berubah." });
+      return;
+    }
+
+    setFeedback(null);
+    startSaveTransition(async () => {
+      try {
+        const response = await fetch("/api/admin/attendance/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            employeeId: selected.employeeId,
+            date: selected.detail.date,
+            code: pendingCode,
+          }),
+        });
+        const result = (await response.json()) as { message?: string };
+        if (!response.ok) {
+          throw new Error(result.message || "Gagal memperbarui kode absensi.");
+        }
+        setFeedback({ type: "success", text: result.message || "Kode absensi diperbarui." });
+        router.refresh();
+      } catch (error) {
+        setFeedback({
+          type: "error",
+          text: error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan.",
+        });
+      }
+    });
   }
 
   const isSick = selected.detail.code === "S" || selected.detail.status === "sakit";
@@ -69,6 +130,40 @@ function AttendanceDetailModal({
             <p className="mt-2 text-sm text-[#7a6059]">
               Terlambat: {selected.detail.lateMinutes > 0 ? `${selected.detail.lateMinutes} menit` : "-"}
             </p>
+
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <label className="text-sm font-semibold text-[#3c2824]">Ubah Kode:</label>
+              <select
+                value={pendingCode}
+                onChange={(event) => setPendingCode(event.target.value)}
+                disabled={isSaving}
+                className="h-10 rounded-xl border border-[#e8d5cc] bg-white px-3 text-sm text-[#241716] outline-none focus:border-[#c97f5b] focus:shadow-[0_0_0_3px_rgba(201,127,91,0.14)]"
+              >
+                <option value="">Pilih kode...</option>
+                {ATTENDANCE_CODE_OPTIONS.map((option) => (
+                  <option key={option.code} value={option.code}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isSaving || !pendingCode || pendingCode === selected.detail.code}
+                className="inline-flex h-10 items-center justify-center rounded-xl bg-[#8f1d22] px-4 text-sm font-semibold text-white shadow-[0_2px_8px_rgba(143,29,34,0.22)] transition hover:bg-[#a12228] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSaving ? "Menyimpan..." : "Simpan"}
+              </button>
+              {feedback ? (
+                <span
+                  className={`text-xs font-medium ${
+                    feedback.type === "success" ? "text-emerald-700" : "text-rose-700"
+                  }`}
+                >
+                  {feedback.text}
+                </span>
+              ) : null}
+            </div>
           </div>
           <button
             type="button"
@@ -327,6 +422,7 @@ export default function AdminAttendanceSheet({ days, rows }: Props) {
                           onClick={() =>
                             isClickable
                               ? setSelected({
+                                  employeeId: row.employeeId,
                                   employeeName: row.name,
                                   day,
                                   detail,

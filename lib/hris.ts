@@ -348,6 +348,59 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
   };
 }
 
+const ATTENDANCE_CODE_TO_STATUS: Record<string, string> = {
+  O: "hadir",
+  T: "hadir",
+  H: "setengah_hari",
+  S: "sakit",
+  SX: "sakit",
+  I: "izin",
+  A: "alfa",
+  L: "libur",
+  X: "alfa",
+};
+
+export const ADMIN_ATTENDANCE_CODE_OPTIONS = [
+  { code: "O", label: "Hadir (O)" },
+  { code: "T", label: "Terlambat (T)" },
+  { code: "H", label: "Setengah Hari (H)" },
+  { code: "S", label: "Sakit + Surat (S)" },
+  { code: "SX", label: "Sakit Tanpa Surat (SX)" },
+  { code: "I", label: "Izin (I)" },
+  { code: "A", label: "Alfa (A)" },
+  { code: "L", label: "Libur (L)" },
+] as const;
+
+export async function setAttendanceCodeForDate(
+  employeeId: number,
+  dateIso: string,
+  code: string,
+) {
+  if (!Number.isInteger(employeeId) || employeeId <= 0) {
+    throw new Error("Karyawan tidak valid.");
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateIso)) {
+    throw new Error("Tanggal absensi tidak valid.");
+  }
+  const status = ATTENDANCE_CODE_TO_STATUS[code];
+  if (!status) {
+    throw new Error("Kode absensi tidak valid.");
+  }
+
+  await pool.query(
+    `
+      INSERT INTO absensi (karyawan_id, tanggal, status_absensi, kode_absensi)
+      VALUES (?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        status_absensi = VALUES(status_absensi),
+        kode_absensi = VALUES(kode_absensi)
+    `,
+    [employeeId, dateIso, status, code],
+  );
+
+  return { employeeId, date: dateIso, code, status };
+}
+
 type OvertimeRow = RowDataPacket & {
   id: number;
   nama: string;
