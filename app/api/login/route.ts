@@ -120,7 +120,7 @@ export async function POST(request: Request) {
     const todayJakarta = new Date(
       new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }),
     );
-    const isPayrollDay = todayJakarta.getDate() === 11;
+    const isPayrollDay = todayJakarta.getDate() === 1;
 
     return NextResponse.json({
       message: "Login karyawan berhasil.",
