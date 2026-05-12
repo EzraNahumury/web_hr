@@ -14,6 +14,7 @@ const ATTENDANCE_CODE_OPTIONS: { code: string; label: string }[] = [
   { code: "I", label: "Izin (I)" },
   { code: "A", label: "Alfa (A)" },
   { code: "L", label: "Libur (L)" },
+  { code: "C", label: "Cuti (C)" },
 ];
 
 type Row = {
@@ -33,6 +34,7 @@ type Props = {
   rows: Row[];
   month: number;
   year: number;
+  holidayMap: Record<string, string>;
 };
 
 function buildDateIso(day: number, month: number, year: number) {
@@ -282,7 +284,7 @@ function AttendanceDetailModal({
   );
 }
 
-export default function AdminAttendanceSheet({ days, rows, month, year }: Props) {
+export default function AdminAttendanceSheet({ days, rows, month, year, holidayMap }: Props) {
   const router = useRouter();
   const [selected, setSelected] = useState<SelectedAttendance>(null);
   const [search, setSearch] = useState("");
@@ -404,17 +406,23 @@ export default function AdminAttendanceSheet({ days, rows, month, year }: Props)
               <th className="px-4 py-4">Password</th>
               {days.map((day) => {
                 const iso = buildDateIso(day, month, year);
+                const holidayDesc = holidayMap[iso];
+                const isHolidayDay = Boolean(holidayDesc);
                 return (
                   <th key={day} className="px-3 py-4 text-center">
                     <button
                       type="button"
                       onClick={() => {
-                        setHolidayDescription("");
+                        setHolidayDescription(holidayDesc ?? "");
                         setHolidayFeedback(null);
                         setHolidayTarget({ day, date: iso });
                       }}
-                      title="Klik untuk set libur nasional"
-                      className="rounded-md px-2 py-1 transition hover:bg-[#fdebda] hover:text-[#8f1d22]"
+                      title={isHolidayDay ? `Libur: ${holidayDesc}` : "Klik untuk set libur nasional"}
+                      className={
+                        isHolidayDay
+                          ? "rounded-md bg-[#fde2dd] px-2 py-1 font-semibold text-[#8f1d22] transition hover:bg-[#fdcfc7]"
+                          : "rounded-md px-2 py-1 transition hover:bg-[#fdebda] hover:text-[#8f1d22]"
+                      }
                     >
                       {day}
                     </button>
@@ -497,117 +505,160 @@ export default function AdminAttendanceSheet({ days, rows, month, year }: Props)
 
       <AttendanceDetailModal selected={selected} onClose={() => setSelected(null)} />
 
-      {holidayTarget ? (
-        <div
-          className="fixed inset-0 z-[2000] flex items-center justify-center px-4 py-6"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="holiday-dialog-title"
-        >
-          <button
-            type="button"
-            aria-label="Tutup dialog"
-            onClick={isSavingHoliday ? undefined : () => setHolidayTarget(null)}
-            className="absolute inset-0 h-full w-full cursor-default bg-[#1c0e0a]/55 backdrop-blur-sm"
-          />
-          <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/60 bg-[linear-gradient(180deg,#fffdfb_0%,#fff5ef_100%)] shadow-[0_30px_80px_rgba(58,24,12,0.28)] ring-1 ring-[#f3c8c2]">
-            <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(192,57,43,0.18),transparent_70%)]" />
-            <div className="pointer-events-none absolute -left-12 -bottom-12 h-36 w-36 rounded-full bg-[radial-gradient(circle,rgba(166,117,0,0.12),transparent_70%)]" />
+      {holidayTarget ? (() => {
+        const isExistingHoliday = Boolean(holidayMap[holidayTarget.date]);
 
-            <div className="relative px-7 pt-7">
-              <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#fdecea] text-[#c0392b] shadow-[0_10px_24px_rgba(58,24,12,0.08)]">
-                  <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect width="18" height="18" x="3" y="4" rx="2" />
-                    <path d="M16 2v4" />
-                    <path d="M8 2v4" />
-                    <path d="M3 10h18" />
-                  </svg>
+        return (
+          <div
+            className="fixed inset-0 z-[2000] flex items-center justify-center px-4 py-6"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="holiday-dialog-title"
+          >
+            <button
+              type="button"
+              aria-label="Tutup dialog"
+              onClick={isSavingHoliday ? undefined : () => setHolidayTarget(null)}
+              className="absolute inset-0 h-full w-full cursor-default bg-[#1c0e0a]/55 backdrop-blur-sm"
+            />
+            <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/60 bg-[linear-gradient(180deg,#fffdfb_0%,#fff5ef_100%)] shadow-[0_30px_80px_rgba(58,24,12,0.28)] ring-1 ring-[#f3c8c2]">
+              <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(192,57,43,0.18),transparent_70%)]" />
+              <div className="pointer-events-none absolute -left-12 -bottom-12 h-36 w-36 rounded-full bg-[radial-gradient(circle,rgba(166,117,0,0.12),transparent_70%)]" />
+
+              <div className="relative px-7 pt-7">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#fdecea] text-[#c0392b] shadow-[0_10px_24px_rgba(58,24,12,0.08)]">
+                    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect width="18" height="18" x="3" y="4" rx="2" />
+                      <path d="M16 2v4" />
+                      <path d="M8 2v4" />
+                      <path d="M3 10h18" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h2 id="holiday-dialog-title" className="text-lg font-semibold text-[#241716]">
+                      {isExistingHoliday ? "Batalkan Libur Nasional" : "Set Libur Nasional"}
+                    </h2>
+                    <p className="mt-2 text-sm leading-relaxed text-[#6e574f]">
+                      Tanggal: <span className="font-semibold text-[#241716]">{holidayTarget.date}</span>.{" "}
+                      {isExistingHoliday
+                        ? "Tanggal ini sudah ditandai libur nasional. Klik tombol di bawah untuk membatalkan dan menghapus absensi kode L yang dibuat otomatis."
+                        : "Semua karyawan aktif akan ditandai libur (kode L) untuk tanggal ini. Karyawan yang sudah punya absensi di tanggal ini tidak akan tertimpa."}
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <h2 id="holiday-dialog-title" className="text-lg font-semibold text-[#241716]">Set Libur Nasional</h2>
-                  <p className="mt-2 text-sm leading-relaxed text-[#6e574f]">
-                    Tanggal: <span className="font-semibold text-[#241716]">{holidayTarget.date}</span>. Semua karyawan aktif akan ditandai libur (kode <span className="font-semibold">L</span>) untuk tanggal ini. Karyawan yang sudah punya absensi di tanggal ini tidak akan tertimpa.
-                  </p>
+
+                <div className="mt-5 space-y-2">
+                  <label className="block text-[13px] font-semibold text-[#6f5a54]">Keterangan Libur</label>
+                  <input
+                    type="text"
+                    value={holidayDescription}
+                    onChange={(event) => setHolidayDescription(event.target.value)}
+                    placeholder="Contoh: Hari Raya Idul Fitri"
+                    maxLength={255}
+                    disabled={isSavingHoliday || isExistingHoliday}
+                    className="h-11 w-full rounded-xl border border-[#e8d5cc] bg-white px-3 text-sm text-[#241716] outline-none focus:border-[#c97f5b] focus:shadow-[0_0_0_3px_rgba(201,127,91,0.14)] disabled:bg-[#f8eee8]"
+                  />
                 </div>
+
+                {holidayFeedback ? (
+                  <div
+                    className={`mt-4 rounded-2xl px-4 py-3 text-sm ${
+                      holidayFeedback.type === "success"
+                        ? "border border-[#cfe8d4] bg-[#f2fbf4] text-[#267344]"
+                        : "border border-[#f2c4c4] bg-[#fff4f4] text-[#b13232]"
+                    }`}
+                  >
+                    {holidayFeedback.text}
+                  </div>
+                ) : null}
               </div>
 
-              <div className="mt-5 space-y-2">
-                <label className="block text-[13px] font-semibold text-[#6f5a54]">Keterangan Libur</label>
-                <input
-                  type="text"
-                  value={holidayDescription}
-                  onChange={(event) => setHolidayDescription(event.target.value)}
-                  placeholder="Contoh: Hari Raya Idul Fitri"
-                  maxLength={255}
+              <div className="relative mt-6 flex flex-col-reverse gap-3 border-t border-[#f1e1d8] bg-white/60 px-7 py-5 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setHolidayTarget(null)}
                   disabled={isSavingHoliday}
-                  className="h-11 w-full rounded-xl border border-[#e8d5cc] bg-white px-3 text-sm text-[#241716] outline-none focus:border-[#c97f5b] focus:shadow-[0_0_0_3px_rgba(201,127,91,0.14)]"
-                />
-              </div>
-
-              {holidayFeedback ? (
-                <div
-                  className={`mt-4 rounded-2xl px-4 py-3 text-sm ${
-                    holidayFeedback.type === "success"
-                      ? "border border-[#cfe8d4] bg-[#f2fbf4] text-[#267344]"
-                      : "border border-[#f2c4c4] bg-[#fff4f4] text-[#b13232]"
-                  }`}
+                  className="inline-flex h-11 items-center justify-center rounded-full border border-[#e2cfc6] bg-white px-5 text-sm font-semibold text-[#5a443d] transition hover:bg-[#fdf6f1] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {holidayFeedback.text}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="relative mt-6 flex flex-col-reverse gap-3 border-t border-[#f1e1d8] bg-white/60 px-7 py-5 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={() => setHolidayTarget(null)}
-                disabled={isSavingHoliday}
-                className="inline-flex h-11 items-center justify-center rounded-full border border-[#e2cfc6] bg-white px-5 text-sm font-semibold text-[#5a443d] transition hover:bg-[#fdf6f1] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                disabled={isSavingHoliday || !holidayDescription.trim()}
-                onClick={() => {
-                  if (!holidayTarget) return;
-                  const desc = holidayDescription.trim();
-                  if (!desc) {
-                    setHolidayFeedback({ type: "error", text: "Keterangan libur wajib diisi." });
-                    return;
-                  }
-                  setHolidayFeedback(null);
-                  startHolidayTransition(async () => {
-                    try {
-                      const response = await fetch("/api/admin/attendance/holiday", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ date: holidayTarget.date, description: desc }),
+                  Tutup
+                </button>
+                {isExistingHoliday ? (
+                  <button
+                    type="button"
+                    disabled={isSavingHoliday}
+                    onClick={() => {
+                      if (!holidayTarget) return;
+                      setHolidayFeedback(null);
+                      startHolidayTransition(async () => {
+                        try {
+                          const response = await fetch(
+                            `/api/admin/attendance/holiday?date=${encodeURIComponent(holidayTarget.date)}`,
+                            { method: "DELETE" },
+                          );
+                          const result = (await response.json()) as { message?: string };
+                          if (!response.ok) {
+                            throw new Error(result.message || "Gagal membatalkan libur nasional.");
+                          }
+                          setHolidayFeedback({ type: "success", text: result.message || "Libur nasional dibatalkan." });
+                          router.refresh();
+                          setTimeout(() => setHolidayTarget(null), 600);
+                        } catch (error) {
+                          setHolidayFeedback({
+                            type: "error",
+                            text: error instanceof Error ? error.message : "Terjadi kesalahan saat membatalkan.",
+                          });
+                        }
                       });
-                      const result = (await response.json()) as { message?: string };
-                      if (!response.ok) {
-                        throw new Error(result.message || "Gagal menyimpan libur nasional.");
+                    }}
+                    className="inline-flex h-11 items-center justify-center rounded-full bg-[#8d6200] px-5 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(141,98,0,0.28)] transition hover:bg-[#7c5b00] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isSavingHoliday ? "Memproses..." : "Batalkan Libur Nasional"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={isSavingHoliday || !holidayDescription.trim()}
+                    onClick={() => {
+                      if (!holidayTarget) return;
+                      const desc = holidayDescription.trim();
+                      if (!desc) {
+                        setHolidayFeedback({ type: "error", text: "Keterangan libur wajib diisi." });
+                        return;
                       }
-                      setHolidayFeedback({ type: "success", text: result.message || "Libur nasional tersimpan." });
-                      router.refresh();
-                      setTimeout(() => setHolidayTarget(null), 600);
-                    } catch (error) {
-                      setHolidayFeedback({
-                        type: "error",
-                        text: error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan.",
+                      setHolidayFeedback(null);
+                      startHolidayTransition(async () => {
+                        try {
+                          const response = await fetch("/api/admin/attendance/holiday", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ date: holidayTarget.date, description: desc }),
+                          });
+                          const result = (await response.json()) as { message?: string };
+                          if (!response.ok) {
+                            throw new Error(result.message || "Gagal menyimpan libur nasional.");
+                          }
+                          setHolidayFeedback({ type: "success", text: result.message || "Libur nasional tersimpan." });
+                          router.refresh();
+                          setTimeout(() => setHolidayTarget(null), 600);
+                        } catch (error) {
+                          setHolidayFeedback({
+                            type: "error",
+                            text: error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan.",
+                          });
+                        }
                       });
-                    }
-                  });
-                }}
-                className="inline-flex h-11 items-center justify-center rounded-full bg-[#c0392b] px-5 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(192,57,43,0.28)] transition hover:bg-[#a82d20] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isSavingHoliday ? "Memproses..." : "Set Libur Nasional"}
-              </button>
+                    }}
+                    className="inline-flex h-11 items-center justify-center rounded-full bg-[#c0392b] px-5 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(192,57,43,0.28)] transition hover:bg-[#a82d20] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isSavingHoliday ? "Memproses..." : "Set Libur Nasional"}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      ) : null}
+        );
+      })() : null}
     </>
   );
 }

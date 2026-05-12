@@ -2,6 +2,7 @@ import AdminShell from "@/components/AdminShell";
 import AdminAttendanceSheet from "@/components/AdminAttendanceSheet";
 import { requireAdminSession } from "@/lib/auth";
 import { getAttendanceSheet } from "@/lib/hris";
+import { listNationalHolidaysInRange } from "@/lib/holidays";
 import { getCurrentAttendancePeriod } from "@/lib/payroll-admin";
 import Link from "next/link";
 
@@ -51,6 +52,13 @@ export default async function AdminAttendancePage({
     view,
     week: Number.isFinite(week) ? week : 1,
   });
+
+  const periodPrevMonth = sheet.month === 1 ? 12 : sheet.month - 1;
+  const periodPrevYear = sheet.month === 1 ? sheet.year - 1 : sheet.year;
+  const periodStartDate = `${periodPrevYear}-${String(periodPrevMonth).padStart(2, "0")}-26`;
+  const periodEndDate = `${sheet.year}-${String(sheet.month).padStart(2, "0")}-25`;
+  const holidays = await listNationalHolidaysInRange(periodStartDate, periodEndDate);
+  const holidayMap = Object.fromEntries(holidays.map((h) => [h.date, h.description]));
   const previousMonth = sheet.month === 1 ? 12 : sheet.month - 1;
   const previousYear = sheet.month === 1 ? sheet.year - 1 : sheet.year;
   const nextMonth = sheet.month === 12 ? 1 : sheet.month + 1;
@@ -150,7 +158,7 @@ export default async function AdminAttendancePage({
             </div>
           </div>
         </div>
-        <AdminAttendanceSheet days={sheet.days} rows={sheet.rows} month={sheet.month} year={sheet.year} />
+        <AdminAttendanceSheet days={sheet.days} rows={sheet.rows} month={sheet.month} year={sheet.year} holidayMap={holidayMap} />
       </div>
     </AdminShell>
   );

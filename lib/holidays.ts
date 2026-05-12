@@ -89,3 +89,26 @@ export async function listNationalHolidaysInRange(startDate: string, endDate: st
   );
   return rows.map((row) => ({ date: row.tanggal, description: row.keterangan ?? "" }));
 }
+
+export async function cancelNationalHoliday(dateIso: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateIso)) {
+    throw new Error("Tanggal libur tidak valid.");
+  }
+  await ensureHolidayTable();
+
+  const [deleteAbsensi] = await pool.query<ResultSetHeader>(
+    `DELETE FROM absensi WHERE tanggal = ? AND status_absensi = 'libur' AND kode_absensi = 'L'`,
+    [dateIso],
+  );
+
+  const [deleteHoliday] = await pool.query<ResultSetHeader>(
+    `DELETE FROM libur_nasional WHERE tanggal = ?`,
+    [dateIso],
+  );
+
+  return {
+    date: dateIso,
+    affectedEmployees: deleteAbsensi.affectedRows,
+    holidayDeleted: deleteHoliday.affectedRows > 0,
+  };
+}

@@ -357,6 +357,7 @@ const ATTENDANCE_CODE_TO_STATUS: Record<string, string> = {
   I: "izin",
   A: "alfa",
   L: "libur",
+  C: "libur",
   X: "alfa",
 };
 
@@ -369,6 +370,7 @@ export const ADMIN_ATTENDANCE_CODE_OPTIONS = [
   { code: "I", label: "Izin (I)" },
   { code: "A", label: "Alfa (A)" },
   { code: "L", label: "Libur (L)" },
+  { code: "C", label: "Cuti (C)" },
 ] as const;
 
 export async function setAttendanceCodeForDate(

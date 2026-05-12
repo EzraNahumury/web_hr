@@ -515,7 +515,11 @@ export async function getAdminPayrollSummarySheet(period?: {
       current.late += 1;
     }
 
-    if (row.status_absensi === "libur" || row.kode_absensi === "L") {
+    if (
+      row.status_absensi === "libur" ||
+      row.kode_absensi === "L" ||
+      row.kode_absensi === "C"
+    ) {
       current.holiday += 1;
     }
 
