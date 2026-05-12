@@ -12,6 +12,7 @@ type PayrollBonusEmployeeOptionRow = RowDataPacket & {
   nama: string;
   jabatan: string;
   divisi: string;
+  sub_divisi: string | null;
   departemen: string;
   unit: string | null;
 };
@@ -36,7 +37,15 @@ type PayrollBonusPeriodRow = RowDataPacket & {
   periode_tahun: number;
 };
 
-export type PayrollBonusType = "sales" | "spv" | "manager" | "cs" | "host_live";
+export type PayrollBonusType =
+  | "sales"
+  | "spv"
+  | "manager"
+  | "cs"
+  | "host_live"
+  | "marketplace"
+  | "marketing"
+  | "advertiser";
 
 export type PayrollBonusEmployeeOption = {
   employeeId: number;
@@ -122,6 +131,29 @@ function inferBonusTypeFromRole(role: string | null | undefined): PayrollBonusTy
   return null;
 }
 
+function inferBonusTypeFromSubDivision(
+  subDivision: string | null | undefined,
+): PayrollBonusType | null {
+  const normalized = normalizeRole(subDivision);
+  if (!normalized) return null;
+
+  if (normalized.includes("host") && normalized.includes("live")) return "host_live";
+  if (normalized === "hostlive") return "host_live";
+  if (normalized === "cs" || normalized.includes("customer service")) return "cs";
+  if (normalized.includes("marketplace")) return "marketplace";
+  if (normalized.includes("markom") || normalized.includes("media")) return "marketing";
+  if (normalized.includes("advertiser")) return "advertiser";
+
+  return null;
+}
+
+function inferBonusType(
+  role: string | null | undefined,
+  subDivision: string | null | undefined,
+): PayrollBonusType | null {
+  return inferBonusTypeFromSubDivision(subDivision) ?? inferBonusTypeFromRole(role);
+}
+
 function getBonusTypeLabel(type: PayrollBonusType) {
   switch (type) {
     case "sales":
@@ -134,6 +166,12 @@ function getBonusTypeLabel(type: PayrollBonusType) {
       return "CS";
     case "host_live":
       return "Host Live";
+    case "marketplace":
+      return "Marketplace";
+    case "marketing":
+      return "Media Marketing";
+    case "advertiser":
+      return "Advertiser";
     default:
       return type;
   }
@@ -158,7 +196,7 @@ export async function ensurePayrollBonusTable() {
           karyawan_id BIGINT UNSIGNED NOT NULL,
           periode_bulan TINYINT UNSIGNED NOT NULL,
           periode_tahun SMALLINT UNSIGNED NOT NULL,
-          bonus_type ENUM('sales', 'spv', 'manager', 'cs', 'host_live') NOT NULL,
+          bonus_type ENUM('sales', 'spv', 'manager', 'cs', 'host_live', 'marketplace', 'marketing', 'advertiser') NOT NULL,
           nominal_bonus DECIMAL(14,2) NOT NULL DEFAULT 0.00,
           catatan VARCHAR(255) NULL,
           created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -179,7 +217,7 @@ export async function ensurePayrollBonusTable() {
   try {
     await pool.query(`
       ALTER TABLE payroll_bonus
-      MODIFY COLUMN bonus_type ENUM('sales', 'spv', 'manager', 'cs', 'host_live') NOT NULL
+      MODIFY COLUMN bonus_type ENUM('sales', 'spv', 'manager', 'cs', 'host_live', 'marketplace', 'marketing', 'advertiser') NOT NULL
     `);
   } catch (error) {
     console.error("Migration warning payroll_bonus.bonus_type:", error);
@@ -194,6 +232,7 @@ export async function listPayrollBonusEmployeeOptions() {
       k.nama,
       k.jabatan,
       k.divisi,
+      k.sub_divisi,
       k.departemen,
       k.unit
     FROM karyawan k
@@ -203,7 +242,7 @@ export async function listPayrollBonusEmployeeOptions() {
 
   return rows
     .map((row) => {
-      const bonusType = inferBonusTypeFromRole(row.jabatan);
+      const bonusType = inferBonusType(row.jabatan, row.sub_divisi);
       if (!bonusType) return null;
 
       return {
@@ -311,9 +350,11 @@ export async function upsertPayrollBonus(input: UpsertPayrollBonusInput, period?
   const resolved = resolvePeriod(period);
   const note = (input.note ?? "").trim();
 
-  const [employeeRows] = await pool.query<(RowDataPacket & { nama: string; jabatan: string })[]>(
+  const [employeeRows] = await pool.query<
+    (RowDataPacket & { nama: string; jabatan: string; sub_divisi: string | null })[]
+  >(
     `
-      SELECT nama, jabatan
+      SELECT nama, jabatan, sub_divisi
       FROM karyawan
       WHERE id = ?
       LIMIT 1
@@ -325,7 +366,7 @@ export async function upsertPayrollBonus(input: UpsertPayrollBonusInput, period?
     throw new Error("Karyawan tidak ditemukan.");
   }
 
-  const inferredType = inferBonusTypeFromRole(employee.jabatan);
+  const inferredType = inferBonusType(employee.jabatan, employee.sub_divisi);
   const bonusType = input.bonusType ?? inferredType;
   if (!bonusType) {
     throw new Error("Karyawan ini tidak termasuk role payroll bonus.");

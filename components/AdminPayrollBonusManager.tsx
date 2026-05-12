@@ -204,7 +204,7 @@ export default function AdminPayrollBonusManager({
             />
           </label>
           <div className="rounded-[22px] bg-[#f5fbfb] px-4 py-3 text-sm text-[#47696b]">
-            Payroll bonus ini untuk Sales, SPV, Manager, CS, dan Host Live, serta tidak ikut perhitungan finance.
+            Payroll bonus ini untuk Sales, SPV, Manager, CS, Host Live, Marketplace, Media Marketing, dan Advertiser, serta tidak ikut perhitungan finance.
           </div>
         </div>
       </section>
