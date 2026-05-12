@@ -144,9 +144,9 @@ async function buildPayslipPdf(fileName: string, pdfData: PayslipPdfPayload) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", compress: true });
 
   const [logoResult, ownerSignatureResult, hrSignatureResult] = await Promise.allSettled([
-    loadAssetDataUrl("/logo/image-removebg-preview%20%281%29.png"),
+    loadAssetDataUrl("/logo/slip-logo.png"),
     loadAssetDataUrl("/ttd/image-removebg-preview.png"),
-    loadAssetDataUrl("/ttd/hr-ttd.png"),
+    loadAssetDataUrl("/ttd/hr-ttd-removebg-preview.png"),
   ]);
 
   const logoDataUrl = logoResult.status === "fulfilled" ? logoResult.value : null;
