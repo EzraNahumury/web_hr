@@ -476,6 +476,8 @@ export async function getAdminPayrollSummarySheet(period?: {
       sickWithoutNote: number;
       halfDay: number;
       late: number;
+      holiday: number;
+      alfa: number;
     }
   >();
 
@@ -487,6 +489,8 @@ export async function getAdminPayrollSummarySheet(period?: {
       sickWithoutNote: 0,
       halfDay: 0,
       late: 0,
+      holiday: 0,
+      alfa: 0,
     };
 
     if (row.status_absensi === "hadir") {
@@ -509,6 +513,14 @@ export async function getAdminPayrollSummarySheet(period?: {
 
     if (row.terlambat_menit > 0) {
       current.late += 1;
+    }
+
+    if (row.status_absensi === "libur" || row.kode_absensi === "L") {
+      current.holiday += 1;
+    }
+
+    if (row.status_absensi === "alfa") {
+      current.alfa += 1;
     }
 
     attendanceMap.set(row.employee_id, current);
@@ -588,6 +600,8 @@ export async function getAdminPayrollSummarySheet(period?: {
       sickWithoutNote: 0,
       halfDay: row.total_setengah_hari ?? 0,
       late: row.total_terlambat ?? 0,
+      holiday: 0,
+      alfa: 0,
     };
 
     const inputOverrideMasuk = row.raw_override_masuk ?? null;
@@ -652,7 +666,9 @@ export async function getAdminPayrollSummarySheet(period?: {
         : 0;
     const vehicleAllowance = isSalesNasional ? toNumber(row.raw_kendaraan) : 0;
     const travelReimbursement = isSalesNasional ? (reimbursementMap.get(row.employee_id) ?? 0) : 0;
-    const totalBaseSalary = dailyBaseSalary * presentDays;
+    const holidayDays = attendance.holiday;
+    const alfaCount = attendance.alfa;
+    const totalBaseSalary = dailyBaseSalary * (presentDays + holidayDays);
     const roleFactor = getOmzetFactor(row.jabatan, row.status_kepegawaian);
     const employeeGroupKey = getOmzetGroupKeyForUnit(row.unit);
     const groupOmzet = employeeGroupKey ? omzetByGroup.get(employeeGroupKey) : undefined;
@@ -667,10 +683,6 @@ export async function getAdminPayrollSummarySheet(period?: {
     const sickWithoutNoteCount =
       inputOverrideSakitTanpaSurat ?? attendance.sickWithoutNote;
 
-    const diligenceAllowance =
-      presentDays + sickCount >= workDays && workDays > 0
-        ? fixedDiligenceAllowance
-        : 0;
     const overtimeHours =
       inputOverrideLembur ??
       overtimeMap.get(row.employee_id) ??
@@ -679,6 +691,15 @@ export async function getAdminPayrollSummarySheet(period?: {
     const halfDayCount =
       inputOverrideSetengahHari ??
       (attendance.halfDay || row.total_setengah_hari || 0);
+
+    const kerajinanNoIssue =
+      sickCount <= 2 && sickWithoutNoteCount === 0 && alfaCount === 0;
+    const kerajinanReachesWorkDays =
+      presentDays + sickCount + halfDayCount + holidayDays >= workDays;
+    const diligenceAllowance =
+      workDays > 0 && kerajinanNoIssue && kerajinanReachesWorkDays
+        ? fixedDiligenceAllowance
+        : 0;
     const halfDayDeduction = (dailyBaseSalary / 2) * halfDayCount;
     const lateCount = attendance.late || row.total_terlambat || 0;
     const lateDeduction = lateCount * 20000;

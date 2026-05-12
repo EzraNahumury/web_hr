@@ -55,6 +55,8 @@ type AttendanceRow = RowDataPacket & {
   sick_without_note_count: number;
   half_day_count: number;
   late_count: number;
+  holiday_count: number;
+  alfa_count: number;
 };
 
 type OvertimeRow = RowDataPacket & {
@@ -219,7 +221,9 @@ export async function getPenjahitSheet(period?: {
         SUM(CASE WHEN status_absensi = 'sakit' AND COALESCE(kode_absensi,'') <> 'SX' THEN 1 ELSE 0 END) AS sick_count,
         SUM(CASE WHEN status_absensi = 'sakit' AND kode_absensi = 'SX' THEN 1 ELSE 0 END) AS sick_without_note_count,
         SUM(CASE WHEN status_absensi = 'setengah_hari' OR setengah_hari = 1 THEN 1 ELSE 0 END) AS half_day_count,
-        SUM(CASE WHEN terlambat_menit > 0 THEN 1 ELSE 0 END) AS late_count
+        SUM(CASE WHEN terlambat_menit > 0 THEN 1 ELSE 0 END) AS late_count,
+        SUM(CASE WHEN status_absensi = 'libur' OR kode_absensi = 'L' THEN 1 ELSE 0 END) AS holiday_count,
+        SUM(CASE WHEN status_absensi = 'alfa' THEN 1 ELSE 0 END) AS alfa_count
        FROM absensi
        WHERE karyawan_id IN (${placeholders}) AND tanggal BETWEEN ? AND ?
        GROUP BY karyawan_id`,
@@ -260,9 +264,16 @@ export async function getPenjahitSheet(period?: {
     const telat = att?.late_count ?? row.total_terlambat ?? 0;
     const lemburJam = row.raw_override_lembur !== null ? toNum(row.raw_override_lembur) : overtimeMap.get(row.employee_id) ?? toNum(row.total_lembur_jam);
 
-    const totalGajiPokok = gajiPokokPerHari * masuk;
+    const liburNasional = att?.holiday_count ?? 0;
+    const alfa = att?.alfa_count ?? 0;
+    const totalGajiPokok = gajiPokokPerHari * (masuk + liburNasional);
     const uangAbsensiTotal = uangAbsensiPerHari * masuk;
-    const kerajinanEarned = (masuk + sakit) >= hariKerja && hariKerja > 0 ? uangKerajinanNominal : 0;
+    const kerajinanNoIssue = sakit <= 2 && sakitTanpaSurat === 0 && alfa === 0;
+    const kerajinanReachesHariKerja = (masuk + sakit + setengahHari + liburNasional) >= hariKerja;
+    const kerajinanEarned =
+      hariKerja > 0 && kerajinanNoIssue && kerajinanReachesHariKerja
+        ? uangKerajinanNominal
+        : 0;
     const bonusLembur = lemburJam * 20000;
     const potonganSetengahHari = (gajiPokokPerHari / 2) * setengahHari;
     const potonganTelat = telat * 20000;

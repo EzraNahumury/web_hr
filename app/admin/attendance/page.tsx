@@ -150,7 +150,7 @@ export default async function AdminAttendancePage({
             </div>
           </div>
         </div>
-        <AdminAttendanceSheet days={sheet.days} rows={sheet.rows} />
+        <AdminAttendanceSheet days={sheet.days} rows={sheet.rows} month={sheet.month} year={sheet.year} />
       </div>
     </AdminShell>
   );
