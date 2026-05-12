@@ -96,6 +96,11 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
   const [isCreating, setIsCreating] = useState(false);
   const [formFeedback, setFormFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  const [payoffTarget, setPayoffTarget] = useState<LoanListItem | null>(null);
+  const [payoffMonthYear, setPayoffMonthYear] = useState<string>("");
+  const [isPayingOff, setIsPayingOff] = useState(false);
+  const [payoffFeedback, setPayoffFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   function resetForm() {
     setForm({
       employeeId: "",
@@ -187,6 +192,57 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
       ),
     [filteredRows],
   );
+
+  function openPayoffModal(loan: LoanListItem) {
+    setPayoffFeedback(null);
+    const firstUnpaid = loan.installments.find((installment) => !installment.isPaid);
+    setPayoffMonthYear(firstUnpaid ? `${firstUnpaid.month}-${firstUnpaid.year}` : "");
+    setPayoffTarget(loan);
+  }
+
+  function closePayoffModal() {
+    setPayoffTarget(null);
+    setPayoffMonthYear("");
+    setPayoffFeedback(null);
+  }
+
+  async function handlePayoff() {
+    if (!payoffTarget) return;
+    setPayoffFeedback(null);
+
+    const [monthRaw, yearRaw] = payoffMonthYear.split("-");
+    const month = Number(monthRaw);
+    const year = Number(yearRaw);
+
+    if (!month || !year) {
+      setPayoffFeedback({ type: "error", text: "Pilih bulan pelunasan terlebih dahulu." });
+      return;
+    }
+
+    setIsPayingOff(true);
+    try {
+      const response = await fetch(`/api/admin/loans/${payoffTarget.id}/payoff`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ month, year }),
+      });
+      const result = (await response.json()) as { message?: string; loan?: LoanListItem };
+      if (!response.ok || !result.loan) {
+        throw new Error(result.message || "Gagal memproses pelunasan pinjaman.");
+      }
+      setRows((current) => current.map((row) => (row.id === result.loan!.id ? result.loan! : row)));
+      setFeedback({ type: "success", text: result.message || "Pelunasan dipercepat berhasil diterapkan." });
+      router.refresh();
+      closePayoffModal();
+    } catch (error) {
+      setPayoffFeedback({
+        type: "error",
+        text: error instanceof Error ? error.message : "Terjadi kesalahan saat memproses pelunasan.",
+      });
+    } finally {
+      setIsPayingOff(false);
+    }
+  }
 
   function handleAction(loanId: number, status: "approved" | "rejected") {
     setFeedback(null);
@@ -440,9 +496,7 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
                       </td>
                       <td className="px-6 py-5 font-semibold text-[#8f1d22]">Rp{formatMoney(row.remainingBalance)}</td>
                       <td className="px-6 py-5">
-                        {isLocked ? (
-                          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#a18a84]">Final</span>
-                        ) : (
+                        {row.status === "pending" ? (
                           <div className="flex min-w-[170px] gap-2">
                             <button
                               type="button"
@@ -461,6 +515,16 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
                               {isProcessingRow ? "Proses..." : "Reject"}
                             </button>
                           </div>
+                        ) : (row.status === "approved" || row.status === "berjalan") && toNumber(row.remainingBalance) > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => openPayoffModal(row)}
+                            className="inline-flex h-10 items-center justify-center rounded-2xl bg-[#8d6200] px-4 text-sm font-semibold text-white shadow-[0_2px_8px_rgba(141,98,0,0.25)] transition hover:bg-[#a47400]"
+                          >
+                            Lunasi Sekarang
+                          </button>
+                        ) : (
+                          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#a18a84]">Final</span>
                         )}
                       </td>
                     </tr>
@@ -478,6 +542,99 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
           </table>
         </div>
       </section>
+
+      {payoffTarget ? (
+        <div
+          className="fixed inset-0 z-[2000] flex items-center justify-center px-4 py-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="payoff-dialog-title"
+        >
+          <button
+            type="button"
+            aria-label="Tutup dialog"
+            onClick={isPayingOff ? undefined : closePayoffModal}
+            className="absolute inset-0 h-full w-full cursor-default bg-[#1c0e0a]/55 backdrop-blur-sm"
+          />
+          <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/60 bg-[linear-gradient(180deg,#fffdfb_0%,#fff5ef_100%)] shadow-[0_30px_80px_rgba(58,24,12,0.28)] ring-1 ring-[#f5e3b3]">
+            <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(166,117,0,0.18),transparent_70%)]" />
+            <div className="pointer-events-none absolute -left-12 -bottom-12 h-36 w-36 rounded-full bg-[radial-gradient(circle,rgba(141,98,0,0.12),transparent_70%)]" />
+
+            <div className="relative px-7 pt-7">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#fff5d6] text-[#a07c00] shadow-[0_10px_24px_rgba(58,24,12,0.08)]">
+                  <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2v20" />
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 id="payoff-dialog-title" className="text-lg font-semibold text-[#241716]">Lunasi pinjaman lebih cepat?</h2>
+                  <p className="mt-2 text-sm leading-relaxed text-[#6e574f]">
+                    Sisa pinjaman <span className="font-semibold text-[#8d6200]">Rp{formatMoney(payoffTarget.remainingBalance)}</span> akan dipotong sekaligus pada periode payroll yang dipilih. Cicilan bulan berikutnya akan di-nol-kan otomatis.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 space-y-2">
+                <label className="block text-[13px] font-semibold text-[#6f5a54]">Bulan Pelunasan</label>
+                <select
+                  value={payoffMonthYear}
+                  onChange={(event) => setPayoffMonthYear(event.target.value)}
+                  className={selectClassName}
+                  disabled={isPayingOff}
+                >
+                  <option value="">Pilih periode...</option>
+                  {payoffTarget.installments
+                    .filter((installment) => !installment.isPaid)
+                    .map((installment) => (
+                      <option
+                        key={`${installment.month}-${installment.year}`}
+                        value={`${installment.month}-${installment.year}`}
+                      >
+                        {installment.monthLabel}
+                      </option>
+                    ))}
+                </select>
+                <p className="text-xs text-[#8a6f68]">
+                  Karyawan: <span className="font-semibold uppercase">{payoffTarget.employeeName}</span>
+                </p>
+              </div>
+
+              {payoffFeedback ? (
+                <div
+                  className={`mt-4 rounded-2xl px-4 py-3 text-sm ${
+                    payoffFeedback.type === "success"
+                      ? "border border-[#cfe8d4] bg-[#f2fbf4] text-[#267344]"
+                      : "border border-[#f2c4c4] bg-[#fff4f4] text-[#b13232]"
+                  }`}
+                >
+                  {payoffFeedback.text}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="relative mt-6 flex flex-col-reverse gap-3 border-t border-[#f1e1d8] bg-white/60 px-7 py-5 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closePayoffModal}
+                disabled={isPayingOff}
+                className="inline-flex h-11 items-center justify-center rounded-full border border-[#e2cfc6] bg-white px-5 text-sm font-semibold text-[#5a443d] transition hover:bg-[#fdf6f1] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handlePayoff}
+                disabled={isPayingOff || !payoffMonthYear}
+                className="inline-flex h-11 items-center justify-center rounded-full bg-[#a67500] px-5 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(166,117,0,0.28)] transition hover:bg-[#8a6100] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isPayingOff ? "Memproses..." : "Lunaskan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

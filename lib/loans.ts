@@ -707,6 +707,92 @@ export async function approveLoanRequest(loanId: number, adminId?: number | null
   }
 }
 
+export async function payoffLoanEarly(loanId: number, payoffMonth: number, payoffYear: number) {
+  if (!Number.isInteger(payoffMonth) || payoffMonth < 1 || payoffMonth > 12) {
+    throw new Error("Bulan pelunasan tidak valid.");
+  }
+  if (!Number.isInteger(payoffYear) || payoffYear < 1970 || payoffYear > 9999) {
+    throw new Error("Tahun pelunasan tidak valid.");
+  }
+
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+    await ensureLoanSupportTables(connection);
+
+    const [loanRows] = await connection.query<LoanIdentityRow[]>(
+      `
+        SELECT id, karyawan_id, jumlah_pinjaman, jumlah_angsuran, status_pinjaman
+        FROM pinjaman
+        WHERE id = ?
+        LIMIT 1
+      `,
+      [loanId],
+    );
+    const loan = loanRows[0];
+    if (!loan) {
+      throw new Error("Pengajuan pinjaman tidak ditemukan.");
+    }
+    if (!["approved", "berjalan"].includes(loan.status_pinjaman)) {
+      throw new Error("Pinjaman tidak bisa dilunasi karena status saat ini bukan approved/berjalan.");
+    }
+
+    const [installments] = await connection.query<LoanInstallmentRow[]>(
+      `
+        SELECT id, pinjaman_id, urutan_cicilan, bulan, tahun, nominal_potongan, nominal_terpotong, payroll_id
+        FROM pinjaman_cicilan
+        WHERE pinjaman_id = ?
+        ORDER BY urutan_cicilan ASC
+      `,
+      [loanId],
+    );
+
+    const totalPaid = installments.reduce((sum, installment) => sum + toNumber(installment.nominal_terpotong), 0);
+    const remaining = roundMoney(toNumber(loan.jumlah_pinjaman) - totalPaid);
+    if (remaining <= 0) {
+      throw new Error("Pinjaman sudah lunas.");
+    }
+
+    const unpaid = installments.filter((installment) => {
+      const planned = toNumber(installment.nominal_potongan);
+      const paid = toNumber(installment.nominal_terpotong);
+      return !(installment.payroll_id && paid >= planned && planned > 0);
+    });
+    if (unpaid.length === 0) {
+      throw new Error("Tidak ada cicilan tersisa untuk dilunasi.");
+    }
+
+    const target = unpaid.find((installment) => installment.bulan === payoffMonth && installment.tahun === payoffYear);
+    if (!target) {
+      throw new Error("Bulan pelunasan tidak ditemukan di jadwal cicilan yang belum terbayar.");
+    }
+
+    await connection.query<ResultSetHeader>(
+      `UPDATE pinjaman_cicilan SET nominal_potongan = ? WHERE id = ?`,
+      [remaining, target.id],
+    );
+
+    const otherUnpaidIds = unpaid.filter((installment) => installment.id !== target.id).map((installment) => installment.id);
+    if (otherUnpaidIds.length > 0) {
+      await connection.query<ResultSetHeader>(
+        `UPDATE pinjaman_cicilan SET nominal_potongan = 0 WHERE id IN (?)`,
+        [otherUnpaidIds],
+      );
+    }
+
+    await syncLoanSummary(loanId, connection);
+    await connection.commit();
+
+    return getLoanById(loanId);
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 export async function rejectLoanRequest(loanId: number) {
   const connection = await pool.getConnection();
 
