@@ -22,7 +22,7 @@ type Props = {
 
 const OWNER_NAME = "Arya Rahadyan";
 const HR_COORDINATOR_NAME = "Elnida Rahma Dian";
-const OWNER_SIGNATURE_IMAGE = "/ttd/owwner.png";
+const OWNER_SIGNATURE_IMAGE = "/ttd/image.png";
 const HR_SIGNATURE_IMAGE = "/ttd/images.png";
 
 function formatCurrency(value: number) {
