@@ -32,8 +32,8 @@ type PrintLineItemProps = {
 
 const OWNER_NAME = "Arya Rahadyan";
 const HR_COORDINATOR_NAME = "Elnida Rahma Dian";
-const OWNER_SIGNATURE_IMAGE = "/ttd/image.png";
-const HR_SIGNATURE_IMAGE = "/ttd/hr.png";
+const OWNER_SIGNATURE_IMAGE = "/ttd/image-removebg-preview.png";
+const HR_SIGNATURE_IMAGE = "/ttd/hr-ttd.png";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -212,7 +212,7 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
         <article className="relative overflow-hidden rounded-[28px] border border-[#d7cac0] bg-[linear-gradient(180deg,#fffdfa_0%,#fff7f1_100%)] px-5 py-5 sm:px-8 sm:py-8 lg:px-10">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(180,137,103,0.12),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(141,106,81,0.08),transparent_30%)]" />
           <div className="pointer-events-none absolute -right-10 top-18 hidden opacity-[0.07] lg:block">
-            <Image src="/logo/image.png" alt="Watermark logo" width={320} height={220} className="h-auto w-[260px] object-contain" />
+            <Image src="/logo/image-removebg-preview%20%281%29.png" alt="Watermark logo" width={320} height={220} className="h-auto w-[260px] object-contain" />
           </div>
 
           <div className="relative rounded-[22px] border border-[#2c211a] bg-white/90 px-4 py-4 backdrop-blur sm:px-6 sm:py-5 lg:px-7">
@@ -229,7 +229,7 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
 
               <div className="flex items-center gap-3 rounded-[20px] border border-[#dccfc7] bg-[linear-gradient(180deg,#fffdf9_0%,#fff5ee_100%)] px-3 py-3 shadow-[0_14px_36px_rgba(113,74,52,0.1)] sm:px-4">
                 <div className="relative h-14 w-20 overflow-hidden rounded-[14px] bg-black ring-1 ring-[#2f231c] sm:h-16 sm:w-24">
-                  <Image src="/logo/image.png" alt="Logo Ayres" fill className="object-contain p-2" priority />
+                  <Image src="/logo/image-removebg-preview%20%281%29.png" alt="Logo Ayres" fill className="object-contain p-2" priority />
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-[#9b7d6b]">Ayres</p>
@@ -373,7 +373,7 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
           <div className="payslip-pdf-badge">Pribadi & Rahasia</div>
           <div className="payslip-pdf-brand">
             <div className="payslip-pdf-brand-logo">
-              <Image src="/logo/image.png" alt="Logo Ayres" fill className="object-contain" />
+              <Image src="/logo/image-removebg-preview%20%281%29.png" alt="Logo Ayres" fill className="object-contain" />
             </div>
             <div className="payslip-pdf-brand-copy">
               <p className="payslip-pdf-brand-name">AYRES</p>
