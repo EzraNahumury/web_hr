@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import LogoutButton from "@/components/LogoutButton";
 import PayrollGreetingModal from "@/components/PayrollGreetingModal";
 import { isSalesFieldRole } from "@/lib/sales-roles";
+import { canSetSchedule } from "@/lib/scheduler-roles";
 
 type Props = {
   title: string;
@@ -56,16 +57,31 @@ const visitReportMenu: MenuItem = {
   description: "Submit kunjungan toko / customer",
 };
 
+const setJadwalMenu: MenuItem = {
+  label: "Set Jadwal",
+  href: "/employee/jadwal",
+  description: "Atur shift Toko & Gudang",
+};
+
 function buildMenuItems(role: string | null | undefined): MenuItem[] {
-  if (!isSalesFieldRole(role)) return baseMenuItems;
-  const insertAfter = "Riwayat Absensi";
-  const result: MenuItem[] = [];
-  for (const item of baseMenuItems) {
-    result.push(item);
-    if (item.label === insertAfter) {
-      result.push(visitReportMenu);
+  let result: MenuItem[] = baseMenuItems;
+
+  if (isSalesFieldRole(role)) {
+    const insertAfter = "Riwayat Absensi";
+    const next: MenuItem[] = [];
+    for (const item of result) {
+      next.push(item);
+      if (item.label === insertAfter) {
+        next.push(visitReportMenu);
+      }
     }
+    result = next;
   }
+
+  if (canSetSchedule(role)) {
+    result = [...result, setJadwalMenu];
+  }
+
   return result;
 }
 

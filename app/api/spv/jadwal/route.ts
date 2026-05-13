@@ -2,13 +2,28 @@ import { NextResponse } from "next/server";
 import { RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
 
-import { getCurrentSpvSession } from "@/lib/auth";
+import { getCurrentEmployeeSession, getCurrentSpvSession } from "@/lib/auth";
+import { getEmployeeByUserId } from "@/lib/hris";
 import {
   deleteJadwalEntries,
   getJadwalForMonth,
   upsertJadwalBulk,
   type JadwalShift,
 } from "@/lib/jadwal-karyawan";
+import { canSetSchedule } from "@/lib/scheduler-roles";
+
+async function getSchedulerSession() {
+  const spv = await getCurrentSpvSession();
+  if (spv) return { id: spv.id };
+
+  const employee = await getCurrentEmployeeSession();
+  if (!employee) return null;
+
+  const profile = await getEmployeeByUserId(employee.userId);
+  if (!profile || !canSetSchedule(profile.jabatan)) return null;
+
+  return { id: employee.id };
+}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -55,7 +70,7 @@ function isValidDateInPeriod(date: string, year: number, month: number) {
 }
 
 export async function GET(request: Request) {
-  const session = await getCurrentSpvSession();
+  const session = await getSchedulerSession();
   if (!session) {
     return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
   }
@@ -71,7 +86,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const session = await getCurrentSpvSession();
+  const session = await getSchedulerSession();
   if (!session) {
     return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
   }
