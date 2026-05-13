@@ -1,22 +1,21 @@
-import { NextRequest, NextResponse } from "next/server";
-import { ResultSetHeader, RowDataPacket } from "mysql2";
-import { requireAdminSession } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import type { ResultSetHeader, RowDataPacket } from "mysql2";
+
 import { pool } from "@/lib/db";
+import { ensureOvertimeSchema } from "@/lib/overtime";
 
-type Params = {
-  params: Promise<{ id: string }>;
-};
+type Body = { statusApproval?: unknown; catatanAtasan?: unknown };
 
-export async function PATCH(request: NextRequest, { params }: Params) {
-  const admin = await requireAdminSession();
-  const { id } = await params;
-  const overtimeId = Number(id);
-
+export async function processApprovalForAssignedApprover(
+  request: Request,
+  overtimeId: number,
+  approverUserId: number,
+) {
   if (!Number.isInteger(overtimeId) || overtimeId <= 0) {
     return NextResponse.json({ error: "ID lembur tidak valid." }, { status: 400 });
   }
 
-  const body = await request.json().catch(() => null);
+  const body = (await request.json().catch(() => null)) as Body | null;
   const statusApproval = body?.statusApproval;
   const catatanAtasan =
     typeof body?.catatanAtasan === "string" && body.catatanAtasan.trim()
@@ -27,23 +26,26 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Status approval tidak valid." }, { status: 400 });
   }
 
+  await ensureOvertimeSchema();
+
   const [existingRows] = await pool.query<RowDataPacket[]>(
     "SELECT id, status_approval, assigned_approver_user_id FROM lembur WHERE id = ? LIMIT 1",
     [overtimeId],
   );
 
-  if (!existingRows[0]) {
+  const existing = existingRows[0];
+  if (!existing) {
     return NextResponse.json({ error: "Data lembur tidak ditemukan." }, { status: 404 });
   }
 
-  if (existingRows[0].assigned_approver_user_id) {
+  if (existing.assigned_approver_user_id !== approverUserId) {
     return NextResponse.json(
-      { error: "Pengajuan ini ditujukan ke SPV/Manager, bukan admin." },
+      { error: "Pengajuan ini tidak ditujukan ke Anda." },
       { status: 403 },
     );
   }
 
-  if (existingRows[0].status_approval !== "pending") {
+  if (existing.status_approval !== "pending") {
     return NextResponse.json(
       { error: "Approval lembur sudah final dan tidak bisa diubah lagi." },
       { status: 409 },
@@ -56,7 +58,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       SET status_approval = ?, approved_by = ?, catatan_atasan = ?
       WHERE id = ?
     `,
-    [statusApproval, admin.id, catatanAtasan, overtimeId],
+    [statusApproval, approverUserId, catatanAtasan, overtimeId],
   );
 
   return NextResponse.json({ success: true });

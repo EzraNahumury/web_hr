@@ -15,12 +15,12 @@ type OvertimeRow = {
   status_approval: "pending" | "approved" | "rejected";
   approver_name: string | null;
   assigned_approver_name?: string | null;
-  assigned_approver_user_id?: number | null;
   catatan_atasan: string | null;
 };
 
 type Props = {
   rows: OvertimeRow[];
+  endpoint: string;
 };
 
 function StatusBadge({ status }: { status: OvertimeRow["status_approval"] }) {
@@ -38,7 +38,7 @@ function StatusBadge({ status }: { status: OvertimeRow["status_approval"] }) {
   );
 }
 
-export default function AdminOvertimeApprovals({ rows }: Props) {
+export default function OvertimeApproverManager({ rows, endpoint }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [notes, setNotes] = useState<Record<number, string>>(
@@ -53,11 +53,9 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
     setSuccess(null);
 
     startTransition(async () => {
-      const response = await fetch(`/api/admin/overtime/${id}`, {
+      const response = await fetch(`${endpoint}/${id}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           statusApproval: status,
           catatanAtasan: notes[id]?.trim() || null,
@@ -90,21 +88,15 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
           <p className="mt-3 text-3xl font-semibold text-[#172033]">{rows.length}</p>
         </div>
         <div className="rounded-[24px] border border-[#dfe5ef] bg-white p-5 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#8a96ad]">
-            Pending
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#8a96ad]">Pending</p>
           <p className="mt-3 text-3xl font-semibold text-[#4a5dff]">{totalPending}</p>
         </div>
         <div className="rounded-[24px] border border-[#dfe5ef] bg-white p-5 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#8a96ad]">
-            Approved
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#8a96ad]">Approved</p>
           <p className="mt-3 text-3xl font-semibold text-[#1f8f4c]">{totalApproved}</p>
         </div>
         <div className="rounded-[24px] border border-[#dfe5ef] bg-white p-5 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#8a96ad]">
-            Rejected
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#8a96ad]">Rejected</p>
           <p className="mt-3 text-3xl font-semibold text-[#c63838]">{totalRejected}</p>
         </div>
       </section>
@@ -125,7 +117,7 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
         <div className="border-b border-[#e7edf5] px-6 py-5">
           <h3 className="text-lg font-semibold text-[#172033]">Daftar Pengajuan Lembur</h3>
           <p className="mt-1 text-sm text-[#66748f]">
-            Admin hanya perlu review data dan klik approve atau reject.
+            Review pengajuan dari tim Anda dan klik approve atau reject.
           </p>
         </div>
 
@@ -137,7 +129,6 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
                 <th className="px-6 py-4">Tanggal</th>
                 <th className="px-6 py-4">Jam</th>
                 <th className="px-6 py-4">Total</th>
-                <th className="px-6 py-4">Diajukan Ke</th>
                 <th className="px-6 py-4">Bukti</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Catatan</th>
@@ -145,110 +136,102 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => {
-                const isLocked = row.status_approval !== "pending";
-                const isAssignedToAdmin = !row.assigned_approver_user_id;
-                const canAdminAct = isAssignedToAdmin && !isLocked;
-
-                return (
-                  <tr key={row.id} className="border-b border-[#eef2f7] text-[#42506a]">
-                    <td className="px-6 py-4 font-semibold text-[#172033]">{row.nama}</td>
-                    <td className="px-6 py-4">{row.tanggal}</td>
-                    <td className="px-6 py-4">
-                      {row.jam_mulai} - {row.jam_selesai}
-                    </td>
-                    <td className="px-6 py-4">{row.total_jam} jam</td>
-                    <td className="px-6 py-4">
-                      {row.assigned_approver_name ? (
-                        <span className="inline-flex rounded-full bg-[#fff3e0] px-3 py-1 text-xs font-semibold text-[#9c4d00]">
-                          {row.assigned_approver_name}
-                        </span>
-                      ) : (
-                        <span className="inline-flex rounded-full bg-[#eef2ff] px-3 py-1 text-xs font-semibold text-[#4a5dff]">
-                          Admin
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      {row.bukti_lembur ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setPreview({
-                              url: row.bukti_lembur!,
-                              isImage: /\.(jpg|jpeg|png|webp)$/i.test(row.bukti_lembur ?? ""),
-                            })
-                          }
-                          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#d7deea] bg-white text-[#5b6680] transition hover:border-[#5b4fff] hover:text-[#5b4fff]"
-                          aria-label="Lihat bukti lembur"
-                        >
-                          <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.8"
-                            className="h-4 w-4"
-                            aria-hidden="true"
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-8 text-center text-sm text-[#7a879f]">
+                    Belum ada pengajuan lembur yang ditujukan ke Anda.
+                  </td>
+                </tr>
+              ) : (
+                rows.map((row) => {
+                  const isLocked = row.status_approval !== "pending";
+                  return (
+                    <tr key={row.id} className="border-b border-[#eef2f7] text-[#42506a]">
+                      <td className="px-6 py-4 font-semibold text-[#172033]">{row.nama}</td>
+                      <td className="px-6 py-4">{row.tanggal}</td>
+                      <td className="px-6 py-4">
+                        {row.jam_mulai} - {row.jam_selesai}
+                      </td>
+                      <td className="px-6 py-4">{row.total_jam} jam</td>
+                      <td className="px-6 py-4">
+                        {row.bukti_lembur ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPreview({
+                                url: row.bukti_lembur!,
+                                isImage: /\.(jpg|jpeg|png|webp)$/i.test(row.bukti_lembur ?? ""),
+                              })
+                            }
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#d7deea] bg-white text-[#5b6680] transition hover:border-[#5b4fff] hover:text-[#5b4fff]"
+                            aria-label="Lihat bukti lembur"
                           >
-                            <path
-                              d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                            <circle cx="12" cy="12" r="3" />
-                          </svg>
-                        </button>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="space-y-2">
-                        <StatusBadge status={row.status_approval} />
-                        <p className="text-xs text-[#7a879f]">
-                          {row.approver_name ? `oleh ${row.approver_name}` : "Belum diproses"}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <input
-                        value={notes[row.id] ?? ""}
-                        onChange={(event) =>
-                          setNotes((current) => ({
-                            ...current,
-                            [row.id]: event.target.value,
-                          }))
-                        }
-                        placeholder="Catatan atasan"
-                        disabled={isLocked}
-                        className="h-11 w-[220px] rounded-xl border border-[#d7deea] bg-[#fbfcfe] px-3 text-sm text-[#172033] outline-none transition focus:border-[#5b4fff] disabled:cursor-not-allowed disabled:bg-[#f1f4f8] disabled:text-[#7a879f]"
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => updateApproval(row.id, "approved")}
-                          disabled={isPending || !canAdminAct}
-                          className="rounded-xl bg-[#19a15f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#14874f] disabled:cursor-not-allowed disabled:opacity-50"
-                          title={!isAssignedToAdmin ? "Pengajuan ini ditujukan ke SPV/Manager, bukan admin." : undefined}
-                        >
-                          Approve
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => updateApproval(row.id, "rejected")}
-                          disabled={isPending || !canAdminAct}
-                          className="rounded-xl bg-[#ef4444] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#d73737] disabled:cursor-not-allowed disabled:opacity-50"
-                          title={!isAssignedToAdmin ? "Pengajuan ini ditujukan ke SPV/Manager, bukan admin." : undefined}
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              className="h-4 w-4"
+                              aria-hidden="true"
+                            >
+                              <path
+                                d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <circle cx="12" cy="12" r="3" />
+                            </svg>
+                          </button>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="space-y-2">
+                          <StatusBadge status={row.status_approval} />
+                          <p className="text-xs text-[#7a879f]">
+                            {row.approver_name ? `oleh ${row.approver_name}` : "Belum diproses"}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <input
+                          value={notes[row.id] ?? ""}
+                          onChange={(event) =>
+                            setNotes((current) => ({
+                              ...current,
+                              [row.id]: event.target.value,
+                            }))
+                          }
+                          placeholder="Catatan atasan"
+                          disabled={isLocked}
+                          className="h-11 w-[220px] rounded-xl border border-[#d7deea] bg-[#fbfcfe] px-3 text-sm text-[#172033] outline-none transition focus:border-[#5b4fff] disabled:cursor-not-allowed disabled:bg-[#f1f4f8] disabled:text-[#7a879f]"
+                        />
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => updateApproval(row.id, "approved")}
+                            disabled={isPending || isLocked}
+                            className="rounded-xl bg-[#19a15f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#14874f] disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateApproval(row.id, "rejected")}
+                            disabled={isPending || isLocked}
+                            className="rounded-xl bg-[#ef4444] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#d73737] disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -259,9 +242,7 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
           <div className="w-full max-w-4xl rounded-[28px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.22)]">
             <div className="flex items-center justify-between gap-4 border-b border-[#e7edf5] px-6 py-5">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#8a96ad]">
-                  Bukti Lembur
-                </p>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#8a96ad]">Bukti Lembur</p>
                 <p className="mt-2 text-sm text-[#66748f]">{preview.url}</p>
               </div>
               <button
@@ -272,7 +253,6 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
                 Tutup
               </button>
             </div>
-
             <div className="p-6">
               {preview.isImage ? (
                 <div className="overflow-hidden rounded-[24px] border border-[#e7edf5] bg-[#f8fafc]">

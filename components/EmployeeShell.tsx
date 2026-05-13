@@ -63,6 +63,12 @@ const setJadwalMenu: MenuItem = {
   description: "Atur shift Toko & Gudang",
 };
 
+const overtimeApprovalsMenu: MenuItem = {
+  label: "Approval Lembur",
+  href: "/employee/overtime-approvals",
+  description: "Approve/reject pengajuan lembur tim",
+};
+
 function buildMenuItems(role: string | null | undefined): MenuItem[] {
   let result: MenuItem[] = baseMenuItems;
 
@@ -79,7 +85,7 @@ function buildMenuItems(role: string | null | undefined): MenuItem[] {
   }
 
   if (canSetSchedule(role)) {
-    result = [...result, setJadwalMenu];
+    result = [...result, setJadwalMenu, overtimeApprovalsMenu];
   }
 
   return result;

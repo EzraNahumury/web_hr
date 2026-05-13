@@ -417,27 +417,8 @@ type OvertimeRow = RowDataPacket & {
 };
 
 export async function listOvertimeRecords() {
-  const [rows] = await pool.query<OvertimeRow[]>(
-    `
-      SELECT
-        l.id,
-        k.nama,
-        DATE_FORMAT(l.tanggal, '%d %b %Y') AS tanggal,
-        DATE_FORMAT(l.jam_mulai, '%H:%i') AS jam_mulai,
-        DATE_FORMAT(l.jam_selesai, '%H:%i') AS jam_selesai,
-        l.total_jam,
-        l.bukti_lembur,
-        l.status_approval,
-        u.nama AS approver_name,
-        l.catatan_atasan
-      FROM lembur l
-      INNER JOIN karyawan k ON k.id = l.karyawan_id
-      LEFT JOIN users u ON u.id = l.approved_by
-      ORDER BY l.tanggal DESC, l.id DESC
-    `,
-  );
-
-  return rows;
+  const { listOvertimeAll } = await import("@/lib/overtime");
+  return listOvertimeAll();
 }
 
 type LoanRow = RowDataPacket & {
@@ -1406,29 +1387,8 @@ export async function getEmployeeTodayAttendance(employeeId: number) {
 }
 
 export async function getEmployeeOvertime(employeeId: number) {
-  const [rows] = await pool.query<OvertimeRow[]>(
-    `
-      SELECT
-        l.id,
-        k.nama,
-        DATE_FORMAT(l.tanggal, '%d %b %Y') AS tanggal,
-        DATE_FORMAT(l.jam_mulai, '%H:%i') AS jam_mulai,
-        DATE_FORMAT(l.jam_selesai, '%H:%i') AS jam_selesai,
-        l.total_jam,
-        l.bukti_lembur,
-        l.status_approval,
-        u.nama AS approver_name,
-        l.catatan_atasan
-      FROM lembur l
-      INNER JOIN karyawan k ON k.id = l.karyawan_id
-      LEFT JOIN users u ON u.id = l.approved_by
-      WHERE l.karyawan_id = ?
-      ORDER BY l.tanggal DESC
-    `,
-    [employeeId],
-  );
-
-  return rows;
+  const { getEmployeeOvertimeList } = await import("@/lib/overtime");
+  return getEmployeeOvertimeList(employeeId);
 }
 
 export async function getEmployeeLoans(employeeId: number) {

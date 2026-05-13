@@ -39,6 +39,7 @@ export default async function SpvJadwalPage({
       description="Atur shift dan hari libur untuk karyawan Toko & Gudang per bulan. Klik tiap cell untuk pilih shift, lalu Simpan."
       spvName={spv.fullName}
       spvEmail={spv.email}
+      currentPath="/spv/jadwal"
     >
       <SpvJadwalManager
         initialYear={year}

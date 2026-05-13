@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import LogoutButton from "@/components/LogoutButton";
 
 type Props = {
@@ -5,14 +7,21 @@ type Props = {
   description: string;
   spvName: string;
   spvEmail: string;
+  currentPath?: string;
   children: React.ReactNode;
 };
+
+const navItems = [
+  { label: "Set Jadwal", href: "/spv/jadwal" },
+  { label: "Approval Lembur", href: "/spv/overtime-approvals" },
+];
 
 export default function SpvShell({
   title,
   description,
   spvName,
   spvEmail,
+  currentPath,
   children,
 }: Props) {
   return (
@@ -56,6 +65,27 @@ export default function SpvShell({
           </p>
         ) : null}
       </header>
+
+      <nav className="border-b border-[#ead9d6] bg-white">
+        <div className="mx-auto flex max-w-[1600px] gap-2 overflow-x-auto px-4 py-3 sm:px-6 lg:px-8">
+          {navItems.map((item) => {
+            const isActive = currentPath === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={
+                  isActive
+                    ? "rounded-2xl bg-[#8f1d22] px-4 py-2 text-sm font-semibold text-white"
+                    : "rounded-2xl border border-[#ead9d6] bg-white px-4 py-2 text-sm font-semibold text-[#3b2622] hover:border-[#c8716d] hover:text-[#8f1d22]"
+                }
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
 
       <div className="mx-auto max-w-[1600px] px-4 pb-24 pt-6 sm:px-6 sm:pb-8 lg:px-8">
         {children}

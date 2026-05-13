@@ -11,11 +11,20 @@ type OvertimeRow = {
   total_jam: string;
   status_approval: "pending" | "approved" | "rejected";
   catatan_atasan: string | null;
+  assigned_approver_name?: string | null;
+};
+
+type ApproverOption = {
+  userId: number;
+  name: string;
+  role: string;
 };
 
 type Props = {
   employeeId: number;
   rows: OvertimeRow[];
+  approvers: ApproverOption[];
+  routesToAdmin: boolean;
 };
 
 function StatusBadge({ status }: { status: OvertimeRow["status_approval"] }) {
@@ -33,7 +42,7 @@ function StatusBadge({ status }: { status: OvertimeRow["status_approval"] }) {
   );
 }
 
-export default function EmployeeOvertimeManager({ employeeId, rows }: Props) {
+export default function EmployeeOvertimeManager({ employeeId, rows, approvers, routesToAdmin }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +53,7 @@ export default function EmployeeOvertimeManager({ employeeId, rows }: Props) {
     tanggal: "",
     jamMulai: "",
     jamSelesai: "",
+    assignedApproverUserId: "",
   });
   const [buktiFile, setBuktiFile] = useState<File | null>(null);
 
@@ -68,12 +78,20 @@ export default function EmployeeOvertimeManager({ employeeId, rows }: Props) {
     setError(null);
     setSuccess(null);
 
+    if (!routesToAdmin && !form.assignedApproverUserId) {
+      setError("Pilih atasan (SPV/Manager) yang akan menerima pengajuan.");
+      return;
+    }
+
     startTransition(async () => {
       const formData = new FormData();
       formData.append("karyawanId", String(employeeId));
       formData.append("tanggal", form.tanggal);
       formData.append("jamMulai", form.jamMulai);
       formData.append("jamSelesai", form.jamSelesai);
+      if (!routesToAdmin) {
+        formData.append("assignedApproverUserId", form.assignedApproverUserId);
+      }
       if (buktiFile) {
         formData.append("buktiLembur", buktiFile);
       }
@@ -90,11 +108,16 @@ export default function EmployeeOvertimeManager({ employeeId, rows }: Props) {
         return;
       }
 
-      setSuccess("Pengajuan lembur berhasil dikirim dan menunggu approval admin.");
+      setSuccess(
+        routesToAdmin
+          ? "Pengajuan lembur berhasil dikirim dan menunggu approval admin."
+          : "Pengajuan lembur berhasil dikirim ke atasan yang dipilih.",
+      );
       setForm({
         tanggal: "",
         jamMulai: "",
         jamSelesai: "",
+        assignedApproverUserId: "",
       });
       setBuktiFile(null);
       setSelectedFileName("");
@@ -111,8 +134,9 @@ export default function EmployeeOvertimeManager({ employeeId, rows }: Props) {
         <div className="flex flex-col gap-2">
           <h3 className="text-xl font-semibold text-[#241716]">Form Pengajuan Lembur</h3>
           <p className="text-sm leading-6 text-[#7a6059]">
-            Isi tanggal dan jam lembur. Setelah dikirim, admin akan melihat request ini dan
-            memutuskan approve atau reject.
+            {routesToAdmin
+              ? "Isi tanggal dan jam lembur. Pengajuan Anda akan langsung diproses oleh admin."
+              : "Isi tanggal dan jam lembur, lalu pilih atasan (SPV/Manager) yang akan menerima pengajuan."}
           </p>
         </div>
 
@@ -155,6 +179,27 @@ export default function EmployeeOvertimeManager({ employeeId, rows }: Props) {
               />
             </label>
           </div>
+
+          {!routesToAdmin && (
+            <label className="space-y-2 md:col-span-2">
+              <span className="text-sm font-semibold text-[#2f1f1d]">Diajukan ke (SPV/Manager)</span>
+              <select
+                value={form.assignedApproverUserId}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, assignedApproverUserId: event.target.value }))
+                }
+                required
+                className="h-12 w-full rounded-2xl border border-[#e4d4cc] bg-[#fffaf7] px-4 text-sm text-[#241716] outline-none transition focus:border-[#c65e61]"
+              >
+                <option value="">Pilih atasan</option>
+                {approvers.map((option) => (
+                  <option key={option.userId} value={option.userId}>
+                    {option.name} — {option.role}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           <label className="space-y-2 md:col-span-2">
             <span className="text-sm font-semibold text-[#2f1f1d]">Bukti Lembur</span>
@@ -214,6 +259,7 @@ export default function EmployeeOvertimeManager({ employeeId, rows }: Props) {
               <th className="px-6 py-4">Tanggal</th>
               <th className="px-6 py-4">Jam</th>
               <th className="px-6 py-4">Total</th>
+              <th className="px-6 py-4">Diajukan Ke</th>
               <th className="px-6 py-4">Status</th>
               <th className="px-6 py-4">Catatan</th>
             </tr>
@@ -226,6 +272,7 @@ export default function EmployeeOvertimeManager({ employeeId, rows }: Props) {
                   {row.jam_mulai} - {row.jam_selesai}
                 </td>
                 <td className="px-6 py-4">{row.total_jam} jam</td>
+                <td className="px-6 py-4">{row.assigned_approver_name || "Admin"}</td>
                 <td className="px-6 py-4">
                   <StatusBadge status={row.status_approval} />
                 </td>
