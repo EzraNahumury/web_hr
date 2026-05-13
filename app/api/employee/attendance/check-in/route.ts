@@ -14,6 +14,7 @@ import {
 } from "@/lib/attendance";
 import { saveUploadedFile } from "@/lib/uploads";
 import { checkGeofence, MAX_GEOFENCE_RADIUS_METERS } from "@/lib/geofence";
+import { getScheduledShiftForDate } from "@/lib/jadwal-karyawan";
 
 type EmployeeRow = RowDataPacket & {
   id: number;
@@ -161,8 +162,25 @@ export async function POST(request: Request) {
     const detectedPlacement = requiresSelfie
       ? (checkGeofence(allPlacements, latitude, longitude).placement ?? employee.penempatan)
       : employee.penempatan;
-    const detectedShift: AttendanceShift | null = requiresSelfie && isTokoGudangPlacement(detectedPlacement)
-      ? detectTokoGudangShift(currentTime)
+    const isTokoGudang = requiresSelfie && isTokoGudangPlacement(detectedPlacement);
+    const scheduledShift = isTokoGudang
+      ? await getScheduledShiftForDate(employee.id, attendanceDate)
+      : null;
+
+    if (scheduledShift === "libur") {
+      return NextResponse.json(
+        {
+          message:
+            "Anda dijadwalkan libur hari ini. Hubungi atasan jika perlu mengubah jadwal sebelum presensi.",
+        },
+        { status: 403 },
+      );
+    }
+
+    const detectedShift: AttendanceShift | null = isTokoGudang
+      ? scheduledShift
+        ? (scheduledShift as AttendanceShift)
+        : detectTokoGudangShift(currentTime)
       : null;
     const lateMinutes = requiresSelfie
       ? getShiftLateMinutes(currentTime, detectedShift ?? "pagi")

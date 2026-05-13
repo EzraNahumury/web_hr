@@ -11,6 +11,7 @@ import {
   saveAttendancePhoto,
 } from "@/lib/attendance";
 import { checkGeofence, MAX_GEOFENCE_RADIUS_METERS } from "@/lib/geofence";
+import { getScheduledShiftForDate } from "@/lib/jadwal-karyawan";
 
 type EmployeeRow = RowDataPacket & {
   id: number;
@@ -126,10 +127,11 @@ export async function POST(request: Request) {
     const checkOutTime = attendanceDateTime.split(" ")[1];
 
     if (isTokoGudangPlacement(employee.penempatan) && attendance.jam_masuk_str) {
-      const finalShift = detectTokoGudangShiftFinal(
-        attendance.jam_masuk_str,
-        checkOutTime,
-      );
+      const scheduledShift = await getScheduledShiftForDate(employee.id, attendanceDate);
+      const finalShift =
+        scheduledShift && scheduledShift !== "libur"
+          ? scheduledShift
+          : detectTokoGudangShiftFinal(attendance.jam_masuk_str, checkOutTime);
 
       await pool.query(
         `

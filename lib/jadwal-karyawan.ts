@@ -59,6 +59,23 @@ type JadwalRow = RowDataPacket & {
   created_by: number | null;
 };
 
+export async function getScheduledShiftForDate(
+  karyawanId: number,
+  tanggal: string,
+): Promise<JadwalShift | null> {
+  await ensureJadwalKaryawanSchema();
+  const [rows] = await pool.query<JadwalRow[]>(
+    `
+      SELECT id, karyawan_id, DATE_FORMAT(tanggal, '%Y-%m-%d') AS tanggal, shift, created_by
+      FROM jadwal_karyawan
+      WHERE karyawan_id = ? AND tanggal = ?
+      LIMIT 1
+    `,
+    [karyawanId, tanggal],
+  );
+  return rows[0]?.shift ?? null;
+}
+
 export async function getJadwalForMonth(
   year: number,
   month: number,
