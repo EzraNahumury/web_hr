@@ -212,6 +212,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewingEmployee, setViewingEmployee] = useState<EmployeeListItem | null>(null);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"aktif" | "nonaktif" | "semua">("aktif");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [toast, setToast] = useState<{ title: string; description: string; type: "success" | "error" } | null>(null);
@@ -296,10 +297,15 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
     return () => ghostEl.removeEventListener("scroll", syncFromGhost);
   }, [ghostBar.visible]);
 
+  const statusFilteredEmployees = useMemo(() => {
+    if (statusFilter === "semua") return employees;
+    return employees.filter((employee) => employee.dataStatus === statusFilter);
+  }, [employees, statusFilter]);
+
   const filteredEmployees = useMemo(() => {
     const keyword = search.trim().toLowerCase();
-    if (!keyword) return employees;
-    return employees.filter((employee) =>
+    if (!keyword) return statusFilteredEmployees;
+    return statusFilteredEmployees.filter((employee) =>
       [
         employee.name,
         employee.nip,
@@ -313,7 +319,16 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
         .toLowerCase()
         .includes(keyword),
     );
-  }, [employees, search]);
+  }, [statusFilteredEmployees, search]);
+
+  const aktifCount = useMemo(
+    () => employees.filter((e) => e.dataStatus === "aktif").length,
+    [employees],
+  );
+  const nonaktifCount = useMemo(
+    () => employees.filter((e) => e.dataStatus === "nonaktif").length,
+    [employees],
+  );
 
   const timelinePreview = form.firstJoinDate ? calculateEmploymentTimeline(form.firstJoinDate) : null;
   const isTetap = form.employmentStatus === "tetap";
@@ -708,6 +723,39 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                   </button>
                 )}
               </div>
+            </div>
+
+            <div className="mt-5 inline-flex flex-wrap gap-1 rounded-2xl border border-[#ead7ce] bg-[#fff8f4] p-1">
+              {([
+                { value: "aktif", label: "Aktif", count: aktifCount },
+                { value: "nonaktif", label: "Nonaktif", count: nonaktifCount },
+                { value: "semua", label: "Semua", count: employees.length },
+              ] as const).map((tab) => {
+                const isActive = statusFilter === tab.value;
+                return (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    onClick={() => setStatusFilter(tab.value)}
+                    className={
+                      isActive
+                        ? "inline-flex items-center gap-2 rounded-xl bg-[#8f1d22] px-4 py-2 text-sm font-semibold text-white"
+                        : "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-[#7a6059] hover:bg-white"
+                    }
+                  >
+                    {tab.label}
+                    <span
+                      className={
+                        isActive
+                          ? "rounded-full bg-white/25 px-2 py-0.5 text-[11px] text-white"
+                          : "rounded-full bg-[#ead7ce] px-2 py-0.5 text-[11px] text-[#5f4b40]"
+                      }
+                    >
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
