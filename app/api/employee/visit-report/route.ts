@@ -38,10 +38,19 @@ export async function POST(request: Request) {
     }
 
     const formData = await request.formData();
-    const namaToko =
-      typeof formData.get("namaToko") === "string"
-        ? String(formData.get("namaToko")).trim()
-        : "";
+    const readText = (key: string) => {
+      const value = formData.get(key);
+      return typeof value === "string" ? value.trim() : "";
+    };
+
+    const namaToko = readText("namaToko");
+    const jenisKlien = readText("jenisKlien");
+    const pic = readText("pic");
+    const noHpPic = readText("noHpPic");
+    const produkDitawarkan = readText("produkDitawarkan");
+    const kebutuhanKlien = readText("kebutuhanKlien");
+    const potensiOrder = readText("potensiOrder");
+    const status = readText("status");
     const photoDataUrl =
       typeof formData.get("photoDataUrl") === "string"
         ? String(formData.get("photoDataUrl"))
@@ -52,10 +61,22 @@ export async function POST(request: Request) {
     const longitude = longitudeRaw !== null ? Number(longitudeRaw) : NaN;
 
     if (!namaToko) {
-      return NextResponse.json(
-        { message: "Nama toko wajib diisi." },
-        { status: 400 },
-      );
+      return NextResponse.json({ message: "Nama toko wajib diisi." }, { status: 400 });
+    }
+    if (!jenisKlien) {
+      return NextResponse.json({ message: "Jenis klien wajib diisi." }, { status: 400 });
+    }
+    if (!pic) {
+      return NextResponse.json({ message: "PIC wajib diisi." }, { status: 400 });
+    }
+    if (!noHpPic) {
+      return NextResponse.json({ message: "No HP PIC wajib diisi." }, { status: 400 });
+    }
+    if (!produkDitawarkan) {
+      return NextResponse.json({ message: "Produk yang ditawarkan wajib diisi." }, { status: 400 });
+    }
+    if (!status) {
+      return NextResponse.json({ message: "Status wajib diisi." }, { status: 400 });
     }
 
     if (!photoDataUrl) {
@@ -81,6 +102,13 @@ export async function POST(request: Request) {
       tanggal,
       waktuSubmit,
       namaToko,
+      jenisKlien,
+      pic,
+      noHpPic,
+      produkDitawarkan,
+      kebutuhanKlien: kebutuhanKlien || null,
+      potensiOrder: potensiOrder || null,
+      status,
       fotoPath,
       latitude,
       longitude,

@@ -24,6 +24,39 @@ export async function ensureVisitReportSchema() {
           KEY idx_laporan_kunjungan_tanggal (tanggal)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
       `);
+
+      const safeMigrate = async (sql: string) => {
+        try {
+          await pool.query(sql);
+        } catch (error) {
+          const code = (error as { code?: string }).code;
+          if (code !== "ER_DUP_FIELDNAME") {
+            console.error("Migration warning laporan_kunjungan:", error);
+          }
+        }
+      };
+
+      await safeMigrate(
+        `ALTER TABLE laporan_kunjungan ADD COLUMN jenis_klien VARCHAR(100) NULL AFTER nama_toko`,
+      );
+      await safeMigrate(
+        `ALTER TABLE laporan_kunjungan ADD COLUMN pic VARCHAR(255) NULL AFTER jenis_klien`,
+      );
+      await safeMigrate(
+        `ALTER TABLE laporan_kunjungan ADD COLUMN no_hp_pic VARCHAR(50) NULL AFTER pic`,
+      );
+      await safeMigrate(
+        `ALTER TABLE laporan_kunjungan ADD COLUMN produk_ditawarkan TEXT NULL AFTER no_hp_pic`,
+      );
+      await safeMigrate(
+        `ALTER TABLE laporan_kunjungan ADD COLUMN kebutuhan_klien TEXT NULL AFTER produk_ditawarkan`,
+      );
+      await safeMigrate(
+        `ALTER TABLE laporan_kunjungan ADD COLUMN potensi_order VARCHAR(100) NULL AFTER kebutuhan_klien`,
+      );
+      await safeMigrate(
+        `ALTER TABLE laporan_kunjungan ADD COLUMN status_klien VARCHAR(100) NULL AFTER potensi_order`,
+      );
     })();
   }
 
@@ -39,6 +72,13 @@ export type VisitReport = {
   tanggal: string;
   waktuSubmit: string;
   namaToko: string;
+  jenisKlien: string | null;
+  pic: string | null;
+  noHpPic: string | null;
+  produkDitawarkan: string | null;
+  kebutuhanKlien: string | null;
+  potensiOrder: string | null;
+  status: string | null;
   fotoPath: string;
   latitude: number | null;
   longitude: number | null;
@@ -53,6 +93,13 @@ type VisitReportRow = RowDataPacket & {
   tanggal: string;
   waktu_submit: string;
   nama_toko: string;
+  jenis_klien: string | null;
+  pic: string | null;
+  no_hp_pic: string | null;
+  produk_ditawarkan: string | null;
+  kebutuhan_klien: string | null;
+  potensi_order: string | null;
+  status_klien: string | null;
   foto_path: string;
   latitude: string | null;
   longitude: string | null;
@@ -68,6 +115,13 @@ function mapRow(row: VisitReportRow): VisitReport {
     tanggal: row.tanggal,
     waktuSubmit: row.waktu_submit,
     namaToko: row.nama_toko,
+    jenisKlien: row.jenis_klien,
+    pic: row.pic,
+    noHpPic: row.no_hp_pic,
+    produkDitawarkan: row.produk_ditawarkan,
+    kebutuhanKlien: row.kebutuhan_klien,
+    potensiOrder: row.potensi_order,
+    status: row.status_klien,
     fotoPath: row.foto_path,
     latitude: row.latitude !== null ? Number(row.latitude) : null,
     longitude: row.longitude !== null ? Number(row.longitude) : null,
@@ -94,6 +148,13 @@ export async function createVisitReport(payload: {
   tanggal: string;
   waktuSubmit: string;
   namaToko: string;
+  jenisKlien: string | null;
+  pic: string | null;
+  noHpPic: string | null;
+  produkDitawarkan: string | null;
+  kebutuhanKlien: string | null;
+  potensiOrder: string | null;
+  status: string | null;
   fotoPath: string;
   latitude: number | null;
   longitude: number | null;
@@ -103,14 +164,24 @@ export async function createVisitReport(payload: {
   const [result] = await pool.query<ResultSetHeader>(
     `
       INSERT INTO laporan_kunjungan
-        (karyawan_id, tanggal, waktu_submit, nama_toko, foto_path, latitude, longitude)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+        (karyawan_id, tanggal, waktu_submit, nama_toko,
+         jenis_klien, pic, no_hp_pic, produk_ditawarkan,
+         kebutuhan_klien, potensi_order, status_klien,
+         foto_path, latitude, longitude)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       payload.employeeId,
       payload.tanggal,
       payload.waktuSubmit,
       payload.namaToko,
+      payload.jenisKlien,
+      payload.pic,
+      payload.noHpPic,
+      payload.produkDitawarkan,
+      payload.kebutuhanKlien,
+      payload.potensiOrder,
+      payload.status,
       payload.fotoPath,
       payload.latitude,
       payload.longitude,
@@ -134,6 +205,13 @@ export async function listVisitReportsForEmployee(employeeId: number, tanggal: s
         DATE_FORMAT(l.tanggal, '%Y-%m-%d') AS tanggal,
         DATE_FORMAT(l.waktu_submit, '%Y-%m-%d %H:%i:%s') AS waktu_submit,
         l.nama_toko,
+        l.jenis_klien,
+        l.pic,
+        l.no_hp_pic,
+        l.produk_ditawarkan,
+        l.kebutuhan_klien,
+        l.potensi_order,
+        l.status_klien,
         l.foto_path,
         l.latitude,
         l.longitude
@@ -174,6 +252,13 @@ export async function listVisitReports(filter: {
         DATE_FORMAT(l.tanggal, '%Y-%m-%d') AS tanggal,
         DATE_FORMAT(l.waktu_submit, '%Y-%m-%d %H:%i:%s') AS waktu_submit,
         l.nama_toko,
+        l.jenis_klien,
+        l.pic,
+        l.no_hp_pic,
+        l.produk_ditawarkan,
+        l.kebutuhan_klien,
+        l.potensi_order,
+        l.status_klien,
         l.foto_path,
         l.latitude,
         l.longitude

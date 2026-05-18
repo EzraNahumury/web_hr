@@ -8,6 +8,13 @@ type VisitReport = {
   tanggal: string;
   waktuSubmit: string;
   namaToko: string;
+  jenisKlien?: string | null;
+  pic?: string | null;
+  noHpPic?: string | null;
+  produkDitawarkan?: string | null;
+  kebutuhanKlien?: string | null;
+  potensiOrder?: string | null;
+  status?: string | null;
   fotoPath: string;
   latitude: number | null;
   longitude: number | null;
@@ -44,6 +51,13 @@ export default function EmployeeVisitReportCapture() {
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const [namaToko, setNamaToko] = useState("");
+  const [jenisKlien, setJenisKlien] = useState("");
+  const [pic, setPic] = useState("");
+  const [noHpPic, setNoHpPic] = useState("");
+  const [produkDitawarkan, setProdukDitawarkan] = useState("");
+  const [kebutuhanKlien, setKebutuhanKlien] = useState("");
+  const [potensiOrder, setPotensiOrder] = useState("");
+  const [status, setStatus] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [reports, setReports] = useState<VisitReport[]>([]);
@@ -216,6 +230,26 @@ export default function EmployeeVisitReportCapture() {
       setErrorMessage("Nama toko wajib diisi.");
       return;
     }
+    if (!jenisKlien.trim()) {
+      setErrorMessage("Jenis klien wajib diisi.");
+      return;
+    }
+    if (!pic.trim()) {
+      setErrorMessage("PIC wajib diisi.");
+      return;
+    }
+    if (!noHpPic.trim()) {
+      setErrorMessage("No HP PIC wajib diisi.");
+      return;
+    }
+    if (!produkDitawarkan.trim()) {
+      setErrorMessage("Produk yang ditawarkan wajib diisi.");
+      return;
+    }
+    if (!status.trim()) {
+      setErrorMessage("Status wajib diisi.");
+      return;
+    }
     if (!photoDataUrl) {
       setErrorMessage("Ambil foto lokasi terlebih dahulu.");
       return;
@@ -231,6 +265,13 @@ export default function EmployeeVisitReportCapture() {
     startTransition(async () => {
       const formData = new FormData();
       formData.append("namaToko", namaToko.trim());
+      formData.append("jenisKlien", jenisKlien.trim());
+      formData.append("pic", pic.trim());
+      formData.append("noHpPic", noHpPic.trim());
+      formData.append("produkDitawarkan", produkDitawarkan.trim());
+      formData.append("kebutuhanKlien", kebutuhanKlien.trim());
+      formData.append("potensiOrder", potensiOrder.trim());
+      formData.append("status", status.trim());
       formData.append("photoDataUrl", photoDataUrl);
       formData.append("latitude", String(location.latitude));
       formData.append("longitude", String(location.longitude));
@@ -248,6 +289,13 @@ export default function EmployeeVisitReportCapture() {
 
       setSuccessMessage(result.message ?? "Laporan kunjungan berhasil disimpan.");
       setNamaToko("");
+      setJenisKlien("");
+      setPic("");
+      setNoHpPic("");
+      setProdukDitawarkan("");
+      setKebutuhanKlien("");
+      setPotensiOrder("");
+      setStatus("");
       setPhotoDataUrl(null);
       await loadTodayReports();
     });
@@ -296,17 +344,111 @@ export default function EmployeeVisitReportCapture() {
           </div>
 
           <div className="p-4 sm:p-6">
-            <div className="mb-5">
-              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">
-                Nama Toko / Customer
-              </label>
-              <input
-                type="text"
-                value={namaToko}
-                onChange={(event) => setNamaToko(event.target.value)}
-                placeholder="Contoh: Toko Sinar Jaya"
-                className="w-full rounded-xl border border-[#ead7ce] bg-white px-3.5 py-2.5 text-sm text-[#241716] outline-none transition focus:border-[#c8716d] focus:ring-2 focus:ring-[#c8716d]/10"
-              />
+            <div className="mb-5 grid gap-3 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">
+                  Nama Toko / Customer
+                </label>
+                <input
+                  type="text"
+                  value={namaToko}
+                  onChange={(event) => setNamaToko(event.target.value)}
+                  placeholder="Contoh: Toko Sinar Jaya"
+                  className="w-full rounded-xl border border-[#ead7ce] bg-white px-3.5 py-2.5 text-sm text-[#241716] outline-none transition focus:border-[#c8716d] focus:ring-2 focus:ring-[#c8716d]/10"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">
+                  Jenis Klien
+                </label>
+                <input
+                  type="text"
+                  value={jenisKlien}
+                  onChange={(event) => setJenisKlien(event.target.value)}
+                  placeholder="Contoh: Toko / Customer / Distributor"
+                  className="w-full rounded-xl border border-[#ead7ce] bg-white px-3.5 py-2.5 text-sm text-[#241716] outline-none transition focus:border-[#c8716d] focus:ring-2 focus:ring-[#c8716d]/10"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">
+                  PIC
+                </label>
+                <input
+                  type="text"
+                  value={pic}
+                  onChange={(event) => setPic(event.target.value)}
+                  placeholder="Contoh: Budi"
+                  className="w-full rounded-xl border border-[#ead7ce] bg-white px-3.5 py-2.5 text-sm text-[#241716] outline-none transition focus:border-[#c8716d] focus:ring-2 focus:ring-[#c8716d]/10"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">
+                  No HP PIC
+                </label>
+                <input
+                  type="tel"
+                  value={noHpPic}
+                  onChange={(event) => setNoHpPic(event.target.value)}
+                  placeholder="Contoh: 081234567890"
+                  className="w-full rounded-xl border border-[#ead7ce] bg-white px-3.5 py-2.5 text-sm text-[#241716] outline-none transition focus:border-[#c8716d] focus:ring-2 focus:ring-[#c8716d]/10"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">
+                  Potensi Order
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={potensiOrder}
+                  onChange={(event) => setPotensiOrder(event.target.value)}
+                  placeholder="Contoh: 5000000"
+                  className="w-full rounded-xl border border-[#ead7ce] bg-white px-3.5 py-2.5 text-sm text-[#241716] outline-none transition focus:border-[#c8716d] focus:ring-2 focus:ring-[#c8716d]/10"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">
+                  Produk Ditawarkan
+                </label>
+                <input
+                  type="text"
+                  value={produkDitawarkan}
+                  onChange={(event) => setProdukDitawarkan(event.target.value)}
+                  placeholder="Contoh: Produk A"
+                  className="w-full rounded-xl border border-[#ead7ce] bg-white px-3.5 py-2.5 text-sm text-[#241716] outline-none transition focus:border-[#c8716d] focus:ring-2 focus:ring-[#c8716d]/10"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">
+                  Kebutuhan Klien
+                </label>
+                <textarea
+                  value={kebutuhanKlien}
+                  onChange={(event) => setKebutuhanKlien(event.target.value)}
+                  placeholder="Tuliskan kebutuhan klien"
+                  rows={3}
+                  className="w-full resize-y rounded-xl border border-[#ead7ce] bg-white px-3.5 py-2.5 text-sm text-[#241716] outline-none transition focus:border-[#c8716d] focus:ring-2 focus:ring-[#c8716d]/10"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">
+                  Status
+                </label>
+                <input
+                  type="text"
+                  value={status}
+                  onChange={(event) => setStatus(event.target.value)}
+                  placeholder="Contoh: Prospek / Follow Up / Deal"
+                  className="w-full rounded-xl border border-[#ead7ce] bg-white px-3.5 py-2.5 text-sm text-[#241716] outline-none transition focus:border-[#c8716d] focus:ring-2 focus:ring-[#c8716d]/10"
+                />
+              </div>
             </div>
 
             <div className="mx-auto w-full max-w-[360px]">
