@@ -60,12 +60,6 @@ const CHECK_IN_OPTIONS: Array<{
   { value: "izin", label: "Izin / Off", short: "X", helper: "Isi keterangan, tanpa selfie." },
   { value: "sakit", label: "Sakit + Surat", short: "S", helper: "Upload surat sakit." },
   { value: "sakit_tanpa_surat", label: "Sakit", short: "SX", helper: "Isi keterangan sakit." },
-  {
-    value: "setengah_hari",
-    label: "Setengah Hari",
-    short: "H",
-    helper: "Selfie wajib. 08:30-12:00 atau 13:00-16:30.",
-  },
 ];
 
 export default function EmployeeAttendanceCapture({
