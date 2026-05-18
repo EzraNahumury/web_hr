@@ -72,6 +72,7 @@ export type PayrollEmployeeOption = {
   name: string;
   role: string;
   division: string;
+  subDivision: string | null;
   department: string;
   recapGroup: string;
   isSales: boolean;
@@ -448,6 +449,7 @@ export async function listPayrollEmployeeOptions() {
     name: row.nama,
     role: row.jabatan,
     division: row.divisi,
+    subDivision: row.sub_divisi,
     department: row.departemen,
     recapGroup: row.pembagian_rekapan ?? "-",
     isSales: isSalesEmployeeFromValues(row.jabatan, row.divisi, row.sub_divisi),

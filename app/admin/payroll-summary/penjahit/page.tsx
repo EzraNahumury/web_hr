@@ -27,7 +27,7 @@ export default async function AdminPenjahitPayrollSummaryPage({
   ]);
 
   const penjahitEmployeeOptions = employeeOptions.filter(
-    (e) => e.role?.toLowerCase() === "penjahit",
+    (e) => e.subDivision?.toLowerCase() === "penjahit",
   );
 
   return (

@@ -59,7 +59,6 @@ export const EMPLOYEE_ROLES = [
   "Freelance",
   "Sales Area",
   "Sales Nasional",
-  "Penjahit",
   "Organizational Development Officer",
 ] as const;
 export const EMPLOYEE_DEPARTMENTS = [
@@ -104,6 +103,7 @@ export const EMPLOYEE_SUB_DIVISIONS = [
   "HRD",
   "Ekspedisi",
   "Hostlive",
+  "Penjahit",
 ] as const;
 export const EMPLOYEE_PLACEMENTS = [
   "Office",
@@ -369,6 +369,21 @@ async function ensureEmployeeSchemaSupport() {
       await safeMigrate(
         `ALTER TABLE karyawan ADD COLUMN penempatan_extra VARCHAR(500) NULL AFTER penempatan`,
       );
+
+      // One-time data migration: pindahin karyawan jabatan="Penjahit" ke sub_divisi="Penjahit".
+      // Jabatan diisi "Staff" default (admin bisa override manual via form).
+      try {
+        await pool.query(
+          `
+            UPDATE karyawan
+            SET sub_divisi = 'Penjahit',
+                jabatan = 'Staff'
+            WHERE LOWER(jabatan) = 'penjahit'
+          `,
+        );
+      } catch (error) {
+        console.error("Migration warning karyawan penjahit jabatan -> sub_divisi:", error);
+      }
     })();
   }
 

@@ -457,7 +457,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
       { label: "Status Kepegawaian", value: formatStatus(viewingEmployee.employmentStatus) || "-" },
       { label: "Status Data", value: viewingEmployee.dataStatus || "-" },
       { label: "Akun", value: viewingEmployee.userActive ? "Aktif" : "Nonaktif" },
-      ...(viewingEmployee.role?.toLowerCase() === "penjahit" && viewingEmployee.penjahitPayrollType
+      ...(viewingEmployee.subDivision?.toLowerCase() === "penjahit" && viewingEmployee.penjahitPayrollType
         ? [{ label: "Tipe Payroll Penjahit", value: viewingEmployee.penjahitPayrollType === "mingguan" ? "Mingguan (tgl 1, 8, 16, 25)" : "Bulanan (tgl 25)" }]
         : []),
     ]
@@ -555,10 +555,10 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <Field label="Jabatan"><select value={form.role} onChange={(event) => { updateField("role", event.target.value); if (event.target.value.toLowerCase() !== "penjahit") { updateField("penjahitPayrollType", ""); } }} className={selectClassName}><option value="">Pilih jabatan</option>{lookups.roles.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+              <Field label="Jabatan"><select value={form.role} onChange={(event) => updateField("role", event.target.value)} className={selectClassName}><option value="">Pilih jabatan</option>{lookups.roles.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
               <Field label="Departemen"><select value={form.department} onChange={(event) => updateField("department", event.target.value)} className={selectClassName}><option value="">Pilih departemen</option>{lookups.departments.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
               <Field label="Divisi"><select value={form.division} onChange={(event) => updateField("division", event.target.value)} className={selectClassName}><option value="">Pilih divisi</option>{lookups.divisions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
-              <Field label="Sub Divisi"><select value={form.subDivision} onChange={(event) => updateField("subDivision", event.target.value)} className={selectClassName}><option value="">Pilih sub divisi</option>{lookups.subDivisions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+              <Field label="Sub Divisi"><select value={form.subDivision} onChange={(event) => { updateField("subDivision", event.target.value); if (event.target.value.toLowerCase() !== "penjahit") { updateField("penjahitPayrollType", ""); } }} className={selectClassName}><option value="">Pilih sub divisi</option>{lookups.subDivisions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
               <div className="space-y-2">
                 <span className="block text-sm font-medium text-[#4a3430]">Penempatan</span>
                 {form.placements.map((p, idx) => (
@@ -601,7 +601,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
               <Field label="Pembebanan"><select value={form.costAllocation} onChange={(event) => updateField("costAllocation", event.target.value)} className={selectClassName}><option value="">Pilih pembebanan</option>{lookups.costAllocations.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
             </div>
 
-            {form.role.toLowerCase() === "penjahit" ? (
+            {form.subDivision.toLowerCase() === "penjahit" ? (
               <div className="rounded-[18px] border border-[#ead7ce] bg-[#fff8f5] px-5 py-4">
                 <p className="mb-3 text-[13px] font-semibold text-[#6f5a54]">Tipe Payroll Penjahit</p>
                 <div className="flex gap-6">

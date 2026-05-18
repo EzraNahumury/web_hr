@@ -122,7 +122,7 @@ export default async function EmployeePayslipsPage({
       ? { month: requestedMonth, year: requestedYear }
       : fallbackPeriod;
 
-  const isPenjahit = (employee.jabatan ?? "").trim().toLowerCase() === "penjahit";
+  const isPenjahit = (employee.sub_divisi ?? "").trim().toLowerCase() === "penjahit";
 
   const payslipRow: AdminPayrollSummarySheetRow | null = await (async () => {
     if (!selectedPeriod) return null;
