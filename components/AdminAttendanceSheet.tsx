@@ -445,12 +445,7 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                 <td className="px-4 py-4 text-[#9a7a72]">{row.passwordLabel}</td>
                 {days.map((day) => {
                   const detail = row.daily[day];
-                  const isClickable =
-                    !!detail &&
-                    (!!detail.photoIn ||
-                      !!detail.photoOut ||
-                      detail.latitudeIn !== null ||
-                      detail.latitudeOut !== null);
+                  const isClickable = !!detail;
 
                   return (
                     <td key={day} className="px-3 py-4 text-center font-medium">
