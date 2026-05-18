@@ -37,8 +37,18 @@ const TOKO_SOLO_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
   { value: "libur", label: "Libur" },
 ];
 
-function getShiftOptionsForPenempatan(penempatan: string) {
-  return penempatan === "Toko Solo" ? TOKO_SOLO_SHIFT_OPTIONS : SHIFT_OPTIONS;
+// Sub divisi Media hanya pakai shift Pagi & Siang (plus Libur untuk hari off).
+const MEDIA_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
+  { value: "", label: "—" },
+  { value: "pagi", label: "Pagi" },
+  { value: "siang", label: "Siang" },
+  { value: "libur", label: "Libur" },
+];
+
+function getShiftOptionsFor(penempatan: string, subDivisi: string | null) {
+  if (penempatan === "Toko Solo") return TOKO_SOLO_SHIFT_OPTIONS;
+  if ((subDivisi ?? "").trim().toLowerCase() === "media") return MEDIA_SHIFT_OPTIONS;
+  return SHIFT_OPTIONS;
 }
 
 const SHIFT_COLOR: Record<JadwalShift, string> = {
@@ -347,7 +357,7 @@ export default function SpvJadwalManager({
             </thead>
             <tbody>
               {karyawanList.map((k) => {
-                const shiftOptions = getShiftOptionsForPenempatan(k.penempatan);
+                const shiftOptions = getShiftOptionsFor(k.penempatan, k.subDivisi);
                 return (
                 <tr
                   key={k.id}

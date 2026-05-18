@@ -16,6 +16,7 @@ import { getScheduledShiftForDate } from "@/lib/jadwal-karyawan";
 type EmployeeRow = RowDataPacket & {
   id: number;
   penempatan: string | null;
+  sub_divisi: string | null;
 };
 
 type AttendanceRow = RowDataPacket & {
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
     }
 
     const [employeeRows] = await pool.query<EmployeeRow[]>(
-      "SELECT id, penempatan FROM karyawan WHERE user_id = ? LIMIT 1",
+      "SELECT id, penempatan, sub_divisi FROM karyawan WHERE user_id = ? LIMIT 1",
       [session.userId],
     );
 
@@ -126,7 +127,11 @@ export async function POST(request: Request) {
     const photoPath = await saveAttendancePhoto(body.photoDataUrl, employee.id, "out");
     const checkOutTime = attendanceDateTime.split(" ")[1];
 
-    if (isTokoGudangPlacement(employee.penempatan) && attendance.jam_masuk_str) {
+    const isMedia = (employee.sub_divisi ?? "").trim().toLowerCase() === "media";
+    if (
+      (isTokoGudangPlacement(employee.penempatan) || isMedia) &&
+      attendance.jam_masuk_str
+    ) {
       const scheduledShift = await getScheduledShiftForDate(employee.id, attendanceDate);
       const finalShift =
         scheduledShift && scheduledShift !== "libur"

@@ -20,6 +20,7 @@ type EmployeeRow = RowDataPacket & {
   id: number;
   penempatan: string | null;
   penempatan_extra: string | null;
+  sub_divisi: string | null;
 };
 
 type AttendanceRow = RowDataPacket & {
@@ -97,7 +98,7 @@ export async function POST(request: Request) {
     }
 
     const [employeeRows] = await pool.query<EmployeeRow[]>(
-      "SELECT id, penempatan, penempatan_extra FROM karyawan WHERE user_id = ? LIMIT 1",
+      "SELECT id, penempatan, penempatan_extra, sub_divisi FROM karyawan WHERE user_id = ? LIMIT 1",
       [session.userId],
     );
 
@@ -162,8 +163,10 @@ export async function POST(request: Request) {
     const detectedPlacement = requiresSelfie
       ? (checkGeofence(allPlacements, latitude, longitude).placement ?? employee.penempatan)
       : employee.penempatan;
-    const isTokoGudang = requiresSelfie && isTokoGudangPlacement(detectedPlacement);
-    const scheduledShift = isTokoGudang
+    const isMedia = (employee.sub_divisi ?? "").trim().toLowerCase() === "media";
+    const isShiftEligible =
+      requiresSelfie && (isTokoGudangPlacement(detectedPlacement) || isMedia);
+    const scheduledShift = isShiftEligible
       ? await getScheduledShiftForDate(employee.id, attendanceDate)
       : null;
 
@@ -177,7 +180,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const detectedShift: AttendanceShift | null = isTokoGudang
+    const detectedShift: AttendanceShift | null = isShiftEligible
       ? scheduledShift
         ? (scheduledShift as AttendanceShift)
         : detectTokoGudangShift(currentTime)

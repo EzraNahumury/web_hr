@@ -103,16 +103,27 @@ export async function POST(request: Request) {
 
     const validKaryawanIds = new Set<number>();
     const tokoSoloKaryawanIds = new Set<number>();
+    const mediaKaryawanIds = new Set<number>();
     {
       const [rows] = await pool.query<
-        (RowDataPacket & { id: number; penempatan: string })[]
+        (RowDataPacket & { id: number; penempatan: string; sub_divisi: string | null })[]
       >(
-        `SELECT id, penempatan FROM karyawan WHERE penempatan IN ('Toko','Toko Solo','Gudang') AND status_data = 'aktif'`,
+        `
+          SELECT id, penempatan, sub_divisi FROM karyawan
+          WHERE status_data = 'aktif'
+            AND (
+              penempatan IN ('Toko','Toko Solo','Gudang')
+              OR LOWER(COALESCE(sub_divisi, '')) = 'media'
+            )
+        `,
       );
       for (const row of rows) {
         validKaryawanIds.add(row.id);
         if (row.penempatan === "Toko Solo") {
           tokoSoloKaryawanIds.add(row.id);
+        }
+        if ((row.sub_divisi ?? "").trim().toLowerCase() === "media") {
+          mediaKaryawanIds.add(row.id);
         }
       }
     }
@@ -151,6 +162,20 @@ export async function POST(request: Request) {
           {
             message:
               "Karyawan Toko Solo hanya boleh dijadwalkan shift Pagi atau Libur.",
+          },
+          { status: 400 },
+        );
+      }
+      if (
+        mediaKaryawanIds.has(karyawanId) &&
+        shift !== "pagi" &&
+        shift !== "siang" &&
+        shift !== "libur"
+      ) {
+        return NextResponse.json(
+          {
+            message:
+              "Karyawan sub divisi Media hanya boleh dijadwalkan shift Pagi, Siang, atau Libur.",
           },
           { status: 400 },
         );

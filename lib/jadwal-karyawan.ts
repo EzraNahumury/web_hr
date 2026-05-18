@@ -155,6 +155,7 @@ export type TokoGudangKaryawan = {
   nama: string;
   noKaryawan: string | null;
   penempatan: string;
+  subDivisi: string | null;
   jabatan: string | null;
 };
 
@@ -163,16 +164,20 @@ type TokoGudangRow = RowDataPacket & {
   nama: string;
   no_karyawan: string | null;
   penempatan: string;
+  sub_divisi: string | null;
   jabatan: string | null;
 };
 
 export async function listTokoGudangKaryawan(): Promise<TokoGudangKaryawan[]> {
   const [rows] = await pool.query<TokoGudangRow[]>(
     `
-      SELECT id, nama, no_karyawan, penempatan, jabatan
+      SELECT id, nama, no_karyawan, penempatan, sub_divisi, jabatan
       FROM karyawan
-      WHERE penempatan IN ('Toko', 'Toko Solo', 'Gudang')
-        AND status_data = 'aktif'
+      WHERE status_data = 'aktif'
+        AND (
+          penempatan IN ('Toko', 'Toko Solo', 'Gudang')
+          OR LOWER(COALESCE(sub_divisi, '')) = 'media'
+        )
       ORDER BY penempatan ASC, nama ASC
     `,
   );
@@ -181,6 +186,7 @@ export async function listTokoGudangKaryawan(): Promise<TokoGudangKaryawan[]> {
     nama: r.nama,
     noKaryawan: r.no_karyawan,
     penempatan: r.penempatan,
+    subDivisi: r.sub_divisi,
     jabatan: r.jabatan,
   }));
 }
