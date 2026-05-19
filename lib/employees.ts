@@ -68,7 +68,36 @@ export const EMPLOYEE_DEPARTMENTS = [
   "Operasional",
   "Marketing",
   "Ekspedisi",
+  "Business Relation",
+  "AI",
+  "OD",
 ] as const;
+
+export const DEPARTMENT_CODES: Record<string, string> = {
+  Secretary: "SC",
+  HRD: "HRD",
+  Finance: "FC",
+  Operasional: "OP",
+  Marketing: "MR",
+  Ekspedisi: "EKS",
+  "Business Relation": "BR",
+  AI: "AI",
+  OD: "OD",
+};
+
+export const DIVISION_CODES: Record<string, string> = {
+  Produksi: "PRO",
+  RnD: "RND",
+  Logistik: "LOG",
+  "Sales & Retail": "SR",
+  "Marketing & Media": "MM",
+  Finance: "FC",
+  HRD: "HRD",
+  Ekspedisi: "EKS",
+  AI: "AI",
+  OD: "OD",
+  "Business Relation": "BR",
+};
 export const EMPLOYEE_DIVISIONS = [
   "Produksi",
   "RnD",
@@ -78,6 +107,9 @@ export const EMPLOYEE_DIVISIONS = [
   "Finance",
   "HRD",
   "Ekspedisi",
+  "AI",
+  "OD",
+  "Business Relation",
 ] as const;
 export const EMPLOYEE_SUB_DIVISIONS = [
   "Admin Produksi",
@@ -384,6 +416,70 @@ async function ensureEmployeeSchemaSupport() {
       } catch (error) {
         console.error("Migration warning karyawan penjahit jabatan -> sub_divisi:", error);
       }
+
+      // One-time data migration: regenerate semua NIP karyawan ke format
+      // {DEPT_CODE}.{DIV_CODE}.{TAHUN_MASUK}.{0001}.
+      try {
+        await pool.query(
+          `
+            CREATE TABLE IF NOT EXISTS hris_migration_log (
+              migration_key VARCHAR(150) PRIMARY KEY,
+              applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+          `,
+        );
+
+        const [logRows] = await pool.query<(RowDataPacket & { migration_key: string })[]>(
+          `SELECT migration_key FROM hris_migration_log WHERE migration_key = ? LIMIT 1`,
+          ["nip_auto_format_v1"],
+        );
+
+        if (logRows.length === 0) {
+          const [karyawanRows] = await pool.query<
+            (RowDataPacket & {
+              id: number;
+              departemen: string | null;
+              divisi: string | null;
+              tanggal_masuk_pertama: string | null;
+            })[]
+          >(
+            `
+              SELECT id, departemen, divisi,
+                     DATE_FORMAT(tanggal_masuk_pertama, '%Y-%m-%d') AS tanggal_masuk_pertama
+              FROM karyawan
+              ORDER BY departemen ASC, divisi ASC, tanggal_masuk_pertama ASC, id ASC
+            `,
+          );
+
+          const groupCounter = new Map<string, number>();
+          const currentYear = String(new Date().getFullYear());
+
+          for (const row of karyawanRows) {
+            const deptCode = DEPARTMENT_CODES[row.departemen ?? ""] ?? "XX";
+            const divCode = DIVISION_CODES[row.divisi ?? ""] ?? "XX";
+            const year =
+              row.tanggal_masuk_pertama && /^\d{4}/.test(row.tanggal_masuk_pertama)
+                ? row.tanggal_masuk_pertama.slice(0, 4)
+                : currentYear;
+            const prefix = `${deptCode}.${divCode}.${year}`;
+            const nextSeq = (groupCounter.get(prefix) ?? 0) + 1;
+            groupCounter.set(prefix, nextSeq);
+            const newNip = `${prefix}.${String(nextSeq).padStart(4, "0")}`;
+
+            await pool.query(`UPDATE karyawan SET no_karyawan = ? WHERE id = ?`, [
+              newNip,
+              row.id,
+            ]);
+          }
+
+          await pool.query(
+            `INSERT INTO hris_migration_log (migration_key) VALUES (?)`,
+            ["nip_auto_format_v1"],
+          );
+        }
+      } catch (error) {
+        console.error("Migration warning karyawan NIP regenerate:", error);
+      }
     })();
   }
 
@@ -509,6 +605,42 @@ function resolveEmployeeTimeline(
   };
 }
 
+type NipExecutor = {
+  query: <T extends RowDataPacket[]>(sql: string, values?: unknown[]) => Promise<[T, unknown]>;
+};
+
+async function generateNextNip(
+  department: string | null,
+  division: string | null,
+  firstJoinDate: string | null,
+  executor: NipExecutor,
+): Promise<string> {
+  const deptCode = DEPARTMENT_CODES[department ?? ""] ?? "XX";
+  const divCode = DIVISION_CODES[division ?? ""] ?? "XX";
+  const year = (() => {
+    if (firstJoinDate && /^\d{4}-\d{2}-\d{2}$/.test(firstJoinDate)) {
+      return firstJoinDate.slice(0, 4);
+    }
+    return String(new Date().getFullYear());
+  })();
+  const prefix = `${deptCode}.${divCode}.${year}.`;
+
+  const [rows] = await executor.query<(RowDataPacket & { max_seq: number | null })[]>(
+    `
+      SELECT MAX(CAST(SUBSTRING_INDEX(no_karyawan, '.', -1) AS UNSIGNED)) AS max_seq
+      FROM karyawan
+      WHERE no_karyawan LIKE ?
+    `,
+    [`${prefix}%`],
+  );
+
+  const lastSeq = rows[0]?.max_seq ?? 0;
+  const nextSeq = Number(lastSeq) + 1;
+  const seqPadded = String(nextSeq).padStart(4, "0");
+
+  return `${prefix}${seqPadded}`;
+}
+
 export async function insertEmployee(payload: EmployeePayload) {
   await ensureEmployeeSchemaSupport();
   const connection = await pool.getConnection();
@@ -517,6 +649,13 @@ export async function insertEmployee(payload: EmployeePayload) {
     await connection.beginTransaction();
 
     const resolvedTimeline = resolveEmployeeTimeline(payload, { allowManualContractDates: false });
+
+    const generatedNip = await generateNextNip(
+      payload.department,
+      payload.division,
+      resolvedTimeline.firstJoinDate,
+      connection as unknown as NipExecutor,
+    );
 
     const [userResult] = await connection.query<ResultSetHeader>(
       `
@@ -566,7 +705,7 @@ export async function insertEmployee(payload: EmployeePayload) {
       `,
       [
         userId,
-        payload.nip,
+        generatedNip,
         payload.name,
         payload.unit,
         payload.role,

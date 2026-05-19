@@ -565,7 +565,21 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
             <Field label="Nama"><input value={form.name} onChange={(event) => updateField("name", event.target.value)} className={inputClassName} required /></Field>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="NIP / No Karyawan"><input value={form.nip} onChange={(event) => updateField("nip", event.target.value)} className={inputClassName} /></Field>
+              <Field label="NIP / No Karyawan">
+                {editingId ? (
+                  <input
+                    value={form.nip}
+                    readOnly
+                    className={`${inputClassName} cursor-not-allowed bg-[#f5ebe5] text-[#7a6059]`}
+                  />
+                ) : (
+                  <input
+                    value="Akan di-generate otomatis dari Departemen.Divisi.Tahun.Urutan"
+                    readOnly
+                    className={`${inputClassName} cursor-not-allowed bg-[#f5ebe5] text-[#7a6059]`}
+                  />
+                )}
+              </Field>
               <Field label="Unit"><select value={form.unit} onChange={(event) => updateField("unit", event.target.value)} className={selectClassName}><option value="">Pilih unit</option>{lookups.units.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
             </div>
 
