@@ -266,7 +266,7 @@ export async function getPenjahitSheet(period?: {
 
     const liburNasional = att?.holiday_count ?? 0;
     const alfa = att?.alfa_count ?? 0;
-    const totalGajiPokok = gajiPokokPerHari * (masuk + liburNasional);
+    const totalGajiPokok = gajiPokokPerHari * masuk;
     const uangAbsensiTotal = uangAbsensiPerHari * masuk;
     const kerajinanNoIssue = sakit <= 2 && sakitTanpaSurat === 0 && alfa === 0;
     const kerajinanReachesHariKerja = (masuk + sakit + setengahHari + liburNasional) >= hariKerja;
