@@ -76,6 +76,29 @@ export async function getScheduledShiftForDate(
   return rows[0]?.shift ?? null;
 }
 
+export async function getJadwalForRange(
+  startDate: string,
+  endDate: string,
+): Promise<JadwalKaryawanItem[]> {
+  await ensureJadwalKaryawanSchema();
+  const [rows] = await pool.query<JadwalRow[]>(
+    `
+      SELECT id, karyawan_id, DATE_FORMAT(tanggal, '%Y-%m-%d') AS tanggal, shift, created_by
+      FROM jadwal_karyawan
+      WHERE tanggal >= ? AND tanggal <= ?
+      ORDER BY karyawan_id, tanggal
+    `,
+    [startDate, endDate],
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    karyawanId: r.karyawan_id,
+    tanggal: r.tanggal,
+    shift: r.shift,
+    createdBy: r.created_by,
+  }));
+}
+
 export async function getJadwalForMonth(
   year: number,
   month: number,

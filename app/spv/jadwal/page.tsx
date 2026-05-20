@@ -2,9 +2,10 @@ import SpvShell from "@/components/SpvShell";
 import SpvJadwalManager from "@/components/SpvJadwalManager";
 import { requireSpvSession } from "@/lib/auth";
 import {
-  getJadwalForMonth,
+  getJadwalForRange,
   listTokoGudangKaryawan,
 } from "@/lib/jadwal-karyawan";
+import { getPayrollDateRange } from "@/lib/payroll-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -28,9 +29,10 @@ export default async function SpvJadwalPage({
   const year = Number.isInteger(yearRaw) && yearRaw >= 2024 && yearRaw <= 2100 ? yearRaw : def.year;
   const month = Number.isInteger(monthRaw) && monthRaw >= 1 && monthRaw <= 12 ? monthRaw : def.month;
 
+  const range = getPayrollDateRange(month, year);
   const [karyawanList, jadwalList] = await Promise.all([
     listTokoGudangKaryawan(),
-    getJadwalForMonth(year, month),
+    getJadwalForRange(range.startSql, range.endSql),
   ]);
 
   return (

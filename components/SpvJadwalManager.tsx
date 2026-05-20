@@ -75,16 +75,42 @@ const MONTH_LABELS = [
   "Desember",
 ];
 
-function getDaysInMonth(year: number, month: number) {
-  return new Date(year, month, 0).getDate();
-}
-
 function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
-function dateKey(year: number, month: number, day: number) {
-  return `${year}-${pad(month)}-${pad(day)}`;
+type PeriodDay = {
+  day: number;
+  month: number;
+  year: number;
+  date: string; // YYYY-MM-DD
+};
+
+// Periode payroll: tgl 26 bulan sebelumnya s/d tgl 25 bulan dipilih (matches absensi admin).
+function buildPeriodDays(year: number, month: number): PeriodDay[] {
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  const daysInPrev = new Date(prevYear, prevMonth, 0).getDate();
+  const list: PeriodDay[] = [];
+
+  for (let d = 26; d <= daysInPrev; d++) {
+    list.push({
+      day: d,
+      month: prevMonth,
+      year: prevYear,
+      date: `${prevYear}-${pad(prevMonth)}-${pad(d)}`,
+    });
+  }
+  for (let d = 1; d <= 25; d++) {
+    list.push({
+      day: d,
+      month,
+      year,
+      date: `${year}-${pad(month)}-${pad(d)}`,
+    });
+  }
+
+  return list;
 }
 
 function buildJadwalMap(rows: JadwalKaryawanItem[]) {
@@ -123,18 +149,17 @@ export default function SpvJadwalManager({
     return () => window.clearTimeout(t);
   }, [toast]);
 
-  const daysInMonth = useMemo(() => getDaysInMonth(year, month), [year, month]);
-  const dayList = useMemo(
-    () => Array.from({ length: daysInMonth }, (_, i) => i + 1),
-    [daysInMonth],
-  );
+  const periodDays = useMemo(() => buildPeriodDays(year, month), [year, month]);
 
-  const yearOptions = useMemo(() => {
-    const current = new Date().getFullYear();
-    const years: number[] = [];
-    for (let y = current - 1; y <= current + 2; y++) years.push(y);
-    return years;
-  }, []);
+  function handleMonthChange(value: string) {
+    const match = /^(\d{4})-(\d{2})$/.exec(value);
+    if (!match) return;
+    const newYear = Number(match[1]);
+    const newMonth = Number(match[2]);
+    if (!Number.isInteger(newYear) || !Number.isInteger(newMonth)) return;
+    if (newMonth < 1 || newMonth > 12) return;
+    changePeriod(newYear, newMonth);
+  }
 
   async function changePeriod(newYear: number, newMonth: number) {
     if (dirty) {
@@ -171,9 +196,8 @@ export default function SpvJadwalManager({
   function fillRow(karyawanId: number, value: ShiftOption) {
     setJadwalMap((prev) => {
       const next = new Map(prev);
-      for (const day of dayList) {
-        const tanggal = dateKey(year, month, day);
-        const key = `${karyawanId}|${tanggal}`;
+      for (const periodDay of periodDays) {
+        const key = `${karyawanId}|${periodDay.date}`;
         if (value === "") {
           next.delete(key);
         } else {
@@ -249,35 +273,17 @@ export default function SpvJadwalManager({
           <div className="flex flex-wrap items-end gap-3">
             <label className="block">
               <span className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#7a6059]">
-                Bulan
+                Periode
               </span>
-              <select
-                value={month}
-                onChange={(e) => changePeriod(year, Number(e.target.value))}
+              <input
+                type="month"
+                value={`${year}-${pad(month)}`}
+                onChange={(e) => handleMonthChange(e.target.value)}
                 className="mt-1 h-11 rounded-2xl border border-[#ead7ce] bg-white px-4 text-[#2d1b18] outline-none focus:border-[#c8716d]"
-              >
-                {MONTH_LABELS.map((label, i) => (
-                  <option key={label} value={i + 1}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#7a6059]">
-                Tahun
+              />
+              <span className="mt-1 block text-[11px] text-[#a16f63]">
+                {periodDays.length > 0 ? `${MONTH_LABELS[periodDays[0].month - 1]} ${periodDays[0].day} – ${MONTH_LABELS[periodDays[periodDays.length - 1].month - 1]} ${periodDays[periodDays.length - 1].day}, ${year}` : ""}
               </span>
-              <select
-                value={year}
-                onChange={(e) => changePeriod(Number(e.target.value), month)}
-                className="mt-1 h-11 rounded-2xl border border-[#ead7ce] bg-white px-4 text-[#2d1b18] outline-none focus:border-[#c8716d]"
-              >
-                {yearOptions.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
             </label>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -336,20 +342,21 @@ export default function SpvJadwalManager({
                   Karyawan
                 </th>
                 <th className="min-w-[140px] px-3 py-3 font-semibold">Quick Fill</th>
-                {dayList.map((day) => {
-                  const date = new Date(year, month - 1, day);
+                {periodDays.map((pd) => {
+                  const date = new Date(pd.year, pd.month - 1, pd.day);
                   const dow = date.getDay();
                   const isWeekend = dow === 0 || dow === 6;
                   const dayShort = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"][dow];
                   return (
                     <th
-                      key={day}
+                      key={pd.date}
                       className={`min-w-[88px] px-1 py-2 text-center font-semibold ${
                         isWeekend ? "bg-[#ffe8e0] text-[#8f1d22]" : ""
                       }`}
                     >
                       <div className="text-[10px] tracking-[0.06em]">{dayShort}</div>
-                      <div className="text-sm">{day}</div>
+                      <div className="text-sm">{pd.day}</div>
+                      <div className="text-[9px] text-[#a16f63]">{MONTH_LABELS[pd.month - 1].slice(0, 3)}</div>
                     </th>
                   );
                 })}
@@ -390,14 +397,13 @@ export default function SpvJadwalManager({
                       ))}
                     </select>
                   </td>
-                  {dayList.map((day) => {
-                    const tanggal = dateKey(year, month, day);
-                    const value = jadwalMap.get(`${k.id}|${tanggal}`) ?? "";
+                  {periodDays.map((pd) => {
+                    const value = jadwalMap.get(`${k.id}|${pd.date}`) ?? "";
                     return (
-                      <td key={day} className="px-1 py-1">
+                      <td key={pd.date} className="px-1 py-1">
                         <select
                           value={value}
-                          onChange={(e) => setCell(k.id, tanggal, e.target.value as ShiftOption)}
+                          onChange={(e) => setCell(k.id, pd.date, e.target.value as ShiftOption)}
                           className={`h-9 w-full rounded-lg border px-1 text-[11px] font-semibold focus:outline-none ${
                             value
                               ? SHIFT_COLOR[value as JadwalShift]
@@ -423,7 +429,7 @@ export default function SpvJadwalManager({
 
       <p className="text-center text-xs text-[#8a6f68]">
         Tip: gunakan kolom <span className="font-semibold">Quick Fill</span> untuk mengisi seluruh
-        bulan dengan shift yang sama, lalu sesuaikan tanggal libur per karyawan.
+        periode dengan shift yang sama, lalu sesuaikan tanggal libur per karyawan.
       </p>
     </div>
   );

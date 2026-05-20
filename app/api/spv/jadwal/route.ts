@@ -55,12 +55,17 @@ function isValidShift(value: unknown): value is JadwalShift {
 }
 
 function isValidDateInPeriod(date: string, year: number, month: number) {
+  // Periode payroll: tgl 26 bulan sebelumnya s/d tgl 25 bulan dipilih
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
   if (!m) return false;
   const y = Number(m[1]);
   const mo = Number(m[2]);
   const d = Number(m[3]);
-  if (y !== year || mo !== month) return false;
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  const inPrev = y === prevYear && mo === prevMonth && d >= 26;
+  const inSelected = y === year && mo === month && d >= 1 && d <= 25;
+  if (!inPrev && !inSelected) return false;
   const test = new Date(y, mo - 1, d);
   return (
     test.getFullYear() === y &&
