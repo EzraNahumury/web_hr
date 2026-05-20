@@ -166,8 +166,9 @@ export async function POST(request: Request) {
       ? (checkGeofence(allPlacements, latitude, longitude).placement ?? employee.penempatan)
       : employee.penempatan;
     const isMedia = (employee.sub_divisi ?? "").trim().toLowerCase() === "media";
+    const isJne = detectedPlacement === "JNE";
     const isShiftEligible =
-      requiresSelfie && (isTokoGudangPlacement(detectedPlacement) || isMedia);
+      requiresSelfie && (isTokoGudangPlacement(detectedPlacement) || isMedia || isJne);
     const scheduledShift = isShiftEligible
       ? await getScheduledShiftForDate(employee.id, attendanceDate)
       : null;

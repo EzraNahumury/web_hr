@@ -44,7 +44,9 @@ export type AttendanceShift =
   | "setengah_2"
   | "pagi_full"
   | "pagi_short"
-  | "siang_sore";
+  | "siang_sore"
+  | "jne_pagi"
+  | "jne_siang";
 
 const SHIFT_START: Record<AttendanceShift, number> = {
   pagi: 8 * 60 + 30,         // 08:30
@@ -55,6 +57,14 @@ const SHIFT_START: Record<AttendanceShift, number> = {
   pagi_full: 8 * 60 + 30,    // 08:30 (selesai 17:00)
   pagi_short: 8 * 60 + 30,   // 08:30 (selesai 15:00)
   siang_sore: 12 * 60,       // 12:00 (selesai 17:00)
+  jne_pagi: 8 * 60,          // 08:00 (selesai 16:00)
+  jne_siang: 14 * 60,        // 14:00 (selesai 21:00)
+};
+
+// Toleransi keterlambatan per shift. Jika lateMinutes <= tolerance maka dianggap tepat waktu.
+const SHIFT_TOLERANCE_MINUTES: Partial<Record<AttendanceShift, number>> = {
+  jne_pagi: 10,
+  jne_siang: 10,
 };
 
 type Range = readonly [number, number];
@@ -68,6 +78,8 @@ const CHECKIN_WINDOW: Record<AttendanceShift, Range> = {
   pagi_full:  [8 * 60,            8 * 60 + 30],   // 08:00-08:30
   pagi_short: [8 * 60,            8 * 60 + 30],   // 08:00-08:30
   siang_sore: [11 * 60 + 45,      12 * 60],       // 11:45-12:00
+  jne_pagi:   [7 * 60 + 30,       11 * 60],       // 07:30-11:00 (tolerance 10 min via SHIFT_TOLERANCE)
+  jne_siang:  [13 * 60 + 30,      17 * 60],       // 13:30-17:00
 };
 
 const CHECKOUT_WINDOW: Record<AttendanceShift, Range> = {
@@ -79,6 +91,8 @@ const CHECKOUT_WINDOW: Record<AttendanceShift, Range> = {
   pagi_full:  [16 * 60 + 30,      17 * 60 + 30],  // 16:30-17:30
   pagi_short: [14 * 60 + 30,      15 * 60 + 30],  // 14:30-15:30
   siang_sore: [16 * 60 + 30,      17 * 60 + 30],  // 16:30-17:30
+  jne_pagi:   [15 * 60 + 30,      16 * 60 + 30],  // 15:30-16:30
+  jne_siang:  [20 * 60 + 30,      21 * 60 + 30],  // 20:30-21:30
 };
 
 function timeToMinutes(time: string): number {
@@ -116,7 +130,9 @@ export function detectTokoGudangShiftFinal(
 
 export function getShiftLateMinutes(time: string, shift: AttendanceShift): number {
   const mins = timeToMinutes(time);
-  return Math.max(mins - SHIFT_START[shift], 0);
+  const lateRaw = Math.max(mins - SHIFT_START[shift], 0);
+  const tolerance = SHIFT_TOLERANCE_MINUTES[shift] ?? 0;
+  return lateRaw <= tolerance ? 0 : lateRaw;
 }
 
 function minutesToTimeLabel(mins: number): string {

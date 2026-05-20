@@ -10,7 +10,9 @@ export type JadwalShift =
   | "libur"
   | "pagi_full"
   | "pagi_short"
-  | "siang_sore";
+  | "siang_sore"
+  | "jne_pagi"
+  | "jne_siang";
 
 export const JADWAL_SHIFT_LABELS: Record<JadwalShift, string> = {
   pagi: "Pagi",
@@ -22,6 +24,8 @@ export const JADWAL_SHIFT_LABELS: Record<JadwalShift, string> = {
   pagi_full: "08:30 - 17:00",
   pagi_short: "08:30 - 15:00",
   siang_sore: "12:00 - 17:00",
+  jne_pagi: "JNE Pagi (08:00 - 16:00)",
+  jne_siang: "JNE Siang (14:00 - 21:00)",
 };
 
 export const JADWAL_EFFECTIVE_FROM = "2026-05-01";
@@ -44,7 +48,7 @@ export function ensureJadwalKaryawanSchema(): Promise<void> {
           id INT AUTO_INCREMENT PRIMARY KEY,
           karyawan_id INT NOT NULL,
           tanggal DATE NOT NULL,
-          shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','libur','pagi_full','pagi_short','siang_sore') NOT NULL,
+          shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','libur','pagi_full','pagi_short','siang_sore','jne_pagi','jne_siang') NOT NULL,
           created_by INT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -55,7 +59,7 @@ export function ensureJadwalKaryawanSchema(): Promise<void> {
       try {
         await pool.query(`
           ALTER TABLE jadwal_karyawan
-          MODIFY COLUMN shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','libur','pagi_full','pagi_short','siang_sore') NOT NULL
+          MODIFY COLUMN shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','libur','pagi_full','pagi_short','siang_sore','jne_pagi','jne_siang') NOT NULL
         `);
       } catch (error) {
         console.error("Migration warning jadwal_karyawan.shift:", error);
@@ -212,7 +216,7 @@ export async function listTokoGudangKaryawan(): Promise<TokoGudangKaryawan[]> {
       FROM karyawan
       WHERE status_data = 'aktif'
         AND (
-          penempatan IN ('Toko', 'Toko Solo', 'Gudang')
+          penempatan IN ('Toko', 'Toko Solo', 'Gudang', 'JNE')
           OR LOWER(COALESCE(sub_divisi, '')) = 'media'
         )
       ORDER BY penempatan ASC, nama ASC

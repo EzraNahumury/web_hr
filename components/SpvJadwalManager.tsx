@@ -45,6 +45,14 @@ const MEDIA_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
   { value: "libur", label: "Libur" },
 ];
 
+// JNE pakai 2 shift unik dengan toleransi 10 menit di check-in.
+const JNE_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
+  { value: "", label: "—" },
+  { value: "jne_pagi", label: "Pagi (08:00 - 16:00)" },
+  { value: "jne_siang", label: "Siang (14:00 - 21:00)" },
+  { value: "libur", label: "Libur" },
+];
+
 // Imel (NIP MR.MM.2025.0002) — jadwal khusus per hari, dropdown pakai jam-jam langsung.
 const IMEL_NIP = "MR.MM.2025.0002";
 const IMEL_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
@@ -64,6 +72,7 @@ function getShiftOptionsFor(
   noKaryawan: string | null,
 ) {
   if (noKaryawan === IMEL_NIP) return IMEL_SHIFT_OPTIONS;
+  if (penempatan === "JNE") return JNE_SHIFT_OPTIONS;
   if (penempatan === "Toko Solo") return TOKO_SOLO_SHIFT_OPTIONS;
   if ((subDivisi ?? "").trim().toLowerCase() === "media") return MEDIA_SHIFT_OPTIONS;
   return SHIFT_OPTIONS;
@@ -79,6 +88,8 @@ const SHIFT_COLOR: Record<JadwalShift, string> = {
   pagi_full: "bg-emerald-50 text-emerald-700 border-emerald-200",
   pagi_short: "bg-teal-50 text-teal-700 border-teal-200",
   siang_sore: "bg-sky-50 text-sky-700 border-sky-200",
+  jne_pagi: "bg-orange-50 text-orange-700 border-orange-200",
+  jne_siang: "bg-rose-50 text-rose-700 border-rose-200",
 };
 
 const MONTH_LABELS = [

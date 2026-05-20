@@ -45,6 +45,8 @@ const VALID_SHIFTS: JadwalShift[] = [
   "pagi_full",
   "pagi_short",
   "siang_sore",
+  "jne_pagi",
+  "jne_siang",
 ];
 
 function parsePositiveInt(v: unknown) {
@@ -120,6 +122,7 @@ export async function POST(request: Request) {
     const validKaryawanIds = new Set<number>();
     const tokoSoloKaryawanIds = new Set<number>();
     const mediaKaryawanIds = new Set<number>();
+    const jneKaryawanIds = new Set<number>();
     const imelKaryawanIds = new Set<number>();
     {
       const [rows] = await pool.query<
@@ -134,7 +137,7 @@ export async function POST(request: Request) {
           SELECT id, penempatan, sub_divisi, no_karyawan FROM karyawan
           WHERE status_data = 'aktif'
             AND (
-              penempatan IN ('Toko','Toko Solo','Gudang')
+              penempatan IN ('Toko','Toko Solo','Gudang','JNE')
               OR LOWER(COALESCE(sub_divisi, '')) = 'media'
             )
         `,
@@ -143,6 +146,9 @@ export async function POST(request: Request) {
         validKaryawanIds.add(row.id);
         if (row.penempatan === "Toko Solo") {
           tokoSoloKaryawanIds.add(row.id);
+        }
+        if (row.penempatan === "JNE") {
+          jneKaryawanIds.add(row.id);
         }
         if ((row.sub_divisi ?? "").trim().toLowerCase() === "media") {
           mediaKaryawanIds.add(row.id);
@@ -168,6 +174,14 @@ export async function POST(request: Request) {
       "pagi_short",
       "siang_sore",
     ]);
+
+    const JNE_VALID_SHIFTS = new Set<JadwalShift>([
+      "jne_pagi",
+      "jne_siang",
+      "libur",
+    ]);
+
+    const JNE_ONLY_SHIFTS = new Set<JadwalShift>(["jne_pagi", "jne_siang"]);
 
     const entries: { karyawanId: number; tanggal: string; shift: JadwalShift }[] = [];
     for (const item of entriesRaw) {
@@ -222,6 +236,23 @@ export async function POST(request: Request) {
           {
             message:
               "Shift ini khusus untuk Siti Imeliya Sari, tidak bisa digunakan karyawan lain.",
+          },
+          { status: 400 },
+        );
+      } else if (jneKaryawanIds.has(karyawanId)) {
+        if (!JNE_VALID_SHIFTS.has(shift)) {
+          return NextResponse.json(
+            {
+              message:
+                "Karyawan JNE hanya boleh dijadwalkan shift Pagi (08:00-16:00), Siang (14:00-21:00), atau Libur.",
+            },
+            { status: 400 },
+          );
+        }
+      } else if (JNE_ONLY_SHIFTS.has(shift)) {
+        return NextResponse.json(
+          {
+            message: "Shift ini khusus untuk karyawan JNE.",
           },
           { status: 400 },
         );

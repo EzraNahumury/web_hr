@@ -128,8 +128,9 @@ export async function POST(request: Request) {
     const checkOutTime = attendanceDateTime.split(" ")[1];
 
     const isMedia = (employee.sub_divisi ?? "").trim().toLowerCase() === "media";
+    const isJne = employee.penempatan === "JNE";
     if (
-      (isTokoGudangPlacement(employee.penempatan) || isMedia) &&
+      (isTokoGudangPlacement(employee.penempatan) || isMedia || isJne) &&
       attendance.jam_masuk_str
     ) {
       const scheduledShift = await getScheduledShiftForDate(employee.id, attendanceDate);
