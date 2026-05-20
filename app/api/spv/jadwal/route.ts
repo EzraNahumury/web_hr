@@ -42,6 +42,9 @@ const VALID_SHIFTS: JadwalShift[] = [
   "setengah_1",
   "setengah_2",
   "libur",
+  "pagi_full",
+  "pagi_short",
+  "siang_sore",
 ];
 
 function parsePositiveInt(v: unknown) {
@@ -113,15 +116,22 @@ export async function POST(request: Request) {
     const entriesRaw = Array.isArray(body.entries) ? body.entries : [];
     const removeRaw = Array.isArray(body.removeKeys) ? body.removeKeys : [];
 
+    const IMEL_NIP = "MR.MM.2025.0002";
     const validKaryawanIds = new Set<number>();
     const tokoSoloKaryawanIds = new Set<number>();
     const mediaKaryawanIds = new Set<number>();
+    const imelKaryawanIds = new Set<number>();
     {
       const [rows] = await pool.query<
-        (RowDataPacket & { id: number; penempatan: string; sub_divisi: string | null })[]
+        (RowDataPacket & {
+          id: number;
+          penempatan: string;
+          sub_divisi: string | null;
+          no_karyawan: string | null;
+        })[]
       >(
         `
-          SELECT id, penempatan, sub_divisi FROM karyawan
+          SELECT id, penempatan, sub_divisi, no_karyawan FROM karyawan
           WHERE status_data = 'aktif'
             AND (
               penempatan IN ('Toko','Toko Solo','Gudang')
@@ -137,8 +147,26 @@ export async function POST(request: Request) {
         if ((row.sub_divisi ?? "").trim().toLowerCase() === "media") {
           mediaKaryawanIds.add(row.id);
         }
+        if (row.no_karyawan === IMEL_NIP) {
+          imelKaryawanIds.add(row.id);
+        }
       }
     }
+
+    const IMEL_VALID_SHIFTS = new Set<JadwalShift>([
+      "pagi_full",
+      "pagi",
+      "pagi_short",
+      "setengah_2",
+      "siang_sore",
+      "libur",
+    ]);
+
+    const IMEL_ONLY_SHIFTS = new Set<JadwalShift>([
+      "pagi_full",
+      "pagi_short",
+      "siang_sore",
+    ]);
 
     const entries: { karyawanId: number; tanggal: string; shift: JadwalShift }[] = [];
     for (const item of entriesRaw) {
@@ -178,7 +206,25 @@ export async function POST(request: Request) {
           { status: 400 },
         );
       }
-      if (
+      if (imelKaryawanIds.has(karyawanId)) {
+        if (!IMEL_VALID_SHIFTS.has(shift)) {
+          return NextResponse.json(
+            {
+              message:
+                "Shift tidak sesuai jadwal Imel. Pilih dari opsi yang tersedia di dropdown.",
+            },
+            { status: 400 },
+          );
+        }
+      } else if (IMEL_ONLY_SHIFTS.has(shift)) {
+        return NextResponse.json(
+          {
+            message:
+              "Shift ini khusus untuk Siti Imeliya Sari, tidak bisa digunakan karyawan lain.",
+          },
+          { status: 400 },
+        );
+      } else if (
         mediaKaryawanIds.has(karyawanId) &&
         shift !== "pagi" &&
         shift !== "siang" &&

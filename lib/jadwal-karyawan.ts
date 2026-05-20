@@ -7,7 +7,10 @@ export type JadwalShift =
   | "siang"
   | "setengah_1"
   | "setengah_2"
-  | "libur";
+  | "libur"
+  | "pagi_full"
+  | "pagi_short"
+  | "siang_sore";
 
 export const JADWAL_SHIFT_LABELS: Record<JadwalShift, string> = {
   pagi: "Pagi",
@@ -16,6 +19,9 @@ export const JADWAL_SHIFT_LABELS: Record<JadwalShift, string> = {
   setengah_1: "Setengah 1",
   setengah_2: "Setengah 2",
   libur: "Libur",
+  pagi_full: "08:30 - 17:00",
+  pagi_short: "08:30 - 15:00",
+  siang_sore: "12:00 - 17:00",
 };
 
 export const JADWAL_EFFECTIVE_FROM = "2026-05-01";
@@ -38,7 +44,7 @@ export function ensureJadwalKaryawanSchema(): Promise<void> {
           id INT AUTO_INCREMENT PRIMARY KEY,
           karyawan_id INT NOT NULL,
           tanggal DATE NOT NULL,
-          shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','libur') NOT NULL,
+          shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','libur','pagi_full','pagi_short','siang_sore') NOT NULL,
           created_by INT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -46,6 +52,14 @@ export function ensureJadwalKaryawanSchema(): Promise<void> {
           INDEX idx_tanggal (tanggal)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
+      try {
+        await pool.query(`
+          ALTER TABLE jadwal_karyawan
+          MODIFY COLUMN shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','libur','pagi_full','pagi_short','siang_sore') NOT NULL
+        `);
+      } catch (error) {
+        console.error("Migration warning jadwal_karyawan.shift:", error);
+      }
     })();
   }
   return jadwalSchemaReady;

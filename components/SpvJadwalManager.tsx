@@ -45,7 +45,24 @@ const MEDIA_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
   { value: "libur", label: "Libur" },
 ];
 
-function getShiftOptionsFor(penempatan: string, subDivisi: string | null) {
+// Imel (NIP MR.MM.2025.0002) — jadwal khusus per hari, dropdown pakai jam-jam langsung.
+const IMEL_NIP = "MR.MM.2025.0002";
+const IMEL_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
+  { value: "", label: "—" },
+  { value: "pagi_full", label: "08:30 - 17:00" },
+  { value: "pagi", label: "08:30 - 16:30" },
+  { value: "pagi_short", label: "08:30 - 15:00" },
+  { value: "setengah_2", label: "08:30 - 12:00" },
+  { value: "siang_sore", label: "12:00 - 17:00" },
+  { value: "libur", label: "Libur" },
+];
+
+function getShiftOptionsFor(
+  penempatan: string,
+  subDivisi: string | null,
+  noKaryawan: string | null,
+) {
+  if (noKaryawan === IMEL_NIP) return IMEL_SHIFT_OPTIONS;
   if (penempatan === "Toko Solo") return TOKO_SOLO_SHIFT_OPTIONS;
   if ((subDivisi ?? "").trim().toLowerCase() === "media") return MEDIA_SHIFT_OPTIONS;
   return SHIFT_OPTIONS;
@@ -58,6 +75,9 @@ const SHIFT_COLOR: Record<JadwalShift, string> = {
   setengah_1: "bg-violet-50 text-violet-700 border-violet-200",
   setengah_2: "bg-pink-50 text-pink-700 border-pink-200",
   libur: "bg-gray-100 text-gray-600 border-gray-300",
+  pagi_full: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  pagi_short: "bg-teal-50 text-teal-700 border-teal-200",
+  siang_sore: "bg-sky-50 text-sky-700 border-sky-200",
 };
 
 const MONTH_LABELS = [
@@ -370,7 +390,7 @@ export default function SpvJadwalManager({
             </thead>
             <tbody>
               {karyawanList.map((k) => {
-                const shiftOptions = getShiftOptionsFor(k.penempatan, k.subDivisi);
+                const shiftOptions = getShiftOptionsFor(k.penempatan, k.subDivisi, k.noKaryawan);
                 return (
                 <tr
                   key={k.id}

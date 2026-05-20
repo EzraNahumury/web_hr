@@ -36,14 +36,25 @@ export function getJakartaDateTime() {
   return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
 }
 
-export type AttendanceShift = "pagi" | "lembur" | "siang" | "setengah_1" | "setengah_2";
+export type AttendanceShift =
+  | "pagi"
+  | "lembur"
+  | "siang"
+  | "setengah_1"
+  | "setengah_2"
+  | "pagi_full"
+  | "pagi_short"
+  | "siang_sore";
 
 const SHIFT_START: Record<AttendanceShift, number> = {
   pagi: 8 * 60 + 30,         // 08:30
   lembur: 10 * 60,           // 10:00
   siang: 12 * 60,            // 12:00
-  setengah_1: 13 * 60,       // 13:00 (akhir window check-in 10:30-13:00)
-  setengah_2: 8 * 60 + 30,   // 08:30 (akhir window check-in 08:00-08:30)
+  setengah_1: 13 * 60,       // 13:00
+  setengah_2: 8 * 60 + 30,   // 08:30
+  pagi_full: 8 * 60 + 30,    // 08:30 (selesai 17:00)
+  pagi_short: 8 * 60 + 30,   // 08:30 (selesai 15:00)
+  siang_sore: 12 * 60,       // 12:00 (selesai 17:00)
 };
 
 type Range = readonly [number, number];
@@ -54,6 +65,9 @@ const CHECKIN_WINDOW: Record<AttendanceShift, Range> = {
   siang:      [11 * 60 + 45,      12 * 60],       // 11:45-12:00
   setengah_1: [10 * 60 + 30,      13 * 60],       // 10:30-13:00
   setengah_2: [8 * 60,            8 * 60 + 30],   // 08:00-08:30
+  pagi_full:  [8 * 60,            8 * 60 + 30],   // 08:00-08:30
+  pagi_short: [8 * 60,            8 * 60 + 30],   // 08:00-08:30
+  siang_sore: [11 * 60 + 45,      12 * 60],       // 11:45-12:00
 };
 
 const CHECKOUT_WINDOW: Record<AttendanceShift, Range> = {
@@ -62,6 +76,9 @@ const CHECKOUT_WINDOW: Record<AttendanceShift, Range> = {
   siang:      [20 * 60,           21 * 60],       // 20:00-21:00
   setengah_1: [16 * 60 + 30,      17 * 60 + 30],  // 16:30-17:30
   setengah_2: [12 * 60,           13 * 60],       // 12:00-13:00
+  pagi_full:  [16 * 60 + 30,      17 * 60 + 30],  // 16:30-17:30
+  pagi_short: [14 * 60 + 30,      15 * 60 + 30],  // 14:30-15:30
+  siang_sore: [16 * 60 + 30,      17 * 60 + 30],  // 16:30-17:30
 };
 
 function timeToMinutes(time: string): number {
