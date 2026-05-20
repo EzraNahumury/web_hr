@@ -159,6 +159,7 @@ export async function POST(request: Request) {
       "pagi_short",
       "setengah_2",
       "siang_sore",
+      "siang",
       "libur",
     ]);
 

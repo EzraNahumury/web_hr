@@ -119,6 +119,28 @@ export function getShiftLateMinutes(time: string, shift: AttendanceShift): numbe
   return Math.max(mins - SHIFT_START[shift], 0);
 }
 
+function minutesToTimeLabel(mins: number): string {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+export function isWithinScheduledShiftRange(
+  time: string,
+  shift: AttendanceShift,
+): boolean {
+  const mins = timeToMinutes(time);
+  const ciWindow = CHECKIN_WINDOW[shift];
+  const coWindow = CHECKOUT_WINDOW[shift];
+  return mins >= ciWindow[0] && mins <= coWindow[1];
+}
+
+export function getShiftRangeLabel(shift: AttendanceShift): string {
+  const ci = CHECKIN_WINDOW[shift];
+  const co = CHECKOUT_WINDOW[shift];
+  return `${minutesToTimeLabel(ci[0])} - ${minutesToTimeLabel(co[1])}`;
+}
+
 export function getCheckInLateMinutes(time: string) {
   return getShiftLateMinutes(time, "pagi");
 }

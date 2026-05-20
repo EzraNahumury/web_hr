@@ -8,7 +8,9 @@ import {
   getJakartaDate,
   getJakartaDateTime,
   getShiftLateMinutes,
+  getShiftRangeLabel,
   isTokoGudangPlacement,
+  isWithinScheduledShiftRange,
   saveAttendancePhoto,
   type AttendanceShift,
 } from "@/lib/attendance";
@@ -178,6 +180,23 @@ export async function POST(request: Request) {
         },
         { status: 403 },
       );
+    }
+
+    if (
+      isShiftEligible &&
+      scheduledShift &&
+      requiresSelfie &&
+      attendanceRequestStatus === "hadir"
+    ) {
+      const shiftKey = scheduledShift as AttendanceShift;
+      if (!isWithinScheduledShiftRange(currentTime, shiftKey)) {
+        return NextResponse.json(
+          {
+            message: `Di luar jam shift Anda. Jadwal hari ini: ${getShiftRangeLabel(shiftKey)}. Presensi hanya bisa dilakukan dalam rentang tersebut.`,
+          },
+          { status: 403 },
+        );
+      }
     }
 
     const detectedShift: AttendanceShift | null = isShiftEligible

@@ -54,6 +54,7 @@ const IMEL_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
   { value: "pagi_short", label: "08:30 - 15:00" },
   { value: "setengah_2", label: "08:30 - 12:00" },
   { value: "siang_sore", label: "12:00 - 17:00" },
+  { value: "siang", label: "Siang (12:00 - 21:00)" },
   { value: "libur", label: "Libur" },
 ];
 
