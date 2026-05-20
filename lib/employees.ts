@@ -767,8 +767,10 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
 
     const resolvedTimeline = resolveEmployeeTimeline(payload, { allowManualContractDates: true });
 
-    const [existingRows] = await connection.query<(RowDataPacket & { user_id: number })[]>(
-      "SELECT user_id FROM karyawan WHERE id = ? LIMIT 1",
+    const [existingRows] = await connection.query<
+      (RowDataPacket & { user_id: number; no_karyawan: string | null })[]
+    >(
+      "SELECT user_id, no_karyawan FROM karyawan WHERE id = ? LIMIT 1",
       [id],
     );
 
@@ -777,6 +779,23 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
     if (!existing) {
       await connection.rollback();
       return null;
+    }
+
+    // Pastikan NIP terisi. Jika payload kosong, pakai NIP lama; kalau lama juga kosong,
+    // auto-generate (cegah unique conflict pada empty string no_karyawan).
+    let finalNip = (payload.nip ?? "").trim();
+    if (!finalNip) {
+      const existingNip = (existing.no_karyawan ?? "").trim();
+      if (existingNip) {
+        finalNip = existingNip;
+      } else {
+        finalNip = await generateNextNip(
+          payload.department,
+          payload.division,
+          resolvedTimeline.firstJoinDate,
+          connection as unknown as NipExecutor,
+        );
+      }
     }
 
     if (payload.password) {
@@ -842,7 +861,7 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
         WHERE id = ?
       `,
       [
-        payload.nip,
+        finalNip,
         payload.name,
         payload.unit,
         payload.role,
