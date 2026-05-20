@@ -371,9 +371,17 @@ export default function SpvJadwalManager({
                   className="border-b border-[#f1e5de] text-sm hover:bg-[#fffaf7]"
                 >
                   <td className="sticky left-0 z-10 bg-white px-4 py-2">
-                    <div className="font-semibold text-[#241716]">{k.nama}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-[#241716]">{k.nama}</span>
+                      {(k.subDivisi ?? "").trim().toLowerCase() === "media" ? (
+                        <span className="inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 ring-1 ring-sky-200">
+                          Media
+                        </span>
+                      ) : null}
+                    </div>
                     <div className="text-[11px] text-[#7a6059]">
                       {k.penempatan}
+                      {k.subDivisi ? ` · ${k.subDivisi}` : ""}
                       {k.jabatan ? ` · ${k.jabatan}` : ""}
                       {k.noKaryawan ? ` · ${k.noKaryawan}` : ""}
                     </div>
