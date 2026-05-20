@@ -24,6 +24,7 @@ const menuItems: MenuItem[] = [
   { label: "Dashboard", href: "/admin", description: "Ringkasan panel admin" },
   { label: "Data Karyawan", href: "/admin/employees", description: "Kelola master karyawan" },
   { label: "Absensi", href: "/admin/attendance", description: "Presensi dan keterlambatan" },
+  { label: "Set Jadwal", href: "/admin/jadwal", description: "Atur shift Toko, Gudang, Media" },
   { label: "Laporan Kunjungan", href: "/admin/visit-reports", description: "Timeline kunjungan Sales Area" },
   { label: "Lembur", href: "/admin/overtime", description: "Approval dan rekap lembur" },
   { label: "Approval Perjalanan Dinas", href: "/admin/business-trips", description: "Approval dinas luar kota karyawan" },

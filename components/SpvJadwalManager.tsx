@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 import {
   type JadwalKaryawanItem,
@@ -128,6 +128,12 @@ export default function SpvJadwalManager({
   initialJadwal,
 }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  const basePath = pathname?.startsWith("/admin")
+    ? "/admin/jadwal"
+    : pathname?.startsWith("/employee")
+      ? "/employee/jadwal"
+      : "/spv/jadwal";
   const confirm = useConfirm();
   const [year, setYear] = useState(initialYear);
   const [month, setMonth] = useState(initialMonth);
@@ -175,7 +181,7 @@ export default function SpvJadwalManager({
     setYear(newYear);
     setMonth(newMonth);
     const params = new URLSearchParams({ year: String(newYear), month: String(newMonth) });
-    router.push(`/spv/jadwal?${params.toString()}`);
+    router.push(`${basePath}?${params.toString()}`);
     router.refresh();
   }
 

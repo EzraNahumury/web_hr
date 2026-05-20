@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
 
-import { getCurrentEmployeeSession, getCurrentSpvSession } from "@/lib/auth";
+import {
+  getCurrentAdminSession,
+  getCurrentEmployeeSession,
+  getCurrentSpvSession,
+} from "@/lib/auth";
 import { getEmployeeByUserId } from "@/lib/hris";
 import {
   deleteJadwalEntries,
@@ -13,6 +17,9 @@ import {
 import { canSetSchedule } from "@/lib/scheduler-roles";
 
 async function getSchedulerSession() {
+  const admin = await getCurrentAdminSession();
+  if (admin) return { id: admin.id };
+
   const spv = await getCurrentSpvSession();
   if (spv) return { id: spv.id };
 
