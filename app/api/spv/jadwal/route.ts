@@ -137,7 +137,7 @@ export async function POST(request: Request) {
           SELECT id, penempatan, sub_divisi, no_karyawan FROM karyawan
           WHERE status_data = 'aktif'
             AND (
-              penempatan IN ('Toko','Toko Solo','Gudang','JNE')
+              penempatan IN ('Toko','Gudang','JNE')
               OR LOWER(COALESCE(sub_divisi, '')) = 'media'
             )
         `,

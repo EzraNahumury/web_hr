@@ -161,7 +161,9 @@ export function getCheckInLateMinutes(time: string) {
   return getShiftLateMinutes(time, "pagi");
 }
 
-const TOKO_GUDANG_PLACEMENTS = new Set(["Toko", "Toko Solo", "Gudang"]);
+// Toko Solo dihilangkan dari list — mereka hanya 1 shift (pagi default 08:30),
+// jadi pakai logika default tanpa Set Jadwal.
+const TOKO_GUDANG_PLACEMENTS = new Set(["Toko", "Gudang"]);
 
 export function isTokoGudangPlacement(penempatan: string | null | undefined): boolean {
   return TOKO_GUDANG_PLACEMENTS.has(penempatan ?? "");
