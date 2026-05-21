@@ -145,6 +145,7 @@ export const EMPLOYEE_PLACEMENTS = [
   "Gudang",
   "WFA",
   "JNE",
+  "Bank BCA KC Adisucipto",
 ] as const;
 export const EMPLOYEE_WORK_STATUSES = [
   "training",

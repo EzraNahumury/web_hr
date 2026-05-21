@@ -49,6 +49,14 @@ export const WORK_LOCATIONS: Record<string, WorkLocation[]> = {
       longitude: 110.4007024,
     },
   ],
+  "Bank BCA KC Adisucipto": [
+    {
+      label: "Bank BCA KC Adisucipto",
+      latitude: -7.7834627,
+      longitude: 110.4082009,
+      radiusMeters: 100,
+    },
+  ],
   Gudang: [
     {
       label: "Gudang Avasportivo 1",
