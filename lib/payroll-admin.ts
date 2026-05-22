@@ -266,18 +266,16 @@ function countWorkDays(start: Date, end: Date) {
   return total;
 }
 
-export function isSalesEmployeeFromValues(role: string | null | undefined, division: string | null | undefined, subDivision?: string | null) {
+export function isSalesEmployeeFromValues(role: string | null | undefined, _division?: string | null | undefined, _subDivision?: string | null) {
+  void _division;
+  void _subDivision;
   const roleText = (role ?? "").trim().toLowerCase();
-  const divisionText = (division ?? "").trim().toLowerCase();
-  const subDivisionText = (subDivision ?? "").trim().toLowerCase();
 
   if (["secretary", "manager", "admin", "supervisor"].some((keyword) => roleText.includes(keyword))) {
     return false;
   }
 
-  return [roleText, divisionText, subDivisionText].some((value) =>
-    ["sales", "retail", "marketplace"].some((keyword) => value.includes(keyword)),
-  );
+  return roleText.includes("sales");
 }
 
 type QueryExecutor = PoolConnection | typeof pool;
