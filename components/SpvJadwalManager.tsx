@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
 import {
@@ -176,18 +176,92 @@ export default function SpvJadwalManager({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
+  const tableScrollRef = useRef<HTMLElement | null>(null);
+  const ghostScrollRef = useRef<HTMLDivElement | null>(null);
+  const [tableScrollWidth, setTableScrollWidth] = useState(0);
+  const [ghostBar, setGhostBar] = useState<{ left: number; width: number; visible: boolean }>({
+    left: 0,
+    width: 0,
+    visible: false,
+  });
+
   useEffect(() => {
     setJadwalMap(buildJadwalMap(initialJadwal));
     setDirty(false);
   }, [initialJadwal]);
+
+  const periodDays = useMemo(() => buildPeriodDays(year, month), [year, month]);
+
+  useEffect(() => {
+    const tableEl = tableScrollRef.current;
+    if (!tableEl) return;
+
+    const recompute = () => {
+      const rect = tableEl.getBoundingClientRect();
+      const viewportH = window.innerHeight;
+      const hasOverflow = tableEl.scrollWidth - tableEl.clientWidth > 1;
+      const tableScrollbarVisible = rect.bottom <= viewportH;
+      const inView = rect.top < viewportH && rect.bottom > 0;
+      setTableScrollWidth(tableEl.scrollWidth);
+      setGhostBar({
+        left: rect.left,
+        width: rect.width,
+        visible: hasOverflow && inView && !tableScrollbarVisible,
+      });
+    };
+
+    recompute();
+
+    const ro = new ResizeObserver(recompute);
+    ro.observe(tableEl);
+    const inner = tableEl.firstElementChild;
+    if (inner) ro.observe(inner);
+
+    window.addEventListener("scroll", recompute, { passive: true });
+    window.addEventListener("resize", recompute);
+
+    let lock = false;
+    const syncFromTable = () => {
+      const ghostEl = ghostScrollRef.current;
+      if (!ghostEl || lock) return;
+      lock = true;
+      ghostEl.scrollLeft = tableEl.scrollLeft;
+      requestAnimationFrame(() => {
+        lock = false;
+      });
+    };
+    tableEl.addEventListener("scroll", syncFromTable, { passive: true });
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("scroll", recompute);
+      window.removeEventListener("resize", recompute);
+      tableEl.removeEventListener("scroll", syncFromTable);
+    };
+  }, [periodDays.length, karyawanList.length]);
+
+  useEffect(() => {
+    const ghostEl = ghostScrollRef.current;
+    const tableEl = tableScrollRef.current;
+    if (!ghostEl || !tableEl) return;
+    let lock = false;
+    const syncFromGhost = () => {
+      if (lock) return;
+      lock = true;
+      tableEl.scrollLeft = ghostEl.scrollLeft;
+      requestAnimationFrame(() => {
+        lock = false;
+      });
+    };
+    ghostEl.addEventListener("scroll", syncFromGhost, { passive: true });
+    return () => ghostEl.removeEventListener("scroll", syncFromGhost);
+  }, [ghostBar.visible]);
 
   useEffect(() => {
     if (!toast) return;
     const t = window.setTimeout(() => setToast(null), 3000);
     return () => window.clearTimeout(t);
   }, [toast]);
-
-  const periodDays = useMemo(() => buildPeriodDays(year, month), [year, month]);
 
   function handleMonthChange(value: string) {
     const match = /^(\d{4})-(\d{2})$/.exec(value);
@@ -372,7 +446,10 @@ export default function SpvJadwalManager({
           </p>
         </section>
       ) : (
-        <section className="overflow-x-auto rounded-[24px] border border-[#ead7ce] bg-white shadow-[0_10px_30px_rgba(96,45,34,0.06)]">
+        <section
+          ref={tableScrollRef}
+          className="overflow-x-auto rounded-[24px] border border-[#ead7ce] bg-white shadow-[0_10px_30px_rgba(96,45,34,0.06)]"
+        >
           <table className="min-w-full border-collapse text-left">
             <thead>
               <tr className="border-b border-[#efe0d8] bg-[#fff2ec] text-xs uppercase tracking-[0.12em] text-[#7a6059]">
@@ -477,6 +554,20 @@ export default function SpvJadwalManager({
         Tip: gunakan kolom <span className="font-semibold">Quick Fill</span> untuk mengisi seluruh
         periode dengan shift yang sama, lalu sesuaikan tanggal libur per karyawan.
       </p>
+
+      <div
+        ref={ghostScrollRef}
+        className="fixed z-40 overflow-x-auto border-t border-[#ead7ce] bg-white/95 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur"
+        aria-hidden="true"
+        style={{
+          left: ghostBar.left,
+          width: ghostBar.width,
+          bottom: 0,
+          display: ghostBar.visible ? "block" : "none",
+        }}
+      >
+        <div style={{ width: tableScrollWidth, height: 1 }} aria-hidden="true" />
+      </div>
     </div>
   );
 }
