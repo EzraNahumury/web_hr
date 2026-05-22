@@ -799,6 +799,25 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
       }
     }
 
+    // Jika NIP mengandung segmen "XX" dan prefix baru berbeda (dept/divisi sudah terisi),
+    // regenerate agar NIP mencerminkan data terkini.
+    if (finalNip.split(".").includes("XX")) {
+      const newDeptCode = DEPARTMENT_CODES[payload.department ?? ""] ?? "XX";
+      const newDivCode = DIVISION_CODES[payload.division ?? ""] ?? "XX";
+      const firstJoinYear =
+        resolvedTimeline.firstJoinDate?.slice(0, 4) ?? String(new Date().getFullYear());
+      const newPrefix = `${newDeptCode}.${newDivCode}.${firstJoinYear}`;
+      const currentPrefix = finalNip.split(".").slice(0, 3).join(".");
+      if (newPrefix !== currentPrefix) {
+        finalNip = await generateNextNip(
+          payload.department,
+          payload.division,
+          resolvedTimeline.firstJoinDate,
+          connection as unknown as NipExecutor,
+        );
+      }
+    }
+
     if (payload.password) {
       await connection.query(
         `
