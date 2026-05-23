@@ -448,12 +448,12 @@ export default function SpvJadwalManager({
       ) : (
         <section
           ref={tableScrollRef}
-          className="overflow-x-auto rounded-[24px] border border-[#ead7ce] bg-white shadow-[0_10px_30px_rgba(96,45,34,0.06)]"
+          className="overflow-auto max-h-[calc(100vh-300px)] rounded-[24px] border border-[#ead7ce] bg-white shadow-[0_10px_30px_rgba(96,45,34,0.06)]"
         >
           <table className="min-w-full border-collapse text-left">
-            <thead>
+            <thead className="sticky top-0 z-20 bg-[#fff2ec]">
               <tr className="border-b border-[#efe0d8] bg-[#fff2ec] text-xs uppercase tracking-[0.12em] text-[#7a6059]">
-                <th className="sticky left-0 z-10 min-w-[220px] bg-[#fff2ec] px-4 py-3 font-semibold">
+                <th className="sticky left-0 z-30 min-w-[220px] bg-[#fff2ec] px-4 py-3 font-semibold">
                   Karyawan
                 </th>
                 <th className="min-w-[140px] px-3 py-3 font-semibold">Quick Fill</th>
@@ -466,7 +466,7 @@ export default function SpvJadwalManager({
                     <th
                       key={pd.date}
                       className={`min-w-[88px] px-1 py-2 text-center font-semibold ${
-                        isWeekend ? "bg-[#ffe8e0] text-[#8f1d22]" : ""
+                        isWeekend ? "bg-[#ffe8e0] text-[#8f1d22]" : "bg-[#fff2ec]"
                       }`}
                     >
                       <div className="text-[10px] tracking-[0.06em]">{dayShort}</div>
