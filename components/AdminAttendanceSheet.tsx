@@ -446,12 +446,18 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                 {days.map((day) => {
                   const detail = row.daily[day];
                   const isClickable = !!detail;
+                  const missingCheckout =
+                    !!detail &&
+                    detail.code === "O" &&
+                    !!detail.timeIn &&
+                    !detail.timeOut;
 
                   return (
                     <td key={day} className="px-3 py-4 text-center font-medium">
                       {detail ? (
                         <button
                           type="button"
+                          title={missingCheckout ? "Belum presensi pulang" : undefined}
                           onClick={() =>
                             isClickable
                               ? setSelected({
@@ -463,9 +469,11 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                               : undefined
                           }
                           className={
-                            isClickable
-                              ? "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fff4ee] px-2 py-1 text-xs transition hover:bg-[#f5ddd2] hover:text-[#8f1d22]"
-                              : "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fff4ee] px-2 py-1 text-xs"
+                            missingCheckout
+                              ? "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fde2dd] px-2 py-1 text-xs font-bold text-[#c0392b] transition hover:bg-[#fbcec7]"
+                              : isClickable
+                                ? "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fff4ee] px-2 py-1 text-xs transition hover:bg-[#f5ddd2] hover:text-[#8f1d22]"
+                                : "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fff4ee] px-2 py-1 text-xs"
                           }
                         >
                           {detail.code || "-"}
