@@ -197,7 +197,7 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
                 <option value="">Pilih atasan</option>
                 {approvers.map((option) => (
                   <option key={option.userId} value={option.userId}>
-                    {option.name} — {option.role}
+                    {option.name.toUpperCase()} — {option.role.toUpperCase()}
                   </option>
                 ))}
               </select>
