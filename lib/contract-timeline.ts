@@ -111,7 +111,7 @@ export function calculateEmploymentTimeline(firstJoinDate: string) {
   const contractEndDate = calculateContractEndDate(contractDate);
   const deductionEndDate = addMonthsToIsoDate(
     contractDate,
-    CONTRACT_DEDUCTION_DURATION_MONTHS,
+    CONTRACT_DEDUCTION_DURATION_MONTHS + 1,
   );
 
   if (!contractEndDate || !deductionEndDate) {
@@ -138,7 +138,7 @@ export function getFirstFiveContractPeriods(contractDate: string) {
   return Array.from({ length: CONTRACT_DEDUCTION_DURATION_MONTHS }, (_, index) => {
     const yearMonth = addMonthsToIsoDate(
       `${parsed.year}-${`${parsed.month}`.padStart(2, "0")}-01`,
-      index,
+      index + 1,
     );
 
     if (!yearMonth) {
@@ -170,7 +170,7 @@ export function isContractDeductionActive(
 ) {
   const deductionEndDate = addMonthsToIsoDate(
     contractDate,
-    CONTRACT_DEDUCTION_DURATION_MONTHS,
+    CONTRACT_DEDUCTION_DURATION_MONTHS + 1,
   );
 
   if (!deductionEndDate) {
