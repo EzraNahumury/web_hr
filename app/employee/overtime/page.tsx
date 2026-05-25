@@ -3,7 +3,7 @@ import EmployeeOvertimeManager from "@/components/EmployeeOvertimeManager";
 import { requireEmployeeSession } from "@/lib/auth";
 import { getEmployeeByUserId, getEmployeeOvertime } from "@/lib/hris";
 import { listEligibleApprovers } from "@/lib/overtime";
-import { canSetSchedule } from "@/lib/scheduler-roles";
+import { isManager } from "@/lib/scheduler-roles";
 
 export default async function EmployeeOvertimePage() {
   const session = await requireEmployeeSession();
@@ -13,13 +13,13 @@ export default async function EmployeeOvertimePage() {
     return <main className="p-10">Data karyawan tidak ditemukan.</main>;
   }
 
-  const routesToAdmin = canSetSchedule(employee.jabatan);
+  const routesToAdmin = isManager(employee.jabatan);
   const [rows, approvers] = await Promise.all([
     getEmployeeOvertime(employee.id),
-    routesToAdmin ? Promise.resolve([]) : listEligibleApprovers(),
+    routesToAdmin ? Promise.resolve([]) : listEligibleApprovers(employee.jabatan),
   ]);
 
-  // Exclude self from approver list (so a Manager/Supervisor cannot pick themselves)
+  // Exclude self from approver list
   const approverOptions = approvers
     .filter((approver) => approver.userId !== session.userId)
     .map((approver) => ({
@@ -28,10 +28,18 @@ export default async function EmployeeOvertimePage() {
       role: approver.role,
     }));
 
+  const jabatan = employee.jabatan ?? "";
+
   return (
     <EmployeeShell
       title="Pengajuan Lembur"
-      description="Karyawan mengisi form lembur di halaman ini. Pengajuan diproses oleh SPV/Manager (atau admin untuk jabatan Manager/Supervisor)."
+      description={
+        routesToAdmin
+          ? "Pengajuan lembur Anda akan langsung diproses oleh admin."
+          : jabatan.toLowerCase() === "supervisor"
+            ? "Isi form lembur dan pilih Manager yang akan menerima pengajuan."
+            : "Isi form lembur dan pilih Supervisor yang akan menerima pengajuan."
+      }
       employeeName={employee.nama}
       employeeMeta={`${employee.no_karyawan} - ${employee.jabatan}`}
       currentPath="/employee/overtime"
@@ -42,6 +50,7 @@ export default async function EmployeeOvertimePage() {
         rows={rows}
         approvers={approverOptions}
         routesToAdmin={routesToAdmin}
+        jabatan={jabatan}
       />
     </EmployeeShell>
   );

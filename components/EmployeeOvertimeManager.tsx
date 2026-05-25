@@ -25,6 +25,7 @@ type Props = {
   rows: OvertimeRow[];
   approvers: ApproverOption[];
   routesToAdmin: boolean;
+  jabatan: string;
 };
 
 function StatusBadge({ status }: { status: OvertimeRow["status_approval"] }) {
@@ -42,7 +43,9 @@ function StatusBadge({ status }: { status: OvertimeRow["status_approval"] }) {
   );
 }
 
-export default function EmployeeOvertimeManager({ employeeId, rows, approvers, routesToAdmin }: Props) {
+export default function EmployeeOvertimeManager({ employeeId, rows, approvers, routesToAdmin, jabatan }: Props) {
+  const isSupervisor = jabatan.trim().toLowerCase() === "supervisor";
+  const approverLabel = isSupervisor ? "Manager" : "Supervisor / SPV";
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +82,7 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
     setSuccess(null);
 
     if (!routesToAdmin && !form.assignedApproverUserId) {
-      setError("Pilih atasan (SPV/Manager) yang akan menerima pengajuan.");
+      setError(`Pilih ${approverLabel} yang akan menerima pengajuan.`);
       return;
     }
 
@@ -136,7 +139,7 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
           <p className="text-sm leading-6 text-[#7a6059]">
             {routesToAdmin
               ? "Isi tanggal dan jam lembur. Pengajuan Anda akan langsung diproses oleh admin."
-              : "Isi tanggal dan jam lembur, lalu pilih atasan (SPV/Manager) yang akan menerima pengajuan."}
+              : `Isi tanggal dan jam lembur, lalu pilih ${approverLabel} yang akan menerima pengajuan.`}
           </p>
         </div>
 
@@ -182,7 +185,7 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
 
           {!routesToAdmin && (
             <label className="space-y-2 md:col-span-2">
-              <span className="text-sm font-semibold text-[#2f1f1d]">Diajukan ke (SPV/Manager)</span>
+              <span className="text-sm font-semibold text-[#2f1f1d]">Diajukan ke ({approverLabel})</span>
               <select
                 value={form.assignedApproverUserId}
                 onChange={(event) =>

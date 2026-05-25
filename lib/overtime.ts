@@ -49,8 +49,38 @@ type ApproverRow = RowDataPacket & {
   source: "spv" | "karyawan";
 };
 
-export async function listEligibleApprovers(): Promise<EligibleApprover[]> {
+export async function listEligibleApprovers(submitterRole?: string | null): Promise<EligibleApprover[]> {
   await ensureOvertimeSchema();
+
+  const normalized = (submitterRole ?? "").trim().toLowerCase();
+  const isSpvSubmitter = normalized === "supervisor" || normalized === "spv";
+
+  if (isSpvSubmitter) {
+    // Supervisor mengajukan ke Manager saja
+    const [rows] = await pool.query<ApproverRow[]>(
+      `
+        SELECT
+          u.id AS user_id,
+          u.nama,
+          k.jabatan AS role,
+          'karyawan' AS source
+        FROM karyawan k
+        INNER JOIN users u ON u.id = k.user_id
+        WHERE k.status_data = 'aktif'
+          AND u.status_aktif = 1
+          AND LOWER(COALESCE(k.jabatan, '')) = 'manager'
+        ORDER BY u.nama ASC
+      `,
+    );
+    return rows.map((row) => ({
+      userId: row.user_id,
+      name: row.nama,
+      role: row.role,
+      source: row.source,
+    }));
+  }
+
+  // Staff mengajukan ke SPV/Supervisor saja
   const [rows] = await pool.query<ApproverRow[]>(
     `
       SELECT
@@ -72,7 +102,7 @@ export async function listEligibleApprovers(): Promise<EligibleApprover[]> {
       INNER JOIN users u ON u.id = k.user_id
       WHERE k.status_data = 'aktif'
         AND u.status_aktif = 1
-        AND LOWER(COALESCE(k.jabatan, '')) IN ('manager', 'supervisor')
+        AND LOWER(COALESCE(k.jabatan, '')) = 'supervisor'
 
       ORDER BY nama ASC
     `,
@@ -151,5 +181,5 @@ export async function getEmployeeOvertimeList(employeeId: number) {
 }
 
 export function shouldRouteToAdmin(role: string | null | undefined) {
-  return canSetSchedule(role);
+  return (role ?? "").trim().toLowerCase() === "manager";
 }
