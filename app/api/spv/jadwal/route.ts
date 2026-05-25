@@ -14,7 +14,7 @@ import {
   upsertJadwalBulk,
   type JadwalShift,
 } from "@/lib/jadwal-karyawan";
-import { canSetSchedule } from "@/lib/scheduler-roles";
+import { canSetSchedule, isJadwalWhitelisted } from "@/lib/scheduler-roles";
 
 async function getSchedulerSession() {
   const admin = await getCurrentAdminSession();
@@ -27,7 +27,7 @@ async function getSchedulerSession() {
   if (!employee) return null;
 
   const profile = await getEmployeeByUserId(employee.userId);
-  if (!profile || !canSetSchedule(profile.jabatan)) return null;
+  if (!profile || (!canSetSchedule(profile.jabatan) && !isJadwalWhitelisted(profile.nama))) return null;
 
   return { id: employee.id };
 }

@@ -9,7 +9,7 @@ import {
   listTokoGudangKaryawan,
 } from "@/lib/jadwal-karyawan";
 import { getPayrollDateRange } from "@/lib/payroll-admin";
-import { canSetSchedule } from "@/lib/scheduler-roles";
+import { canSetSchedule, isJadwalWhitelisted } from "@/lib/scheduler-roles";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +31,7 @@ export default async function EmployeeJadwalPage({
     return <main className="p-10">Data karyawan tidak ditemukan.</main>;
   }
 
-  if (!canSetSchedule(employee.jabatan)) {
+  if (!canSetSchedule(employee.jabatan) && !isJadwalWhitelisted(employee.nama)) {
     redirect("/employee");
   }
 

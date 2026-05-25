@@ -69,7 +69,15 @@ const overtimeApprovalsMenu: MenuItem = {
   description: "Approve/reject pengajuan lembur tim",
 };
 
-function buildMenuItems(role: string | null | undefined): MenuItem[] {
+const JADWAL_NAME_WHITELIST = ["Fara Ais Umainah"];
+
+function isJadwalWhitelistedByName(name: string) {
+  return JADWAL_NAME_WHITELIST.some(
+    (n) => n.trim().toLowerCase() === name.trim().toLowerCase(),
+  );
+}
+
+function buildMenuItems(role: string | null | undefined, employeeName?: string): MenuItem[] {
   let result: MenuItem[] = baseMenuItems;
 
   if (isSalesFieldRole(role)) {
@@ -86,6 +94,8 @@ function buildMenuItems(role: string | null | undefined): MenuItem[] {
 
   if (canSetSchedule(role)) {
     result = [...result, setJadwalMenu, overtimeApprovalsMenu];
+  } else if (employeeName && isJadwalWhitelistedByName(employeeName)) {
+    result = [...result, setJadwalMenu];
   }
 
   return result;
@@ -178,7 +188,7 @@ export default function EmployeeShell({
   employeeRole,
   children,
 }: Props) {
-  const menuItems = buildMenuItems(employeeRole);
+  const menuItems = buildMenuItems(employeeRole, employeeName);
   const initiallyOpen = menuItems.reduce<Record<string, boolean>>((acc, item) => {
     if (item.children) {
       acc[item.label] = item.children.some((sub) => sub.href === currentPath);
