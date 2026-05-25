@@ -30,6 +30,17 @@ export async function ensureOvertimeSchema() {
           console.error("Migration warning lembur idx_lembur_assigned_approver:", error);
         }
       }
+      try {
+        await pool.query(
+          `ALTER TABLE lembur
+           ADD COLUMN catatan_karyawan TEXT NULL AFTER assigned_approver_user_id`,
+        );
+      } catch (error) {
+        const code = (error as { code?: string }).code;
+        if (code !== "ER_DUP_FIELDNAME") {
+          console.error("Migration warning lembur.catatan_karyawan:", error);
+        }
+      }
     })();
   }
   await overtimeSchemaReady;
@@ -128,6 +139,7 @@ type OvertimeApprovalRow = RowDataPacket & {
   assigned_approver_user_id: number | null;
   assigned_approver_name: string | null;
   catatan_atasan: string | null;
+  catatan_karyawan: string | null;
 };
 
 const overtimeListQuery = `
@@ -143,7 +155,8 @@ const overtimeListQuery = `
     approver.nama AS approver_name,
     l.assigned_approver_user_id,
     assigned.nama AS assigned_approver_name,
-    l.catatan_atasan
+    l.catatan_atasan,
+    l.catatan_karyawan
   FROM lembur l
   INNER JOIN karyawan k ON k.id = l.karyawan_id
   LEFT JOIN users approver ON approver.id = l.approved_by

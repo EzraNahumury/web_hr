@@ -16,6 +16,7 @@ type OvertimeRow = {
   approver_name: string | null;
   assigned_approver_name?: string | null;
   catatan_atasan: string | null;
+  catatan_karyawan: string | null;
 };
 
 type Props = {
@@ -130,15 +131,16 @@ export default function OvertimeApproverManager({ rows, endpoint }: Props) {
                 <th className="px-6 py-4">Jam</th>
                 <th className="px-6 py-4">Total</th>
                 <th className="px-6 py-4">Bukti</th>
+                <th className="px-6 py-4">Alasan</th>
                 <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4">Catatan</th>
+                <th className="px-6 py-4">Catatan Atasan</th>
                 <th className="px-6 py-4">Aksi</th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-8 text-center text-sm text-[#7a879f]">
+                  <td colSpan={9} className="px-6 py-8 text-center text-sm text-[#7a879f]">
                     Belum ada pengajuan lembur yang ditujukan ke Anda.
                   </td>
                 </tr>
@@ -184,6 +186,13 @@ export default function OvertimeApproverManager({ rows, endpoint }: Props) {
                           </button>
                         ) : (
                           "-"
+                        )}
+                      </td>
+                      <td className="max-w-[200px] px-6 py-4 text-sm text-[#42506a]">
+                        {row.catatan_karyawan ? (
+                          <span className="line-clamp-3 whitespace-pre-wrap">{row.catatan_karyawan}</span>
+                        ) : (
+                          <span className="text-[#a0aec0]">-</span>
                         )}
                       </td>
                       <td className="px-6 py-4">

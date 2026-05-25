@@ -11,6 +11,7 @@ type OvertimeRow = {
   total_jam: string;
   status_approval: "pending" | "approved" | "rejected";
   catatan_atasan: string | null;
+  catatan_karyawan: string | null;
   assigned_approver_name?: string | null;
 };
 
@@ -57,6 +58,7 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
     jamMulai: "",
     jamSelesai: "",
     assignedApproverUserId: "",
+    catatanKaryawan: "",
   });
   const [buktiFile, setBuktiFile] = useState<File | null>(null);
 
@@ -98,6 +100,9 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
       if (buktiFile) {
         formData.append("buktiLembur", buktiFile);
       }
+      if (form.catatanKaryawan.trim()) {
+        formData.append("catatanKaryawan", form.catatanKaryawan.trim());
+      }
 
       const response = await fetch("/api/employee/overtime", {
         method: "POST",
@@ -121,6 +126,7 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
         jamMulai: "",
         jamSelesai: "",
         assignedApproverUserId: "",
+        catatanKaryawan: "",
       });
       setBuktiFile(null);
       setSelectedFileName("");
@@ -204,7 +210,20 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
             </label>
           )}
 
-          <label className="space-y-2 md:col-span-2">
+          <label className="space-y-2">
+            <span className="text-sm font-semibold text-[#2f1f1d]">Catatan / Alasan Lembur</span>
+            <textarea
+              value={form.catatanKaryawan}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, catatanKaryawan: event.target.value }))
+              }
+              rows={4}
+              placeholder="Tuliskan alasan atau keterangan lembur..."
+              className="w-full rounded-2xl border border-[#e4d4cc] bg-[#fffaf7] px-4 py-3 text-sm text-[#241716] outline-none transition focus:border-[#c65e61] resize-none"
+            />
+          </label>
+
+          <label className="space-y-2">
             <span className="text-sm font-semibold text-[#2f1f1d]">Bukti Lembur</span>
             <div className="rounded-2xl border border-[#e4d4cc] bg-[#fffaf7] p-4">
               <input
@@ -263,8 +282,9 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
               <th className="px-6 py-4">Jam</th>
               <th className="px-6 py-4">Total</th>
               <th className="px-6 py-4">Diajukan Ke</th>
+              <th className="px-6 py-4">Alasan</th>
               <th className="px-6 py-4">Status</th>
-              <th className="px-6 py-4">Catatan</th>
+              <th className="px-6 py-4">Catatan Atasan</th>
             </tr>
           </thead>
           <tbody>
@@ -276,6 +296,9 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
                 </td>
                 <td className="px-6 py-4">{row.total_jam} jam</td>
                 <td className="px-6 py-4">{row.assigned_approver_name || "Admin"}</td>
+                <td className="max-w-[180px] px-6 py-4 text-sm text-[#7a6059]">
+                  {row.catatan_karyawan || "-"}
+                </td>
                 <td className="px-6 py-4">
                   <StatusBadge status={row.status_approval} />
                 </td>

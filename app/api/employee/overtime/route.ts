@@ -20,6 +20,10 @@ export async function POST(request: NextRequest) {
   const jamSelesai =
     typeof formData?.get("jamSelesai") === "string" ? String(formData.get("jamSelesai")) : "";
   const buktiFile = formData?.get("buktiLembur");
+  const catatanKaryawan =
+    typeof formData?.get("catatanKaryawan") === "string"
+      ? String(formData.get("catatanKaryawan")).trim() || null
+      : null;
   const approverRaw = formData?.get("assignedApproverUserId");
   const assignedApproverUserId =
     approverRaw && approverRaw !== "" ? Number(approverRaw) : null;
@@ -109,8 +113,9 @@ export async function POST(request: NextRequest) {
         status_approval,
         approved_by,
         catatan_atasan,
-        assigned_approver_user_id
-      ) VALUES (?, ?, ?, ?, ?, ?, 'pending', NULL, NULL, ?)
+        assigned_approver_user_id,
+        catatan_karyawan
+      ) VALUES (?, ?, ?, ?, ?, ?, 'pending', NULL, NULL, ?, ?)
     `,
     [
       karyawanId,
@@ -120,6 +125,7 @@ export async function POST(request: NextRequest) {
       diffHours.toFixed(2),
       buktiLembur,
       finalApproverId,
+      catatanKaryawan,
     ],
   );
 
