@@ -774,7 +774,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
           </div>
 
           <div ref={tableScrollRef} className="overflow-auto max-h-[calc(100vh-260px)]">
-            <table className="min-w-[1600px] border-collapse text-left">
+            <table className="min-w-[2000px] border-collapse text-left">
               <thead className="sticky top-0 z-20">
                 <tr className="border-b border-[#efe0d8] bg-[#fff8f4] text-xs uppercase tracking-[0.2em] text-[#9e7467]">
                   <th className="sticky left-0 z-20 bg-[#fff8f4] px-6 py-4 font-semibold shadow-[2px_0_0_0_#efe0d8]">Nama</th>
@@ -787,6 +787,9 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                   <th className="px-6 py-4 font-semibold">Penempatan</th>
                   <th className="px-6 py-4 font-semibold">Pembebanan</th>
                   <th className="px-6 py-4 font-semibold">Status</th>
+                  <th className="px-6 py-4 font-semibold">Tgl Masuk</th>
+                  <th className="px-6 py-4 font-semibold">Tgl Kontrak</th>
+                  <th className="px-6 py-4 font-semibold">Selesai Kontrak</th>
                   <th className="px-6 py-4 font-semibold">Bank</th>
                   <th className="px-6 py-4 font-semibold">No Rekening</th>
                   <th className="px-6 py-4 font-semibold">TTL</th>
@@ -809,6 +812,9 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                       <td className="px-6 py-5">{employee.placement || "-"}</td>
                       <td className="px-6 py-5">{employee.costAllocation || "tidak keduanya"}</td>
                       <td className="px-6 py-5">{formatStatus(employee.employmentStatus)}</td>
+                      <td className="px-6 py-5">{employee.firstJoinDate || "-"}</td>
+                      <td className="px-6 py-5">{employee.contractDate || "-"}</td>
+                      <td className="px-6 py-5">{employee.contractEndDate || "-"}</td>
                       <td className="px-6 py-5">{employee.bank || "-"}</td>
                       <td className="px-6 py-5">{employee.accountNumber || "-"}</td>
                       <td className="px-6 py-5">
