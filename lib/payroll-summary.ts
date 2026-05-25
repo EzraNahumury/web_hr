@@ -75,6 +75,8 @@ type PayrollSheetBaseRow = RowDataPacket & {
   raw_override_pinjaman: string | null;
   raw_override_pinjaman_pribadi: string | null;
   raw_override_gaji_pokok: string | null;
+  raw_freelance_rate_type: "per_hari" | "per_jam" | null;
+  raw_gaji_pokok_per_jam: string | null;
   total_omzet_global: string | null;
   status_kepegawaian: string | null;
 };
@@ -199,6 +201,8 @@ export type AdminPayrollSummarySheetRow = {
   inputOverridePinjaman: number | null;
   inputOverridePinjamanPribadi: number | null;
   inputOverrideGajiPokok: number | null;
+  freelanceRateType: "per_hari" | "per_jam";
+  inputGajiPerJam: number;
 };
 
 export type AdminPayrollSummarySheet = {
@@ -365,6 +369,8 @@ export async function getAdminPayrollSummarySheet(period?: {
         pei.override_pinjaman AS raw_override_pinjaman,
         pei.override_pinjaman_pribadi AS raw_override_pinjaman_pribadi,
         pei.override_gaji_pokok AS raw_override_gaji_pokok,
+        pei.freelance_rate_type AS raw_freelance_rate_type,
+        pei.gaji_pokok_per_jam AS raw_gaji_pokok_per_jam,
         NULL AS total_omzet_global,
         k.status_kepegawaian
       FROM payroll p
@@ -638,6 +644,9 @@ export async function getAdminPayrollSummarySheet(period?: {
         ? toNumber(row.raw_override_gaji_pokok)
         : null;
 
+    const statusKepegawaianNorm = (row.status_kepegawaian ?? "").trim().toLowerCase();
+    const isFreelance = statusKepegawaianNorm === "freelance";
+
     const payrollType =
       row.raw_payroll_type ??
       (isSalesEmployeeFromValues(row.jabatan, row.divisi, row.sub_divisi)
@@ -647,35 +656,39 @@ export async function getAdminPayrollSummarySheet(period?: {
     const workDays = row.hari_kerja ?? 0;
     const presentDays =
       inputOverrideMasuk ?? (attendance.present || row.total_masuk || 0);
-    const dailyBaseSalary =
-      toNumber(row.raw_gaji_pokok_per_hari) ||
-      (workDays > 0 ? toNumber(row.gaji_pokok) / workDays : 0);
-    const monthlyBaseSalary =
-      inputOverrideGajiPokok ?? dailyBaseSalary * workDays;
-    const positionAllowance = toNumber(row.tunjangan_jabatan);
-    const fixedMealAllowance =
-      toNumber(row.raw_uang_makan_per_hari) ||
-      (presentDays > 0 ? toNumber(row.uang_makan) / presentDays : 0);
-    const subsidy = toNumber(row.raw_subsidi) || toNumber(row.tunjangan_lain);
-    const fixedDiligenceAllowance = toNumber(row.raw_uang_kerajinan);
-    const bpjs = toNumber(row.raw_bpjs) || toNumber(row.bpjs);
-    const performanceBonus =
-      payrollType === "sales" && !isSalesNasional
+
+    // For freelance: use override_gaji_pokok (stored computed amount) directly
+    const dailyBaseSalary = isFreelance
+      ? toNumber(row.raw_gaji_pokok_per_hari)
+      : (toNumber(row.raw_gaji_pokok_per_hari) || (workDays > 0 ? toNumber(row.gaji_pokok) / workDays : 0));
+    const monthlyBaseSalary = isFreelance
+      ? (inputOverrideGajiPokok ?? toNumber(row.gaji_pokok))
+      : (inputOverrideGajiPokok ?? dailyBaseSalary * workDays);
+
+    const positionAllowance = isFreelance ? 0 : toNumber(row.tunjangan_jabatan);
+    const fixedMealAllowance = isFreelance ? 0 :
+      (toNumber(row.raw_uang_makan_per_hari) ||
+      (presentDays > 0 ? toNumber(row.uang_makan) / presentDays : 0));
+    const subsidy = isFreelance ? 0 : (toNumber(row.raw_subsidi) || toNumber(row.tunjangan_lain));
+    const fixedDiligenceAllowance = isFreelance ? 0 : toNumber(row.raw_uang_kerajinan);
+    const bpjs = isFreelance ? 0 : (toNumber(row.raw_bpjs) || toNumber(row.bpjs));
+    const performanceBonus = isFreelance ? 0 :
+      (payrollType === "sales" && !isSalesNasional
         ? 0
-        : toNumber(row.raw_bonus_performa) || toNumber(row.bonus_performa);
-    const transportAllowance =
-      payrollType === "sales"
+        : toNumber(row.raw_bonus_performa) || toNumber(row.bonus_performa));
+    const transportAllowance = isFreelance ? 0 :
+      (payrollType === "sales"
         ? toNumber(row.raw_uang_transport) || toNumber(row.transport)
-        : 0;
-    const incentive =
-      payrollType === "sales"
+        : 0);
+    const incentive = isFreelance ? 0 :
+      (payrollType === "sales"
         ? toNumber(row.raw_insentif) || toNumber(row.insentif)
-        : 0;
-    const vehicleAllowance = isSalesNasional ? toNumber(row.raw_kendaraan) : 0;
-    const travelReimbursement = isSalesNasional ? (reimbursementMap.get(row.employee_id) ?? 0) : 0;
+        : 0);
+    const vehicleAllowance = isFreelance ? 0 : (isSalesNasional ? toNumber(row.raw_kendaraan) : 0);
+    const travelReimbursement = isFreelance ? 0 : (isSalesNasional ? (reimbursementMap.get(row.employee_id) ?? 0) : 0);
     const holidayDays = attendance.holiday;
     const alfaCount = attendance.alfa;
-    const totalBaseSalary = dailyBaseSalary * (presentDays + holidayDays);
+    const totalBaseSalary = isFreelance ? monthlyBaseSalary : dailyBaseSalary * (presentDays + holidayDays);
     const roleFactor = getOmzetFactor(row.jabatan, row.status_kepegawaian);
     const employeeGroupKey = getOmzetGroupKeyForUnit(row.unit);
     const groupOmzet = employeeGroupKey ? omzetByGroup.get(employeeGroupKey) : undefined;
@@ -683,21 +696,21 @@ export async function getAdminPayrollSummarySheet(period?: {
     const omzetBonus = isOmzetEligible(row.jabatan, row.status_kepegawaian) && groupOmzet && groupEligibleCount > 0
       ? (groupOmzet.bonusPool / groupEligibleCount) * roleFactor
       : 0;
-    const mealAllowance = fixedMealAllowance * presentDays;
+    const mealAllowance = isFreelance ? 0 : fixedMealAllowance * presentDays;
 
-    const leaveCount = inputOverrideIzin ?? attendance.leave;
-    const sickCount = inputOverrideSakit ?? attendance.sick;
-    const sickWithoutNoteCount =
-      inputOverrideSakitTanpaSurat ?? attendance.sickWithoutNote;
+    const leaveCount = isFreelance ? 0 : (inputOverrideIzin ?? attendance.leave);
+    const sickCount = isFreelance ? 0 : (inputOverrideSakit ?? attendance.sick);
+    const sickWithoutNoteCount = isFreelance ? 0 :
+      (inputOverrideSakitTanpaSurat ?? attendance.sickWithoutNote);
 
-    const overtimeHours =
-      inputOverrideLembur ??
+    const overtimeHours = isFreelance ? 0 :
+      (inputOverrideLembur ??
       overtimeMap.get(row.employee_id) ??
-      toNumber(row.total_lembur_jam);
+      toNumber(row.total_lembur_jam));
     const overtimeBonus = overtimeHours * 20000;
-    const halfDayCount =
-      inputOverrideSetengahHari ??
-      (attendance.halfDay || row.total_setengah_hari || 0);
+    const halfDayCount = isFreelance ? 0 :
+      (inputOverrideSetengahHari ??
+      (attendance.halfDay || row.total_setengah_hari || 0));
 
     const kerajinanNoIssue =
       sickCount <= 2 && sickWithoutNoteCount === 0 && alfaCount === 0;
@@ -707,9 +720,9 @@ export async function getAdminPayrollSummarySheet(period?: {
       workDays > 0 && kerajinanNoIssue && kerajinanReachesWorkDays
         ? fixedDiligenceAllowance
         : 0;
-    const halfDayDeduction = (dailyBaseSalary / 2) * halfDayCount;
-    const lateCount = attendance.late || row.total_terlambat || 0;
-    const lateDeduction = lateCount * 20000;
+    const halfDayDeduction = isFreelance ? 0 : (dailyBaseSalary / 2) * halfDayCount;
+    const lateCount = isFreelance ? 0 : (attendance.late || row.total_terlambat || 0);
+    const lateDeduction = isFreelance ? 0 : lateCount * 20000;
     const totalSalaryBeforeDeduction =
       totalBaseSalary +
       positionAllowance +
@@ -726,7 +739,6 @@ export async function getAdminPayrollSummarySheet(period?: {
       travelReimbursement;
     const totalSalary =
       totalSalaryBeforeDeduction - halfDayDeduction - lateDeduction;
-    const statusKepegawaianNorm = (row.status_kepegawaian ?? "").trim().toLowerCase();
     const isContractWaived =
       statusKepegawaianNorm === "tetap" ||
       statusKepegawaianNorm === "freelance" ||
@@ -736,11 +748,11 @@ export async function getAdminPayrollSummarySheet(period?: {
       contractMap.get(row.employee_id) ??
       toNumber(row.potongan_kontrak);
     const contractDeduction = isContractWaived ? 0 : rawContractDeduction;
-    const companyLoan =
-      inputOverridePinjaman ??
+    const companyLoan = isFreelance ? 0 :
+      (inputOverridePinjaman ??
       loanMap.get(row.employee_id) ??
-      toNumber(row.potongan_pinjaman);
-    const personalLoan = inputOverridePinjamanPribadi ?? 0;
+      toNumber(row.potongan_pinjaman));
+    const personalLoan = isFreelance ? 0 : (inputOverridePinjamanPribadi ?? 0);
     const diligenceCut = Math.max(
       fixedDiligenceAllowance - diligenceAllowance,
       0,
@@ -822,6 +834,8 @@ export async function getAdminPayrollSummarySheet(period?: {
       inputOverridePinjaman,
       inputOverridePinjamanPribadi,
       inputOverrideGajiPokok,
+      freelanceRateType: (row.raw_freelance_rate_type ?? "per_hari") as "per_hari" | "per_jam",
+      inputGajiPerJam: toNumber(row.raw_gaji_pokok_per_jam),
     };
   });
 

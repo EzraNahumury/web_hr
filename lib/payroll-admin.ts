@@ -19,6 +19,7 @@ type PayrollEmployeeOptionRow = RowDataPacket & {
   sub_divisi: string | null;
   departemen: string;
   pembagian_rekapan: string | null;
+  status_kepegawaian: string | null;
 };
 
 type AttendanceAggregateRow = RowDataPacket & {
@@ -44,6 +45,11 @@ type PayrollEmployeeRow = RowDataPacket & {
   jabatan: string;
   divisi: string;
   sub_divisi: string | null;
+  status_kepegawaian: string | null;
+};
+
+type FreelanceHoursRow = RowDataPacket & {
+  total_menit: number | null;
 };
 
 type OmzetMonthlyRow = RowDataPacket & {
@@ -77,6 +83,7 @@ export type PayrollEmployeeOption = {
   department: string;
   recapGroup: string;
   isSales: boolean;
+  employmentStatus: string | null;
 };
 
 export type PayrollFormPayload = {
@@ -104,6 +111,8 @@ export type PayrollFormPayload = {
   overridePinjaman?: number | null;
   overridePinjamanPribadi?: number | null;
   overrideGajiPokok?: number | null;
+  freelanceRateType?: "per_hari" | "per_jam" | null;
+  gajiPerJam?: number;
 };
 
 export type PayrollOmzetUnitEntry = {
@@ -424,6 +433,18 @@ export async function ensurePayrollSupportTables(connection?: QueryExecutor) {
       console.error("Migration warning for sales nasional payroll fields:", err);
     }
   }
+
+  try {
+    await executor.query(`
+      ALTER TABLE payroll_employee_input
+      ADD COLUMN freelance_rate_type ENUM('per_hari','per_jam') NULL DEFAULT NULL,
+      ADD COLUMN gaji_pokok_per_jam DECIMAL(14,2) NULL DEFAULT NULL
+    `);
+  } catch (err: unknown) {
+    if (getMysqlErrorCode(err) !== 'ER_DUP_FIELDNAME') {
+      console.error("Migration warning for freelance columns:", err);
+    }
+  }
 }
 
 export async function listPayrollEmployeeOptions() {
@@ -436,7 +457,8 @@ export async function listPayrollEmployeeOptions() {
         k.divisi,
         k.sub_divisi,
         k.departemen,
-        k.pembagian_rekapan
+        k.pembagian_rekapan,
+        k.status_kepegawaian
       FROM karyawan k
       WHERE k.status_data = 'aktif'
       ORDER BY k.nama ASC
@@ -452,6 +474,7 @@ export async function listPayrollEmployeeOptions() {
     department: row.departemen,
     recapGroup: row.pembagian_rekapan ?? "-",
     isSales: isSalesEmployeeFromValues(row.jabatan, row.divisi, row.sub_divisi),
+    employmentStatus: row.status_kepegawaian ?? null,
   }));
 }
 
@@ -633,7 +656,8 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
           nama,
           jabatan,
           divisi,
-          sub_divisi
+          sub_divisi,
+          status_kepegawaian
         FROM karyawan
         WHERE id = ?
         LIMIT 1
@@ -720,7 +744,28 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
     const loanCut = payload.overridePinjaman ?? automaticLoanCut;
     const personalLoanCut = payload.overridePinjamanPribadi ?? 0;
     const gajiPerDay = payload.gajiPerDay;
-    const monthlyBaseSalary = payload.overrideGajiPokok ?? gajiPerDay * workDays;
+
+    // Freelance detection
+    const isFreelance = (employee.status_kepegawaian ?? "").trim().toLowerCase() === "freelance";
+    const freelanceRateType = payload.freelanceRateType ?? "per_hari";
+    let freelancePay = 0;
+    if (isFreelance) {
+      if (freelanceRateType === "per_jam") {
+        const [hoursRows] = await connection.query<FreelanceHoursRow[]>(
+          `SELECT COALESCE(SUM(TIMESTAMPDIFF(MINUTE, jam_masuk, jam_keluar)), 0) AS total_menit
+           FROM absensi
+           WHERE karyawan_id = ? AND tanggal BETWEEN ? AND ?
+             AND status_absensi = 'hadir'
+             AND jam_masuk IS NOT NULL AND jam_keluar IS NOT NULL`,
+          [payload.employeeId, range.startSql, range.endSql],
+        );
+        freelancePay = (toNumber(hoursRows[0]?.total_menit) / 60) * (payload.gajiPerJam ?? 0);
+      } else {
+        freelancePay = gajiPerDay * presentDays;
+      }
+    }
+
+    const monthlyBaseSalary = isFreelance ? freelancePay : (payload.overrideGajiPokok ?? gajiPerDay * workDays);
     const tunjanganJabatan = payload.tunjanganJabatan;
     const subsidi = payload.subsidi;
     const uangMakanPerDay = payload.uangMakan;
@@ -751,6 +796,18 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
     const totalSalary = totalSalaryBeforeDeduction - halfDayDeduction - lateDeduction;
     const totalPotongan = halfDayDeduction + lateDeduction + diligenceCut + contractCut + loanCut + personalLoanCut;
     const netIncome = totalSalary - contractCut - loanCut - personalLoanCut;
+
+    // For freelance: override all components — only gaji pokok counts
+    const finalMonthlyBaseSalary = isFreelance ? freelancePay : monthlyBaseSalary;
+    const finalOvertimeBonus = isFreelance ? 0 : overtimeBonus;
+    const finalHalfDayDeduction = isFreelance ? 0 : halfDayDeduction;
+    const finalLateDeduction = isFreelance ? 0 : lateDeduction;
+    const finalContractCut = isFreelance ? 0 : contractCut;
+    const finalLoanCut = isFreelance ? 0 : loanCut;
+    const finalDiligenceCut = isFreelance ? 0 : diligenceCut;
+    const finalTotalPotongan = isFreelance ? 0 : totalPotongan;
+    const finalNetIncome = isFreelance ? freelancePay : netIncome;
+    const finalOverrideGajiPokok = isFreelance ? freelancePay : (payload.overrideGajiPokok ?? null);
 
     const [payrollResult] = await connection.query<ResultSetHeader>(
       `
@@ -811,25 +868,25 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
         resolved.year,
         workDays,
         presentDays,
-        overtimeHours,
-        lateCount,
-        halfDayCount,
-        monthlyBaseSalary,
-        tunjanganJabatan,
-        subsidi,
-        bonusPerforma,
-        bpjs,
-        uangMakanTotal,
-        payrollType === "sales" ? payload.uangTransport : 0,
-        payrollType === "sales" ? payload.insentif : 0,
-        overtimeBonus,
-        lateDeduction,
-        halfDayDeduction,
-        contractCut,
-        loanCut,
-        diligenceCut,
-        totalPotongan,
-        netIncome,
+        isFreelance ? 0 : overtimeHours,
+        isFreelance ? 0 : lateCount,
+        isFreelance ? 0 : halfDayCount,
+        finalMonthlyBaseSalary,
+        isFreelance ? 0 : tunjanganJabatan,
+        isFreelance ? 0 : subsidi,
+        isFreelance ? 0 : bonusPerforma,
+        isFreelance ? 0 : bpjs,
+        isFreelance ? 0 : uangMakanTotal,
+        isFreelance ? 0 : (payrollType === "sales" ? payload.uangTransport : 0),
+        isFreelance ? 0 : (payrollType === "sales" ? payload.insentif : 0),
+        finalOvertimeBonus,
+        finalLateDeduction,
+        finalHalfDayDeduction,
+        finalContractCut,
+        finalLoanCut,
+        finalDiligenceCut,
+        finalTotalPotongan,
+        finalNetIncome,
       ],
     );
 
@@ -870,8 +927,10 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
           override_kontrak,
           override_pinjaman,
           override_pinjaman_pribadi,
-          override_gaji_pokok
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          override_gaji_pokok,
+          freelance_rate_type,
+          gaji_pokok_per_jam
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           payroll_type = VALUES(payroll_type),
           gaji_pokok_per_hari = VALUES(gaji_pokok_per_hari),
@@ -893,32 +952,36 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
           override_kontrak = VALUES(override_kontrak),
           override_pinjaman = VALUES(override_pinjaman),
           override_pinjaman_pribadi = VALUES(override_pinjaman_pribadi),
-          override_gaji_pokok = VALUES(override_gaji_pokok)
+          override_gaji_pokok = VALUES(override_gaji_pokok),
+          freelance_rate_type = VALUES(freelance_rate_type),
+          gaji_pokok_per_jam = VALUES(gaji_pokok_per_jam)
       `,
       [
         payrollId,
         payload.employeeId,
         payrollType,
-        gajiPerDay,
-        uangMakanPerDay,
-        subsidi,
-        uangKerajinan,
-        bpjs,
-        bonusPerforma,
-        payrollType === "sales" ? payload.insentif : 0,
-        payrollType === "sales" ? payload.uangTransport : 0,
-        kendaraan,
-        perjalananDinasReimburse,
-        payload.overrideMasuk ?? null,
-        payload.overrideLembur ?? null,
-        payload.overrideIzin ?? null,
-        payload.overrideSakit ?? null,
-        payload.overrideSakitTanpaSurat ?? null,
-        payload.overrideSetengahHari ?? null,
-        payload.overrideKontrak ?? null,
-        payload.overridePinjaman ?? null,
-        payload.overridePinjamanPribadi ?? null,
-        payload.overrideGajiPokok ?? null,
+        isFreelance && freelanceRateType === "per_jam" ? 0 : gajiPerDay,
+        isFreelance ? 0 : uangMakanPerDay,
+        isFreelance ? 0 : subsidi,
+        isFreelance ? 0 : uangKerajinan,
+        isFreelance ? 0 : bpjs,
+        isFreelance ? 0 : bonusPerforma,
+        isFreelance ? 0 : (payrollType === "sales" ? payload.insentif : 0),
+        isFreelance ? 0 : (payrollType === "sales" ? payload.uangTransport : 0),
+        isFreelance ? 0 : kendaraan,
+        isFreelance ? 0 : perjalananDinasReimburse,
+        isFreelance ? null : (payload.overrideMasuk ?? null),
+        isFreelance ? null : (payload.overrideLembur ?? null),
+        isFreelance ? null : (payload.overrideIzin ?? null),
+        isFreelance ? null : (payload.overrideSakit ?? null),
+        isFreelance ? null : (payload.overrideSakitTanpaSurat ?? null),
+        isFreelance ? null : (payload.overrideSetengahHari ?? null),
+        isFreelance ? null : (payload.overrideKontrak ?? null),
+        isFreelance ? null : (payload.overridePinjaman ?? null),
+        isFreelance ? null : (payload.overridePinjamanPribadi ?? null),
+        finalOverrideGajiPokok,
+        isFreelance ? freelanceRateType : null,
+        isFreelance && freelanceRateType === "per_jam" ? (payload.gajiPerJam ?? null) : null,
       ],
     );
 
@@ -927,7 +990,7 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
       payrollId,
       resolved.month,
       resolved.year,
-      loanCut,
+      finalLoanCut,
       connection,
     );
 

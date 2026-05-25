@@ -69,12 +69,15 @@ function validatePayrollPayload(body: Record<string, unknown>) {
   };
 
   if ([
-    values.gajiPerDay, values.tunjanganJabatan, values.uangMakan, values.subsidi, 
+    values.gajiPerDay, values.tunjanganJabatan, values.uangMakan, values.subsidi,
     values.uangKerajinan, values.bpjs, values.bonusPerforma, values.insentif, values.uangTransport,
     values.kendaraan, values.perjalananDinasReimburse
   ].some((value) => value === null)) {
     return { error: "Semua nominal payroll harus berupa angka valid dan tidak boleh negatif." };
   }
+
+  const freelanceRateType = body.freelanceRateType === "per_jam" ? "per_jam" : "per_hari";
+  const gajiPerJam = parseCurrency(body.gajiPerJam) ?? 0;
 
   const payload: PayrollFormPayload = {
     employeeId,
@@ -101,6 +104,8 @@ function validatePayrollPayload(body: Record<string, unknown>) {
     overridePinjaman: values.overridePinjaman,
     overridePinjamanPribadi: values.overridePinjamanPribadi,
     overrideGajiPokok: values.overrideGajiPokok,
+    freelanceRateType,
+    gajiPerJam,
   };
 
   return { payload };

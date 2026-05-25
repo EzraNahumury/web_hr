@@ -79,5 +79,7 @@ export function mapPenjahitRow(row: PenjahitComputedRow): AdminPayrollSummaryShe
     inputOverridePinjaman: row.inputOverridePinjaman,
     inputOverridePinjamanPribadi: row.inputPotonganLainLain,
     inputOverrideGajiPokok: row.inputOverrideGajiPokok,
+    freelanceRateType: "per_hari",
+    inputGajiPerJam: 0,
   };
 }
