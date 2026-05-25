@@ -300,8 +300,7 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
               ) : (
                 filteredRows.map((row) => {
                   const isLocked = row.status_approval !== "pending";
-                  const isAssignedToAdmin = !row.assigned_approver_user_id;
-                  const canAdminAct = isAssignedToAdmin && !isLocked;
+                  const canAdminAct = !isLocked;
 
                   return (
                     <tr key={row.id} className="border-b border-[#eef2f7] text-[#42506a]">
@@ -384,7 +383,6 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
                             onClick={() => updateApproval(row.id, "approved")}
                             disabled={isPending || !canAdminAct}
                             className="rounded-xl bg-[#19a15f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#14874f] disabled:cursor-not-allowed disabled:opacity-50"
-                            title={!isAssignedToAdmin ? "Pengajuan ini ditujukan ke SPV/Manager, bukan admin." : undefined}
                           >
                             Approve
                           </button>
@@ -393,7 +391,6 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
                             onClick={() => updateApproval(row.id, "rejected")}
                             disabled={isPending || !canAdminAct}
                             className="rounded-xl bg-[#ef4444] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#d73737] disabled:cursor-not-allowed disabled:opacity-50"
-                            title={!isAssignedToAdmin ? "Pengajuan ini ditujukan ke SPV/Manager, bukan admin." : undefined}
                           >
                             Reject
                           </button>
