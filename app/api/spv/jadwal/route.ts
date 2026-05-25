@@ -138,7 +138,7 @@ export async function POST(request: Request) {
           WHERE status_data = 'aktif'
             AND (
               penempatan IN ('Toko','Gudang','JNE')
-              OR LOWER(COALESCE(sub_divisi, '')) = 'media'
+              OR LOWER(COALESCE(sub_divisi, '')) IN ('media','hostlive','advertiser')
             )
         `,
       );
