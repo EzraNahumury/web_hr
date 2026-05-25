@@ -216,8 +216,8 @@ export async function listTokoGudangKaryawan(): Promise<TokoGudangKaryawan[]> {
       FROM karyawan
       WHERE status_data = 'aktif'
         AND (
-          penempatan IN ('Toko', 'Toko Solo', 'Gudang', 'JNE')
-          OR LOWER(COALESCE(sub_divisi, '')) = 'media'
+          penempatan IN ('Toko', 'Gudang', 'JNE')
+          OR LOWER(COALESCE(sub_divisi, '')) IN ('media', 'hostlive')
         )
       ORDER BY penempatan ASC, nama ASC
     `,

@@ -45,6 +45,14 @@ const MEDIA_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
   { value: "libur", label: "Libur" },
 ];
 
+// Hostlive pakai shift Pagi & Siang (plus Libur).
+const HOSTLIVE_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
+  { value: "", label: "—" },
+  { value: "pagi", label: "Pagi" },
+  { value: "siang", label: "Siang" },
+  { value: "libur", label: "Libur" },
+];
+
 // JNE pakai 2 shift unik dengan toleransi 10 menit di check-in.
 const JNE_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
   { value: "", label: "—" },
@@ -73,8 +81,9 @@ function getShiftOptionsFor(
 ) {
   if (noKaryawan === IMEL_NIP) return IMEL_SHIFT_OPTIONS;
   if (penempatan === "JNE") return JNE_SHIFT_OPTIONS;
-  if (penempatan === "Toko Solo") return TOKO_SOLO_SHIFT_OPTIONS;
-  if ((subDivisi ?? "").trim().toLowerCase() === "media") return MEDIA_SHIFT_OPTIONS;
+  const subDiv = (subDivisi ?? "").trim().toLowerCase();
+  if (subDiv === "media") return MEDIA_SHIFT_OPTIONS;
+  if (subDiv === "hostlive") return HOSTLIVE_SHIFT_OPTIONS;
   return SHIFT_OPTIONS;
 }
 
