@@ -303,6 +303,8 @@ export async function listContractDeductionEmployees() {
         k.kenaikan_tiap_tahun,
         k.status_kerja
       FROM karyawan k
+      WHERE LOWER(COALESCE(k.status_kepegawaian, '')) NOT IN ('tetap', 'freelance')
+        AND LOWER(COALESCE(k.jabatan, '')) <> 'sales nasional'
       ORDER BY k.nama ASC
     `,
   );
