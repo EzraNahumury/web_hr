@@ -46,7 +46,8 @@ export type AttendanceShift =
   | "pagi_short"
   | "siang_sore"
   | "jne_pagi"
-  | "jne_siang";
+  | "jne_siang"
+  | "jne_minggu";
 
 const SHIFT_START: Record<AttendanceShift, number> = {
   pagi: 8 * 60 + 30,         // 08:30
@@ -59,12 +60,14 @@ const SHIFT_START: Record<AttendanceShift, number> = {
   siang_sore: 12 * 60,       // 12:00 (selesai 17:00)
   jne_pagi: 8 * 60,          // 08:00 (selesai 16:00)
   jne_siang: 14 * 60,        // 14:00 (selesai 21:00)
+  jne_minggu: 13 * 60,       // 13:00 (selesai 20:00)
 };
 
 // Toleransi keterlambatan per shift. Jika lateMinutes <= tolerance maka dianggap tepat waktu.
 const SHIFT_TOLERANCE_MINUTES: Partial<Record<AttendanceShift, number>> = {
   jne_pagi: 10,
   jne_siang: 10,
+  jne_minggu: 10,
 };
 
 type Range = readonly [number, number];
@@ -80,6 +83,7 @@ const CHECKIN_WINDOW: Record<AttendanceShift, Range> = {
   siang_sore: [11 * 60 + 45,      12 * 60],       // 11:45-12:00
   jne_pagi:   [7 * 60 + 30,       11 * 60],       // 07:30-11:00 (tolerance 10 min via SHIFT_TOLERANCE)
   jne_siang:  [13 * 60 + 30,      17 * 60],       // 13:30-17:00
+  jne_minggu: [12 * 60 + 30,      14 * 60],       // 12:30-14:00
 };
 
 const CHECKOUT_WINDOW: Record<AttendanceShift, Range> = {
@@ -93,6 +97,7 @@ const CHECKOUT_WINDOW: Record<AttendanceShift, Range> = {
   siang_sore: [16 * 60 + 30,      17 * 60 + 30],  // 16:30-17:30
   jne_pagi:   [15 * 60 + 30,      16 * 60 + 30],  // 15:30-16:30
   jne_siang:  [20 * 60 + 30,      21 * 60 + 30],  // 20:30-21:30
+  jne_minggu: [19 * 60 + 30,      20 * 60 + 30],  // 19:30-20:30
 };
 
 function timeToMinutes(time: string): number {

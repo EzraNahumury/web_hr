@@ -47,6 +47,7 @@ const VALID_SHIFTS: JadwalShift[] = [
   "siang_sore",
   "jne_pagi",
   "jne_siang",
+  "jne_minggu",
 ];
 
 function parsePositiveInt(v: unknown) {
@@ -178,10 +179,11 @@ export async function POST(request: Request) {
     const JNE_VALID_SHIFTS = new Set<JadwalShift>([
       "jne_pagi",
       "jne_siang",
+      "jne_minggu",
       "libur",
     ]);
 
-    const JNE_ONLY_SHIFTS = new Set<JadwalShift>(["jne_pagi", "jne_siang"]);
+    const JNE_ONLY_SHIFTS = new Set<JadwalShift>(["jne_pagi", "jne_siang", "jne_minggu"]);
 
     const entries: { karyawanId: number; tanggal: string; shift: JadwalShift }[] = [];
     for (const item of entriesRaw) {
@@ -244,7 +246,7 @@ export async function POST(request: Request) {
           return NextResponse.json(
             {
               message:
-                "Karyawan JNE hanya boleh dijadwalkan shift Pagi (08:00-16:00), Siang (14:00-21:00), atau Libur.",
+                "Karyawan JNE hanya boleh dijadwalkan shift Pagi (08:00-16:00), Siang (14:00-21:00), Minggu/Libur (13:00-20:00), atau Libur.",
             },
             { status: 400 },
           );

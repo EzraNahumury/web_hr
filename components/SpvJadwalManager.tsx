@@ -53,11 +53,12 @@ const HOSTLIVE_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
   { value: "libur", label: "Libur" },
 ];
 
-// JNE pakai 2 shift unik dengan toleransi 10 menit di check-in.
+// JNE pakai 3 shift unik dengan toleransi 10 menit di check-in.
 const JNE_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
   { value: "", label: "—" },
   { value: "jne_pagi", label: "Pagi (08:00 - 16:00)" },
   { value: "jne_siang", label: "Siang (14:00 - 21:00)" },
+  { value: "jne_minggu", label: "Minggu/Libur (13:00 - 20:00)" },
   { value: "libur", label: "Libur" },
 ];
 
@@ -99,6 +100,7 @@ const SHIFT_COLOR: Record<JadwalShift, string> = {
   siang_sore: "bg-sky-50 text-sky-700 border-sky-200",
   jne_pagi: "bg-orange-50 text-orange-700 border-orange-200",
   jne_siang: "bg-rose-50 text-rose-700 border-rose-200",
+  jne_minggu: "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200",
 };
 
 const MONTH_LABELS = [
