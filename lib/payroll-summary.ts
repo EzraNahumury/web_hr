@@ -17,6 +17,7 @@ import {
   getApprovedReimbursementRowsForPeriod,
 } from "@/lib/reimbursements";
 import { isSalesNasionalRole } from "@/lib/sales-roles";
+import { PAYROLL_OMZET_BONUS_RATE } from "@/lib/payroll-constants";
 
 type LatestPeriodRow = RowDataPacket & {
   periode_bulan: number;
@@ -569,7 +570,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     if (!rawUnit) continue;
     const groupKey = getOmzetGroupKeyForUnit(rawUnit) ?? rawUnit;
     const omzet = toNumber(row.total_omzet);
-    const bonusPool = row.is_custom_bonus ? omzet : omzet * 0.005;
+    const bonusPool = row.is_custom_bonus ? omzet : omzet * PAYROLL_OMZET_BONUS_RATE;
     const existing = omzetByGroup.get(groupKey);
     if (existing) {
       existing.totalOmzet += omzet;

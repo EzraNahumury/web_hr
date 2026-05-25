@@ -175,6 +175,9 @@ export default function SpvJadwalManager({
   const [dirty, setDirty] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [holidayTarget, setHolidayTarget] = useState<PeriodDay | null>(null);
+  const [holidayDescription, setHolidayDescription] = useState("");
+  const [holidayFeedback, setHolidayFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const tableScrollRef = useRef<HTMLElement | null>(null);
   const ghostScrollRef = useRef<HTMLDivElement | null>(null);
@@ -321,6 +324,39 @@ export default function SpvJadwalManager({
     setDirty(true);
   }
 
+  function isDateFullyHoliday(date: string, sourceMap = jadwalMap) {
+    return karyawanList.length > 0 && karyawanList.every((k) => sourceMap.get(`${k.id}|${date}`) === "libur");
+  }
+
+  function openHolidayDialog(periodDay: PeriodDay) {
+    setHolidayTarget(periodDay);
+    setHolidayDescription("");
+    setHolidayFeedback(null);
+  }
+
+  function applyHolidayToDate() {
+    if (!holidayTarget) return;
+    const description = holidayDescription.trim();
+    if (!description) {
+      setHolidayFeedback({ type: "error", text: "Keterangan libur wajib diisi." });
+      return;
+    }
+
+    setJadwalMap((prev) => {
+      const next = new Map(prev);
+      for (const karyawan of karyawanList) {
+        next.set(`${karyawan.id}|${holidayTarget.date}`, "libur");
+      }
+      return next;
+    });
+    setDirty(true);
+    setToast({
+      type: "success",
+      message: `Tanggal ${holidayTarget.date} diisi Libur. Klik Simpan Jadwal untuk menyimpan.`,
+    });
+    setHolidayTarget(null);
+  }
+
   async function handleSave() {
     setIsSubmitting(true);
     try {
@@ -461,17 +497,29 @@ export default function SpvJadwalManager({
                   const date = new Date(pd.year, pd.month - 1, pd.day);
                   const dow = date.getDay();
                   const isWeekend = dow === 0 || dow === 6;
+                  const isHolidayFilled = isDateFullyHoliday(pd.date);
                   const dayShort = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"][dow];
                   return (
                     <th
                       key={pd.date}
                       className={`min-w-[88px] px-1 py-2 text-center font-semibold ${
-                        isWeekend ? "bg-[#ffe8e0] text-[#8f1d22]" : "bg-[#fff2ec]"
+                        isHolidayFilled || isWeekend ? "bg-[#ffe8e0] text-[#8f1d22]" : "bg-[#fff2ec]"
                       }`}
                     >
-                      <div className="text-[10px] tracking-[0.06em]">{dayShort}</div>
-                      <div className="text-sm">{pd.day}</div>
-                      <div className="text-[9px] text-[#a16f63]">{MONTH_LABELS[pd.month - 1].slice(0, 3)}</div>
+                      <button
+                        type="button"
+                        onClick={() => openHolidayDialog(pd)}
+                        title={isHolidayFilled ? "Tanggal ini sudah diisi Libur" : "Klik untuk set libur"}
+                        className={`mx-auto block w-full rounded-lg px-1 py-1 transition ${
+                          isHolidayFilled
+                            ? "bg-[#fde2dd] text-[#8f1d22] hover:bg-[#fdcfc7]"
+                            : "hover:bg-[#fdebda] hover:text-[#8f1d22]"
+                        }`}
+                      >
+                        <div className="text-[10px] tracking-[0.06em]">{dayShort}</div>
+                        <div className="text-sm">{pd.day}</div>
+                        <div className="text-[9px] text-[#a16f63]">{MONTH_LABELS[pd.month - 1].slice(0, 3)}</div>
+                      </button>
                     </th>
                   );
                 })}
@@ -552,8 +600,88 @@ export default function SpvJadwalManager({
 
       <p className="text-center text-xs text-[#8a6f68]">
         Tip: gunakan kolom <span className="font-semibold">Quick Fill</span> untuk mengisi seluruh
-        periode dengan shift yang sama, lalu sesuaikan tanggal libur per karyawan.
+        periode dengan shift yang sama, atau klik tanggal di header untuk mengisi libur satu kolom.
       </p>
+
+      {holidayTarget ? (
+        <div
+          className="fixed inset-0 z-[2000] flex items-center justify-center px-4 py-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="schedule-holiday-dialog-title"
+        >
+          <button
+            type="button"
+            aria-label="Tutup dialog"
+            onClick={() => setHolidayTarget(null)}
+            className="absolute inset-0 h-full w-full cursor-default bg-[#1c0e0a]/55 backdrop-blur-sm"
+          />
+          <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/60 bg-[linear-gradient(180deg,#fffdfb_0%,#fff5ef_100%)] shadow-[0_30px_80px_rgba(58,24,12,0.28)] ring-1 ring-[#f3c8c2]">
+            <div className="relative px-7 pt-7">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#fdecea] text-[#c0392b] shadow-[0_10px_24px_rgba(58,24,12,0.08)]">
+                  <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect width="18" height="18" x="3" y="4" rx="2" />
+                    <path d="M16 2v4" />
+                    <path d="M8 2v4" />
+                    <path d="M3 10h18" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 id="schedule-holiday-dialog-title" className="text-lg font-semibold text-[#241716]">
+                    Set Libur Nasional
+                  </h2>
+                  <p className="mt-2 text-sm leading-relaxed text-[#6e574f]">
+                    Tanggal: <span className="font-semibold text-[#241716]">{holidayTarget.date}</span>.{" "}
+                    Semua karyawan di daftar jadwal akan diisi shift Libur untuk tanggal ini. Perubahan belum tersimpan sampai tombol Simpan Jadwal ditekan.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 space-y-2">
+                <label className="block text-[13px] font-semibold text-[#6f5a54]">Keterangan Libur</label>
+                <input
+                  type="text"
+                  value={holidayDescription}
+                  onChange={(event) => setHolidayDescription(event.target.value)}
+                  placeholder="Contoh: Hari Raya Idul Fitri"
+                  maxLength={255}
+                  className="h-11 w-full rounded-xl border border-[#e8d5cc] bg-white px-3 text-sm text-[#241716] outline-none focus:border-[#c97f5b] focus:shadow-[0_0_0_3px_rgba(201,127,91,0.14)]"
+                />
+              </div>
+
+              {holidayFeedback ? (
+                <div
+                  className={`mt-4 rounded-2xl px-4 py-3 text-sm ${
+                    holidayFeedback.type === "success"
+                      ? "border border-[#cfe8d4] bg-[#f2fbf4] text-[#267344]"
+                      : "border border-[#f2c4c4] bg-[#fff4f4] text-[#b13232]"
+                  }`}
+                >
+                  {holidayFeedback.text}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="relative mt-6 flex flex-col-reverse gap-3 border-t border-[#f1e1d8] bg-white/60 px-7 py-5 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setHolidayTarget(null)}
+                className="inline-flex h-11 items-center justify-center rounded-full border border-[#e2cfc6] bg-white px-5 text-sm font-semibold text-[#5a443d] transition hover:bg-[#fdf6f1]"
+              >
+                Tutup
+              </button>
+              <button
+                type="button"
+                onClick={applyHolidayToDate}
+                className="inline-flex h-11 items-center justify-center rounded-full bg-[#c0392b] px-5 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(192,57,43,0.28)] transition hover:bg-[#a82d20]"
+              >
+                Set Libur Nasional
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div
         ref={ghostScrollRef}

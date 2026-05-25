@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
+import { PAYROLL_OMZET_BONUS_RATE } from "@/lib/payroll-constants";
 import type { PayrollEmployeeOption, PayrollOmzetPeriod, PayrollPeriodOption } from "@/lib/payroll-admin";
 import type { AdminPayrollSummarySheet, AdminPayrollSummarySheetRow } from "@/lib/payroll-summary";
 import { isSalesNasionalRole } from "@/lib/sales-roles";
@@ -162,7 +163,7 @@ export default function AdminPayrollSummaryManager({
       return {
         unit: item.unit,
         label: item.label,
-        bonus: item.isCustomBonus ? value : value * 0.005,
+        bonus: item.isCustomBonus ? value : value * PAYROLL_OMZET_BONUS_RATE,
       };
     }),
     [omzetInputs],
@@ -444,7 +445,7 @@ export default function AdminPayrollSummaryManager({
             <div className="mt-6 space-y-4">
               {omzetInputs.map((item) => {
                 const value = parseNumber(item.totalOmzet);
-                const bonusUnit = item.isCustomBonus ? value : value * 0.005;
+                const bonusUnit = item.isCustomBonus ? value : value * PAYROLL_OMZET_BONUS_RATE;
                 const showCustomBonusToggle = item.unit !== "AVA+Ayres";
                 return (
                   <div key={item.unit} className="rounded-2xl border border-[#d5e9ea] bg-white px-4 py-4">
@@ -473,7 +474,7 @@ export default function AdminPayrollSummaryManager({
                       <p className="text-[12px] text-[#628083]">
                         {item.isCustomBonus
                           ? `Nominal di atas dipakai langsung sebagai bonus omzet (${formatCurrency(bonusUnit)}).`
-                          : `Bonus omzet otomatis ${formatCurrency(bonusUnit)} (0,5% × omzet).`}
+                          : `Bonus omzet otomatis ${formatCurrency(bonusUnit)} (0,7% × omzet).`}
                       </p>
                     </div>
                   </div>

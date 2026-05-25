@@ -1,0 +1,1 @@
+export const PAYROLL_OMZET_BONUS_RATE = 0.007;

@@ -9,6 +9,7 @@ import {
 } from "@/lib/loans";
 import { ensureReimbursementSchema } from "@/lib/reimbursements";
 import { isSalesNasionalRole } from "@/lib/sales-roles";
+import { PAYROLL_OMZET_BONUS_RATE } from "@/lib/payroll-constants";
 
 type PayrollEmployeeOptionRow = RowDataPacket & {
   employee_id: number;
@@ -504,7 +505,7 @@ export async function getPayrollOmzetPeriod(period?: PayrollPeriodInput): Promis
     const saved = savedByGroup.get(group.key);
     const totalOmzet = toNumber(saved?.total_omzet);
     const isCustomBonus = saved ? Boolean(saved.is_custom_bonus) : group.defaultCustomBonus;
-    const bonusOmzet = isCustomBonus ? totalOmzet : totalOmzet * 0.005;
+    const bonusOmzet = isCustomBonus ? totalOmzet : totalOmzet * PAYROLL_OMZET_BONUS_RATE;
     return {
       unit: group.key,
       label: group.label,
@@ -527,7 +528,7 @@ export async function getPayrollOmzetPeriod(period?: PayrollPeriodInput): Promis
       unit: groupKey,
       label: groupKey,
       totalOmzet,
-      bonusOmzet: isCustomBonus ? totalOmzet : totalOmzet * 0.005,
+      bonusOmzet: isCustomBonus ? totalOmzet : totalOmzet * PAYROLL_OMZET_BONUS_RATE,
       isCustomBonus,
       isLocked: true,
     });
