@@ -96,7 +96,12 @@ export async function POST(request: Request) {
       });
     }
 
-    if (user.role === "spv") {
+    const JADWAL_WHITELIST = ["Fara Ais Umainah"];
+    const isWhitelistedForJadwal = JADWAL_WHITELIST.some(
+      (n) => n.trim().toLowerCase() === user.nama.trim().toLowerCase(),
+    );
+
+    if (user.role === "spv" || isWhitelistedForJadwal) {
       await setSpvSessionCookie({
         id: user.id,
         email: user.email,
