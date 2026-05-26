@@ -478,6 +478,98 @@ export async function listPayrollEmployeeOptions() {
   }));
 }
 
+export async function ensurePayrollPeriodCloned(
+  targetMonth: number,
+  targetYear: number,
+): Promise<{ cloned: boolean; sourceMonth?: number; sourceYear?: number }> {
+  if (!Number.isInteger(targetMonth) || targetMonth < 1 || targetMonth > 12) {
+    return { cloned: false };
+  }
+  if (!Number.isInteger(targetYear) || targetYear < 2000 || targetYear > 2100) {
+    return { cloned: false };
+  }
+
+  await ensurePayrollSupportTables();
+
+  const [existing] = await pool.query<RowDataPacket[]>(
+    `SELECT 1 FROM payroll WHERE periode_bulan = ? AND periode_tahun = ? LIMIT 1`,
+    [targetMonth, targetYear],
+  );
+  if (existing.length > 0) return { cloned: false };
+
+  const [sourceRows] = await pool.query<RowDataPacket[]>(
+    `SELECT periode_bulan, periode_tahun FROM payroll
+     WHERE (periode_tahun < ? OR (periode_tahun = ? AND periode_bulan < ?))
+     ORDER BY periode_tahun DESC, periode_bulan DESC LIMIT 1`,
+    [targetYear, targetYear, targetMonth],
+  );
+  if (!sourceRows[0]) return { cloned: false };
+
+  const sourceMonth = (sourceRows[0] as { periode_bulan: number }).periode_bulan;
+  const sourceYear = (sourceRows[0] as { periode_tahun: number }).periode_tahun;
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    await connection.query(
+      `
+        INSERT INTO payroll (
+          karyawan_id, periode_bulan, periode_tahun,
+          hari_kerja, total_masuk, total_lembur_jam, total_terlambat, total_setengah_hari,
+          gaji_pokok, tunjangan_jabatan, tunjangan_lain, bonus_performa, bpjs,
+          uang_makan, transport, insentif, upah_lembur,
+          potongan_keterlambatan, potongan_setengah_hari, potongan_kontrak,
+          potongan_pinjaman, potongan_kerajinan, total_potongan, gaji_bersih, status_payroll
+        )
+        SELECT
+          karyawan_id, ?, ?,
+          hari_kerja, total_masuk, total_lembur_jam, total_terlambat, total_setengah_hari,
+          gaji_pokok, tunjangan_jabatan, tunjangan_lain, bonus_performa, bpjs,
+          uang_makan, transport, insentif, upah_lembur,
+          potongan_keterlambatan, potongan_setengah_hari, potongan_kontrak,
+          potongan_pinjaman, potongan_kerajinan, total_potongan, gaji_bersih, 'draft'
+        FROM payroll
+        WHERE periode_bulan = ? AND periode_tahun = ?
+      `,
+      [targetMonth, targetYear, sourceMonth, sourceYear],
+    );
+
+    await connection.query(
+      `
+        INSERT INTO payroll_employee_input (
+          payroll_id, karyawan_id, payroll_type,
+          gaji_pokok_per_hari, uang_makan_per_hari, subsidi, uang_kerajinan, bpjs,
+          bonus_performa, insentif, uang_transport, kendaraan, perjalanan_dinas_reimburse,
+          override_kontrak, override_pinjaman, override_pinjaman_pribadi, override_gaji_pokok,
+          freelance_rate_type, gaji_pokok_per_jam
+        )
+        SELECT
+          new_p.id, src.karyawan_id, src.payroll_type,
+          src.gaji_pokok_per_hari, src.uang_makan_per_hari, src.subsidi, src.uang_kerajinan, src.bpjs,
+          src.bonus_performa, src.insentif, src.uang_transport, src.kendaraan, src.perjalanan_dinas_reimburse,
+          src.override_kontrak, src.override_pinjaman, src.override_pinjaman_pribadi, src.override_gaji_pokok,
+          src.freelance_rate_type, src.gaji_pokok_per_jam
+        FROM payroll_employee_input src
+        INNER JOIN payroll old_p ON old_p.id = src.payroll_id
+        INNER JOIN payroll new_p ON new_p.karyawan_id = src.karyawan_id
+          AND new_p.periode_bulan = ?
+          AND new_p.periode_tahun = ?
+        WHERE old_p.periode_bulan = ? AND old_p.periode_tahun = ?
+      `,
+      [targetMonth, targetYear, sourceMonth, sourceYear],
+    );
+
+    await connection.commit();
+    return { cloned: true, sourceMonth, sourceYear };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 export async function listPayrollPeriods() {
   await ensurePayrollSupportTables();
 

@@ -3,6 +3,7 @@ import { RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
 import { ensureLoanSupportTables, getLoanDeductionRowsForPeriod } from "@/lib/loans";
 import {
+  ensurePayrollPeriodCloned,
   ensurePayrollSupportTables,
   getActivePayrollPeriod,
   getPayrollDateRange,
@@ -153,6 +154,7 @@ export async function getPenjahitSheet(period?: {
     month: period?.month ?? getActivePayrollPeriod().month,
     year: period?.year ?? getActivePayrollPeriod().year,
   };
+  await ensurePayrollPeriodCloned(activePeriod.month, activePeriod.year);
 
   const [latestRows] = await pool.query<RowDataPacket[]>(
     `SELECT periode_bulan, periode_tahun FROM payroll WHERE periode_bulan = ? AND periode_tahun = ? LIMIT 1`,

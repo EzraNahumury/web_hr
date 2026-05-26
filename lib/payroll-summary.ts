@@ -6,6 +6,7 @@ import {
   getLoanDeductionRowsForPeriod,
 } from "@/lib/loans";
 import {
+  ensurePayrollPeriodCloned,
   ensurePayrollSupportTables,
   getActivePayrollPeriod,
   getOmzetGroupKeyForUnit,
@@ -296,6 +297,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     month: period?.month ?? getActivePayrollPeriod().month,
     year: period?.year ?? getActivePayrollPeriod().year,
   };
+  await ensurePayrollPeriodCloned(activePeriod.month, activePeriod.year);
   const [latestRows] = await pool.query<LatestPeriodRow[]>(
     `
       SELECT periode_bulan, periode_tahun
