@@ -905,7 +905,7 @@ async function getLoansBase(whereSql = "", params: Array<number | string> = []) 
 }
 
 export async function listAdminLoans() {
-  return getLoansBase();
+  return getLoansBase("WHERE p.status_pinjaman <> 'rejected'");
 }
 
 export async function listEmployeeLoans(employeeId: number) {
