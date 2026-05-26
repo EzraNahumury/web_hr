@@ -304,7 +304,7 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
 
                   return (
                     <tr key={row.id} className="border-b border-[#eef2f7] text-[#42506a]">
-                      <td className="px-6 py-4 font-semibold text-[#172033]">{row.nama}</td>
+                      <td className="px-6 py-4 font-semibold uppercase text-[#172033]">{row.nama}</td>
                       <td className="px-6 py-4">{row.tanggal}</td>
                       <td className="px-6 py-4">
                         {row.jam_mulai} - {row.jam_selesai}
