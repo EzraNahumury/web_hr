@@ -242,6 +242,7 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
       LEFT JOIN absensi a
         ON a.karyawan_id = k.id
         AND a.tanggal BETWEEN ? AND ?
+      WHERE k.status_data = 'aktif'
       ORDER BY k.nama ASC, a.tanggal ASC
     `,
     [startDate, endDate],
