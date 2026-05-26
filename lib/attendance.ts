@@ -133,6 +133,39 @@ export function detectTokoGudangShiftFinal(
   return null;
 }
 
+export function detectShiftFromCheckIn(checkInTime: string): AttendanceShift | null {
+  const mins = timeToMinutes(checkInTime);
+  const order: AttendanceShift[] = [
+    "lembur",
+    "siang",
+    "siang_sore",
+    "pagi",
+    "pagi_full",
+    "pagi_short",
+    "setengah_2",
+    "setengah_1",
+    "jne_pagi",
+    "jne_siang",
+    "jne_minggu",
+  ];
+  for (const shift of order) {
+    if (inRange(mins, CHECKIN_WINDOW[shift])) return shift;
+  }
+  return null;
+}
+
+export function isEarlyLeaveByTime(
+  checkInTime: string | null | undefined,
+  checkOutTime: string | null | undefined,
+): boolean {
+  if (!checkInTime || !checkOutTime) return false;
+  const shift = detectShiftFromCheckIn(checkInTime);
+  if (!shift) return false;
+  const outMins = timeToMinutes(checkOutTime);
+  const coStart = CHECKOUT_WINDOW[shift][0];
+  return outMins < coStart;
+}
+
 export function getShiftLateMinutes(time: string, shift: AttendanceShift): number {
   const mins = timeToMinutes(time);
   const lateRaw = Math.max(mins - SHIFT_START[shift], 0);

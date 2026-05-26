@@ -1,5 +1,6 @@
 import { RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
+import { isEarlyLeaveByTime } from "@/lib/attendance";
 import { getEmployeeRemainingLoanTotal } from "@/lib/loans";
 import { getAdminPayrollSummarySheet } from "@/lib/payroll-summary";
 import {
@@ -70,6 +71,7 @@ export type AttendanceDayDetail = {
   longitudeOut: number | null;
   lateMinutes: number;
   note: string | null;
+  isEarlyLeave: boolean;
 };
 
 type AttendanceSheetRow = {
@@ -278,8 +280,11 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
 
     if (row.attendance_date) {
       const day = Number(row.attendance_date.split("-")[2]);
+      const code = mapAttendanceCode(row);
+      const isEarlyLeave =
+        code === "O" && isEarlyLeaveByTime(row.jam_masuk, row.jam_pulang);
       byEmployee.get(row.employee_id)!.daily[day] = {
-        code: mapAttendanceCode(row),
+        code,
         date: row.attendance_date,
         status: row.status_absensi,
         timeIn: row.jam_masuk,
@@ -292,6 +297,7 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         longitudeOut: row.longitude_pulang,
         lateMinutes: row.terlambat_menit,
         note: row.keterangan,
+        isEarlyLeave,
       };
     }
   }
@@ -334,6 +340,7 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         longitudeOut: null,
         lateMinutes: 0,
         note: "Libur terjadwal",
+        isEarlyLeave: false,
       };
     }
   }

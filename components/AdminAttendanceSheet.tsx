@@ -451,13 +451,25 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                     detail.code === "O" &&
                     !!detail.timeIn &&
                     !detail.timeOut;
+                  const earlyLeave =
+                    !!detail &&
+                    detail.code === "O" &&
+                    !!detail.timeIn &&
+                    !!detail.timeOut &&
+                    detail.isEarlyLeave;
+                  const displayCode = earlyLeave ? "PA" : detail?.code || "-";
+                  const cellTitle = missingCheckout
+                    ? "Belum presensi pulang"
+                    : earlyLeave
+                      ? "Pulang awal (sebelum jadwal selesai)"
+                      : undefined;
 
                   return (
                     <td key={day} className="px-3 py-4 text-center font-medium">
                       {detail ? (
                         <button
                           type="button"
-                          title={missingCheckout ? "Belum presensi pulang" : undefined}
+                          title={cellTitle}
                           onClick={() =>
                             isClickable
                               ? setSelected({
@@ -471,12 +483,14 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                           className={
                             missingCheckout
                               ? "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fde2dd] px-2 py-1 text-xs font-bold text-[#c0392b] transition hover:bg-[#fbcec7]"
-                              : isClickable
-                                ? "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fff4ee] px-2 py-1 text-xs transition hover:bg-[#f5ddd2] hover:text-[#8f1d22]"
-                                : "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fff4ee] px-2 py-1 text-xs"
+                              : earlyLeave
+                                ? "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fff5d6] px-2 py-1 text-xs font-bold text-[#8d6200] transition hover:bg-[#fde9a4]"
+                                : isClickable
+                                  ? "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fff4ee] px-2 py-1 text-xs transition hover:bg-[#f5ddd2] hover:text-[#8f1d22]"
+                                  : "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fff4ee] px-2 py-1 text-xs"
                           }
                         >
-                          {detail.code || "-"}
+                          {displayCode}
                         </button>
                       ) : (
                         <span className="inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fff4ee] px-2 py-1 text-xs">
