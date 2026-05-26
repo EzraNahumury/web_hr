@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ResultSetHeader, RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
 import { saveUploadedFile } from "@/lib/uploads";
-import { canSetSchedule } from "@/lib/scheduler-roles";
+import { isManager } from "@/lib/scheduler-roles";
 import { ensureOvertimeSchema } from "@/lib/overtime";
 
 function toDateTimeString(date: string, time: string) {
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
   }
 
   const employeeRole = String(employeeRows[0].jabatan ?? "");
-  const routesToAdmin = canSetSchedule(employeeRole);
+  const routesToAdmin = isManager(employeeRole);
 
   let finalApproverId: number | null = null;
 
