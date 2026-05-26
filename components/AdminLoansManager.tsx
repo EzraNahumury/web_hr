@@ -1,9 +1,31 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
+import { useConfirm } from "@/components/ConfirmDialog";
 import type { LoanListItem } from "@/lib/loans";
+
+function EditIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+function DeleteIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="M19 6l-1 14H6L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+    </svg>
+  );
+}
 
 type EmployeeOption = {
   employeeId: number;
@@ -81,10 +103,14 @@ function mapApprovalMessage(status: "approved" | "rejected") {
 
 export default function AdminLoansManager({ initialRows, employeeOptions }: Props) {
   const router = useRouter();
+  const confirm = useConfirm();
+  const formCardRef = useRef<HTMLDivElement | null>(null);
   const [rows, setRows] = useState(initialRows);
   const [search, setSearch] = useState("");
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [processingId, setProcessingId] = useState<number | null>(null);
+  const [editingLoanId, setEditingLoanId] = useState<number | null>(null);
+  const [deletingLoanId, setDeletingLoanId] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const [form, setForm] = useState({
@@ -109,6 +135,52 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
       requestDate: todayIsoDate(),
     });
     setFormFeedback(null);
+    setEditingLoanId(null);
+  }
+
+  function openEditLoan(loan: LoanListItem) {
+    setEditingLoanId(loan.id);
+    setForm({
+      employeeId: String(loan.employeeId),
+      totalLoan: formatRupiahInput(String(Math.trunc(toNumber(loan.totalLoan)))),
+      installmentCount: String(loan.installmentCount),
+      requestDate: loan.requestDate || todayIsoDate(),
+    });
+    setFormFeedback(null);
+    setFeedback(null);
+    formCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function handleDeleteLoan(loan: LoanListItem) {
+    const ok = await confirm({
+      tone: "danger",
+      title: "Hapus pengajuan pinjaman?",
+      description: `Pinjaman ${loan.employeeName} sebesar Rp${formatMoney(loan.totalLoan)} akan dihapus beserta jadwal cicilannya.`,
+      confirmLabel: "Hapus",
+      cancelLabel: "Batal",
+    });
+    if (!ok) return;
+
+    setDeletingLoanId(loan.id);
+    setFeedback(null);
+    try {
+      const response = await fetch(`/api/admin/loans/${loan.id}`, { method: "DELETE" });
+      const result = (await response.json().catch(() => ({}))) as { message?: string };
+      if (!response.ok) {
+        throw new Error(result.message || "Gagal menghapus pengajuan pinjaman.");
+      }
+      setRows((current) => current.filter((row) => row.id !== loan.id));
+      if (editingLoanId === loan.id) resetForm();
+      setFeedback({ type: "success", text: result.message || "Pengajuan pinjaman dihapus." });
+      router.refresh();
+    } catch (error) {
+      setFeedback({
+        type: "error",
+        text: error instanceof Error ? error.message : "Terjadi kesalahan saat menghapus pinjaman.",
+      });
+    } finally {
+      setDeletingLoanId(null);
+    }
   }
 
   async function handleCreateLoan(event: React.FormEvent<HTMLFormElement>) {
@@ -126,30 +198,38 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
 
     setIsCreating(true);
     try {
-      const response = await fetch("/api/admin/loans", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          employeeId,
-          totalLoan,
-          installmentCount,
-          requestDate: form.requestDate,
-        }),
-      });
+      const isEditing = editingLoanId !== null;
+      const response = await fetch(
+        isEditing ? `/api/admin/loans/${editingLoanId}` : "/api/admin/loans",
+        {
+          method: isEditing ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            employeeId,
+            totalLoan,
+            installmentCount,
+            requestDate: form.requestDate,
+          }),
+        },
+      );
       const result = (await response.json()) as { message?: string; loan?: LoanListItem };
 
       if (!response.ok || !result.loan) {
-        throw new Error(result.message || "Gagal membuat pengajuan pinjaman.");
+        throw new Error(result.message || (isEditing ? "Gagal memperbarui pinjaman." : "Gagal membuat pengajuan pinjaman."));
       }
 
-      setRows((current) => [result.loan!, ...current]);
-      setFormFeedback({ type: "success", text: result.message || "Pengajuan pinjaman dibuat." });
+      if (isEditing) {
+        setRows((current) => current.map((row) => (row.id === result.loan!.id ? result.loan! : row)));
+      } else {
+        setRows((current) => [result.loan!, ...current]);
+      }
+      setFormFeedback({ type: "success", text: result.message || (isEditing ? "Pinjaman diperbarui." : "Pengajuan pinjaman dibuat.") });
       resetForm();
       router.refresh();
     } catch (error) {
       setFormFeedback({
         type: "error",
-        text: error instanceof Error ? error.message : "Terjadi kesalahan saat membuat pengajuan.",
+        text: error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan pinjaman.",
       });
     } finally {
       setIsCreating(false);
@@ -302,14 +382,18 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
         </article>
       </section>
 
-      <section className="rounded-[32px] border border-[#ead7ce] bg-[linear-gradient(180deg,#fffdfc_0%,#fff6f2_100%)] shadow-[0_18px_50px_rgba(96,45,34,0.08)]">
+      <section ref={formCardRef} className="rounded-[32px] border border-[#ead7ce] bg-[linear-gradient(180deg,#fffdfc_0%,#fff6f2_100%)] shadow-[0_18px_50px_rgba(96,45,34,0.08)]">
         <div className="border-b border-[#eddad1] px-6 py-6">
           <div className="inline-flex rounded-full border border-[#f0d8d1] bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.26em] text-[#a16f63]">
-            Tambah Pinjaman
+            {editingLoanId ? "Edit Pinjaman" : "Tambah Pinjaman"}
           </div>
-          <h3 className="mt-4 text-2xl font-semibold tracking-[-0.04em] text-[#241716]">Form Pengajuan Pinjaman</h3>
+          <h3 className="mt-4 text-2xl font-semibold tracking-[-0.04em] text-[#241716]">
+            {editingLoanId ? "Edit Pengajuan Pinjaman" : "Form Pengajuan Pinjaman"}
+          </h3>
           <p className="mt-2 max-w-3xl text-sm leading-7 text-[#7a6059]">
-            Admin dapat membuat pengajuan pinjaman langsung untuk karyawan tertentu. Setelah submit, pengajuan masuk daftar di bawah dengan status pending dan siap di-approve.
+            {editingLoanId
+              ? "Update detail pinjaman. Untuk pinjaman yang sudah di-approve, jadwal cicilan akan dibangun ulang otomatis berdasarkan tanggal approval awal."
+              : "Admin dapat membuat pengajuan pinjaman langsung untuk karyawan tertentu. Setelah submit, pengajuan masuk daftar di bawah dengan status pending dan siap di-approve."}
           </p>
         </div>
 
@@ -388,14 +472,14 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
               disabled={isCreating}
               className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#8f1d22] px-6 text-sm font-semibold text-white shadow-[0_2px_8px_rgba(143,29,34,0.25)] transition hover:bg-[#a12228] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isCreating ? "Mengirim..." : "Kirim Pengajuan"}
+              {isCreating ? (editingLoanId ? "Menyimpan..." : "Mengirim...") : (editingLoanId ? "Update Pinjaman" : "Kirim Pengajuan")}
             </button>
             <button
               type="button"
               onClick={resetForm}
               className="inline-flex h-12 items-center justify-center rounded-2xl border border-[#e7d4cb] bg-white px-6 text-sm font-semibold text-[#3b2622]"
             >
-              Reset
+              {editingLoanId ? "Batal Edit" : "Reset"}
             </button>
           </div>
         </form>
@@ -456,7 +540,6 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
             <tbody>
               {filteredRows.length ? (
                 filteredRows.map((row) => {
-                  const isLocked = row.status !== "pending";
                   const isProcessingRow = isPending && processingId === row.id;
 
                   return (
@@ -496,36 +579,58 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
                       </td>
                       <td className="px-6 py-5 font-semibold text-[#8f1d22]">Rp{formatMoney(row.remainingBalance)}</td>
                       <td className="px-6 py-5">
-                        {row.status === "pending" ? (
-                          <div className="flex min-w-[170px] gap-2">
+                        <div className="flex flex-col gap-2">
+                          {row.status === "pending" ? (
+                            <div className="flex min-w-[170px] gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleAction(row.id, "approved")}
+                                disabled={isProcessingRow}
+                                className="inline-flex h-10 items-center justify-center rounded-2xl bg-[#17603b] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {isProcessingRow ? "Proses..." : "Approve"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleAction(row.id, "rejected")}
+                                disabled={isProcessingRow}
+                                className="inline-flex h-10 items-center justify-center rounded-2xl bg-[#b92f2f] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {isProcessingRow ? "Proses..." : "Reject"}
+                              </button>
+                            </div>
+                          ) : (row.status === "approved" || row.status === "berjalan") && toNumber(row.remainingBalance) > 0 ? (
                             <button
                               type="button"
-                              onClick={() => handleAction(row.id, "approved")}
-                              disabled={isProcessingRow}
-                              className="inline-flex h-10 items-center justify-center rounded-2xl bg-[#17603b] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                              onClick={() => openPayoffModal(row)}
+                              className="inline-flex h-10 items-center justify-center rounded-2xl bg-[#8d6200] px-4 text-sm font-semibold text-white shadow-[0_2px_8px_rgba(141,98,0,0.25)] transition hover:bg-[#a47400]"
                             >
-                              {isProcessingRow ? "Proses..." : "Approve"}
+                              Lunasi Sekarang
+                            </button>
+                          ) : null}
+
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openEditLoan(row)}
+                              title="Edit pinjaman"
+                              aria-label="Edit pinjaman"
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[#e3d5cf] bg-white text-[#8f5a3e] transition hover:border-[#c8716d] hover:text-[#8f1d22]"
+                            >
+                              <EditIcon />
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleAction(row.id, "rejected")}
-                              disabled={isProcessingRow}
-                              className="inline-flex h-10 items-center justify-center rounded-2xl bg-[#b92f2f] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                              onClick={() => handleDeleteLoan(row)}
+                              disabled={deletingLoanId === row.id}
+                              title="Hapus pinjaman"
+                              aria-label="Hapus pinjaman"
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[#e3d5cf] bg-white text-[#b92f2f] transition hover:border-[#b92f2f] hover:text-white hover:bg-[#b92f2f] disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                              {isProcessingRow ? "Proses..." : "Reject"}
+                              <DeleteIcon />
                             </button>
                           </div>
-                        ) : (row.status === "approved" || row.status === "berjalan") && toNumber(row.remainingBalance) > 0 ? (
-                          <button
-                            type="button"
-                            onClick={() => openPayoffModal(row)}
-                            className="inline-flex h-10 items-center justify-center rounded-2xl bg-[#8d6200] px-4 text-sm font-semibold text-white shadow-[0_2px_8px_rgba(141,98,0,0.25)] transition hover:bg-[#a47400]"
-                          >
-                            Lunasi Sekarang
-                          </button>
-                        ) : (
-                          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#a18a84]">Final</span>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   );

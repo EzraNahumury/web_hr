@@ -649,6 +649,100 @@ export async function createEmployeeLoanRequest(payload: CreateLoanRequestPayloa
   }
 }
 
+export async function updateLoanRequest(
+  loanId: number,
+  payload: { employeeId: number; totalLoan: number; installmentCount: number; requestDate: string },
+) {
+  if (!Number.isInteger(loanId) || loanId <= 0) {
+    throw new Error("ID pinjaman tidak valid.");
+  }
+  if (!Number.isInteger(payload.employeeId) || payload.employeeId <= 0) {
+    throw new Error("Karyawan tidak valid.");
+  }
+  if (!Number.isFinite(payload.totalLoan) || payload.totalLoan <= 0) {
+    throw new Error("Jumlah pinjaman harus lebih besar dari 0.");
+  }
+  if (!Number.isInteger(payload.installmentCount) || payload.installmentCount <= 0) {
+    throw new Error("Jumlah angsuran harus minimal 1 kali.");
+  }
+  if (!isValidSqlDate(payload.requestDate)) {
+    throw new Error("Tanggal pengajuan tidak valid.");
+  }
+
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+    await ensureLoanSupportTables(connection);
+
+    const [rows] = await connection.query<LoanIdentityRow[]>(
+      `SELECT id, status_pinjaman, tanggal_approval FROM pinjaman WHERE id = ? LIMIT 1`,
+      [loanId],
+    );
+    const loan = rows[0];
+    if (!loan) {
+      throw new Error("Pengajuan pinjaman tidak ditemukan.");
+    }
+
+    const monthlyDeduction = roundMoney(payload.totalLoan / payload.installmentCount);
+
+    await connection.query<ResultSetHeader>(
+      `
+        UPDATE pinjaman
+        SET karyawan_id = ?,
+            jumlah_pinjaman = ?,
+            jumlah_angsuran = ?,
+            angsuran_per_bulan = ?,
+            tanggal_pengajuan = ?
+        WHERE id = ?
+      `,
+      [
+        payload.employeeId,
+        roundMoney(payload.totalLoan),
+        payload.installmentCount,
+        monthlyDeduction,
+        payload.requestDate,
+        loanId,
+      ],
+    );
+
+    if (["approved", "berjalan"].includes(loan.status_pinjaman) && loan.tanggal_approval) {
+      await rebuildLoanInstallments(
+        loanId,
+        roundMoney(payload.totalLoan),
+        payload.installmentCount,
+        loan.tanggal_approval,
+        connection,
+      );
+    }
+
+    await syncLoanSummary(loanId, connection);
+    await connection.commit();
+
+    return getLoanById(loanId);
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function deleteLoanRequest(loanId: number) {
+  if (!Number.isInteger(loanId) || loanId <= 0) {
+    throw new Error("ID pinjaman tidak valid.");
+  }
+  await ensureLoanSupportTables();
+  const [result] = await pool.query<ResultSetHeader>(
+    `DELETE FROM pinjaman WHERE id = ?`,
+    [loanId],
+  );
+  if (result.affectedRows === 0) {
+    throw new Error("Pengajuan pinjaman tidak ditemukan.");
+  }
+  return { id: loanId };
+}
+
 export async function approveLoanRequest(loanId: number, adminId?: number | null) {
   const connection = await pool.getConnection();
 
