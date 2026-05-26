@@ -47,6 +47,7 @@ export const WORK_LOCATIONS: Record<string, WorkLocation[]> = {
       label: "JNE Ambarrukmo",
       latitude: -7.7831106,
       longitude: 110.4007024,
+      radiusMeters: 50,
     },
   ],
   "Bank BCA KC Adisucipto": [
