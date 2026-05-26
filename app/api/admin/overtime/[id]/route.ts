@@ -36,13 +36,6 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Data lembur tidak ditemukan." }, { status: 404 });
   }
 
-  if (existingRows[0].assigned_approver_user_id) {
-    return NextResponse.json(
-      { error: "Pengajuan ini ditujukan ke SPV/Manager, bukan admin." },
-      { status: 403 },
-    );
-  }
-
   if (existingRows[0].status_approval !== "pending") {
     return NextResponse.json(
       { error: "Approval lembur sudah final dan tidak bisa diubah lagi." },
