@@ -1101,7 +1101,13 @@ type DistributionRow = RowDataPacket & {
   status_distribusi: string;
 };
 
-export async function listPayslipDistribution() {
+export async function listPayslipDistribution(period?: { month: number; year: number }) {
+  const params: Array<number> = [];
+  let periodFilter = "";
+  if (period && Number.isInteger(period.month) && Number.isInteger(period.year)) {
+    periodFilter = "WHERE p.periode_bulan = ? AND p.periode_tahun = ?";
+    params.push(period.month, period.year);
+  }
   const [rows] = await pool.query<DistributionRow[]>(
     `
       SELECT
@@ -1114,10 +1120,13 @@ export async function listPayslipDistribution() {
         sg.status_distribusi
       FROM log_distribusi_slip lds
       INNER JOIN slip_gaji sg ON sg.id = lds.slip_gaji_id
+      INNER JOIN payroll p ON p.id = sg.payroll_id
       INNER JOIN karyawan k ON k.id = lds.karyawan_id
       INNER JOIN users u ON u.id = lds.didistribusikan_oleh
+      ${periodFilter}
       ORDER BY lds.tanggal_distribusi DESC
     `,
+    params,
   );
 
   return rows;
@@ -1139,7 +1148,13 @@ type PendingPayrollRow = RowDataPacket & {
   periode_label: string;
 };
 
-export async function listPendingPayrollsForDistribution() {
+export async function listPendingPayrollsForDistribution(period?: { month: number; year: number }) {
+  const params: Array<number> = [];
+  let periodFilter = "";
+  if (period && Number.isInteger(period.month) && Number.isInteger(period.year)) {
+    periodFilter = "AND p.periode_bulan = ? AND p.periode_tahun = ?";
+    params.push(period.month, period.year);
+  }
   const [rows] = await pool.query<PendingPayrollRow[]>(
     `
       SELECT
@@ -1154,9 +1169,11 @@ export async function listPendingPayrollsForDistribution() {
       FROM payroll p
       INNER JOIN karyawan k ON k.id = p.karyawan_id
       LEFT JOIN slip_gaji sg ON sg.payroll_id = p.id
-      WHERE sg.id IS NULL OR sg.status_distribusi = 'draft'
+      WHERE (sg.id IS NULL OR sg.status_distribusi = 'draft')
+        ${periodFilter}
       ORDER BY p.periode_tahun DESC, p.periode_bulan DESC, k.nama ASC
     `,
+    params,
   );
 
   return rows;

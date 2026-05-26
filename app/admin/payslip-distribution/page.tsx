@@ -2,12 +2,31 @@ import AdminPayslipDistribution from "@/components/AdminPayslipDistribution";
 import AdminShell from "@/components/AdminShell";
 import { requireAdminSession } from "@/lib/auth";
 import { listPayslipDistribution, listPendingPayrollsForDistribution } from "@/lib/hris";
+import { getActivePayrollPeriod } from "@/lib/payroll-admin";
 
-export default async function AdminPayslipDistributionPage() {
+function parsePositiveInt(value: string | string[] | undefined) {
+  if (typeof value !== "string") return null;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+export default async function AdminPayslipDistributionPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const admin = await requireAdminSession();
+  const resolvedSearchParams = (await searchParams) ?? {};
+  const requestedMonth = parsePositiveInt(resolvedSearchParams.month);
+  const requestedYear = parsePositiveInt(resolvedSearchParams.year);
+  const active = getActivePayrollPeriod();
+  const month = requestedMonth ?? active.month;
+  const year = requestedYear ?? active.year;
+  const period = { month, year };
+
   const [pendingRows, logRows] = await Promise.all([
-    listPendingPayrollsForDistribution(),
-    listPayslipDistribution(),
+    listPendingPayrollsForDistribution(period),
+    listPayslipDistribution(period),
   ]);
 
   return (
@@ -19,6 +38,8 @@ export default async function AdminPayslipDistributionPage() {
       currentPath="/admin/payslip-distribution"
     >
       <AdminPayslipDistribution
+        periodMonth={month}
+        periodYear={year}
         pending={pendingRows.map((row) => ({
           payrollId: row.payroll_id,
           employeeId: row.karyawan_id,

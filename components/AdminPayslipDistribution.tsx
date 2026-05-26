@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
 type PendingItem = {
@@ -25,11 +25,29 @@ type LogItem = {
 type Props = {
   pending: PendingItem[];
   logs: LogItem[];
+  periodMonth: number;
+  periodYear: number;
 };
 
-export default function AdminPayslipDistribution({ pending, logs }: Props) {
+export default function AdminPayslipDistribution({ pending, logs, periodMonth, periodYear }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const currentMonthInputValue = `${periodYear}-${String(periodMonth).padStart(2, "0")}`;
+
+  function handlePeriodChange(value: string) {
+    const match = /^(\d{4})-(\d{2})$/.exec(value);
+    if (!match) return;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    if (!Number.isInteger(year) || !Number.isInteger(month)) return;
+    startTransition(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("month", String(month));
+      params.set("year", String(year));
+      router.replace(`/admin/payslip-distribution?${params.toString()}`, { scroll: false });
+    });
+  }
   const [selectedIds, setSelectedIds] = useState<Set<number>>(
     () => new Set(pending.map((item) => item.payrollId)),
   );
@@ -95,6 +113,22 @@ export default function AdminPayslipDistribution({ pending, logs }: Props) {
 
   return (
     <div className="space-y-6">
+      <section className="rounded-[28px] border border-[#ead7ce] bg-white px-5 py-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#a16f63]">Periode Distribusi</p>
+            <p className="mt-2 text-sm text-[#7a6059]">Pilih periode payroll untuk melihat slip yang siap didistribusikan.</p>
+          </div>
+          <input
+            type="month"
+            value={currentMonthInputValue}
+            onChange={(event) => handlePeriodChange(event.target.value)}
+            disabled={isPending}
+            className="h-11 w-full max-w-xs rounded-2xl border border-[#d9cbc5] bg-white px-4 text-sm text-[#241716] outline-none focus:border-[#c97f5b] focus:shadow-[0_0_0_4px_rgba(201,127,91,0.14)] disabled:opacity-60"
+          />
+        </div>
+      </section>
+
       <section className="rounded-[28px] border border-[#ead7ce] bg-[#fff8f4] px-5 py-4">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
