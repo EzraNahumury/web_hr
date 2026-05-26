@@ -16,7 +16,7 @@ export default async function EmployeeOvertimePage() {
   const routesToAdmin = isManager(employee.jabatan);
   const [rows, approvers] = await Promise.all([
     getEmployeeOvertime(employee.id),
-    routesToAdmin ? Promise.resolve([]) : listEligibleApprovers(employee.jabatan),
+    listEligibleApprovers(employee.jabatan),
   ]);
 
   // Exclude self from approver list
@@ -35,10 +35,10 @@ export default async function EmployeeOvertimePage() {
       title="Pengajuan Lembur"
       description={
         routesToAdmin
-          ? "Pengajuan lembur Anda akan langsung diproses oleh admin."
+          ? "Isi form lembur dan pilih admin yang akan menerima pengajuan."
           : jabatan.toLowerCase() === "supervisor"
-            ? "Isi form lembur dan pilih Manager yang akan menerima pengajuan."
-            : "Isi form lembur dan pilih Supervisor yang akan menerima pengajuan."
+            ? "Isi form lembur dan pilih Manager atau Admin yang akan menerima pengajuan."
+            : "Isi form lembur dan pilih Supervisor atau Admin yang akan menerima pengajuan."
       }
       employeeName={employee.nama}
       employeeMeta={`${employee.no_karyawan} - ${employee.jabatan}`}

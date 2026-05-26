@@ -45,8 +45,14 @@ function StatusBadge({ status }: { status: OvertimeRow["status_approval"] }) {
 }
 
 export default function EmployeeOvertimeManager({ employeeId, rows, approvers, routesToAdmin, jabatan }: Props) {
-  const isSupervisor = jabatan.trim().toLowerCase() === "supervisor";
-  const approverLabel = isSupervisor ? "Manager" : "Supervisor / SPV";
+  const jabatanLower = jabatan.trim().toLowerCase();
+  const isSupervisor = jabatanLower === "supervisor";
+  const isManagerSubmitter = jabatanLower === "manager";
+  const approverLabel = isManagerSubmitter
+    ? "Admin"
+    : isSupervisor
+      ? "Manager / Admin"
+      : "Supervisor / SPV / Admin";
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -83,7 +89,7 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
     setError(null);
     setSuccess(null);
 
-    if (!routesToAdmin && !form.assignedApproverUserId) {
+    if (!form.assignedApproverUserId) {
       setError(`Pilih ${approverLabel} yang akan menerima pengajuan.`);
       return;
     }
@@ -94,9 +100,7 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
       formData.append("tanggal", form.tanggal);
       formData.append("jamMulai", form.jamMulai);
       formData.append("jamSelesai", form.jamSelesai);
-      if (!routesToAdmin) {
-        formData.append("assignedApproverUserId", form.assignedApproverUserId);
-      }
+      formData.append("assignedApproverUserId", form.assignedApproverUserId);
       if (buktiFile) {
         formData.append("buktiLembur", buktiFile);
       }
@@ -189,26 +193,24 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
             </label>
           </div>
 
-          {!routesToAdmin && (
-            <label className="space-y-2 md:col-span-2">
-              <span className="text-sm font-semibold text-[#2f1f1d]">Diajukan ke ({approverLabel})</span>
-              <select
-                value={form.assignedApproverUserId}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, assignedApproverUserId: event.target.value }))
-                }
-                required
-                className="h-12 w-full rounded-2xl border border-[#e4d4cc] bg-[#fffaf7] px-4 text-sm text-[#241716] outline-none transition focus:border-[#c65e61]"
-              >
-                <option value="">Pilih atasan</option>
-                {approvers.map((option) => (
-                  <option key={option.userId} value={option.userId}>
-                    {option.name.toUpperCase()} — {option.role.toUpperCase()}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
+          <label className="space-y-2 md:col-span-2">
+            <span className="text-sm font-semibold text-[#2f1f1d]">Diajukan ke ({approverLabel})</span>
+            <select
+              value={form.assignedApproverUserId}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, assignedApproverUserId: event.target.value }))
+              }
+              required
+              className="h-12 w-full rounded-2xl border border-[#e4d4cc] bg-[#fffaf7] px-4 text-sm text-[#241716] outline-none transition focus:border-[#c65e61]"
+            >
+              <option value="">Pilih atasan</option>
+              {approvers.map((option) => (
+                <option key={option.userId} value={option.userId}>
+                  {option.name.toUpperCase()} — {option.role.toUpperCase()}
+                </option>
+              ))}
+            </select>
+          </label>
 
           <label className="space-y-2">
             <span className="text-sm font-semibold text-[#2f1f1d]">Catatan / Alasan Lembur</span>

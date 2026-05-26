@@ -50,14 +50,14 @@ export type EligibleApprover = {
   userId: number;
   name: string;
   role: string;
-  source: "spv" | "karyawan";
+  source: "spv" | "karyawan" | "admin";
 };
 
 type ApproverRow = RowDataPacket & {
   user_id: number;
   nama: string;
   role: string;
-  source: "spv" | "karyawan";
+  source: "spv" | "karyawan" | "admin";
 };
 
 export async function listEligibleApprovers(submitterRole?: string | null): Promise<EligibleApprover[]> {
@@ -65,9 +65,31 @@ export async function listEligibleApprovers(submitterRole?: string | null): Prom
 
   const normalized = (submitterRole ?? "").trim().toLowerCase();
   const isSpvSubmitter = normalized === "supervisor" || normalized === "spv";
+  const isManagerSubmitter = normalized === "manager";
+
+  const adminSelect = `
+    SELECT
+      u.id AS user_id,
+      u.nama,
+      'Admin' AS role,
+      'admin' AS source
+    FROM users u
+    WHERE u.role = 'admin' AND u.status_aktif = 1
+  `;
+
+  if (isManagerSubmitter) {
+    // Manager hanya ke Admin
+    const [rows] = await pool.query<ApproverRow[]>(`${adminSelect} ORDER BY nama ASC`);
+    return rows.map((row) => ({
+      userId: row.user_id,
+      name: row.nama,
+      role: row.role,
+      source: row.source,
+    }));
+  }
 
   if (isSpvSubmitter) {
-    // Supervisor mengajukan ke Manager saja
+    // Supervisor ajukan ke Manager atau Admin
     const [rows] = await pool.query<ApproverRow[]>(
       `
         SELECT
@@ -80,7 +102,12 @@ export async function listEligibleApprovers(submitterRole?: string | null): Prom
         WHERE k.status_data = 'aktif'
           AND u.status_aktif = 1
           AND LOWER(COALESCE(k.jabatan, '')) = 'manager'
-        ORDER BY u.nama ASC
+
+        UNION ALL
+
+        ${adminSelect}
+
+        ORDER BY nama ASC
       `,
     );
     return rows.map((row) => ({
@@ -91,7 +118,7 @@ export async function listEligibleApprovers(submitterRole?: string | null): Prom
     }));
   }
 
-  // Staff mengajukan ke SPV/Supervisor saja
+  // Staff ajukan ke SPV, Supervisor, atau Admin
   const [rows] = await pool.query<ApproverRow[]>(
     `
       SELECT
@@ -114,6 +141,10 @@ export async function listEligibleApprovers(submitterRole?: string | null): Prom
       WHERE k.status_data = 'aktif'
         AND u.status_aktif = 1
         AND LOWER(COALESCE(k.jabatan, '')) = 'supervisor'
+
+      UNION ALL
+
+      ${adminSelect}
 
       ORDER BY nama ASC
     `,
