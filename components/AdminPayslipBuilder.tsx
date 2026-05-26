@@ -11,6 +11,8 @@ type Props = {
   rangeLabel: string;
   rows: AdminPayrollSummarySheetRow[];
   selectedEmployeeId: number | null;
+  periodMonth: number;
+  periodYear: number;
 };
 
 const selectClassName =
@@ -21,10 +23,26 @@ function buildEmployeeLabel(row: AdminPayrollSummarySheetRow) {
   return `${row.name.toUpperCase()} / ${row.role} / ${typeLabel}`;
 }
 
-export default function AdminPayslipBuilder({ periodLabel, rangeLabel, rows, selectedEmployeeId }: Props) {
+export default function AdminPayslipBuilder({ periodLabel, rangeLabel, rows, selectedEmployeeId, periodMonth, periodYear }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+
+  const currentMonthInputValue = `${periodYear}-${String(periodMonth).padStart(2, "0")}`;
+
+  function handlePeriodChange(value: string) {
+    const match = /^(\d{4})-(\d{2})$/.exec(value);
+    if (!match) return;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    if (!Number.isInteger(year) || !Number.isInteger(month)) return;
+    startTransition(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("month", String(month));
+      params.set("year", String(year));
+      router.replace(`/admin/payslips?${params.toString()}`, { scroll: false });
+    });
+  }
 
   const defaultEmployeeId = useMemo(() => {
     if (!rows.length) {
@@ -74,6 +92,16 @@ export default function AdminPayslipBuilder({ periodLabel, rangeLabel, rows, sel
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#a16f63]">Periode Slip</p>
           <h2 className="mt-3 text-2xl font-semibold text-[#241716]">{periodLabel}</h2>
           <p className="mt-2 text-sm text-[#7a6059]">Rentang payroll {rangeLabel}</p>
+          <div className="mt-4">
+            <label className="block text-[12px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">Pilih Periode</label>
+            <input
+              type="month"
+              value={currentMonthInputValue}
+              onChange={(event) => handlePeriodChange(event.target.value)}
+              disabled={isPending}
+              className="mt-2 h-11 w-full rounded-2xl border border-[#d9cbc5] bg-white px-4 text-sm text-[#241716] outline-none focus:border-[#c97f5b] focus:shadow-[0_0_0_4px_rgba(201,127,91,0.14)] disabled:opacity-60"
+            />
+          </div>
         </article>
 
         <article className="rounded-[30px] border border-[#d9ebe9] bg-[linear-gradient(180deg,#f8ffff_0%,#effaf8_100%)] px-6 py-5">

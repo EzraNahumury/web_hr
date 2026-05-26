@@ -121,6 +121,8 @@ export default async function AdminPayslipsPage({
           rangeLabel={sheet.rangeLabel}
           rows={sheet.rows}
           selectedEmployeeId={selectedEmployeeId}
+          periodMonth={sheet.periodMonth}
+          periodYear={sheet.periodYear}
         />
       ) : (
         <div className="rounded-[32px] border border-[#ead7ce] bg-white px-6 py-10 text-sm text-[#7a6059]">
