@@ -17,6 +17,7 @@ export const WORK_LOCATIONS: Record<string, WorkLocation[]> = {
       label: "Office (Jl. Wonocatur)",
       latitude: -7.8026256,
       longitude: 110.4068213,
+      radiusMeters: 50,
     },
   ],
   Toko: [
@@ -24,6 +25,7 @@ export const WORK_LOCATIONS: Record<string, WorkLocation[]> = {
       label: "Toko (AVA Sport Store)",
       latitude: -7.8026601,
       longitude: 110.4066919,
+      radiusMeters: 50,
     },
   ],
   "Toko Solo": [
