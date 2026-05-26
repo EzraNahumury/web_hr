@@ -163,7 +163,8 @@ function mapAttendanceCode(
       case "A":
       case "I":
       case "L":
-        return "X";
+      case "C":
+        return code;
       default:
         if (isSickWithoutProof) {
           return "SX";
@@ -183,9 +184,11 @@ function mapAttendanceCode(
     case "sakit":
       return isSickWithoutProof ? "SX" : "S";
     case "izin":
+      return "I";
     case "alfa":
+      return "A";
     case "libur":
-      return "X";
+      return "L";
     case "setengah_hari":
       return "H";
     default:
