@@ -508,6 +508,9 @@ export async function ensurePayrollPeriodCloned(
   const sourceMonth = (sourceRows[0] as { periode_bulan: number }).periode_bulan;
   const sourceYear = (sourceRows[0] as { periode_tahun: number }).periode_tahun;
 
+  const targetRange = getPayrollDateRange(targetMonth, targetYear);
+  const targetWorkDays = countWorkDays(targetRange.start, targetRange.end);
+
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
@@ -524,14 +527,37 @@ export async function ensurePayrollPeriodCloned(
         )
         SELECT
           p.karyawan_id, ?, ?,
-          p.hari_kerja, p.total_masuk, p.total_lembur_jam, p.total_terlambat, p.total_setengah_hari,
-          p.gaji_pokok, p.tunjangan_jabatan, p.tunjangan_lain, p.bonus_performa, p.bpjs,
-          p.uang_makan, p.transport, p.insentif, p.upah_lembur,
-          p.potongan_keterlambatan, p.potongan_setengah_hari, p.potongan_kontrak,
-          p.potongan_pinjaman, p.potongan_kerajinan, p.total_potongan, p.gaji_bersih, 'draft'
+          ?, 0, 0, 0, 0,
+          0, 0, 0, 0, 0,
+          0, 0, 0, 0,
+          0, 0, 0,
+          0, 0, 0, 0, 'draft'
         FROM payroll p
         INNER JOIN karyawan k ON k.id = p.karyawan_id AND k.status_data = 'aktif'
         WHERE p.periode_bulan = ? AND p.periode_tahun = ?
+      `,
+      [targetMonth, targetYear, targetWorkDays, sourceMonth, sourceYear],
+    );
+
+    await connection.query(
+      `
+        INSERT INTO payroll_employee_input (
+          payroll_id, karyawan_id, payroll_type,
+          gaji_pokok_per_hari, uang_makan_per_hari, subsidi, uang_kerajinan, bpjs,
+          bonus_performa, insentif, uang_transport, kendaraan,
+          freelance_rate_type, gaji_pokok_per_jam
+        )
+        SELECT
+          new_p.id, src.karyawan_id, src.payroll_type,
+          src.gaji_pokok_per_hari, src.uang_makan_per_hari, src.subsidi, src.uang_kerajinan, src.bpjs,
+          src.bonus_performa, src.insentif, src.uang_transport, src.kendaraan,
+          src.freelance_rate_type, src.gaji_pokok_per_jam
+        FROM payroll_employee_input src
+        INNER JOIN payroll old_p ON old_p.id = src.payroll_id
+        INNER JOIN payroll new_p ON new_p.karyawan_id = src.karyawan_id
+          AND new_p.periode_bulan = ?
+          AND new_p.periode_tahun = ?
+        WHERE old_p.periode_bulan = ? AND old_p.periode_tahun = ?
       `,
       [targetMonth, targetYear, sourceMonth, sourceYear],
     );
