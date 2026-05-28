@@ -1,6 +1,16 @@
 import { RowDataPacket } from "mysql2";
 
 import { pool } from "@/lib/db";
+
+function countPeriodWorkDays(start: Date, end: Date) {
+  const cursor = new Date(start);
+  let total = 0;
+  while (cursor <= end) {
+    if (cursor.getDay() !== 0) total += 1;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return total;
+}
 import {
   ensureLoanSupportTables,
   getLoanDeductionRowsForPeriod,
@@ -317,6 +327,7 @@ export async function getAdminPayrollSummarySheet(period?: {
   const periodMonth = latest.periode_bulan;
   const periodYear = latest.periode_tahun;
   const range = getPayrollDateRange(periodMonth, periodYear);
+  const periodWorkDays = countPeriodWorkDays(range.start, range.end);
 
   const [rows] = await pool.query<PayrollSheetBaseRow[]>(
     `
@@ -659,7 +670,7 @@ export async function getAdminPayrollSummarySheet(period?: {
         ? "sales"
         : "non_sales");
     const isSalesNasional = isSalesNasionalRole(row.jabatan);
-    const workDays = row.hari_kerja ?? 0;
+    const workDays = periodWorkDays;
     const presentDays = inputOverrideMasuk ?? attendance.present;
 
     // For freelance: use override_gaji_pokok (stored computed amount) directly

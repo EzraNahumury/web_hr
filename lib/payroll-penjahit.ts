@@ -1,6 +1,16 @@
 import { RowDataPacket } from "mysql2";
 
 import { pool } from "@/lib/db";
+
+function countPeriodWorkDays(start: Date, end: Date) {
+  const cursor = new Date(start);
+  let total = 0;
+  while (cursor <= end) {
+    if (cursor.getDay() !== 0) total += 1;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return total;
+}
 import { ensureLoanSupportTables, getLoanDeductionRowsForPeriod } from "@/lib/loans";
 import {
   ensurePayrollPeriodCloned,
@@ -165,6 +175,7 @@ export async function getPenjahitSheet(period?: {
   const periodMonth = (latestRows[0] as { periode_bulan: number }).periode_bulan;
   const periodYear = (latestRows[0] as { periode_tahun: number }).periode_tahun;
   const range = getPayrollDateRange(periodMonth, periodYear);
+  const periodWorkDays = countPeriodWorkDays(range.start, range.end);
 
   const [rows] = await pool.query<PenjahitPayrollRow[]>(
     `
@@ -251,7 +262,7 @@ export async function getPenjahitSheet(period?: {
 
   const computedRows: PenjahitComputedRow[] = rows.map((row) => {
     const att = attendanceMap.get(row.employee_id);
-    const hariKerja = row.hari_kerja ?? 0;
+    const hariKerja = periodWorkDays;
     const tipePayroll: "mingguan" | "bulanan" = row.tipe_payroll_penjahit === "bulanan" ? "bulanan" : "mingguan";
 
     const gajiPokokPerHari = toNum(row.raw_gaji_per_hari) || (hariKerja > 0 ? toNum(row.gaji_pokok) / hariKerja : 0);
