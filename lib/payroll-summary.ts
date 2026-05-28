@@ -613,12 +613,12 @@ export async function getAdminPayrollSummarySheet(period?: {
 
   const mappedRows = rows.map<AdminPayrollSummarySheetRow>((row, index) => {
     const attendance = attendanceMap.get(row.employee_id) ?? {
-      present: row.total_masuk ?? 0,
+      present: 0,
       leave: 0,
       sick: 0,
       sickWithoutNote: 0,
-      halfDay: row.total_setengah_hari ?? 0,
-      late: row.total_terlambat ?? 0,
+      halfDay: 0,
+      late: 0,
       holiday: 0,
       alfa: 0,
     };
@@ -660,8 +660,7 @@ export async function getAdminPayrollSummarySheet(period?: {
         : "non_sales");
     const isSalesNasional = isSalesNasionalRole(row.jabatan);
     const workDays = row.hari_kerja ?? 0;
-    const presentDays =
-      inputOverrideMasuk ?? (attendance.present || row.total_masuk || 0);
+    const presentDays = inputOverrideMasuk ?? attendance.present;
 
     // For freelance: use override_gaji_pokok (stored computed amount) directly
     const dailyBaseSalary = isFreelance
@@ -710,13 +709,10 @@ export async function getAdminPayrollSummarySheet(period?: {
       (inputOverrideSakitTanpaSurat ?? attendance.sickWithoutNote);
 
     const overtimeHours = isFreelance ? 0 :
-      (inputOverrideLembur ??
-      overtimeMap.get(row.employee_id) ??
-      toNumber(row.total_lembur_jam));
+      (inputOverrideLembur ?? (overtimeMap.get(row.employee_id) ?? 0));
     const overtimeBonus = overtimeHours * 20000;
     const halfDayCount = isFreelance ? 0 :
-      (inputOverrideSetengahHari ??
-      (attendance.halfDay || row.total_setengah_hari || 0));
+      (inputOverrideSetengahHari ?? attendance.halfDay);
 
     const kerajinanNoIssue =
       sickCount <= 2 && sickWithoutNoteCount === 0 && alfaCount === 0;
@@ -727,7 +723,7 @@ export async function getAdminPayrollSummarySheet(period?: {
         ? fixedDiligenceAllowance
         : 0;
     const halfDayDeduction = isFreelance ? 0 : (dailyBaseSalary / 2) * halfDayCount;
-    const lateCount = isFreelance ? 0 : (attendance.late || row.total_terlambat || 0);
+    const lateCount = isFreelance ? 0 : attendance.late;
     const lateDeduction = isFreelance ? 0 : lateCount * 20000;
     const totalSalaryBeforeDeduction =
       totalBaseSalary +

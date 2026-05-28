@@ -262,13 +262,13 @@ export async function getPenjahitSheet(period?: {
     const bpjs = toNum(row.raw_bpjs);
     const bonusPerforma = toNum(row.raw_bonus_performa);
 
-    const masuk = row.raw_override_masuk ?? att?.present_count ?? row.total_masuk ?? 0;
+    const masuk = row.raw_override_masuk ?? att?.present_count ?? 0;
     const izin = row.raw_override_izin ?? att?.leave_count ?? 0;
     const sakit = row.raw_override_sakit ?? att?.sick_count ?? 0;
     const sakitTanpaSurat = row.raw_override_sakit_tanpa_surat ?? att?.sick_without_note_count ?? 0;
-    const setengahHari = row.raw_override_setengah_hari ?? att?.half_day_count ?? row.total_setengah_hari ?? 0;
-    const telat = att?.late_count ?? row.total_terlambat ?? 0;
-    const lemburJam = row.raw_override_lembur !== null ? toNum(row.raw_override_lembur) : overtimeMap.get(row.employee_id) ?? toNum(row.total_lembur_jam);
+    const setengahHari = row.raw_override_setengah_hari ?? att?.half_day_count ?? 0;
+    const telat = att?.late_count ?? 0;
+    const lemburJam = row.raw_override_lembur !== null ? toNum(row.raw_override_lembur) : (overtimeMap.get(row.employee_id) ?? 0);
 
     const liburNasional = att?.holiday_count ?? 0;
     const alfa = att?.alfa_count ?? 0;
