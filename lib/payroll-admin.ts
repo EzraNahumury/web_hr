@@ -536,31 +536,6 @@ export async function ensurePayrollPeriodCloned(
       [targetMonth, targetYear, sourceMonth, sourceYear],
     );
 
-    await connection.query(
-      `
-        INSERT INTO payroll_employee_input (
-          payroll_id, karyawan_id, payroll_type,
-          gaji_pokok_per_hari, uang_makan_per_hari, subsidi, uang_kerajinan, bpjs,
-          bonus_performa, insentif, uang_transport, kendaraan, perjalanan_dinas_reimburse,
-          override_kontrak, override_pinjaman, override_pinjaman_pribadi, override_gaji_pokok,
-          freelance_rate_type, gaji_pokok_per_jam
-        )
-        SELECT
-          new_p.id, src.karyawan_id, src.payroll_type,
-          src.gaji_pokok_per_hari, src.uang_makan_per_hari, src.subsidi, src.uang_kerajinan, src.bpjs,
-          src.bonus_performa, src.insentif, src.uang_transport, src.kendaraan, src.perjalanan_dinas_reimburse,
-          src.override_kontrak, src.override_pinjaman, src.override_pinjaman_pribadi, src.override_gaji_pokok,
-          src.freelance_rate_type, src.gaji_pokok_per_jam
-        FROM payroll_employee_input src
-        INNER JOIN payroll old_p ON old_p.id = src.payroll_id
-        INNER JOIN payroll new_p ON new_p.karyawan_id = src.karyawan_id
-          AND new_p.periode_bulan = ?
-          AND new_p.periode_tahun = ?
-        WHERE old_p.periode_bulan = ? AND old_p.periode_tahun = ?
-      `,
-      [targetMonth, targetYear, sourceMonth, sourceYear],
-    );
-
     await connection.commit();
     return { cloned: true, sourceMonth, sourceYear };
   } catch (error) {
