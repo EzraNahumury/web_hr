@@ -523,14 +523,15 @@ export async function ensurePayrollPeriodCloned(
           potongan_pinjaman, potongan_kerajinan, total_potongan, gaji_bersih, status_payroll
         )
         SELECT
-          karyawan_id, ?, ?,
-          hari_kerja, total_masuk, total_lembur_jam, total_terlambat, total_setengah_hari,
-          gaji_pokok, tunjangan_jabatan, tunjangan_lain, bonus_performa, bpjs,
-          uang_makan, transport, insentif, upah_lembur,
-          potongan_keterlambatan, potongan_setengah_hari, potongan_kontrak,
-          potongan_pinjaman, potongan_kerajinan, total_potongan, gaji_bersih, 'draft'
-        FROM payroll
-        WHERE periode_bulan = ? AND periode_tahun = ?
+          p.karyawan_id, ?, ?,
+          p.hari_kerja, p.total_masuk, p.total_lembur_jam, p.total_terlambat, p.total_setengah_hari,
+          p.gaji_pokok, p.tunjangan_jabatan, p.tunjangan_lain, p.bonus_performa, p.bpjs,
+          p.uang_makan, p.transport, p.insentif, p.upah_lembur,
+          p.potongan_keterlambatan, p.potongan_setengah_hari, p.potongan_kontrak,
+          p.potongan_pinjaman, p.potongan_kerajinan, p.total_potongan, p.gaji_bersih, 'draft'
+        FROM payroll p
+        INNER JOIN karyawan k ON k.id = p.karyawan_id AND k.status_data = 'aktif'
+        WHERE p.periode_bulan = ? AND p.periode_tahun = ?
       `,
       [targetMonth, targetYear, sourceMonth, sourceYear],
     );
