@@ -121,6 +121,8 @@ export default function EmployeeLoansManager({ employeeName, initialRows, defaul
     });
   }
 
+  const EMPLOYEE_MAX_LOAN = 3_000_000;
+
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
@@ -129,6 +131,14 @@ export default function EmployeeLoansManager({ employeeName, initialRows, defaul
       setMessage({
         type: "error",
         text: eligibility.reason ?? "Anda belum memenuhi syarat untuk mengajukan pinjaman.",
+      });
+      return;
+    }
+
+    if (totalLoanNumber > EMPLOYEE_MAX_LOAN) {
+      setMessage({
+        type: "error",
+        text: `Pengajuan mandiri dibatasi maksimal Rp${EMPLOYEE_MAX_LOAN.toLocaleString("id-ID")}. Untuk kebutuhan lebih, hubungi admin.`,
       });
       return;
     }
@@ -214,7 +224,12 @@ export default function EmployeeLoansManager({ employeeName, initialRows, defaul
               <div className="text-sm leading-6 text-[#5a3a2d]">
                 <p className="font-semibold text-[#8a3b1a]">Belum Bisa Mengajukan Pinjaman</p>
                 <p className="mt-1">{eligibility.reason}</p>
-                {eligibility.firstJoinDate ? (
+                {eligibility.canReapplyDate ? (
+                  <p className="mt-1 text-[#6f5a54]">
+                    Bisa mengajukan kembali mulai:{" "}
+                    <span className="font-semibold text-[#241716]">{formatDateId(eligibility.canReapplyDate)}</span>
+                  </p>
+                ) : eligibility.firstJoinDate && !eligibility.hasActiveLoan ? (
                   <p className="mt-1 text-[#6f5a54]">
                     Tanggal mulai bekerja: <span className="font-semibold text-[#241716]">{formatDateId(eligibility.firstJoinDate)}</span>
                     {eligibility.eligibleFromDate ? (
@@ -251,11 +266,19 @@ export default function EmployeeLoansManager({ employeeName, initialRows, defaul
               <input
                 value={form.totalLoan}
                 onChange={(event) => updateField("totalLoan", formatNumericInput(event.target.value))}
-                className={inputClassName}
+                className={`${inputClassName} ${totalLoanNumber > EMPLOYEE_MAX_LOAN ? "border-rose-400 focus:border-rose-500" : ""}`}
                 inputMode="numeric"
-                placeholder="Contoh: 5.000.000"
+                placeholder="Contoh: 1.000.000"
                 required
               />
+              <span className="block text-[11px] text-[#a16f63]">
+                Batas pengajuan mandiri: <span className="font-semibold">Rp3.000.000</span>. Butuh lebih? Hubungi admin.
+              </span>
+              {totalLoanNumber > EMPLOYEE_MAX_LOAN ? (
+                <span className="block text-[11px] font-semibold text-rose-600">
+                  Melebihi batas maksimal Rp{EMPLOYEE_MAX_LOAN.toLocaleString("id-ID")}.
+                </span>
+              ) : null}
             </label>
             <label className="space-y-2">
               <span className="text-sm font-semibold text-[#2f1f1d]">Jumlah Angsuran</span>

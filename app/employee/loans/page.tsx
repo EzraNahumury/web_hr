@@ -2,7 +2,7 @@ import EmployeeLoansManager from "@/components/EmployeeLoansManager";
 import EmployeeShell from "@/components/EmployeeShell";
 import { requireEmployeeSession } from "@/lib/auth";
 import { getEmployeeByUserId } from "@/lib/hris";
-import { checkLoanEligibility, listEmployeeLoans } from "@/lib/loans";
+import { checkFullLoanEligibility, listEmployeeLoans } from "@/lib/loans";
 
 function getJakartaTodaySqlDate() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -27,8 +27,10 @@ export default async function EmployeeLoansPage() {
     return <main className="p-10">Data karyawan tidak ditemukan.</main>;
   }
 
-  const rows = await listEmployeeLoans(employee.id);
-  const eligibility = checkLoanEligibility(employee.tanggal_masuk_pertama);
+  const [rows, eligibility] = await Promise.all([
+    listEmployeeLoans(employee.id),
+    checkFullLoanEligibility(employee.id, employee.tanggal_masuk_pertama),
+  ]);
 
   return (
     <EmployeeShell

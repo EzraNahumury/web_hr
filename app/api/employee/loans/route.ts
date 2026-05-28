@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getCurrentEmployeeSession } from "@/lib/auth";
 import { getEmployeeByUserId } from "@/lib/hris";
-import { checkLoanEligibility, createEmployeeLoanRequest } from "@/lib/loans";
+import { checkFullLoanEligibility, createEmployeeLoanRequest, EMPLOYEE_LOAN_MAX_AMOUNT } from "@/lib/loans";
 
 function parsePositiveNumber(value: unknown) {
   const parsed = Number(value);
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Data karyawan tidak ditemukan." }, { status: 404 });
   }
 
-  const eligibility = checkLoanEligibility(employee.tanggal_masuk_pertama);
+  const eligibility = await checkFullLoanEligibility(employee.id, employee.tanggal_masuk_pertama);
   if (!eligibility.eligible) {
     return NextResponse.json(
       { message: eligibility.reason ?? "Anda belum memenuhi syarat untuk mengajukan pinjaman." },
@@ -53,6 +53,13 @@ export async function POST(request: Request) {
     if (!totalLoan || !installmentCount || !requestDate) {
       return NextResponse.json(
         { message: "Jumlah pinjaman, jumlah angsuran, dan tanggal pengajuan wajib valid." },
+        { status: 400 },
+      );
+    }
+
+    if (totalLoan > EMPLOYEE_LOAN_MAX_AMOUNT) {
+      return NextResponse.json(
+        { message: `Pengajuan mandiri dibatasi maksimal Rp${EMPLOYEE_LOAN_MAX_AMOUNT.toLocaleString("id-ID")}. Untuk kebutuhan lebih, hubungi admin.` },
         { status: 400 },
       );
     }

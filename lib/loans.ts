@@ -11,6 +11,8 @@ export type LoanEligibility = {
   eligibleFromDate: string | null;
   monthsWorked: number;
   reason: string | null;
+  hasActiveLoan: boolean;
+  canReapplyDate: string | null;
 };
 
 function getJakartaTodayIsoDate() {
@@ -50,6 +52,8 @@ export function checkLoanEligibility(firstJoinDate: string | null | undefined): 
       monthsWorked: 0,
       reason:
         "Tanggal masuk pertama Anda belum tercatat. Hubungi HR untuk melengkapi data sebelum mengajukan pinjaman.",
+      hasActiveLoan: false,
+      canReapplyDate: null,
     };
   }
 
@@ -64,6 +68,8 @@ export function checkLoanEligibility(firstJoinDate: string | null | undefined): 
       eligibleFromDate,
       monthsWorked,
       reason: `Pengajuan pinjaman baru bisa dilakukan setelah Anda bekerja minimal ${LOAN_MINIMUM_TENURE_MONTHS} bulan.`,
+      hasActiveLoan: false,
+      canReapplyDate: null,
     };
   }
 
@@ -73,7 +79,67 @@ export function checkLoanEligibility(firstJoinDate: string | null | undefined): 
     eligibleFromDate,
     monthsWorked,
     reason: null,
+    hasActiveLoan: false,
+    canReapplyDate: null,
   };
+}
+
+export const EMPLOYEE_LOAN_MAX_AMOUNT = 3_000_000;
+
+type LunasLoanRow = RowDataPacket & { updated_at: Date };
+type ActiveLoanRow = RowDataPacket & { id: number };
+
+export async function checkFullLoanEligibility(
+  employeeId: number,
+  firstJoinDate: string | null | undefined,
+): Promise<LoanEligibility> {
+  const base = checkLoanEligibility(firstJoinDate);
+  if (!base.eligible) return base;
+
+  const [activeRows] = await pool.query<ActiveLoanRow[]>(
+    `SELECT id FROM pinjaman WHERE karyawan_id = ? AND status_pinjaman IN ('pending', 'approved', 'berjalan') LIMIT 1`,
+    [employeeId],
+  );
+
+  if (activeRows.length > 0) {
+    return {
+      ...base,
+      eligible: false,
+      reason: "Anda masih memiliki pinjaman yang aktif atau sedang dalam proses persetujuan.",
+      hasActiveLoan: true,
+      canReapplyDate: null,
+    };
+  }
+
+  const [lunasRows] = await pool.query<LunasLoanRow[]>(
+    `SELECT updated_at FROM pinjaman
+     WHERE karyawan_id = ? AND status_pinjaman = 'lunas'
+     ORDER BY updated_at DESC LIMIT 1`,
+    [employeeId],
+  );
+
+  if (lunasRows.length > 0) {
+    const jakartaStr = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Jakarta",
+      year: "numeric",
+      month: "2-digit",
+    }).format(lunasRows[0].updated_at);
+    const lunasPeriodIso = `${jakartaStr}-01`;
+    const canReapplyDate = addMonthsToIsoDate(lunasPeriodIso, 3);
+    const today = getJakartaTodayIsoDate();
+
+    if (canReapplyDate && today < canReapplyDate) {
+      return {
+        ...base,
+        eligible: false,
+        reason: `Pengajuan pinjaman kembali baru bisa dilakukan mulai ${canReapplyDate}.`,
+        hasActiveLoan: false,
+        canReapplyDate,
+      };
+    }
+  }
+
+  return { ...base };
 }
 
 export type LoanStatus =
