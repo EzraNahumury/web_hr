@@ -7,6 +7,7 @@ import {
   ensureAttendanceShiftSupport,
   getJakartaDate,
   getJakartaDateTime,
+  isEarlyLeaveByTime,
   isTokoGudangPlacement,
   saveAttendancePhoto,
 } from "@/lib/attendance";
@@ -41,6 +42,7 @@ export async function POST(request: Request) {
       photoDataUrl?: string;
       latitude?: number;
       longitude?: number;
+      keterangan?: string;
     };
 
     if (!body.photoDataUrl || typeof body.latitude !== "number" || typeof body.longitude !== "number") {
@@ -124,8 +126,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const photoPath = await saveAttendancePhoto(body.photoDataUrl, employee.id, "out");
     const checkOutTime = attendanceDateTime.split(" ")[1];
+    const keterangan = body.keterangan?.trim() || null;
+
+    if (isEarlyLeaveByTime(attendance.jam_masuk_str, checkOutTime) && !keterangan) {
+      return NextResponse.json(
+        { message: "Kamu pulang lebih awal dari jadwal. Wajib mengisi keterangan sebelum submit." },
+        { status: 400 },
+      );
+    }
+
+    const photoPath = await saveAttendancePhoto(body.photoDataUrl, employee.id, "out");
 
     const isMedia = (employee.sub_divisi ?? "").trim().toLowerCase() === "media";
     const isJne = employee.penempatan === "JNE";
@@ -147,7 +158,8 @@ export async function POST(request: Request) {
             foto_pulang = ?,
             latitude_pulang = ?,
             longitude_pulang = ?,
-            shift = ?
+            shift = ?,
+            keterangan = ?
           WHERE id = ?
         `,
         [
@@ -156,6 +168,7 @@ export async function POST(request: Request) {
           body.latitude,
           body.longitude,
           finalShift,
+          keterangan,
           attendance.id,
         ],
       );
@@ -167,10 +180,11 @@ export async function POST(request: Request) {
             jam_pulang = ?,
             foto_pulang = ?,
             latitude_pulang = ?,
-            longitude_pulang = ?
+            longitude_pulang = ?,
+            keterangan = ?
           WHERE id = ?
         `,
-        [attendanceDateTime, photoPath, body.latitude, body.longitude, attendance.id],
+        [attendanceDateTime, photoPath, body.latitude, body.longitude, keterangan, attendance.id],
       );
     }
 

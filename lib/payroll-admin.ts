@@ -207,10 +207,13 @@ function getJakartaNow() {
 
 export function getActivePayrollPeriod() {
   const now = getJakartaNow();
-  return {
-    month: now.month,
-    year: now.year,
-  };
+  if (now.day > 25) {
+    if (now.month === 12) {
+      return { month: 1, year: now.year + 1 };
+    }
+    return { month: now.month + 1, year: now.year };
+  }
+  return { month: now.month, year: now.year };
 }
 
 // Periode absensi yang sedang berjalan: tgl 26 (M-1) s/d tgl 25 M.

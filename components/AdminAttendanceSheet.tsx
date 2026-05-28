@@ -253,7 +253,7 @@ function AttendanceDetailModal({
               <p className="mt-2">
                 Terlambat: {selected.detail.lateMinutes > 0 ? `${selected.detail.lateMinutes} menit` : "-"}
               </p>
-              {isSick ? (
+              {(isSick || selected.detail.isEarlyLeave) ? (
                 <p className="mt-4">Keterangan: {selected.detail.note || "-"}</p>
               ) : null}
               <p className="mt-4">Latitude masuk: {selected.detail.latitudeIn ?? "-"}</p>

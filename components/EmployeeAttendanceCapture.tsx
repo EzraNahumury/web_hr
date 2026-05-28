@@ -80,6 +80,11 @@ export default function EmployeeAttendanceCapture({
   const locationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bestAccuracyRef = useRef<number | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [nowMins, setNowMins] = useState(() => {
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
+  });
+  const [earlyLeaveNote, setEarlyLeaveNote] = useState("");
   const [cameraReady, setCameraReady] = useState(false);
   const [locationReady, setLocationReady] = useState(false);
   const [locationPromptActive, setLocationPromptActive] = useState(true);
@@ -102,6 +107,38 @@ export default function EmployeeAttendanceCapture({
     (checkInStatus === "izin" || checkInStatus === "sakit" || checkInStatus === "sakit_tanpa_surat");
   const noteIsRequired =
     isCheckIn && (checkInStatus === "izin" || checkInStatus === "sakit_tanpa_surat");
+
+  const isEarlyLeaveNow = (() => {
+    if (isCheckIn) return false;
+    const jamMasuk = todayAttendance?.jamMasuk;
+    if (!jamMasuk) return false;
+    const t2m = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+    const CI: Record<string, [number, number]> = {
+      pagi: [480, 510], lembur: [585, 600], siang: [705, 720],
+      setengah_1: [630, 780], setengah_2: [480, 510], pagi_full: [480, 510],
+      pagi_short: [480, 510], siang_sore: [705, 720],
+      jne_pagi: [450, 660], jne_siang: [810, 1020], jne_minggu: [750, 840],
+    };
+    const CO: Record<string, [number, number]> = {
+      pagi: [990, 1050], lembur: [1200, 1260], siang: [1200, 1260],
+      setengah_1: [990, 1050], setengah_2: [720, 780], pagi_full: [990, 1050],
+      pagi_short: [870, 930], siang_sore: [990, 1050],
+      jne_pagi: [930, 990], jne_siang: [1230, 1290], jne_minggu: [1170, 1230],
+    };
+    const order = ["lembur","siang","siang_sore","pagi","pagi_full","pagi_short","setengah_2","setengah_1","jne_pagi","jne_siang","jne_minggu"];
+    const ciMins = t2m(jamMasuk);
+    const shift = order.find((s) => ciMins >= CI[s][0] && ciMins <= CI[s][1]);
+    if (!shift) return false;
+    return nowMins < CO[shift][0];
+  })();
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const d = new Date();
+      setNowMins(d.getHours() * 60 + d.getMinutes());
+    }, 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const stopLocationTracking = useCallback(() => {
     if (watchIdRef.current !== null) {
@@ -313,6 +350,11 @@ export default function EmployeeAttendanceCapture({
       return;
     }
 
+    if (isEarlyLeaveNow && !earlyLeaveNote.trim()) {
+      setErrorMessage("Kamu pulang lebih awal dari jadwal. Wajib mengisi keterangan sebelum submit.");
+      return;
+    }
+
     if (needsSelfie) {
       if (!photoDataUrl) {
         setErrorMessage("Ambil selfie terlebih dahulu.");
@@ -368,6 +410,7 @@ export default function EmployeeAttendanceCapture({
                 photoDataUrl,
                 latitude: location?.latitude,
                 longitude: location?.longitude,
+                keterangan: earlyLeaveNote.trim() || undefined,
               }),
             });
 
@@ -754,6 +797,28 @@ export default function EmployeeAttendanceCapture({
                 {isPending ? "Menyimpan..." : primaryActionLabel}
               </button>
             </div>
+
+            {/* Early leave note (check-out only) */}
+            {isEarlyLeaveNow ? (
+              <div className="mt-5 space-y-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:p-5">
+                <div className="flex items-start gap-2 text-[13px] leading-5 text-amber-700">
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="mt-0.5 h-4 w-4 flex-none opacity-80" aria-hidden="true">
+                    <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                  </svg>
+                  <span>Kamu pulang lebih awal dari jadwal. Wajib isi keterangan.</span>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[#2f1f1d]">Keterangan Pulang Awal</p>
+                  <textarea
+                    value={earlyLeaveNote}
+                    onChange={(e) => setEarlyLeaveNote(e.target.value)}
+                    rows={3}
+                    placeholder="Contoh: keperluan mendesak, ijin pulang lebih awal."
+                    className="mt-2.5 w-full rounded-xl border border-amber-200 bg-white px-3.5 py-2.5 text-sm text-[#241716] outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10"
+                  />
+                </div>
+              </div>
+            ) : null}
 
             {/* Sick proof / note */}
             {isCheckIn && (needsSickProof || showsNote) ? (

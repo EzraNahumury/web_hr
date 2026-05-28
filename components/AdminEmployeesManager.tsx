@@ -1039,14 +1039,23 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                         Foto KTP
                       </p>
                       {viewingEmployee.ktpPhoto ? (
-                        <a
-                          href={viewingEmployee.ktpPhoto}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-3 inline-flex rounded-full bg-[#8f1d22] px-4 py-2 text-sm font-semibold text-white shadow-[0_14px_35px_rgba(143,29,34,0.22)]"
-                        >
-                          Buka Dokumen
-                        </a>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <a
+                            href={viewingEmployee.ktpPhoto}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex rounded-full bg-[#8f1d22] px-4 py-2 text-sm font-semibold text-white shadow-[0_14px_35px_rgba(143,29,34,0.22)]"
+                          >
+                            Buka Dokumen
+                          </a>
+                          <a
+                            href={viewingEmployee.ktpPhoto}
+                            download={`KTP-${viewingEmployee.name ?? "karyawan"}`}
+                            className="inline-flex rounded-full border border-[#8f1d22] px-4 py-2 text-sm font-semibold text-[#8f1d22]"
+                          >
+                            Download
+                          </a>
+                        </div>
                       ) : (
                         <p className="mt-2 text-sm text-[#8a6f68]">Belum ada file KTP tersimpan.</p>
                       )}
