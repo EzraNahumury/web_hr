@@ -218,7 +218,7 @@ export async function POST(request: Request) {
             : "hadir";
     const attendanceCode =
       attendanceRequestStatus === "izin"
-        ? "X"
+        ? "I"
         : attendanceRequestStatus === "sakit"
           ? "S"
           : attendanceRequestStatus === "sakit_tanpa_surat"

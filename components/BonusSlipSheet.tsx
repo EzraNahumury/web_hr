@@ -95,7 +95,7 @@ export default function BonusSlipSheet({ row, periodLabel }: Props) {
                   <Image src="/logo/slip-logo.png" alt="Logo Ayres" fill className="object-contain p-2" priority />
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-[#9b7d6b]">Ayres</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-[#9b7d6b]">AvA Group</p>
                   <p className="mt-1 text-lg font-semibold text-[#201511]">Bonus</p>
                   <p className="text-xs text-[#6e594e]">Human Resources</p>
                 </div>
