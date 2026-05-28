@@ -195,6 +195,7 @@ export async function getPenjahitSheet(period?: {
       INNER JOIN karyawan k ON k.id = p.karyawan_id
       LEFT JOIN payroll_employee_input pei ON pei.payroll_id = p.id
       WHERE p.periode_bulan = ? AND p.periode_tahun = ?
+        AND k.status_data = 'aktif'
         AND LOWER(COALESCE(k.sub_divisi, '')) = 'penjahit'
       ORDER BY k.nama ASC
     `,
