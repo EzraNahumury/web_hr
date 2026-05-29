@@ -24,8 +24,9 @@ export async function POST(request: NextRequest) {
       ? String(formData.get("catatanKaryawan")).trim() || null
       : null;
   const approverRaw = formData?.get("assignedApproverUserId");
+  const isBroadcastToAdmins = approverRaw === "admin";
   const assignedApproverUserId =
-    approverRaw && approverRaw !== "" ? Number(approverRaw) : null;
+    approverRaw && approverRaw !== "" && !isBroadcastToAdmins ? Number(approverRaw) : null;
 
   if (!Number.isInteger(karyawanId) || karyawanId <= 0) {
     return NextResponse.json({ error: "Karyawan tidak valid." }, { status: 400 });
@@ -56,12 +57,12 @@ export async function POST(request: NextRequest) {
   }
 
   const submitterRole = (employeeRows[0].jabatan ?? "") as string;
-  const routesToAllAdmins = shouldRouteToAdmin(submitterRole);
+  const routesToAllAdmins = shouldRouteToAdmin(submitterRole) || isBroadcastToAdmins;
 
   let finalApproverId: number | null = null;
 
   if (routesToAllAdmins) {
-    // Manager submitter: broadcast ke semua admin, no specific approver
+    // Broadcast ke semua admin: assigned_approver_user_id = NULL
     finalApproverId = null;
   } else {
     if (!Number.isInteger(assignedApproverUserId) || (assignedApproverUserId ?? 0) <= 0) {

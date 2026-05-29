@@ -44,6 +44,8 @@ function StatusBadge({ status }: { status: OvertimeRow["status_approval"] }) {
   );
 }
 
+const ADMIN_OPTION_VALUE = "admin";
+
 export default function EmployeeOvertimeManager({ employeeId, rows, approvers, routesToAdmin, jabatan }: Props) {
   const jabatanLower = jabatan.trim().toLowerCase();
   const isSupervisor = jabatanLower === "supervisor";
@@ -53,6 +55,8 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
     : isSupervisor
       ? "Manager / Admin"
       : "Supervisor / SPV / Admin";
+  const nonAdminApprovers = approvers.filter((a) => a.role.toLowerCase() !== "admin");
+  const hasAdminOption = approvers.some((a) => a.role.toLowerCase() === "admin");
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -211,11 +215,12 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
                 className="h-12 w-full rounded-2xl border border-[#e4d4cc] bg-[#fffaf7] px-4 text-sm text-[#241716] outline-none transition focus:border-[#c65e61]"
               >
                 <option value="">Pilih atasan</option>
-                {approvers.map((option) => (
+                {nonAdminApprovers.map((option) => (
                   <option key={option.userId} value={option.userId}>
                     {option.name.toUpperCase()} — {option.role.toUpperCase()}
                   </option>
                 ))}
+                {hasAdminOption ? <option value={ADMIN_OPTION_VALUE}>ADMIN</option> : null}
               </select>
             )}
           </label>
