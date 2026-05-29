@@ -25,6 +25,11 @@ type OvertimeRow = {
   jumlah_qty?: number | null;
   target_sebelum_lembur?: number | null;
   target_setelah_lembur?: number | null;
+  approval_flow?: "single" | "double";
+  first_approval_status?: "pending" | "approved" | "rejected" | null;
+  first_approver_name?: string | null;
+  first_approver_user_id?: number | null;
+  first_approved_at?: string | null;
 };
 
 type Props = {
@@ -70,22 +75,32 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ url: string; isImage: boolean } | null>(null);
+  const [detailRow, setDetailRow] = useState<OvertimeRow | null>(null);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [isDownloading, setIsDownloading] = useState(false);
+  const [flowTab, setFlowTab] = useState<"single" | "double">("single");
+
+  const singleFlowRows = useMemo(() => rows.filter((r) => (r.approval_flow ?? "single") === "single"), [rows]);
+  const doubleFlowRows = useMemo(() => rows.filter((r) => r.approval_flow === "double"), [rows]);
+
+  const baseTabRows = flowTab === "single" ? singleFlowRows : doubleFlowRows;
 
   const filteredRows = useMemo(() => {
-    if (!dateFrom && !dateTo) return rows;
-    const from = dateFrom ? new Date(dateFrom) : null;
-    const to = dateTo ? new Date(dateTo) : null;
-    return rows.filter((row) => {
-      const d = parseTanggal(row.tanggal);
-      if (!d) return true;
-      if (from && d < from) return false;
-      if (to && d > to) return false;
-      return true;
-    });
-  }, [rows, dateFrom, dateTo]);
+    const dateFiltered = (() => {
+      if (!dateFrom && !dateTo) return baseTabRows;
+      const from = dateFrom ? new Date(dateFrom) : null;
+      const to = dateTo ? new Date(dateTo) : null;
+      return baseTabRows.filter((row) => {
+        const d = parseTanggal(row.tanggal);
+        if (!d) return true;
+        if (from && d < from) return false;
+        if (to && d > to) return false;
+        return true;
+      });
+    })();
+    return dateFiltered;
+  }, [baseTabRows, dateFrom, dateTo]);
 
   function updateApproval(id: number, status: "approved" | "rejected") {
     setError(null);
@@ -210,6 +225,49 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
         </div>
       )}
 
+      <div className="flex flex-wrap gap-2 rounded-[20px] border border-[#dfe5ef] bg-white p-2 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+        <button
+          type="button"
+          onClick={() => setFlowTab("single")}
+          className={
+            flowTab === "single"
+              ? "inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#8f1d22] px-4 py-3 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(143,29,34,0.18)] transition"
+              : "inline-flex flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold text-[#5b6680] transition hover:bg-[#f8fafc]"
+          }
+        >
+          Langsung ke Admin
+          <span
+            className={
+              flowTab === "single"
+                ? "inline-flex h-6 min-w-[28px] items-center justify-center rounded-full bg-white/25 px-2 text-xs font-semibold"
+                : "inline-flex h-6 min-w-[28px] items-center justify-center rounded-full bg-[#eef2f7] px-2 text-xs font-semibold text-[#5b6680]"
+            }
+          >
+            {singleFlowRows.length}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setFlowTab("double")}
+          className={
+            flowTab === "double"
+              ? "inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#8f1d22] px-4 py-3 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(143,29,34,0.18)] transition"
+              : "inline-flex flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold text-[#5b6680] transition hover:bg-[#f8fafc]"
+          }
+        >
+          Via Atasan (2x Approve)
+          <span
+            className={
+              flowTab === "double"
+                ? "inline-flex h-6 min-w-[28px] items-center justify-center rounded-full bg-white/25 px-2 text-xs font-semibold"
+                : "inline-flex h-6 min-w-[28px] items-center justify-center rounded-full bg-[#eef2f7] px-2 text-xs font-semibold text-[#5b6680]"
+            }
+          >
+            {doubleFlowRows.length}
+          </span>
+        </button>
+      </div>
+
       <section className="overflow-hidden rounded-[28px] border border-[#dfe5ef] bg-white shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
         <div className="border-b border-[#e7edf5] px-6 py-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -297,9 +355,7 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
                 <th className="px-6 py-4">Jam</th>
                 <th className="px-6 py-4">Total</th>
                 <th className="px-6 py-4">Diajukan Ke</th>
-                <th className="px-6 py-4">Pekerjaan</th>
-                <th className="px-6 py-4">Deadline</th>
-                <th className="px-6 py-4">Detail Produksi</th>
+                {flowTab === "double" ? <th className="px-6 py-4">Approval Atasan</th> : null}
                 <th className="px-6 py-4">Bukti</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Catatan</th>
@@ -309,14 +365,17 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
             <tbody>
               {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="px-6 py-10 text-center text-sm text-[#7a879f]">
+                  <td colSpan={flowTab === "double" ? 10 : 9} className="px-6 py-10 text-center text-sm text-[#7a879f]">
                     Tidak ada data lembur untuk rentang tanggal yang dipilih.
                   </td>
                 </tr>
               ) : (
                 filteredRows.map((row) => {
                   const isLocked = row.status_approval !== "pending";
-                  const canAdminAct = !isLocked;
+                  const isDoubleFlow = row.approval_flow === "double";
+                  const waitingFirstApprover =
+                    isDoubleFlow && row.first_approval_status === "pending" && !isLocked;
+                  const canAdminAct = !isLocked && !waitingFirstApprover;
 
                   return (
                     <tr key={row.id} className="border-b border-[#eef2f7] text-[#42506a]">
@@ -337,24 +396,28 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
                           </span>
                         )}
                       </td>
-                      <td className="max-w-[200px] px-6 py-4 text-sm text-[#42506a]">
-                        {row.jenis_pekerjaan || "-"}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-[#42506a]">
-                        {row.deadline || "-"}
-                      </td>
-                      <td className="px-6 py-4 text-xs text-[#42506a]">
-                        {row.nama_order ? (
-                          <div className="space-y-0.5 leading-5">
-                            <p><span className="font-semibold text-[#172033]">Order:</span> {row.nama_order}</p>
-                            <p><span className="font-semibold text-[#172033]">QTY:</span> {row.jumlah_qty ?? "-"}</p>
-                            <p><span className="font-semibold text-[#172033]">Target Sblm:</span> {row.target_sebelum_lembur ?? "-"}</p>
-                            <p><span className="font-semibold text-[#172033]">Target Sslh:</span> {row.target_setelah_lembur ?? "-"}</p>
-                          </div>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
+                      {flowTab === "double" ? (
+                        <td className="px-6 py-4 text-xs">
+                          {row.first_approval_status === "approved" ? (
+                            <span className="inline-flex flex-col gap-0.5">
+                              <span className="inline-flex w-fit rounded-full bg-[#eaf8ef] px-3 py-1 text-xs font-semibold text-[#1f8f4c]">
+                                Disetujui Atasan
+                              </span>
+                              <span className="text-[11px] text-[#7a879f]">
+                                oleh {row.first_approver_name ?? "-"}
+                              </span>
+                            </span>
+                          ) : row.first_approval_status === "rejected" ? (
+                            <span className="inline-flex w-fit rounded-full bg-[#fff1f1] px-3 py-1 text-xs font-semibold text-[#c63838]">
+                              Ditolak Atasan
+                            </span>
+                          ) : (
+                            <span className="inline-flex w-fit rounded-full bg-[#fff7e6] px-3 py-1 text-xs font-semibold text-[#9c4d00]">
+                              Menunggu Atasan
+                            </span>
+                          )}
+                        </td>
+                      ) : null}
                       <td className="px-6 py-4">
                         {row.bukti_lembur ? (
                           <button
@@ -411,11 +474,25 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
                         />
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setDetailRow(row)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#d7deea] bg-white text-[#5b6680] transition hover:border-[#5b4fff] hover:text-[#5b4fff]"
+                            aria-label="Lihat detail pengajuan"
+                            title="Detail pengajuan"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+                              <circle cx="12" cy="12" r="10" />
+                              <line x1="12" y1="16" x2="12" y2="12" />
+                              <line x1="12" y1="8" x2="12.01" y2="8" />
+                            </svg>
+                          </button>
                           <button
                             type="button"
                             onClick={() => updateApproval(row.id, "approved")}
                             disabled={isPending || !canAdminAct}
+                            title={waitingFirstApprover ? "Atasan belum menyetujui" : undefined}
                             className="rounded-xl bg-[#19a15f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#14874f] disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             Approve
@@ -424,6 +501,7 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
                             type="button"
                             onClick={() => updateApproval(row.id, "rejected")}
                             disabled={isPending || !canAdminAct}
+                            title={waitingFirstApprover ? "Atasan belum menyetujui" : undefined}
                             className="rounded-xl bg-[#ef4444] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#d73737] disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             Reject
@@ -478,6 +556,102 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
           </div>
         </div>
       ) : null}
+
+      {detailRow ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
+          <div className="w-full max-w-3xl overflow-hidden rounded-[28px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.22)]">
+            <div className="flex items-center justify-between gap-4 border-b border-[#e7edf5] bg-[linear-gradient(135deg,#8f1d22_0%,#c44b3f_100%)] px-6 py-5 text-white">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/80">Detail Pengajuan Lembur</p>
+                <p className="mt-2 text-lg font-semibold uppercase">{detailRow.nama}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetailRow(null)}
+                className="rounded-2xl bg-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/25"
+              >
+                Tutup
+              </button>
+            </div>
+            <div className="max-h-[75vh] overflow-y-auto p-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <DetailField label="Tanggal Lembur" value={detailRow.tanggal} />
+                <DetailField label="Jam" value={`${detailRow.jam_mulai} - ${detailRow.jam_selesai}`} />
+                <DetailField label="Total Jam" value={`${detailRow.total_jam} jam`} />
+                <DetailField label="Divisi" value={detailRow.divisi || "-"} />
+                <DetailField label="Diajukan Ke" value={detailRow.assigned_approver_name ?? "Admin (semua)"} />
+                <DetailField
+                  label="Alur Approval"
+                  value={detailRow.approval_flow === "double" ? "2x Approve (Atasan + Admin)" : "Langsung Admin"}
+                />
+                <DetailField label="Jenis Pekerjaan" value={detailRow.jenis_pekerjaan || "-"} fullWidth />
+                <DetailField label="Deadline" value={detailRow.deadline || "-"} />
+                <DetailField label="Status" value={detailRow.status_approval} />
+              </div>
+
+              {detailRow.nama_order ? (
+                <div className="mt-6 rounded-[20px] border border-[#f0d8d1] bg-[#fff7f3] p-5">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex rounded-full bg-[#8f1d22] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white">
+                      Produksi
+                    </span>
+                    <p className="text-xs text-[#7a6059]">Field tambahan khusus divisi Produksi</p>
+                  </div>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <DetailField label="Nama Order" value={detailRow.nama_order} fullWidth />
+                    <DetailField label="Jumlah QTY" value={String(detailRow.jumlah_qty ?? "-")} />
+                    <DetailField label="Target Sebelum Lembur" value={String(detailRow.target_sebelum_lembur ?? "-")} />
+                    <DetailField label="Target Setelah Lembur" value={String(detailRow.target_setelah_lembur ?? "-")} />
+                  </div>
+                </div>
+              ) : null}
+
+              {detailRow.approval_flow === "double" ? (
+                <div className="mt-6 rounded-[20px] border border-[#dfe5ef] bg-[#f8fafc] p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#8a96ad]">Stage 1 — Approval Atasan</p>
+                  <div className="mt-3 grid gap-4 md:grid-cols-2">
+                    <DetailField label="Status" value={detailRow.first_approval_status ?? "-"} />
+                    <DetailField label="Disetujui oleh" value={detailRow.first_approver_name ?? "-"} />
+                    <DetailField label="Waktu" value={detailRow.first_approved_at ?? "-"} fullWidth />
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mt-6 grid gap-4">
+                <DetailField label="Catatan Karyawan" value={detailRow.catatan_karyawan || "-"} fullWidth multiline />
+                <DetailField label="Catatan Atasan" value={detailRow.catatan_atasan || "-"} fullWidth multiline />
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function DetailField({
+  label,
+  value,
+  fullWidth,
+  multiline,
+}: {
+  label: string;
+  value: string;
+  fullWidth?: boolean;
+  multiline?: boolean;
+}) {
+  return (
+    <div className={fullWidth ? "md:col-span-2" : ""}>
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8a96ad]">{label}</p>
+      <p
+        className={
+          multiline
+            ? "mt-2 whitespace-pre-wrap rounded-2xl border border-[#dfe5ef] bg-[#f8fafc] px-4 py-3 text-sm leading-6 text-[#172033]"
+            : "mt-2 text-sm font-semibold text-[#172033]"
+        }
+      >
+        {value}
+      </p>
     </div>
   );
 }

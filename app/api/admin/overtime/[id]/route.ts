@@ -28,17 +28,27 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   const [existingRows] = await pool.query<RowDataPacket[]>(
-    "SELECT id, status_approval, assigned_approver_user_id FROM lembur WHERE id = ? LIMIT 1",
+    `SELECT id, status_approval, approval_flow, first_approval_status
+     FROM lembur WHERE id = ? LIMIT 1`,
     [overtimeId],
   );
 
-  if (!existingRows[0]) {
+  const existing = existingRows[0];
+  if (!existing) {
     return NextResponse.json({ error: "Data lembur tidak ditemukan." }, { status: 404 });
   }
 
-  if (existingRows[0].status_approval !== "pending") {
+  if (existing.status_approval !== "pending") {
     return NextResponse.json(
       { error: "Approval lembur sudah final dan tidak bisa diubah lagi." },
+      { status: 409 },
+    );
+  }
+
+  // Untuk double flow, admin tidak boleh approve sebelum atasan approve.
+  if (existing.approval_flow === "double" && existing.first_approval_status !== "approved") {
+    return NextResponse.json(
+      { error: "Atasan belum menyetujui pengajuan ini. Admin tidak bisa approve sebelum atasan menyetujui." },
       { status: 409 },
     );
   }

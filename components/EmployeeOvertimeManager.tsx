@@ -19,6 +19,9 @@ type OvertimeRow = {
   jumlah_qty?: number | null;
   target_sebelum_lembur?: number | null;
   target_setelah_lembur?: number | null;
+  approval_flow?: "single" | "double";
+  first_approval_status?: "pending" | "approved" | "rejected" | null;
+  first_approver_name?: string | null;
 };
 
 type ApproverOption = {
@@ -473,7 +476,23 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
                   {row.catatan_karyawan || "-"}
                 </td>
                 <td className="px-6 py-4">
-                  <StatusBadge status={row.status_approval} />
+                  <div className="space-y-1.5">
+                    <StatusBadge status={row.status_approval} />
+                    {row.approval_flow === "double" &&
+                    row.status_approval === "pending" &&
+                    row.first_approval_status === "approved" ? (
+                      <span className="inline-flex w-fit rounded-full bg-[#eaf8ef] px-3 py-1 text-[10px] font-semibold text-[#1f8f4c]">
+                        Disetujui atasan, menunggu admin
+                      </span>
+                    ) : null}
+                    {row.approval_flow === "double" &&
+                    row.status_approval === "pending" &&
+                    (row.first_approval_status === "pending" || !row.first_approval_status) ? (
+                      <span className="inline-flex w-fit rounded-full bg-[#fff7e6] px-3 py-1 text-[10px] font-semibold text-[#9c4d00]">
+                        Menunggu approval atasan
+                      </span>
+                    ) : null}
+                  </div>
                 </td>
                 <td className="px-6 py-4">{row.catatan_atasan || "-"}</td>
               </tr>

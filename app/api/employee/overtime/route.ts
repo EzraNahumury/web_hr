@@ -103,10 +103,12 @@ export async function POST(request: NextRequest) {
   }
 
   let finalApproverId: number | null = null;
+  let approvalFlow: "single" | "double" = "single";
 
   if (routesToAllAdmins) {
-    // Broadcast ke semua admin: assigned_approver_user_id = NULL
+    // Broadcast ke semua admin: assigned_approver_user_id = NULL, single approval
     finalApproverId = null;
+    approvalFlow = "single";
   } else {
     if (!Number.isInteger(assignedApproverUserId) || (assignedApproverUserId ?? 0) <= 0) {
       return NextResponse.json(
@@ -114,10 +116,13 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    // Validate approver is eligible (Admin OR SPV account OR active karyawan jabatan Manager/Supervisor)
+    // Validate approver + dapatkan role-nya (untuk tentukan approval_flow)
     const [approverRows] = await pool.query<RowDataPacket[]>(
       `
-        SELECT u.id
+        SELECT
+          u.id,
+          u.role AS user_role,
+          LOWER(COALESCE(k.jabatan, '')) AS karyawan_jabatan
         FROM users u
         LEFT JOIN karyawan k ON k.user_id = u.id
         WHERE u.id = ?
@@ -138,12 +143,17 @@ export async function POST(request: NextRequest) {
       );
     }
     finalApproverId = assignedApproverUserId;
+    // Admin user → single approve (langsung admin). Non-admin (SPV/Manager/Supervisor) → double approve (atasan + admin).
+    const approverIsAdmin = (approverRows[0].user_role ?? "") === "admin";
+    approvalFlow = approverIsAdmin ? "single" : "double";
   }
 
   const buktiLembur =
     buktiFile instanceof File && buktiFile.size > 0
       ? await saveUploadedFile(buktiFile, "overtime")
       : null;
+
+  const initialFirstApprovalStatus = approvalFlow === "double" ? "pending" : null;
 
   await pool.query<ResultSetHeader>(
     `
@@ -164,8 +174,10 @@ export async function POST(request: NextRequest) {
         nama_order,
         jumlah_qty,
         target_sebelum_lembur,
-        target_setelah_lembur
-      ) VALUES (?, ?, ?, ?, ?, ?, 'pending', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?)
+        target_setelah_lembur,
+        approval_flow,
+        first_approval_status
+      ) VALUES (?, ?, ?, ?, ?, ?, 'pending', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       karyawanId,
@@ -182,6 +194,8 @@ export async function POST(request: NextRequest) {
       isProduksi ? jumlahQty : null,
       isProduksi ? targetSebelumLembur : null,
       isProduksi ? targetSetelahLembur : null,
+      approvalFlow,
+      initialFirstApprovalStatus,
     ],
   );
 

@@ -49,6 +49,10 @@ export async function ensureOvertimeSchema() {
         { name: "jumlah_qty", def: "INT UNSIGNED NULL" },
         { name: "target_sebelum_lembur", def: "INT UNSIGNED NULL" },
         { name: "target_setelah_lembur", def: "INT UNSIGNED NULL" },
+        { name: "approval_flow", def: "VARCHAR(10) NOT NULL DEFAULT 'single'" },
+        { name: "first_approval_status", def: "VARCHAR(10) NULL" },
+        { name: "first_approver_user_id", def: "BIGINT UNSIGNED NULL" },
+        { name: "first_approved_at", def: "DATETIME NULL" },
       ];
       for (const col of extraColumns) {
         try {
@@ -197,6 +201,11 @@ type OvertimeApprovalRow = RowDataPacket & {
   jumlah_qty: number | null;
   target_sebelum_lembur: number | null;
   target_setelah_lembur: number | null;
+  approval_flow: "single" | "double";
+  first_approval_status: "pending" | "approved" | "rejected" | null;
+  first_approver_user_id: number | null;
+  first_approver_name: string | null;
+  first_approved_at: string | null;
 };
 
 const overtimeListQuery = `
@@ -220,11 +229,17 @@ const overtimeListQuery = `
     l.nama_order,
     l.jumlah_qty,
     l.target_sebelum_lembur,
-    l.target_setelah_lembur
+    l.target_setelah_lembur,
+    l.approval_flow,
+    l.first_approval_status,
+    l.first_approver_user_id,
+    first_app.nama AS first_approver_name,
+    DATE_FORMAT(l.first_approved_at, '%d %b %Y %H:%i') AS first_approved_at
   FROM lembur l
   INNER JOIN karyawan k ON k.id = l.karyawan_id
   LEFT JOIN users approver ON approver.id = l.approved_by
   LEFT JOIN users assigned ON assigned.id = l.assigned_approver_user_id
+  LEFT JOIN users first_app ON first_app.id = l.first_approver_user_id
 `;
 
 export async function listOvertimeForApprover(approverUserId: number) {

@@ -17,6 +17,8 @@ type OvertimeRow = {
   assigned_approver_name?: string | null;
   catatan_atasan: string | null;
   catatan_karyawan: string | null;
+  approval_flow?: "single" | "double";
+  first_approval_status?: "pending" | "approved" | "rejected" | null;
 };
 
 type Props = {
@@ -146,7 +148,13 @@ export default function OvertimeApproverManager({ rows, endpoint }: Props) {
                 </tr>
               ) : (
                 rows.map((row) => {
-                  const isLocked = row.status_approval !== "pending";
+                  // Untuk double flow, lock berdasarkan first_approval_status (atasan stage).
+                  // Untuk single flow, lock berdasarkan status_approval final.
+                  const isLocked =
+                    row.approval_flow === "double"
+                      ? row.first_approval_status !== "pending" &&
+                        row.first_approval_status !== null
+                      : row.status_approval !== "pending";
                   return (
                     <tr key={row.id} className="border-b border-[#eef2f7] text-[#42506a]">
                       <td className="px-6 py-4 font-semibold uppercase text-[#172033]">{row.nama}</td>
@@ -198,6 +206,13 @@ export default function OvertimeApproverManager({ rows, endpoint }: Props) {
                       <td className="px-6 py-4">
                         <div className="space-y-2">
                           <StatusBadge status={row.status_approval} />
+                          {row.approval_flow === "double" &&
+                          row.first_approval_status === "approved" &&
+                          row.status_approval === "pending" ? (
+                            <span className="inline-flex w-fit rounded-full bg-[#eaf8ef] px-3 py-1 text-[10px] font-semibold text-[#1f8f4c]">
+                              Anda sudah approve, menunggu admin
+                            </span>
+                          ) : null}
                           <p className="text-xs text-[#7a879f]">
                             {row.approver_name ? `oleh ${row.approver_name}` : "Belum diproses"}
                           </p>
