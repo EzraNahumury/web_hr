@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useRef, useState, useTransition } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 type OvertimeRow = {
@@ -67,6 +67,16 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
     catatanKaryawan: "",
   });
   const [buktiFile, setBuktiFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (routesToAdmin && approvers.length > 0) {
+      setForm((current) =>
+        current.assignedApproverUserId
+          ? current
+          : { ...current, assignedApproverUserId: String(approvers[0].userId) },
+      );
+    }
+  }, [routesToAdmin, approvers]);
 
   const estimatedHours = useMemo(() => {
     if (!form.tanggal || !form.jamMulai || !form.jamSelesai) {
@@ -195,21 +205,27 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
 
           <label className="space-y-2 md:col-span-2">
             <span className="text-sm font-semibold text-[#2f1f1d]">Diajukan ke ({approverLabel})</span>
-            <select
-              value={form.assignedApproverUserId}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, assignedApproverUserId: event.target.value }))
-              }
-              required
-              className="h-12 w-full rounded-2xl border border-[#e4d4cc] bg-[#fffaf7] px-4 text-sm text-[#241716] outline-none transition focus:border-[#c65e61]"
-            >
-              <option value="">Pilih atasan</option>
-              {approvers.map((option) => (
-                <option key={option.userId} value={option.userId}>
-                  {option.name.toUpperCase()} — {option.role.toUpperCase()}
-                </option>
-              ))}
-            </select>
+            {routesToAdmin ? (
+              <div className="flex h-12 w-full items-center rounded-2xl border border-[#e4d4cc] bg-[#f8f3f0] px-4 text-sm font-semibold uppercase tracking-[0.1em] text-[#6b514b]">
+                Admin
+              </div>
+            ) : (
+              <select
+                value={form.assignedApproverUserId}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, assignedApproverUserId: event.target.value }))
+                }
+                required
+                className="h-12 w-full rounded-2xl border border-[#e4d4cc] bg-[#fffaf7] px-4 text-sm text-[#241716] outline-none transition focus:border-[#c65e61]"
+              >
+                <option value="">Pilih atasan</option>
+                {approvers.map((option) => (
+                  <option key={option.userId} value={option.userId}>
+                    {option.name.toUpperCase()} — {option.role.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            )}
           </label>
 
           <label className="space-y-2">
