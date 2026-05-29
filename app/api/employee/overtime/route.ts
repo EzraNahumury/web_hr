@@ -28,6 +28,26 @@ export async function POST(request: NextRequest) {
   const assignedApproverUserId =
     approverRaw && approverRaw !== "" && !isBroadcastToAdmins ? Number(approverRaw) : null;
 
+  const jenisPekerjaan =
+    typeof formData?.get("jenisPekerjaan") === "string"
+      ? String(formData.get("jenisPekerjaan")).trim() || null
+      : null;
+  const deadlineRaw = formData?.get("deadline");
+  const deadline =
+    typeof deadlineRaw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(deadlineRaw) ? deadlineRaw : null;
+  const namaOrder =
+    typeof formData?.get("namaOrder") === "string"
+      ? String(formData.get("namaOrder")).trim() || null
+      : null;
+  const parsePositiveInt = (value: FormDataEntryValue | null | undefined) => {
+    if (typeof value !== "string" || value.trim() === "") return null;
+    const n = Number(value);
+    return Number.isInteger(n) && n >= 0 ? n : null;
+  };
+  const jumlahQty = parsePositiveInt(formData?.get("jumlahQty"));
+  const targetSebelumLembur = parsePositiveInt(formData?.get("targetSebelumLembur"));
+  const targetSetelahLembur = parsePositiveInt(formData?.get("targetSetelahLembur"));
+
   if (!Number.isInteger(karyawanId) || karyawanId <= 0) {
     return NextResponse.json({ error: "Karyawan tidak valid." }, { status: 400 });
   }
@@ -48,7 +68,7 @@ export async function POST(request: NextRequest) {
   }
 
   const [employeeRows] = await pool.query<RowDataPacket[]>(
-    "SELECT id, jabatan FROM karyawan WHERE id = ? LIMIT 1",
+    "SELECT id, jabatan, divisi FROM karyawan WHERE id = ? LIMIT 1",
     [karyawanId],
   );
 
@@ -57,7 +77,30 @@ export async function POST(request: NextRequest) {
   }
 
   const submitterRole = (employeeRows[0].jabatan ?? "") as string;
+  const submitterDivisi = ((employeeRows[0].divisi ?? "") as string).trim().toLowerCase();
+  const isProduksi = submitterDivisi === "produksi";
   const routesToAllAdmins = shouldRouteToAdmin(submitterRole) || isBroadcastToAdmins;
+
+  if (!jenisPekerjaan) {
+    return NextResponse.json({ error: "Jenis pekerjaan wajib diisi." }, { status: 400 });
+  }
+  if (!deadline) {
+    return NextResponse.json({ error: "Deadline wajib diisi (format YYYY-MM-DD)." }, { status: 400 });
+  }
+  if (isProduksi) {
+    if (!namaOrder) {
+      return NextResponse.json({ error: "Nama order wajib diisi untuk divisi Produksi." }, { status: 400 });
+    }
+    if (jumlahQty === null) {
+      return NextResponse.json({ error: "Jumlah QTY wajib diisi untuk divisi Produksi." }, { status: 400 });
+    }
+    if (targetSebelumLembur === null) {
+      return NextResponse.json({ error: "Target sebelum lembur wajib diisi untuk divisi Produksi." }, { status: 400 });
+    }
+    if (targetSetelahLembur === null) {
+      return NextResponse.json({ error: "Target setelah lembur wajib diisi untuk divisi Produksi." }, { status: 400 });
+    }
+  }
 
   let finalApproverId: number | null = null;
 
@@ -115,8 +158,14 @@ export async function POST(request: NextRequest) {
         approved_by,
         catatan_atasan,
         assigned_approver_user_id,
-        catatan_karyawan
-      ) VALUES (?, ?, ?, ?, ?, ?, 'pending', NULL, NULL, ?, ?)
+        catatan_karyawan,
+        jenis_pekerjaan,
+        deadline,
+        nama_order,
+        jumlah_qty,
+        target_sebelum_lembur,
+        target_setelah_lembur
+      ) VALUES (?, ?, ?, ?, ?, ?, 'pending', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       karyawanId,
@@ -127,6 +176,12 @@ export async function POST(request: NextRequest) {
       buktiLembur,
       finalApproverId,
       catatanKaryawan,
+      jenisPekerjaan,
+      deadline,
+      isProduksi ? namaOrder : null,
+      isProduksi ? jumlahQty : null,
+      isProduksi ? targetSebelumLembur : null,
+      isProduksi ? targetSetelahLembur : null,
     ],
   );
 

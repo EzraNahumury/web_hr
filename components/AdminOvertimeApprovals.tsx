@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 type OvertimeRow = {
   id: number;
   nama: string;
+  divisi?: string | null;
   tanggal: string;
   jam_mulai: string;
   jam_selesai: string;
@@ -18,6 +19,12 @@ type OvertimeRow = {
   assigned_approver_user_id?: number | null;
   catatan_atasan: string | null;
   catatan_karyawan?: string | null;
+  jenis_pekerjaan?: string | null;
+  deadline?: string | null;
+  nama_order?: string | null;
+  jumlah_qty?: number | null;
+  target_sebelum_lembur?: number | null;
+  target_setelah_lembur?: number | null;
 };
 
 type Props = {
@@ -129,27 +136,33 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
 
       autoTable(doc, {
         startY: 38,
-        head: [["Nama", "Tanggal", "Jam", "Total", "Diajukan Ke", "Status", "Catatan Atasan"]],
+        head: [["Nama", "Tanggal", "Jam", "Total", "Pekerjaan", "Deadline", "Order/QTY/Target", "Status", "Catatan"]],
         body: filteredRows.map((row) => [
           row.nama,
           row.tanggal,
           `${row.jam_mulai} - ${row.jam_selesai}`,
           `${row.total_jam} jam`,
-          row.assigned_approver_name || "Admin",
+          row.jenis_pekerjaan || "-",
+          row.deadline || "-",
+          row.nama_order
+            ? `${row.nama_order}\nQTY: ${row.jumlah_qty ?? "-"}\nSblm: ${row.target_sebelum_lembur ?? "-"} | Sslh: ${row.target_setelah_lembur ?? "-"}`
+            : "-",
           row.status_approval,
           row.catatan_atasan || "-",
         ]),
-        styles: { fontSize: 9, cellPadding: 3 },
+        styles: { fontSize: 8, cellPadding: 2.5 },
         headStyles: { fillColor: [143, 29, 34], textColor: 255, fontStyle: "bold" },
         alternateRowStyles: { fillColor: [255, 248, 244] },
         columnStyles: {
-          0: { cellWidth: 40 },
-          1: { cellWidth: 28 },
-          2: { cellWidth: 28 },
-          3: { cellWidth: 20 },
-          4: { cellWidth: 40 },
-          5: { cellWidth: 24 },
-          6: { cellWidth: "auto" },
+          0: { cellWidth: 32 },
+          1: { cellWidth: 22 },
+          2: { cellWidth: 22 },
+          3: { cellWidth: 16 },
+          4: { cellWidth: 32 },
+          5: { cellWidth: 22 },
+          6: { cellWidth: 48 },
+          7: { cellWidth: 20 },
+          8: { cellWidth: "auto" },
         },
       });
 
@@ -284,6 +297,9 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
                 <th className="px-6 py-4">Jam</th>
                 <th className="px-6 py-4">Total</th>
                 <th className="px-6 py-4">Diajukan Ke</th>
+                <th className="px-6 py-4">Pekerjaan</th>
+                <th className="px-6 py-4">Deadline</th>
+                <th className="px-6 py-4">Detail Produksi</th>
                 <th className="px-6 py-4">Bukti</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Catatan</th>
@@ -293,7 +309,7 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
             <tbody>
               {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-10 text-center text-sm text-[#7a879f]">
+                  <td colSpan={12} className="px-6 py-10 text-center text-sm text-[#7a879f]">
                     Tidak ada data lembur untuk rentang tanggal yang dipilih.
                   </td>
                 </tr>
@@ -319,6 +335,24 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
                           <span className="inline-flex rounded-full bg-[#eef2ff] px-3 py-1 text-xs font-semibold text-[#4a5dff]">
                             Admin
                           </span>
+                        )}
+                      </td>
+                      <td className="max-w-[200px] px-6 py-4 text-sm text-[#42506a]">
+                        {row.jenis_pekerjaan || "-"}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-[#42506a]">
+                        {row.deadline || "-"}
+                      </td>
+                      <td className="px-6 py-4 text-xs text-[#42506a]">
+                        {row.nama_order ? (
+                          <div className="space-y-0.5 leading-5">
+                            <p><span className="font-semibold text-[#172033]">Order:</span> {row.nama_order}</p>
+                            <p><span className="font-semibold text-[#172033]">QTY:</span> {row.jumlah_qty ?? "-"}</p>
+                            <p><span className="font-semibold text-[#172033]">Target Sblm:</span> {row.target_sebelum_lembur ?? "-"}</p>
+                            <p><span className="font-semibold text-[#172033]">Target Sslh:</span> {row.target_setelah_lembur ?? "-"}</p>
+                          </div>
+                        ) : (
+                          "-"
                         )}
                       </td>
                       <td className="px-6 py-4">

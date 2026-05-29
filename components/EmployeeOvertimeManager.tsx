@@ -13,6 +13,12 @@ type OvertimeRow = {
   catatan_atasan: string | null;
   catatan_karyawan: string | null;
   assigned_approver_name?: string | null;
+  jenis_pekerjaan?: string | null;
+  deadline?: string | null;
+  nama_order?: string | null;
+  jumlah_qty?: number | null;
+  target_sebelum_lembur?: number | null;
+  target_setelah_lembur?: number | null;
 };
 
 type ApproverOption = {
@@ -27,6 +33,7 @@ type Props = {
   approvers: ApproverOption[];
   routesToAdmin: boolean;
   jabatan: string;
+  divisi: string;
 };
 
 function StatusBadge({ status }: { status: OvertimeRow["status_approval"] }) {
@@ -46,10 +53,11 @@ function StatusBadge({ status }: { status: OvertimeRow["status_approval"] }) {
 
 const ADMIN_OPTION_VALUE = "admin";
 
-export default function EmployeeOvertimeManager({ employeeId, rows, approvers, routesToAdmin, jabatan }: Props) {
+export default function EmployeeOvertimeManager({ employeeId, rows, approvers, routesToAdmin, jabatan, divisi }: Props) {
   const jabatanLower = jabatan.trim().toLowerCase();
   const isSupervisor = jabatanLower === "supervisor";
   const isManagerSubmitter = jabatanLower === "manager";
+  const isProduksi = divisi.trim().toLowerCase() === "produksi";
   const approverLabel = isManagerSubmitter
     ? "Admin"
     : isSupervisor
@@ -69,6 +77,12 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
     jamSelesai: "",
     assignedApproverUserId: "",
     catatanKaryawan: "",
+    jenisPekerjaan: "",
+    deadline: "",
+    namaOrder: "",
+    jumlahQty: "",
+    targetSebelumLembur: "",
+    targetSetelahLembur: "",
   });
   const [buktiFile, setBuktiFile] = useState<File | null>(null);
 
@@ -98,6 +112,35 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
       return;
     }
 
+    if (!form.jenisPekerjaan.trim()) {
+      setError("Jenis pekerjaan wajib diisi.");
+      return;
+    }
+
+    if (!form.deadline) {
+      setError("Deadline wajib diisi.");
+      return;
+    }
+
+    if (isProduksi) {
+      if (!form.namaOrder.trim()) {
+        setError("Nama order wajib diisi untuk divisi Produksi.");
+        return;
+      }
+      if (!form.jumlahQty) {
+        setError("Jumlah QTY wajib diisi untuk divisi Produksi.");
+        return;
+      }
+      if (!form.targetSebelumLembur) {
+        setError("Target sebelum lembur wajib diisi untuk divisi Produksi.");
+        return;
+      }
+      if (!form.targetSetelahLembur) {
+        setError("Target setelah lembur wajib diisi untuk divisi Produksi.");
+        return;
+      }
+    }
+
     startTransition(async () => {
       const formData = new FormData();
       formData.append("karyawanId", String(employeeId));
@@ -112,6 +155,14 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
       }
       if (form.catatanKaryawan.trim()) {
         formData.append("catatanKaryawan", form.catatanKaryawan.trim());
+      }
+      formData.append("jenisPekerjaan", form.jenisPekerjaan.trim());
+      formData.append("deadline", form.deadline);
+      if (isProduksi) {
+        formData.append("namaOrder", form.namaOrder.trim());
+        formData.append("jumlahQty", form.jumlahQty);
+        formData.append("targetSebelumLembur", form.targetSebelumLembur);
+        formData.append("targetSetelahLembur", form.targetSetelahLembur);
       }
 
       const response = await fetch("/api/employee/overtime", {
@@ -137,6 +188,12 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
         jamSelesai: "",
         assignedApproverUserId: "",
         catatanKaryawan: "",
+        jenisPekerjaan: "",
+        deadline: "",
+        namaOrder: "",
+        jumlahQty: "",
+        targetSebelumLembur: "",
+        targetSetelahLembur: "",
       });
       setBuktiFile(null);
       setSelectedFileName("");
@@ -224,6 +281,107 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
               </select>
             )}
           </label>
+
+          <label className="space-y-2">
+            <span className="text-sm font-semibold text-[#2f1f1d]">Jenis Pekerjaan</span>
+            <input
+              type="text"
+              value={form.jenisPekerjaan}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, jenisPekerjaan: event.target.value }))
+              }
+              placeholder="Contoh: Packing order, finishing produk, dll."
+              className="h-12 w-full rounded-2xl border border-[#e4d4cc] bg-[#fffaf7] px-4 text-sm text-[#241716] outline-none transition focus:border-[#c65e61]"
+              required
+            />
+          </label>
+
+          <label className="space-y-2">
+            <span className="text-sm font-semibold text-[#2f1f1d]">Deadline</span>
+            <input
+              type="date"
+              value={form.deadline}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, deadline: event.target.value }))
+              }
+              className="h-12 w-full rounded-2xl border border-[#e4d4cc] bg-[#fffaf7] px-4 text-sm text-[#241716] outline-none transition focus:border-[#c65e61]"
+              required
+            />
+          </label>
+
+          {isProduksi ? (
+            <div className="space-y-4 rounded-[24px] border border-[#f0d8d1] bg-[#fff7f3] p-5 md:col-span-2">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex rounded-full bg-[#8f1d22] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white">
+                  Produksi
+                </span>
+                <p className="text-xs text-[#7a6059]">
+                  Field tambahan khusus karyawan divisi Produksi.
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-[#2f1f1d]">Nama Order</span>
+                  <input
+                    type="text"
+                    value={form.namaOrder}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, namaOrder: event.target.value }))
+                    }
+                    placeholder="Contoh: Order #1234 — Pesanan PT XYZ"
+                    className="h-12 w-full rounded-2xl border border-[#e4d4cc] bg-white px-4 text-sm text-[#241716] outline-none transition focus:border-[#c65e61]"
+                    required={isProduksi}
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-[#2f1f1d]">Jumlah QTY</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.jumlahQty}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, jumlahQty: event.target.value }))
+                    }
+                    placeholder="Contoh: 500"
+                    className="h-12 w-full rounded-2xl border border-[#e4d4cc] bg-white px-4 text-sm text-[#241716] outline-none transition focus:border-[#c65e61]"
+                    required={isProduksi}
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-[#2f1f1d]">Target Sebelum Lembur</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.targetSebelumLembur}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, targetSebelumLembur: event.target.value }))
+                    }
+                    placeholder="Contoh: 200"
+                    className="h-12 w-full rounded-2xl border border-[#e4d4cc] bg-white px-4 text-sm text-[#241716] outline-none transition focus:border-[#c65e61]"
+                    required={isProduksi}
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-[#2f1f1d]">Target Setelah Lembur</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.targetSetelahLembur}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, targetSetelahLembur: event.target.value }))
+                    }
+                    placeholder="Contoh: 400"
+                    className="h-12 w-full rounded-2xl border border-[#e4d4cc] bg-white px-4 text-sm text-[#241716] outline-none transition focus:border-[#c65e61]"
+                    required={isProduksi}
+                  />
+                </label>
+              </div>
+            </div>
+          ) : null}
 
           <label className="space-y-2">
             <span className="text-sm font-semibold text-[#2f1f1d]">Catatan / Alasan Lembur</span>

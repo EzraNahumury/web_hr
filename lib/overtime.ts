@@ -41,6 +41,25 @@ export async function ensureOvertimeSchema() {
           console.error("Migration warning lembur.catatan_karyawan:", error);
         }
       }
+
+      const extraColumns: Array<{ name: string; def: string }> = [
+        { name: "jenis_pekerjaan", def: "TEXT NULL" },
+        { name: "deadline", def: "DATE NULL" },
+        { name: "nama_order", def: "VARCHAR(255) NULL" },
+        { name: "jumlah_qty", def: "INT UNSIGNED NULL" },
+        { name: "target_sebelum_lembur", def: "INT UNSIGNED NULL" },
+        { name: "target_setelah_lembur", def: "INT UNSIGNED NULL" },
+      ];
+      for (const col of extraColumns) {
+        try {
+          await pool.query(`ALTER TABLE lembur ADD COLUMN ${col.name} ${col.def}`);
+        } catch (error) {
+          const code = (error as { code?: string }).code;
+          if (code !== "ER_DUP_FIELDNAME") {
+            console.error(`Migration warning lembur.${col.name}:`, error);
+          }
+        }
+      }
     })();
   }
   await overtimeSchemaReady;
@@ -160,6 +179,7 @@ export async function listEligibleApprovers(submitterRole?: string | null): Prom
 type OvertimeApprovalRow = RowDataPacket & {
   id: number;
   nama: string;
+  divisi: string | null;
   tanggal: string;
   jam_mulai: string;
   jam_selesai: string;
@@ -171,12 +191,19 @@ type OvertimeApprovalRow = RowDataPacket & {
   assigned_approver_name: string | null;
   catatan_atasan: string | null;
   catatan_karyawan: string | null;
+  jenis_pekerjaan: string | null;
+  deadline: string | null;
+  nama_order: string | null;
+  jumlah_qty: number | null;
+  target_sebelum_lembur: number | null;
+  target_setelah_lembur: number | null;
 };
 
 const overtimeListQuery = `
   SELECT
     l.id,
     k.nama,
+    k.divisi,
     DATE_FORMAT(l.tanggal, '%d %b %Y') AS tanggal,
     DATE_FORMAT(l.jam_mulai, '%H:%i') AS jam_mulai,
     DATE_FORMAT(l.jam_selesai, '%H:%i') AS jam_selesai,
@@ -187,7 +214,13 @@ const overtimeListQuery = `
     l.assigned_approver_user_id,
     assigned.nama AS assigned_approver_name,
     l.catatan_atasan,
-    l.catatan_karyawan
+    l.catatan_karyawan,
+    l.jenis_pekerjaan,
+    DATE_FORMAT(l.deadline, '%Y-%m-%d') AS deadline,
+    l.nama_order,
+    l.jumlah_qty,
+    l.target_sebelum_lembur,
+    l.target_setelah_lembur
   FROM lembur l
   INNER JOIN karyawan k ON k.id = l.karyawan_id
   LEFT JOIN users approver ON approver.id = l.approved_by

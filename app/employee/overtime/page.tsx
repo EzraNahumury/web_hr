@@ -51,6 +51,7 @@ export default async function EmployeeOvertimePage() {
         approvers={approverOptions}
         routesToAdmin={routesToAdmin}
         jabatan={jabatan}
+        divisi={employee.divisi ?? ""}
       />
     </EmployeeShell>
   );
