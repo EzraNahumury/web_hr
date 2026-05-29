@@ -591,9 +591,9 @@ export default function AdminPayrollSummaryManager({
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Bank</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">No Rekening</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Tipe</th>
-                    <th colSpan={7} className="border border-[#a8ebef] px-3 py-3">Nominal Tetap</th>
-                    <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Hari Kerja</th>
-                    <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Masuk</th>
+                    <th colSpan={7} className="border border-[#fca5a5] bg-[#ef4444] px-3 py-3 text-white">Nominal Tetap</th>
+                    <th rowSpan={2} className="border border-[#fdba74] bg-[#f97316] px-3 py-3 text-white">Hari Kerja</th>
+                    <th rowSpan={2} className="border border-[#fdba74] bg-[#f97316] px-3 py-3 text-white">Masuk</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Total Gaji Pokok</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Omzet / Insentif</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Uang Makan</th>
@@ -602,40 +602,40 @@ export default function AdminPayrollSummaryManager({
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Kendaraan</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Perjalanan Dinas</th>
                     <th colSpan={2} className="border border-[#a8ebef] px-3 py-3">Lembur</th>
-                    <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Izin / Off</th>
-                    <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Sakit</th>
-                    <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Sakit Tanpa Surat</th>
-                    <th colSpan={2} className="border border-[#a8ebef] px-3 py-3">Setengah Hari</th>
-                    <th colSpan={2} className="border border-[#a8ebef] px-3 py-3">Telat</th>
+                    <th rowSpan={2} className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Izin / Off</th>
+                    <th rowSpan={2} className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Sakit</th>
+                    <th rowSpan={2} className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Sakit Tanpa Surat</th>
+                    <th colSpan={2} className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Setengah Hari</th>
+                    <th colSpan={2} className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Telat</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Total Gaji</th>
                     <th colSpan={3} className="border border-[#a8ebef] px-3 py-3">Tambahan</th>
-                    <th colSpan={4} className="border border-[#a8ebef] px-3 py-3">Total Potongan</th>
-                    <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Gaji Kontrak</th>
+                    <th colSpan={4} className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Total Potongan</th>
+                    <th rowSpan={2} className="border border-[#fca5a5] bg-[#ef4444] px-3 py-3 text-white">Gaji Kontrak</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Take Home Pay Sebelum Dipotong</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Take Home Pay</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Aksi</th>
                   </tr>
                   <tr className="bg-[#19d7df] text-center text-xs font-semibold uppercase tracking-[0.12em] text-[#062e31]">
-                    <th className="border border-[#a8ebef] px-3 py-3">Insentif Kehadiran</th>
-                    <th className="border border-[#a8ebef] px-3 py-3">Tunjangan Jabatan</th>
-                    <th className="border border-[#a8ebef] px-3 py-3">Uang Makan</th>
-                    <th className="border border-[#a8ebef] px-3 py-3">Subsidi</th>
-                    <th className="border border-[#a8ebef] px-3 py-3">Uang Kerajinan</th>
-                    <th className="border border-[#a8ebef] px-3 py-3">BPJS</th>
-                    <th className="border border-[#a8ebef] px-3 py-3">Bonus Performa</th>
+                    <th className="border border-[#fca5a5] bg-[#ef4444] px-3 py-3 text-white">Insentif Kehadiran</th>
+                    <th className="border border-[#fca5a5] bg-[#ef4444] px-3 py-3 text-white">Tunjangan Jabatan</th>
+                    <th className="border border-[#fca5a5] bg-[#ef4444] px-3 py-3 text-white">Uang Makan</th>
+                    <th className="border border-[#fca5a5] bg-[#ef4444] px-3 py-3 text-white">Subsidi</th>
+                    <th className="border border-[#fca5a5] bg-[#ef4444] px-3 py-3 text-white">Uang Kerajinan</th>
+                    <th className="border border-[#fca5a5] bg-[#ef4444] px-3 py-3 text-white">BPJS</th>
+                    <th className="border border-[#fca5a5] bg-[#ef4444] px-3 py-3 text-white">Bonus Performa</th>
                     <th className="border border-[#a8ebef] px-3 py-3">Lembur</th>
                     <th className="border border-[#a8ebef] px-3 py-3">Bonus</th>
-                    <th className="border border-[#a8ebef] px-3 py-3">1/2 Hari</th>
-                    <th className="border border-[#a8ebef] px-3 py-3">Potongan</th>
-                    <th className="border border-[#a8ebef] px-3 py-3">Telat</th>
-                    <th className="border border-[#a8ebef] px-3 py-3">Potongan</th>
+                    <th className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">1/2 Hari</th>
+                    <th className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Potongan</th>
+                    <th className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Telat</th>
+                    <th className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Potongan</th>
                     <th className="border border-[#a8ebef] px-3 py-3">Kontrak</th>
                     <th className="border border-[#a8ebef] px-3 py-3">Pinjaman Perusahaan</th>
                     <th className="border border-[#a8ebef] px-3 py-3">Pinjaman Pribadi</th>
-                    <th className="border border-[#a8ebef] px-3 py-3">Potongan Denda</th>
-                    <th className="border border-[#a8ebef] px-3 py-3">Potongan Kontrak</th>
-                    <th className="border border-[#a8ebef] px-3 py-3">Potongan Pinjaman</th>
-                    <th className="border border-[#a8ebef] px-3 py-3">Potongan Absensi</th>
+                    <th className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Potongan Denda</th>
+                    <th className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Potongan Kontrak</th>
+                    <th className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Potongan Pinjaman</th>
+                    <th className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Potongan Absensi</th>
                   </tr>
                 </thead>
                 <tbody>
