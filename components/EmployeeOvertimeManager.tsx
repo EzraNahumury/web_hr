@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { FormEvent, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 type OvertimeRow = {
@@ -68,16 +68,6 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
   });
   const [buktiFile, setBuktiFile] = useState<File | null>(null);
 
-  useEffect(() => {
-    if (routesToAdmin && approvers.length > 0) {
-      setForm((current) =>
-        current.assignedApproverUserId
-          ? current
-          : { ...current, assignedApproverUserId: String(approvers[0].userId) },
-      );
-    }
-  }, [routesToAdmin, approvers]);
-
   const estimatedHours = useMemo(() => {
     if (!form.tanggal || !form.jamMulai || !form.jamSelesai) {
       return "0.00";
@@ -99,7 +89,7 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
     setError(null);
     setSuccess(null);
 
-    if (!form.assignedApproverUserId) {
+    if (!routesToAdmin && !form.assignedApproverUserId) {
       setError(`Pilih ${approverLabel} yang akan menerima pengajuan.`);
       return;
     }
@@ -110,7 +100,9 @@ export default function EmployeeOvertimeManager({ employeeId, rows, approvers, r
       formData.append("tanggal", form.tanggal);
       formData.append("jamMulai", form.jamMulai);
       formData.append("jamSelesai", form.jamSelesai);
-      formData.append("assignedApproverUserId", form.assignedApproverUserId);
+      if (!routesToAdmin) {
+        formData.append("assignedApproverUserId", form.assignedApproverUserId);
+      }
       if (buktiFile) {
         formData.append("buktiLembur", buktiFile);
       }

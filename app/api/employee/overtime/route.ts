@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ResultSetHeader, RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
 import { saveUploadedFile } from "@/lib/uploads";
-import { ensureOvertimeSchema } from "@/lib/overtime";
+import { ensureOvertimeSchema, shouldRouteToAdmin } from "@/lib/overtime";
 
 function toDateTimeString(date: string, time: string) {
   return `${date} ${time}:00`;
@@ -55,38 +55,46 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Data karyawan tidak ditemukan." }, { status: 404 });
   }
 
+  const submitterRole = (employeeRows[0].jabatan ?? "") as string;
+  const routesToAllAdmins = shouldRouteToAdmin(submitterRole);
+
   let finalApproverId: number | null = null;
 
-  if (!Number.isInteger(assignedApproverUserId) || (assignedApproverUserId ?? 0) <= 0) {
-    return NextResponse.json(
-      { error: "Pilih atasan (SPV/Manager/Admin) yang akan menerima pengajuan lembur." },
-      { status: 400 },
+  if (routesToAllAdmins) {
+    // Manager submitter: broadcast ke semua admin, no specific approver
+    finalApproverId = null;
+  } else {
+    if (!Number.isInteger(assignedApproverUserId) || (assignedApproverUserId ?? 0) <= 0) {
+      return NextResponse.json(
+        { error: "Pilih atasan (SPV/Manager/Admin) yang akan menerima pengajuan lembur." },
+        { status: 400 },
+      );
+    }
+    // Validate approver is eligible (Admin OR SPV account OR active karyawan jabatan Manager/Supervisor)
+    const [approverRows] = await pool.query<RowDataPacket[]>(
+      `
+        SELECT u.id
+        FROM users u
+        LEFT JOIN karyawan k ON k.user_id = u.id
+        WHERE u.id = ?
+          AND u.status_aktif = 1
+          AND (
+            u.role = 'admin'
+            OR u.role = 'spv'
+            OR (k.status_data = 'aktif' AND LOWER(COALESCE(k.jabatan, '')) IN ('manager', 'supervisor'))
+          )
+        LIMIT 1
+      `,
+      [assignedApproverUserId],
     );
+    if (!approverRows[0]) {
+      return NextResponse.json(
+        { error: "Atasan yang dipilih tidak valid." },
+        { status: 400 },
+      );
+    }
+    finalApproverId = assignedApproverUserId;
   }
-  // Validate approver is eligible (Admin OR SPV account OR active karyawan jabatan Manager/Supervisor)
-  const [approverRows] = await pool.query<RowDataPacket[]>(
-    `
-      SELECT u.id
-      FROM users u
-      LEFT JOIN karyawan k ON k.user_id = u.id
-      WHERE u.id = ?
-        AND u.status_aktif = 1
-        AND (
-          u.role = 'admin'
-          OR u.role = 'spv'
-          OR (k.status_data = 'aktif' AND LOWER(COALESCE(k.jabatan, '')) IN ('manager', 'supervisor'))
-        )
-      LIMIT 1
-    `,
-    [assignedApproverUserId],
-  );
-  if (!approverRows[0]) {
-    return NextResponse.json(
-      { error: "Atasan yang dipilih tidak valid." },
-      { status: 400 },
-    );
-  }
-  finalApproverId = assignedApproverUserId;
 
   const buktiLembur =
     buktiFile instanceof File && buktiFile.size > 0
