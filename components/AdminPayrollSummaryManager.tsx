@@ -563,7 +563,7 @@ export default function AdminPayrollSummaryManager({
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <article className="rounded-[26px] border border-[#ead7ce] bg-white px-5 py-4"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">Karyawan</p><p className="mt-2 text-3xl font-semibold text-[#241716]">{filteredRows.length}{filteredRows.length !== sheet.rows.length ? <span className="ml-1 text-base text-[#a16f63]">/ {sheet.rows.length}</span> : null}</p></article>
             <article className="rounded-[26px] border border-[#ead7ce] bg-white px-5 py-4"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">Total Potongan</p><p className="mt-2 text-3xl font-semibold text-[#241716]">{formatCurrency(sheet.totalDeduction)}</p></article>
-            <article className="rounded-[26px] border border-[#ead7ce] bg-white px-5 py-4"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">Penerimaan Bersih</p><p className="mt-2 text-3xl font-semibold text-[#241716]">{formatCurrency(sheet.totalNetIncome)}</p></article>
+            <article className="rounded-[26px] border border-[#ead7ce] bg-white px-5 py-4"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">Take Home Pay</p><p className="mt-2 text-3xl font-semibold text-[#241716]">{formatCurrency(sheet.totalNetIncome)}</p></article>
             <article className="rounded-[26px] border border-[#ead7ce] bg-white px-5 py-4"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">Range</p><p className="mt-2 text-lg font-semibold text-[#241716]">{displayedRange}</p></article>
           </section>
 
@@ -591,7 +591,6 @@ export default function AdminPayrollSummaryManager({
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Bank</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">No Rekening</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Tipe</th>
-                    <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Gaji Pokok</th>
                     <th colSpan={7} className="border border-[#a8ebef] px-3 py-3">Nominal Tetap</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Hari Kerja</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Masuk</th>
@@ -609,14 +608,15 @@ export default function AdminPayrollSummaryManager({
                     <th colSpan={2} className="border border-[#a8ebef] px-3 py-3">Setengah Hari</th>
                     <th colSpan={2} className="border border-[#a8ebef] px-3 py-3">Telat</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Total Gaji</th>
-                    <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Total Gaji Sebelum Potongan</th>
                     <th colSpan={3} className="border border-[#a8ebef] px-3 py-3">Tambahan</th>
                     <th colSpan={4} className="border border-[#a8ebef] px-3 py-3">Total Potongan</th>
-                    <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Penerimaan Bersih</th>
+                    <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Gaji Kontrak</th>
+                    <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Take Home Pay Sebelum Dipotong</th>
+                    <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Take Home Pay</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Aksi</th>
                   </tr>
                   <tr className="bg-[#19d7df] text-center text-xs font-semibold uppercase tracking-[0.12em] text-[#062e31]">
-                    <th className="border border-[#a8ebef] px-3 py-3">Gaji Pokok Perhari / Perjam</th>
+                    <th className="border border-[#a8ebef] px-3 py-3">Insentif Kehadiran</th>
                     <th className="border border-[#a8ebef] px-3 py-3">Tunjangan Jabatan</th>
                     <th className="border border-[#a8ebef] px-3 py-3">Uang Makan</th>
                     <th className="border border-[#a8ebef] px-3 py-3">Subsidi</th>
@@ -635,7 +635,7 @@ export default function AdminPayrollSummaryManager({
                     <th className="border border-[#a8ebef] px-3 py-3">Potongan Denda</th>
                     <th className="border border-[#a8ebef] px-3 py-3">Potongan Kontrak</th>
                     <th className="border border-[#a8ebef] px-3 py-3">Potongan Pinjaman</th>
-                    <th className="border border-[#a8ebef] px-3 py-3">Potongan Uang Kerajinan</th>
+                    <th className="border border-[#a8ebef] px-3 py-3">Potongan Absensi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -652,7 +652,6 @@ export default function AdminPayrollSummaryManager({
                       <td className="border border-[#d7ecee] px-3 py-3 uppercase">{row.bank}</td>
                       <td className="border border-[#d7ecee] px-3 py-3">{row.accountNumber}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-center">{row.payrollType === "sales" ? "Sales" : "Non Sales"}</td>
-                      <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.monthlyBaseSalary)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.dailyBaseSalary)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.positionAllowance)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.fixedMealAllowance)}</td>
@@ -679,7 +678,6 @@ export default function AdminPayrollSummaryManager({
                       <td className="border border-[#d7ecee] px-3 py-3 text-center">{row.lateCount}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.lateDeduction)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right font-semibold">{formatCurrency(row.totalSalary)}</td>
-                      <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.totalSalaryBeforeDeduction)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.contractDeduction)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.companyLoan)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.personalLoan)}</td>
@@ -687,6 +685,8 @@ export default function AdminPayrollSummaryManager({
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.contractCut)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.loanCut)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.diligenceCut)}</td>
+                      <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.monthlyBaseSalary)}</td>
+                      <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.totalSalaryBeforeDeduction)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right font-semibold text-[#8f1d22]">{formatCurrency(row.netIncome)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3">
                         <div className="flex min-w-[140px] gap-2">
