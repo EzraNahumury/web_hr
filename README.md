@@ -1,6 +1,6 @@
 # Panduan Penggunaan Sistem Web HR — AvA Group
 
-> **Versi Dokumen:** 1.0 | **Berlaku untuk:** Seluruh Karyawan, Supervisor, Admin  
+> **Versi Dokumen:** 2.0 | **Berlaku untuk:** Seluruh Karyawan, Supervisor, Admin
 > Dokumen ini mencakup seluruh alur penggunaan sistem, aturan yang berlaku, dan panduan lengkap per peran (role).
 
 ---
@@ -29,11 +29,12 @@
    - [Manajemen Lembur](#54-manajemen-lembur)
    - [Manajemen Pinjaman](#55-manajemen-pinjaman)
    - [Summary Payroll](#56-summary-payroll)
-   - [Payroll Penjahit](#57-payroll-penjahit)
-   - [Payroll Sales Nasional](#58-payroll-sales-nasional)
-   - [Slip Gaji & Distribusi](#59-slip-gaji--distribusi)
-   - [Finance](#510-finance)
-   - [Manajemen Role (Admin & SPV)](#511-manajemen-role-admin--spv)
+   - [Summary Payroll Solo](#57-summary-payroll-solo)
+   - [Payroll Penjahit](#58-payroll-penjahit)
+   - [Payroll Sales Nasional](#59-payroll-sales-nasional)
+   - [Slip Gaji & Distribusi](#510-slip-gaji--distribusi)
+   - [Finance](#511-finance)
+   - [Manajemen Role (Admin & SPV)](#512-manajemen-role-admin--spv)
 6. [Aturan & Ketentuan Sistem](#6-aturan--ketentuan-sistem)
    - [Aturan Presensi](#61-aturan-presensi)
    - [Shift & Jam Kerja](#62-shift--jam-kerja)
@@ -53,7 +54,7 @@
 
 - **Presensi digital** — check-in & check-out berbasis selfie + GPS
 - **Manajemen jadwal shift** — pengaturan jadwal harian oleh SPV/Admin
-- **Pengajuan & approval lembur** — alur pengajuan karyawan ke persetujuan atasan
+- **Pengajuan & approval lembur** — alur 1x atau 2x approve sesuai pengajuan
 - **Pinjaman karyawan** — pengajuan, cicilan otomatis terintegrasi payroll
 - **Payroll & slip gaji** — perhitungan gaji otomatis dari data presensi real-time
 - **Reimburse & perjalanan dinas** — pengajuan penggantian biaya
@@ -156,29 +157,68 @@ Terdapat **3 jenis akun** dalam sistem:
 
 **Menu:** Data Lembur
 
-#### Langkah-langkah:
+#### Field Wajib (untuk Semua Karyawan):
 
-1. Buka halaman **Data Lembur**.
-2. Isi form pengajuan:
-   - **Tanggal** lembur
-   - **Jam Mulai** dan **Jam Selesai**
-   - **Pilih Atasan Penyetuju** (Supervisor/Manager/Admin yang ditugaskan)
-   - Catatan karyawan (opsional)
-   - Upload bukti lembur (opsional)
-3. Klik **Ajukan Lembur**.
+1. **Tanggal Lembur**
+2. **Jam Mulai** dan **Jam Selesai**
+3. **Diajukan Ke** (Atasan Penyetuju)
+4. **Jenis Pekerjaan** (text — contoh: packing order, finishing produk)
+5. **Deadline** (tanggal target penyelesaian)
+6. **Catatan / Alasan Lembur** (opsional)
+7. **Bukti Lembur** (file opsional)
+
+#### Field Tambahan Khusus Divisi Produksi:
+
+Jika karyawan dari divisi **Produksi**, akan muncul section tambahan dengan field wajib:
+
+| Field | Tipe | Keterangan |
+|-------|------|------------|
+| **Nama Order** | Text | Contoh: Order #1234 — Pesanan PT XYZ |
+| **Jumlah QTY** | Angka | Total kuantitas order |
+| **Target Sebelum Lembur** | Angka | Target yang sudah dicapai sebelum lembur |
+| **Target Setelah Lembur** | Angka | Target yang akan dicapai dengan lembur |
+
+> Field produksi hanya muncul untuk karyawan dengan `divisi = Produksi`. Untuk divisi lain, field ini disembunyikan.
+
+#### Dropdown "Diajukan Ke" Berdasarkan Jabatan Pengaju:
+
+| Pengaju | Pilihan Atasan |
+|---------|----------------|
+| **Staff** | Supervisor individu + SPV individu + 1 opsi generic **ADMIN** |
+| **Supervisor** | Manager individu + 1 opsi generic **ADMIN** |
+| **Manager** | Otomatis **ADMIN** (tanpa dropdown) |
+
+> Opsi **ADMIN** generic artinya pengajuan masuk ke pool semua admin — admin manapun bisa approve. Tidak perlu pilih admin spesifik.
 
 #### Status Pengajuan Lembur:
 
 | Status | Keterangan |
 |--------|-----------|
-| **Pending** | Menunggu persetujuan atasan |
+| **Pending** | Menunggu persetujuan atasan/admin |
 | **Approved** | Disetujui — jam lembur masuk ke payroll |
-| **Rejected** | Ditolak oleh atasan |
+| **Rejected** | Ditolak |
+
+#### Alur Approval Berdasarkan Pengajuan:
+
+**1x Approval (Langsung Admin):**
+- Pengaju memilih opsi **ADMIN** sebagai penyetuju
+- Manager submit (otomatis ke admin)
+- Admin approve → langsung selesai
+
+**2x Approval (Via Atasan):**
+- Staff submit ke Supervisor/SPV → Supervisor/SPV approve → kemudian admin approve → selesai
+- Supervisor submit ke Manager → Manager approve → kemudian admin approve → selesai
+
+> Status di riwayat akan menampilkan:
+> - **"Menunggu approval atasan"** — atasan belum putuskan
+> - **"Disetujui atasan, menunggu admin"** — atasan sudah approve, admin belum
+> - **"Approved"** — final, semua approval selesai
+> - **"Rejected"** — ditolak di salah satu tahap
 
 #### Aturan Lembur:
 - Durasi lembur harus **lebih dari 0 jam**.
-- Wajib memilih **satu atasan** sebagai penyetuju.
-- Atasan yang dipilih **harus berstatus aktif**.
+- Jenis Pekerjaan dan Deadline **wajib diisi**.
+- 4 field tambahan Produksi **wajib diisi** untuk karyawan divisi Produksi.
 - Setelah diputuskan (approved/rejected), **tidak bisa diubah**.
 
 ---
@@ -237,6 +277,7 @@ Pengajuan Karyawan
 - Slip bonus tersedia terpisah jika ada pembayaran bonus.
 - Slip hanya tersedia setelah Admin mendistribusikannya.
 - Format slip dapat dicetak atau disimpan sebagai PDF.
+- Header slip resmi: **AvA Group**.
 
 ---
 
@@ -262,7 +303,7 @@ Pengajuan Karyawan
 
 - Karyawan dapat melihat rekap presensi pribadi per periode.
 - Tampil: tanggal, jam masuk, jam pulang, status, kode, keterangan.
-- PA (Pulang Awal) ditampilkan beserta keterangan yang diisi.
+- **PA (Pulang Awal)** ditampilkan beserta keterangan yang diisi karyawan.
 
 ---
 
@@ -343,10 +384,21 @@ Supervisor dan Manager memiliki **dua fungsi utama** yang berbeda dari staf bias
 5. Isi **catatan atasan** (opsional, tapi disarankan saat menolak).
 6. Konfirmasi keputusan.
 
+#### Sistem 2x Approval untuk SPV / Manager:
+
+Atasan (SPV, Supervisor, Manager) yang menerima pengajuan dari bawahan **adalah tahap pertama approval**. Setelah Anda approve:
+
+- Pengajuan **belum final** — masih masuk ke admin untuk approval kedua
+- Status di sisi atasan: **"Anda sudah approve, menunggu admin"**
+- Setelah admin approve → final, jam lembur masuk ke payroll
+- Setelah admin reject → pengajuan rejected meskipun Anda sudah approve
+
+> Jika atasan **reject**, pengajuan langsung final di status rejected (skip admin).
+
 #### Aturan:
 - Hanya bisa approve/reject pengajuan yang **ditujukan kepada Anda**.
-- Keputusan bersifat **final** — tidak bisa diubah setelah diputuskan.
-- Lembur yang di-approve otomatis masuk ke rekap jam lembur karyawan dan payroll.
+- Keputusan bersifat **final** untuk tahap atasan — tidak bisa diubah.
+- Sistem mencatat siapa atasan yang approve di stage 1.
 
 ---
 
@@ -364,7 +416,7 @@ Admin memiliki akses penuh ke seluruh modul sistem. Berikut panduan per modul:
 - Tambah karyawan baru
 - Edit data karyawan (nama, jabatan, divisi, penempatan, tanggal masuk, dll.)
 - Nonaktifkan karyawan (status: nonaktif)
-- Upload & download foto KTP karyawan
+- Upload & **download** foto KTP karyawan (tombol Buka Dokumen / Download)
 - Atur bank & nomor rekening untuk transfer gaji
 
 > **Karyawan nonaktif** tidak akan muncul di summary payroll periode berikutnya setelah dinonaktifkan.
@@ -378,9 +430,10 @@ Admin memiliki akses penuh ke seluruh modul sistem. Berikut panduan per modul:
 **Yang bisa dilakukan Admin:**
 - Melihat rekap absensi seluruh karyawan
 - Filter berdasarkan periode, unit, penempatan, nama
-- Melihat detail presensi per karyawan (jam masuk, jam pulang, foto selfie, keterangan)
-- Melihat keterangan Pulang Awal (PA) yang diisi karyawan
-- Melihat dan mengunduh foto presensi
+- Klik sel berisi data → modal **Detail Absensi**: lihat jam masuk/pulang, foto selfie, latitude/longitude, peta lokasi
+- Klik sel kosong (`-`) → modal Detail Absensi dengan mode **Set Kode** untuk input absensi manual
+- **Ubah kode absensi** lewat dropdown di modal (untuk koreksi data)
+- Melihat keterangan **Pulang Awal (PA)** yang diisi karyawan
 
 **Kode di Lembar Absensi:**
 
@@ -412,11 +465,46 @@ Admin memiliki akses penuh ke seluruh modul sistem. Berikut panduan per modul:
 
 **Menu:** Lembur
 
-**Yang bisa dilakukan Admin:**
-- Melihat seluruh pengajuan lembur semua karyawan
-- Filter berdasarkan status, karyawan, tanggal
-- Approve atau reject pengajuan lembur (jika ditunjuk sebagai approver)
-- Melihat rekap total jam lembur per karyawan per periode
+#### Tampilan Halaman Admin Overtime:
+
+Admin disediakan **2 tab filter** untuk membedakan jenis pengajuan:
+
+| Tab | Berisi | Catatan |
+|-----|--------|---------|
+| **Langsung ke Admin** | Pengajuan single-approve — admin satu-satunya yang putuskan | Pengajuan dari Manager ATAU pengajuan yang dipilih "ADMIN" generic |
+| **Via Atasan (2x Approve)** | Pengajuan dengan alur 2 tahap — sudah/sedang di atasan | Kolom tambahan: **Approval Atasan** (Disetujui/Ditolak/Menunggu) |
+
+Setiap tab punya **count badge** menampilkan jumlah pengajuan.
+
+#### Action di Setiap Baris Pengajuan:
+
+| Tombol | Fungsi |
+|--------|--------|
+| **Icon Detail (i)** | Buka modal popup berisi seluruh field pengajuan |
+| **Approve** | Setujui pengajuan |
+| **Reject** | Tolak pengajuan |
+
+#### Modal Detail Pengajuan:
+
+Klik tombol **Detail (i)** → modal menampilkan:
+- Tanggal lembur, jam mulai-selesai, total jam
+- **Jenis pekerjaan** & **deadline**
+- **Detail Produksi** (jika ada): Nama Order, Jumlah QTY, Target Sebelum/Setelah Lembur
+- **Stage 1 — Approval Atasan** (jika via atasan): siapa, kapan, status
+- Catatan karyawan & catatan atasan
+
+#### Aturan Approve Admin:
+
+- **Single approve**: Admin bisa langsung approve/reject pengajuan
+- **Via atasan (2x approve)**:
+  - Admin **TIDAK BISA approve** jika atasan belum approve (tombol disabled, tooltip "Atasan belum menyetujui")
+  - Setelah atasan approve, admin baru bisa approve untuk finalisasi
+
+#### Setelah Diputuskan:
+
+- Lembur **Approved** otomatis masuk ke rekap jam lembur karyawan dan payroll
+- Lembur **Rejected** tidak dihitung di payroll
+- Keputusan **final** — tidak bisa diubah
 
 ---
 
@@ -464,14 +552,50 @@ Admin dapat langsung membuat pinjaman untuk kondisi darurat tanpa batas Rp 3 jut
 - Contoh: Periode Juni = 26 Mei – 25 Juni.
 - Sistem otomatis masuk ke periode bulan berikutnya jika tanggal sudah melewati tanggal 25.
 
-#### A. Melihat & Mengedit Data Payroll
+#### Karyawan yang Tampil:
+- ✅ Semua karyawan aktif
+- ❌ **Karyawan penempatan Toko Solo** — tampil di [Summary Payroll Solo](#57-summary-payroll-solo) (terpisah)
+- ❌ **Karyawan sub_divisi Penjahit** — tampil di [Summary Penjahit](#58-payroll-penjahit) (terpisah)
 
+#### Pewarnaan Header Tabel:
+
+Header kolom dikelompokkan dengan **warna** agar mudah dibaca:
+
+| Warna | Kelompok | Kolom |
+|-------|----------|-------|
+| 🔴 **Merah** | Penerimaan tetap | Nominal Tetap (Insentif Kehadiran, Tunjangan Jabatan, Uang Makan, Subsidi, Uang Kerajinan, BPJS, Bonus Performa) + Gaji Kontrak |
+| 🟠 **Orange** | Kehadiran | Hari Kerja, Masuk |
+| 🟡 **Kuning** | Absensi/Potongan | Izin, Sakit, Setengah Hari, Telat, Total Potongan |
+| 🌐 **Cyan** | Lainnya | Identitas, Total Gaji Pokok, Lembur, Tambahan, Take Home Pay Sebelum Dipotong, Take Home Pay |
+
+#### Urutan Kolom (Bagian Kanan):
+
+```
+... → Total Gaji → Tambahan → Total Potongan
+    → Gaji Kontrak
+    → Take Home Pay Sebelum Dipotong
+    → Take Home Pay
+    → Aksi
+```
+
+#### Penamaan Kolom (Versi Baru):
+
+| Lama | Baru |
+|------|------|
+| Gaji Pokok | **Gaji Kontrak** |
+| Gaji Pokok Perhari / Perjam | **Insentif Kehadiran** |
+| Penerimaan Bersih | **Take Home Pay** |
+| Total Gaji Sebelum Potongan | **Take Home Pay Sebelum Dipotong** |
+| Potongan Uang Kerajinan | **Potongan Absensi** |
+
+#### Fitur Halaman:
+
+##### A. Melihat & Mengedit Data Payroll
 - Lihat summary gaji seluruh karyawan per periode.
 - Filter berdasarkan nama, unit, jabatan, status.
 - Data **real-time** — otomatis update setiap karyawan presensi atau lembur diapprove.
 
-#### B. Input Manual / Override
-
+##### B. Input Manual / Override
 Admin dapat mengisi atau mengoverride nilai berikut per karyawan:
 
 | Field Override | Keterangan |
@@ -481,7 +605,7 @@ Admin dapat mengisi atau mengoverride nilai berikut per karyawan:
 | Setengah hari | Koreksi setengah hari |
 | Gaji pokok | Koreksi nominal gaji |
 
-#### C. Konfigurasi Gaji per Karyawan
+##### C. Konfigurasi Gaji per Karyawan
 
 Admin mengatur komponen gaji masing-masing karyawan:
 
@@ -495,7 +619,7 @@ Admin mengatur komponen gaji masing-masing karyawan:
 | Insentif | Insentif bulanan |
 | Kendaraan | Tunjangan kendaraan |
 
-#### D. Komponen Otomatis (Dihitung Sistem)
+##### D. Komponen Otomatis (Dihitung Sistem)
 
 | Komponen | Sumber Data |
 |----------|------------|
@@ -506,16 +630,48 @@ Admin mengatur komponen gaji masing-masing karyawan:
 | Upah lembur | Dihitung dari jam lembur |
 | Potongan pinjaman | Dari jadwal cicilan bulan ini |
 | Total potongan | Penjumlahan semua potongan |
-| Gaji bersih | Total pendapatan – total potongan |
+| Take Home Pay | Total pendapatan – total potongan |
 
-#### E. Hari Kerja
+##### E. Hari Kerja
 
 - Dihitung otomatis dari range tanggal periode (Senin–Sabtu, tidak termasuk Minggu).
 - Nilai konsisten untuk semua karyawan dalam satu periode.
 
+##### F. Input Omzet Bulanan
+
+- Admin input omzet bulanan untuk unit **AVA+Ayres** (× 0.7% otomatis untuk bonus) dan **JNE** (manual / custom bonus).
+- Bonus omzet didistribusikan ke karyawan sales sesuai aturan unit.
+
 ---
 
-### 5.7 Payroll Penjahit
+### 5.7 Summary Payroll Solo
+
+**Menu:** Summary Payroll Solo
+
+Halaman ini **mirror** dari Summary Payroll utama, tapi:
+
+| Aspek | Bedanya |
+|-------|---------|
+| **Karyawan yang tampil** | Hanya yang `penempatan = Toko Solo` |
+| **Karyawan di Summary utama** | Karyawan Toko Solo **TIDAK** tampil di Summary Payroll utama |
+| **Pewarnaan header & layout** | Identik dengan Summary Payroll utama |
+| **Input Omzet Bulanan** | Hanya 1 unit: **Toko Solo** — input manual, **tidak pakai rumus persentase** (nominal yang di-input = bonus langsung) |
+| **Form input gaji per karyawan** | Sama persis dengan Summary Payroll utama |
+
+#### Cara Pakai:
+
+1. Buka menu **Summary Payroll Solo** di sidebar admin.
+2. Pilih periode (default: periode aktif).
+3. Tabel menampilkan karyawan Toko Solo dengan komponen gaji lengkap.
+4. Input **Total Omzet Toko Solo** di section omzet — nominal langsung dipakai sebagai bonus (tanpa multiplier).
+5. Edit komponen gaji per karyawan jika perlu.
+6. Simpan perubahan.
+
+> Semua aturan lain (override, real-time attendance, perhitungan gaji) **sama persis** dengan Summary Payroll utama.
+
+---
+
+### 5.8 Payroll Penjahit
 
 **Menu:** Summary Penjahit
 
@@ -527,7 +683,7 @@ Admin mengatur komponen gaji masing-masing karyawan:
 
 ---
 
-### 5.8 Payroll Sales Nasional
+### 5.9 Payroll Sales Nasional
 
 **Menu:** Summary Sales Nasional
 
@@ -537,7 +693,7 @@ Admin mengatur komponen gaji masing-masing karyawan:
 
 ---
 
-### 5.9 Slip Gaji & Distribusi
+### 5.10 Slip Gaji & Distribusi
 
 **Menu:** Slip Gaji / Distribusi Slip
 
@@ -551,9 +707,12 @@ Admin mengatur komponen gaji masing-masing karyawan:
 - Terpisah dari slip gaji.
 - Dikelola dari menu **Slip Bonus** dan **Distribusi Slip Bonus**.
 
+#### Branding Slip:
+Header slip gaji & slip bonus menampilkan brand **AvA Group** (sebelumnya "Ayres").
+
 ---
 
-### 5.10 Finance
+### 5.11 Finance
 
 **Menu:** Finance
 
@@ -563,7 +722,7 @@ Admin mengatur komponen gaji masing-masing karyawan:
 
 ---
 
-### 5.11 Manajemen Role (Admin & SPV)
+### 5.12 Manajemen Role (Admin & SPV)
 
 **Menu:** Role
 
@@ -584,6 +743,7 @@ Admin mengatur komponen gaji masing-masing karyawan:
 |--------|--------|
 | **Satu presensi per hari** | Tidak bisa check-in dua kali di hari yang sama |
 | **Tidak bisa diubah setelah submit** | Presensi yang sudah dikirim tidak dapat diedit karyawan |
+| **Admin bisa koreksi** | Admin dapat ubah kode absensi atau input absensi manual di sel kosong |
 | **Selfie wajib untuk hadir** | Status hadir dan setengah hari memerlukan foto selfie |
 | **Lokasi wajib untuk hadir** | GPS harus aktif dan dalam radius lokasi penempatan |
 | **Keterangan wajib untuk izin/sakit** | Status izin dan sakit tanpa surat wajib isi keterangan |
@@ -642,13 +802,33 @@ Presensi selfie hanya bisa dilakukan dalam radius lokasi yang ditentukan:
 
 ### 6.4 Aturan Lembur
 
-| Aturan | Detail |
-|--------|--------|
-| Durasi minimal | Lebih dari 0 jam |
-| Wajib pilih approver | Harus memilih satu atasan penyetuju |
-| Approver harus aktif | Tidak bisa memilih karyawan/SPV yang sudah nonaktif |
-| Keputusan final | Approved/rejected tidak bisa diubah |
-| Lembur approved | Otomatis masuk ke rekap jam lembur dan payroll |
+#### Field Wajib:
+
+| Field | Berlaku Untuk |
+|-------|---------------|
+| Tanggal, Jam Mulai, Jam Selesai | Semua karyawan |
+| Atasan Penyetuju | Semua karyawan (Manager auto ke Admin) |
+| **Jenis Pekerjaan** | Semua karyawan |
+| **Deadline** | Semua karyawan |
+| **Nama Order** | Hanya divisi **Produksi** |
+| **Jumlah QTY** | Hanya divisi **Produksi** |
+| **Target Sebelum Lembur** | Hanya divisi **Produksi** |
+| **Target Setelah Lembur** | Hanya divisi **Produksi** |
+
+#### Alur Approval:
+
+| Jenis Pengajuan | Alur |
+|-----------------|------|
+| Pengajuan ke **ADMIN** (generic) | **1x approve** oleh admin |
+| Pengajuan Manager | **1x approve** oleh admin (otomatis routing) |
+| Pengajuan ke **SPV/Supervisor/Manager** spesifik | **2x approve**: atasan dulu → kemudian admin |
+
+#### Aturan Tambahan:
+- Durasi lembur harus **lebih dari 0 jam**.
+- Approver yang dipilih **harus berstatus aktif**.
+- Setelah diputuskan **approved/rejected** → final, tidak bisa diubah.
+- Lembur **approved** otomatis masuk ke payroll periode tersebut.
+- Admin **tidak bisa approve** pengajuan via atasan jika atasan belum approve.
 
 ---
 
@@ -675,8 +855,10 @@ Presensi selfie hanya bisa dilakukan dalam radius lokasi yang ditentukan:
 | **Contoh** | Periode Juni = 26 Mei – 25 Juni |
 | **Default tampil** | Jika tanggal sudah > 25, otomatis masuk ke periode bulan berikutnya |
 | **Hari kerja** | Dihitung otomatis (Senin–Sabtu), tidak termasuk Minggu |
+| **Hari kerja konsisten** | Semua karyawan dalam satu periode dapat nilai hari kerja yang sama |
 | **Real-time** | Summary payroll selalu update dari data absensi terbaru |
 | **Karyawan nonaktif** | Tidak muncul di periode berikutnya setelah tanggal nonaktif |
+| **Pemisahan halaman** | Karyawan Toko Solo di Summary Payroll Solo (terpisah dari utama) |
 
 ---
 
@@ -704,16 +886,21 @@ Presensi selfie hanya bisa dilakukan dalam radius lokasi yang ditentukan:
 | Check-in / Check-out | ✅ | ✅ | — |
 | Lihat absensi sendiri | ✅ | ✅ | ✅ |
 | Lihat absensi semua karyawan | — | — | ✅ |
-| Ajukan lembur | ✅ | ✅ | — |
-| Approve lembur | — | ✅ (jika ditunjuk) | ✅ (jika ditunjuk) |
+| Edit / input absensi manual | — | — | ✅ |
+| Ajukan lembur (+ field produksi jika Produksi) | ✅ | ✅ | — |
+| Approve lembur (stage 1 — atasan) | — | ✅ (jika ditunjuk) | — |
+| Approve lembur (stage 2 — admin / final) | — | — | ✅ |
+| Lihat detail pengajuan lembur (modal) | — | ✅ | ✅ |
 | Set jadwal shift | — (kecuali SPV/Manager) | ✅ | ✅ |
 | Ajukan pinjaman mandiri (maks Rp 3 jt) | ✅ | ✅ | — |
 | Buat pinjaman tanpa batas (darurat) | — | — | ✅ |
 | Approve / reject pinjaman | — | — | ✅ |
 | Lihat slip gaji sendiri | ✅ | ✅ | ✅ |
 | Lihat & distribusi slip gaji semua | — | — | ✅ |
-| Kelola & edit payroll | — | — | ✅ |
+| Kelola & edit Summary Payroll | — | — | ✅ |
+| Kelola Summary Payroll Solo (Toko Solo) | — | — | ✅ |
 | Kelola data karyawan | — | — | ✅ |
+| Download foto KTP karyawan | — | — | ✅ |
 | Approval reimburse & perjalanan dinas | — | — | ✅ |
 | Manajemen akun admin / SPV | — | — | ✅ |
 | Laporan kunjungan (sales) | ✅ (khusus sales) | — | ✅ |
@@ -733,12 +920,22 @@ Hubungi Admin HR untuk mencatat check-out secara manual. Karyawan tidak bisa men
 ---
 
 **Q: Saya sudah check-in tapi salah status. Bisa diubah?**
-Tidak bisa diubah sendiri. Hubungi Admin HR untuk koreksi data absensi.
+Tidak bisa diubah sendiri. Hubungi Admin HR untuk koreksi data absensi — admin punya akses untuk mengubah kode absensi via modal detail.
 
 ---
 
-**Q: Kenapa lembur saya tidak masuk ke payroll?**
-Pastikan status lembur sudah **Approved** oleh atasan. Lembur dengan status Pending atau Rejected tidak dihitung di payroll.
+**Q: Saya divisi Produksi, kenapa form lembur saya beda dari teman lain?**
+Field tambahan (Nama Order, Jumlah QTY, Target Sebelum/Setelah Lembur) memang khusus muncul untuk karyawan divisi Produksi. Ini untuk memudahkan admin tracking target produksi dari lembur yang diajukan.
+
+---
+
+**Q: Kenapa atasan saya sudah approve lembur tapi statusnya masih "menunggu admin"?**
+Karena Anda mengajukan lembur ke atasan (bukan langsung admin), sistem menerapkan **2x approval**. Setelah atasan approve, masih perlu admin approve untuk finalisasi. Tunggu admin proses, atau hubungi admin jika urgent.
+
+---
+
+**Q: Kalau saya mau lembur cepat selesai approve-nya, bagaimana?**
+Pilih opsi **ADMIN** generic di dropdown atasan saat submit. Pengajuan akan langsung 1x approve oleh admin (tidak perlu lewat atasan). Tapi pastikan urgensi memang membutuhkan ini — alur normal lewat atasan tetap direkomendasikan untuk hierarki yang baik.
 
 ---
 
@@ -754,6 +951,11 @@ Cicilan dipotong otomatis saat Admin memproses payroll. Jika payroll bulan ini b
 
 **Q: Pulang Awal (PA) itu apa bedanya dengan Izin?**
 PA adalah kondisi di mana karyawan **sudah check-in hadir** tapi **pulang sebelum jam checkout** shift-nya. Statusnya tetap tercatat hadir, namun ditandai PA dan wajib ada keterangan alasan. Berbeda dengan Izin yang artinya tidak masuk sama sekali sejak awal hari.
+
+---
+
+**Q: Saya karyawan Toko Solo, kenapa saya tidak muncul di Summary Payroll utama?**
+Karyawan dengan penempatan **Toko Solo** sengaja dipisah ke halaman **Summary Payroll Solo** agar tidak campur dengan unit lain. Admin akan melihat data Anda di menu Summary Payroll Solo. Slip gaji Anda tetap normal tampil di akun Anda.
 
 ---
 
@@ -773,12 +975,17 @@ Karyawan dengan status kepegawaian Freelance memiliki perhitungan gaji berbeda (
 ---
 
 **Q: Saya Supervisor, bagaimana cara approve lembur tim saya?**
-Login dengan akun karyawan Anda, lalu pilih menu **Approval Lembur** di sidebar. Hanya pengajuan yang ditujukan kepada Anda yang akan muncul.
+Login dengan akun karyawan Anda, lalu pilih menu **Approval Lembur** di sidebar. Hanya pengajuan yang ditujukan kepada Anda yang akan muncul. Setelah Anda approve, pengajuan masuk ke admin untuk approval kedua (2x approve).
 
 ---
 
 **Q: Bisa tidak check-in di luar jam shift?**
 Untuk karyawan dengan jadwal shift (Toko/Gudang/Media/JNE), check-in di luar window jam shift akan ditolak sistem. Untuk karyawan lain, sistem menerima check-in namun keterlambatan tetap dicatat.
+
+---
+
+**Q: Saya lihat tampilan login rusak (teks polos tanpa style). Bug?**
+Bukan bug — ini biasanya karena CSS gagal di-load di browser. Coba **hard refresh** (Ctrl+Shift+R), buka di **incognito**, atau hubungi tim IT jika masalah persisten.
 
 ---
 
