@@ -90,6 +90,7 @@ type PayrollSheetBaseRow = RowDataPacket & {
   raw_gaji_pokok_per_jam: string | null;
   total_omzet_global: string | null;
   status_kepegawaian: string | null;
+  tanggal_masuk_pertama: string | null;
 };
 
 type OmzetUnitRow = RowDataPacket & {
@@ -387,7 +388,8 @@ export async function getAdminPayrollSummarySheet(period?: {
         pei.freelance_rate_type AS raw_freelance_rate_type,
         pei.gaji_pokok_per_jam AS raw_gaji_pokok_per_jam,
         NULL AS total_omzet_global,
-        k.status_kepegawaian
+        k.status_kepegawaian,
+        DATE_FORMAT(k.tanggal_masuk_pertama, '%Y-%m-%d') AS tanggal_masuk_pertama
       FROM payroll p
       INNER JOIN karyawan k ON k.id = p.karyawan_id
       LEFT JOIN payroll_employee_input pei ON pei.payroll_id = p.id
@@ -715,14 +717,26 @@ export async function getAdminPayrollSummarySheet(period?: {
     const travelReimbursement = isFreelance ? 0 : (isSalesNasional ? (reimbursementMap.get(row.employee_id) ?? 0) : 0);
     const holidayDays = attendance.holiday;
     const alfaCount = attendance.alfa;
-    const totalBaseSalary = isFreelance ? monthlyBaseSalary : dailyBaseSalary * (presentDays + holidayDays);
+    const isNewEmployee =
+      !!row.tanggal_masuk_pertama &&
+      row.tanggal_masuk_pertama >= range.startSql &&
+      row.tanggal_masuk_pertama <= range.endSql;
+    const isNewEmployeeBelow15 = isNewEmployee && presentDays < 15;
+    const prorateBase = isNewEmployeeBelow15 ? (monthlyBaseSalary / 25) * presentDays : null;
+    const totalBaseSalary = isFreelance
+      ? monthlyBaseSalary
+      : (prorateBase ?? dailyBaseSalary * (presentDays + holidayDays));
     const roleFactor = getOmzetFactor(row.jabatan, row.status_kepegawaian);
     const employeeGroupKey = getOmzetGroupKeyForUnit(row.unit);
     const groupOmzet = employeeGroupKey ? omzetByGroup.get(employeeGroupKey) : undefined;
     const groupEligibleCount = employeeGroupKey ? (employeeCountByGroup.get(employeeGroupKey) ?? 0) : 0;
-    const omzetBonus = isOmzetEligible(row.jabatan, row.status_kepegawaian) && groupOmzet && groupEligibleCount > 0
-      ? (groupOmzet.bonusPool / groupEligibleCount) * roleFactor
-      : 0;
+    const omzetBonus =
+      !isNewEmployee &&
+      isOmzetEligible(row.jabatan, row.status_kepegawaian) &&
+      groupOmzet &&
+      groupEligibleCount > 0
+        ? (groupOmzet.bonusPool / groupEligibleCount) * roleFactor
+        : 0;
     const mealAllowance = isFreelance ? 0 : fixedMealAllowance * presentDays;
 
     const leaveCount = isFreelance ? 0 : (inputOverrideIzin ?? attendance.leave);
