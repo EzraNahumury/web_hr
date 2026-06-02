@@ -450,8 +450,12 @@ export async function ensurePayrollSupportTables(connection?: QueryExecutor) {
   }
 }
 
-export async function listPayrollEmployeeOptions(options?: { placementFilter?: string }) {
+export async function listPayrollEmployeeOptions(options?: {
+  placementFilter?: string;
+  excludePlacement?: string;
+}) {
   const placementFilter = options?.placementFilter?.trim();
+  const excludePlacement = options?.excludePlacement?.trim();
   const [rows] = await pool.query<PayrollEmployeeOptionRow[]>(
     `
       SELECT
@@ -466,9 +470,13 @@ export async function listPayrollEmployeeOptions(options?: { placementFilter?: s
       FROM karyawan k
       WHERE k.status_data = 'aktif'
         ${placementFilter ? "AND LOWER(COALESCE(k.penempatan, '')) = LOWER(?)" : ""}
+        ${excludePlacement ? "AND LOWER(COALESCE(k.penempatan, '')) <> LOWER(?)" : ""}
       ORDER BY k.nama ASC
     `,
-    placementFilter ? [placementFilter] : [],
+    [
+      ...(placementFilter ? [placementFilter] : []),
+      ...(excludePlacement ? [excludePlacement] : []),
+    ],
   );
 
   return rows.map((row) => ({

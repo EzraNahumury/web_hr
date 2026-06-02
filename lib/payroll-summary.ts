@@ -301,8 +301,9 @@ function isOmzetEligible(role: string | null | undefined, employmentStatus?: str
 export async function getAdminPayrollSummarySheet(period?: {
   month?: number;
   year?: number;
-}, options?: { placementFilter?: string }) {
+}, options?: { placementFilter?: string; excludePlacement?: string }) {
   const placementFilter = options?.placementFilter?.trim();
+  const excludePlacement = options?.excludePlacement?.trim();
   await Promise.all([ensurePayrollSupportTables(), ensureLoanSupportTables(), ensureReimbursementSchema()]);
   const activePeriod = {
     month: period?.month ?? getActivePayrollPeriod().month,
@@ -397,11 +398,17 @@ export async function getAdminPayrollSummarySheet(period?: {
           OR k.status_data = 'aktif'
         )
         ${placementFilter ? "AND LOWER(COALESCE(k.penempatan, '')) = LOWER(?)" : ""}
+        ${excludePlacement ? "AND LOWER(COALESCE(k.penempatan, '')) <> LOWER(?)" : ""}
       ORDER BY k.nama ASC
     `,
-    placementFilter
-      ? [periodMonth, periodYear, periodYear, periodMonth, placementFilter]
-      : [periodMonth, periodYear, periodYear, periodMonth],
+    [
+      periodMonth,
+      periodYear,
+      periodYear,
+      periodMonth,
+      ...(placementFilter ? [placementFilter] : []),
+      ...(excludePlacement ? [excludePlacement] : []),
+    ],
   );
 
   if (!rows.length) {
