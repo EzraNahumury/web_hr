@@ -138,10 +138,13 @@ export async function POST(request: Request) {
 
     const photoPath = await saveAttendancePhoto(body.photoDataUrl, employee.id, "out");
 
-    const isMedia = (employee.sub_divisi ?? "").trim().toLowerCase() === "media";
+    const subDivLower = (employee.sub_divisi ?? "").trim().toLowerCase();
+    const isMedia = subDivLower === "media";
+    const isHostlive = subDivLower === "hostlive";
+    const isAdvertiser = subDivLower === "advertiser";
     const isJne = employee.penempatan === "JNE";
     if (
-      (isTokoGudangPlacement(employee.penempatan) || isMedia || isJne) &&
+      (isTokoGudangPlacement(employee.penempatan) || isMedia || isHostlive || isAdvertiser || isJne) &&
       attendance.jam_masuk_str
     ) {
       const scheduledShift = await getScheduledShiftForDate(employee.id, attendanceDate);

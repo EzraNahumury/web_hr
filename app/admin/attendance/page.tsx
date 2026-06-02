@@ -1,6 +1,7 @@
 import AdminShell from "@/components/AdminShell";
 import AdminAttendanceSheet from "@/components/AdminAttendanceSheet";
 import { requireAdminSession } from "@/lib/auth";
+import { recomputeMediaHostliveAdvertiserLateOnce } from "@/lib/attendance-recompute";
 import { getAttendanceSheet } from "@/lib/hris";
 import { listNationalHolidaysInRange } from "@/lib/holidays";
 import { getCurrentAttendancePeriod } from "@/lib/payroll-admin";
@@ -34,6 +35,9 @@ export default async function AdminAttendancePage({
   searchParams: SearchParams;
 }) {
   const admin = await requireAdminSession();
+  await recomputeMediaHostliveAdvertiserLateOnce().catch((error) => {
+    console.error("recomputeMediaHostliveAdvertiserLateOnce failed", error);
+  });
   const params = await searchParams;
   const view = params.view === "week" ? "week" : "month";
   const week = Number(params.week ?? "1");

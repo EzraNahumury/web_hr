@@ -165,10 +165,13 @@ export async function POST(request: Request) {
     const detectedPlacement = requiresSelfie
       ? (checkGeofence(allPlacements, latitude, longitude).placement ?? employee.penempatan)
       : employee.penempatan;
-    const isMedia = (employee.sub_divisi ?? "").trim().toLowerCase() === "media";
+    const subDivLower = (employee.sub_divisi ?? "").trim().toLowerCase();
+    const isMedia = subDivLower === "media";
+    const isHostlive = subDivLower === "hostlive";
+    const isAdvertiser = subDivLower === "advertiser";
     const isJne = detectedPlacement === "JNE";
     const isShiftEligible =
-      requiresSelfie && (isTokoGudangPlacement(detectedPlacement) || isMedia || isJne);
+      requiresSelfie && (isTokoGudangPlacement(detectedPlacement) || isMedia || isHostlive || isAdvertiser || isJne);
     const scheduledShift = isShiftEligible
       ? await getScheduledShiftForDate(employee.id, attendanceDate)
       : null;
