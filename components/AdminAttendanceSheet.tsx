@@ -80,7 +80,7 @@ function AttendanceDetailModal({
       setFeedback({ type: "error", text: "Pilih kode absensi terlebih dahulu." });
       return;
     }
-    if (pendingCode === selected.detail.code) {
+    if (selected.detail.code && pendingCode === selected.detail.code) {
       setFeedback({ type: "error", text: "Kode tidak berubah." });
       return;
     }
@@ -145,7 +145,9 @@ function AttendanceDetailModal({
             </p>
 
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <label className="text-sm font-semibold text-[#3c2824]">Ubah Kode:</label>
+              <label className="text-sm font-semibold text-[#3c2824]">
+                {selected.detail.code ? "Ubah Kode:" : "Set Kode:"}
+              </label>
               <select
                 value={pendingCode}
                 onChange={(event) => setPendingCode(event.target.value)}
@@ -162,7 +164,7 @@ function AttendanceDetailModal({
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={isSaving || !pendingCode || pendingCode === selected.detail.code}
+                disabled={isSaving || !pendingCode || (!!selected.detail.code && pendingCode === selected.detail.code)}
                 className="inline-flex h-10 items-center justify-center rounded-xl bg-[#8f1d22] px-4 text-sm font-semibold text-white shadow-[0_2px_8px_rgba(143,29,34,0.22)] transition hover:bg-[#a12228] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSaving ? "Menyimpan..." : "Simpan"}
@@ -493,9 +495,37 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                           {displayCode}
                         </button>
                       ) : (
-                        <span className="inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fff4ee] px-2 py-1 text-xs">
+                        <button
+                          type="button"
+                          title="Input absensi manual"
+                          onClick={() => {
+                            const date = buildDateIso(day, month, year);
+                            setSelected({
+                              employeeId: row.employeeId,
+                              employeeName: row.name,
+                              day,
+                              detail: {
+                                code: "",
+                                date,
+                                status: null,
+                                timeIn: null,
+                                timeOut: null,
+                                photoIn: null,
+                                photoOut: null,
+                                latitudeIn: null,
+                                longitudeIn: null,
+                                latitudeOut: null,
+                                longitudeOut: null,
+                                lateMinutes: 0,
+                                note: null,
+                                isEarlyLeave: false,
+                              },
+                            });
+                          }}
+                          className="inline-flex min-w-8 items-center justify-center rounded-lg border border-dashed border-[#e5d4ce] bg-[#fff4ee] px-2 py-1 text-xs text-[#b39086] transition hover:border-[#8f1d22] hover:bg-[#f5ddd2] hover:text-[#8f1d22]"
+                        >
                           -
-                        </span>
+                        </button>
                       )}
                     </td>
                   );
