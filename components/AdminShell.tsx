@@ -32,6 +32,7 @@ const menuItems: MenuItem[] = [
   { label: "Pinjaman", href: "/admin/loans", description: "Pinjaman karyawan" },
   { label: "Potongan Kontrak", href: "/admin/contract-deductions", description: "Potongan per bulan" },
   { label: "Summary Payroll", href: "/admin/payroll-summary", description: "Ringkasan payroll" },
+  { label: "Summary Payroll Solo", href: "/admin/payroll-summary/solo", description: "Payroll khusus penempatan Toko Solo" },
   { label: "Payroll Bonus", href: "/admin/payroll-bonus", description: "Payroll bonus Sales, SPV, Manager, CS, Host Live, Marketplace, Media Marketing, Advertiser" },
   { label: "Summary Sales Nasional", href: "/admin/payroll-summary/sales-nasional", description: "Payroll khusus Sales Nasional" },
   { label: "Summary Penjahit", href: "/admin/payroll-summary/penjahit", description: "Payroll khusus Penjahit (mingguan & bulanan)" },

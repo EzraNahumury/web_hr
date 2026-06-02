@@ -56,7 +56,7 @@ export default async function AdminPayrollSummaryPage({
   const [sheet, employeeOptions, omzetPeriod, periodOptions] = await Promise.all([
     getAdminPayrollSummarySheet(period),
     listPayrollEmployeeOptions(),
-    getPayrollOmzetPeriod(period),
+    getPayrollOmzetPeriod(period, { includeOtherSaved: false }),
     listPayrollPeriods(),
   ]);
 

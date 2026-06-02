@@ -450,7 +450,8 @@ export async function ensurePayrollSupportTables(connection?: QueryExecutor) {
   }
 }
 
-export async function listPayrollEmployeeOptions() {
+export async function listPayrollEmployeeOptions(options?: { placementFilter?: string }) {
+  const placementFilter = options?.placementFilter?.trim();
   const [rows] = await pool.query<PayrollEmployeeOptionRow[]>(
     `
       SELECT
@@ -464,8 +465,10 @@ export async function listPayrollEmployeeOptions() {
         k.status_kepegawaian
       FROM karyawan k
       WHERE k.status_data = 'aktif'
+        ${placementFilter ? "AND LOWER(COALESCE(k.penempatan, '')) = LOWER(?)" : ""}
       ORDER BY k.nama ASC
     `,
+    placementFilter ? [placementFilter] : [],
   );
 
   return rows.map((row) => ({
@@ -599,9 +602,15 @@ export async function listPayrollPeriods() {
   }));
 }
 
-export async function getPayrollOmzetPeriod(period?: PayrollPeriodInput): Promise<PayrollOmzetPeriod> {
+export async function getPayrollOmzetPeriod(
+  period?: PayrollPeriodInput,
+  options?: { groups?: OmzetGroupConfig[]; includeOtherSaved?: boolean },
+): Promise<PayrollOmzetPeriod> {
   const resolved = resolvePayrollPeriod(period);
   await ensurePayrollSupportTables();
+
+  const activeGroups = options?.groups ?? OMZET_GROUPS;
+  const includeOtherSaved = options?.includeOtherSaved ?? true;
 
   const [rows] = await pool.query<OmzetMonthlyRow[]>(
     `
@@ -617,11 +626,17 @@ export async function getPayrollOmzetPeriod(period?: PayrollPeriodInput): Promis
   for (const row of rows) {
     const unitName = (row.unit ?? "").trim();
     if (!unitName) continue;
-    const groupKey = getOmzetGroupKeyForUnit(unitName) ?? unitName;
+    // Match by active groups first (so custom groups like "Toko Solo" can be resolved)
+    let groupKey = activeGroups.find(
+      (g) =>
+        g.key.toLowerCase() === unitName.toLowerCase() ||
+        g.units.some((u) => u.toLowerCase() === unitName.toLowerCase()),
+    )?.key;
+    if (!groupKey) groupKey = getOmzetGroupKeyForUnit(unitName) ?? unitName;
     savedByGroup.set(groupKey, row);
   }
 
-  const units: PayrollOmzetUnitEntry[] = OMZET_GROUPS.map((group) => {
+  const units: PayrollOmzetUnitEntry[] = activeGroups.map((group) => {
     const saved = savedByGroup.get(group.key);
     const totalOmzet = toNumber(saved?.total_omzet);
     const isCustomBonus = saved ? Boolean(saved.is_custom_bonus) : group.defaultCustomBonus;
@@ -637,21 +652,23 @@ export async function getPayrollOmzetPeriod(period?: PayrollPeriodInput): Promis
   });
 
   // Sertakan grup lain yang sudah tersimpan tapi tidak ada di daftar default
-  for (const row of rows) {
-    const unitName = (row.unit ?? "").trim();
-    if (!unitName) continue;
-    const groupKey = getOmzetGroupKeyForUnit(unitName) ?? unitName;
-    if (OMZET_GROUPS.some((g) => g.key === groupKey)) continue;
-    const totalOmzet = toNumber(row.total_omzet);
-    const isCustomBonus = Boolean(row.is_custom_bonus);
-    units.push({
-      unit: groupKey,
-      label: groupKey,
-      totalOmzet,
-      bonusOmzet: isCustomBonus ? totalOmzet : totalOmzet * PAYROLL_OMZET_BONUS_RATE,
-      isCustomBonus,
-      isLocked: true,
-    });
+  if (includeOtherSaved) {
+    for (const row of rows) {
+      const unitName = (row.unit ?? "").trim();
+      if (!unitName) continue;
+      const groupKey = getOmzetGroupKeyForUnit(unitName) ?? unitName;
+      if (activeGroups.some((g) => g.key === groupKey)) continue;
+      const totalOmzet = toNumber(row.total_omzet);
+      const isCustomBonus = Boolean(row.is_custom_bonus);
+      units.push({
+        unit: groupKey,
+        label: groupKey,
+        totalOmzet,
+        bonusOmzet: isCustomBonus ? totalOmzet : totalOmzet * PAYROLL_OMZET_BONUS_RATE,
+        isCustomBonus,
+        isLocked: true,
+      });
+    }
   }
 
   const totalOmzet = units.reduce((sum, item) => sum + item.totalOmzet, 0);
