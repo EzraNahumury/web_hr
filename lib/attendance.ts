@@ -157,12 +157,15 @@ export function detectShiftFromCheckIn(checkInTime: string): AttendanceShift | n
 export function isEarlyLeaveByTime(
   checkInTime: string | null | undefined,
   checkOutTime: string | null | undefined,
+  knownShift?: string | null,
 ): boolean {
   if (!checkInTime || !checkOutTime) return false;
-  const shift = detectShiftFromCheckIn(checkInTime);
-  if (!shift) return false;
+  const candidate = knownShift && knownShift in CHECKOUT_WINDOW
+    ? (knownShift as AttendanceShift)
+    : detectShiftFromCheckIn(checkInTime);
+  if (!candidate) return false;
   const outMins = timeToMinutes(checkOutTime);
-  const coStart = CHECKOUT_WINDOW[shift][0];
+  const coStart = CHECKOUT_WINDOW[candidate][0];
   return outMins < coStart;
 }
 

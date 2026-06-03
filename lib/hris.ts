@@ -55,6 +55,8 @@ type AttendanceRow = RowDataPacket & {
   terlambat_menit: number;
   setengah_hari: number;
   keterangan: string | null;
+  absensi_shift: string | null;
+  scheduled_shift: string | null;
 };
 
 export type AttendanceDayDetail = {
@@ -241,12 +243,17 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         a.longitude_pulang,
         a.terlambat_menit,
         a.setengah_hari,
-        a.keterangan
+        a.keterangan,
+        a.shift AS absensi_shift,
+        j.shift AS scheduled_shift
       FROM karyawan k
       INNER JOIN users u ON u.id = k.user_id
       LEFT JOIN absensi a
         ON a.karyawan_id = k.id
         AND a.tanggal BETWEEN ? AND ?
+      LEFT JOIN jadwal_karyawan j
+        ON j.karyawan_id = k.id
+        AND j.tanggal = a.tanggal
       WHERE k.status_data = 'aktif'
       ORDER BY k.nama ASC, a.tanggal ASC
     `,
@@ -284,8 +291,12 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
     if (row.attendance_date) {
       const day = Number(row.attendance_date.split("-")[2]);
       const code = mapAttendanceCode(row);
+      const knownShift =
+        row.scheduled_shift && row.scheduled_shift !== "libur"
+          ? row.scheduled_shift
+          : row.absensi_shift;
       const isEarlyLeave =
-        code === "O" && isEarlyLeaveByTime(row.jam_masuk, row.jam_pulang);
+        code === "O" && isEarlyLeaveByTime(row.jam_masuk, row.jam_pulang, knownShift);
       byEmployee.get(row.employee_id)!.daily[day] = {
         code,
         date: row.attendance_date,
