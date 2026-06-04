@@ -125,7 +125,7 @@ export async function checkFullLoanEligibility(
       month: "2-digit",
     }).format(lunasRows[0].updated_at);
     const lunasPeriodIso = `${jakartaStr}-01`;
-    const canReapplyDate = addMonthsToIsoDate(lunasPeriodIso, 3);
+    const canReapplyDate = addMonthsToIsoDate(lunasPeriodIso, 4);
     const today = getJakartaTodayIsoDate();
 
     if (canReapplyDate && today < canReapplyDate) {

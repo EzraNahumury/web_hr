@@ -233,7 +233,7 @@ Jika karyawan dari divisi **Produksi**, akan muncul section tambahan dengan fiel
 |----|--------|-----------|
 | 1 | **Masa kerja minimal 6 bulan** | Dihitung dari tanggal masuk pertama |
 | 2 | **Tidak ada pinjaman aktif** | Tidak bisa mengajukan jika masih ada pinjaman berjalan atau pending |
-| 3 | **Cooldown 3 bulan setelah lunas** | Contoh: Pinjaman lunas Januari → bisa ajukan kembali mulai April |
+| 3 | **Cooldown 4 bulan setelah lunas** | Contoh: Pinjaman lunas Januari → bisa ajukan kembali mulai Mei (lewati Feb–Mar–Apr) |
 | 4 | **Maksimal Rp 3.000.000** | Batas pengajuan mandiri karyawan |
 
 > **Butuh pinjaman lebih dari Rp 3.000.000 atau situasi darurat?** Admin dapat langsung memberikan pinjaman tanpa batas nominal untuk kondisi khusus (misalnya kecelakaan, kedaruratan). Hubungi Admin HR.
@@ -840,8 +840,8 @@ Presensi selfie hanya bisa dilakukan dalam radius lokasi yang ditentukan:
 | **Batas maksimal (karyawan)** | Rp 3.000.000 per pengajuan mandiri |
 | **Batas admin** | Tidak ada batas (untuk kondisi darurat) |
 | **Satu pinjaman aktif** | Tidak bisa mengajukan jika masih ada pinjaman pending/approved/berjalan |
-| **Cooldown setelah lunas** | 3 bulan setelah pinjaman selesai baru bisa ajukan lagi |
-| **Contoh cooldown** | Lunas Januari → Bisa ajukan kembali mulai 1 April |
+| **Cooldown setelah lunas** | 4 bulan setelah pinjaman selesai baru bisa ajukan lagi (jeda lewati 3 bulan penuh) |
+| **Contoh cooldown** | Lunas Januari → Bisa ajukan kembali mulai 1 Mei (lewati Feb, Mar, Apr) |
 | **Cicilan otomatis** | Dipotong dari gaji setiap bulan sesuai jadwal |
 | **Pelunasan awal** | Hanya bisa dilakukan oleh Admin |
 
