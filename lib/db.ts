@@ -30,9 +30,12 @@ export const pool =
     ? global.__mysqlPool
     : mysql.createPool({
         ...dbConfig,
-        connectionLimit: 10,
+        connectionLimit: 30,
         waitForConnections: true,
+        queueLimit: 100,
         namedPlaceholders: true,
+        enableKeepAlive: true,
+        keepAliveInitialDelay: 10000,
       });
 
 if (process.env.NODE_ENV !== "production") {

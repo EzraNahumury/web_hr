@@ -21,7 +21,29 @@ function friendlyAuthError(err: unknown): string {
   if (msg.includes("did not match the expected pattern")) {
     return "Email atau password mengandung karakter tidak valid. Coba ketik ulang manual tanpa autofill.";
   }
+  if (msg.includes("Unexpected token") || msg.includes("not valid JSON") || msg.includes("JSON.parse")) {
+    return "Server sedang sibuk atau koneksi terputus. Coba lagi dalam beberapa detik. Jika tetap gagal, hubungi admin HR.";
+  }
+  if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+    return "Tidak bisa terhubung ke server. Periksa koneksi internet Anda lalu coba lagi.";
+  }
   return msg;
+}
+
+async function safeJsonParse(res: Response) {
+  const contentType = res.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    throw new Error(
+      res.status >= 500
+        ? "Server sedang sibuk atau bermasalah. Coba lagi dalam beberapa detik."
+        : "Layanan login sementara tidak tersedia. Hubungi admin HR jika masalah berlanjut.",
+    );
+  }
+  try {
+    return await res.json();
+  } catch {
+    throw new Error("Server mengirim data yang tidak valid. Coba lagi atau hubungi admin HR.");
+  }
 }
 
 export default function Home() {
@@ -64,7 +86,7 @@ export default function Home() {
       const cleanEmail = sanitizeInput(email);
       const cleanPassword = sanitizeInput(password);
       const res = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: cleanEmail, password: cleanPassword }) });
-      const r = (await res.json()) as { message?: string; redirectTo?: string; role?: "admin" | "karyawan" | "spv"; showPayrollGreeting?: boolean; employeeName?: string };
+      const r = (await safeJsonParse(res)) as { message?: string; redirectTo?: string; role?: "admin" | "karyawan" | "spv"; showPayrollGreeting?: boolean; employeeName?: string };
       if (!res.ok) throw new Error(r.message || "Login gagal.");
       if (r.role === "karyawan") {
         try { await requestLoginLocation(); } catch { /* biarkan login lanjut */ }
@@ -88,7 +110,7 @@ export default function Home() {
     setIsSubmitting(true);
     try {
       const res = await fetch("/api/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: cleanEmail, password: cleanPassword }) });
-      const r = (await res.json()) as { message?: string }; if (!res.ok) throw new Error(r.message || "Gagal.");
+      const r = (await safeJsonParse(res)) as { message?: string }; if (!res.ok) throw new Error(r.message || "Gagal.");
       setSuccessMessage(r.message || "Pendaftaran berhasil!"); setSignupEmail(""); setSignupPassword("");
     } catch (err) { setErrorMessage(friendlyAuthError(err)); } finally { setIsSubmitting(false); }
   }
