@@ -1,6 +1,6 @@
 import AdminPayrollSummaryManager from "@/components/AdminPayrollSummaryManager";
 import AdminShell from "@/components/AdminShell";
-import { requireAdminSession } from "@/lib/auth";
+import { isPayrollEditor, requireAdminSession } from "@/lib/auth";
 import {
   getPayrollOmzetPeriod,
   listPayrollEmployeeOptions,
@@ -64,6 +64,7 @@ export default async function AdminSoloPayrollSummaryPage({
         omzetPeriod={omzetPeriod}
         periodOptions={periodOptions}
         basePath="/admin/payroll-summary/solo"
+        canEdit={isPayrollEditor(admin.email)}
       />
     </AdminShell>
   );

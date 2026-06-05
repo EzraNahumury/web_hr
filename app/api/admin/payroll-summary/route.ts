@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentAdminSession } from "@/lib/auth";
+import { getCurrentAdminSession, isPayrollEditor } from "@/lib/auth";
 import {
   upsertPayrollPeriodOmzet,
   upsertPayrollFromForm,
@@ -155,6 +155,13 @@ export async function POST(request: Request) {
 
   if (!admin) {
     return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
+  }
+
+  if (!isPayrollEditor(admin.email)) {
+    return NextResponse.json(
+      { message: "Hanya admin tertentu yang berhak mengedit Summary Payroll. Hubungi admin pengelola payroll." },
+      { status: 403 },
+    );
   }
 
   try {

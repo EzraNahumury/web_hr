@@ -1,6 +1,6 @@
 import AdminPayrollSummaryManager from "@/components/AdminPayrollSummaryManager";
 import AdminShell from "@/components/AdminShell";
-import { requireAdminSession } from "@/lib/auth";
+import { isPayrollEditor, requireAdminSession } from "@/lib/auth";
 import {
   getPayrollOmzetPeriod,
   listPayrollEmployeeOptions,
@@ -73,6 +73,7 @@ export default async function AdminPayrollSummaryPage({
         employeeOptions={employeeOptions.filter((employee) => !isSalesNasionalRole(employee.role) && !isPenjahit(employee.subDivision))}
         omzetPeriod={omzetPeriod}
         periodOptions={periodOptions}
+        canEdit={isPayrollEditor(admin.email)}
       />
     </AdminShell>
   );

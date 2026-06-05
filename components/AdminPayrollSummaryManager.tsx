@@ -16,6 +16,7 @@ type Props = {
   periodOptions: PayrollPeriodOption[];
   basePath?: string;
   variant?: "default" | "sales-nasional";
+  canEdit?: boolean;
 };
 
 type FormState = {
@@ -120,6 +121,7 @@ export default function AdminPayrollSummaryManager({
   periodOptions,
   basePath = "/admin/payroll-summary",
   variant = "default",
+  canEdit = true,
 }: Props) {
   const router = useRouter();
   const confirm = useConfirm();
@@ -345,6 +347,23 @@ export default function AdminPayrollSummaryManager({
 
   return (
     <div className="space-y-5">
+      {!canEdit ? (
+        <div className="flex items-start gap-3 rounded-[24px] border border-[#f0d8d1] bg-[#fff7f3] px-5 py-4 text-sm text-[#5a3a2d]">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 h-5 w-5 flex-none text-[#8f1d22]" aria-hidden="true">
+            <rect x="3" y="11" width="18" height="11" rx="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+          <div>
+            <p className="font-semibold text-[#8a3b1a]">Mode Lihat Saja (Read-Only)</p>
+            <p className="mt-1 text-[#7a6059]">
+              Anda dapat melihat data Summary Payroll, tetapi tidak bisa mengedit, menyimpan, menghapus, atau input omzet.
+              Hanya admin <span className="font-semibold text-[#241716]">avafamily17@gmail.com</span> yang punya hak edit.
+              Hubungi admin pengelola payroll untuk perubahan data.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       <section className="rounded-[28px] border border-[#ead7ce] bg-white p-5">
         <div className="grid gap-4 md:grid-cols-[minmax(0,280px)_180px] md:items-end md:justify-between">
           <Field label="Periode History Payroll">
@@ -359,6 +378,7 @@ export default function AdminPayrollSummaryManager({
         </div>
       </section>
 
+      {canEdit ? (
       <section className={isSalesNasionalSummary ? "grid gap-5" : "grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]"}>
         <form onSubmit={handlePayrollSubmit} className="rounded-[32px] border border-[#cfeaec] bg-[linear-gradient(180deg,#f9ffff_0%,#f2fcfc_100%)] p-6">
           <div className="flex items-start justify-between gap-4">
@@ -557,6 +577,7 @@ export default function AdminPayrollSummaryManager({
           </section>
         </div> : null}
       </section>
+      ) : null}
 
       {sheet ? (
         <>
@@ -689,10 +710,14 @@ export default function AdminPayrollSummaryManager({
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.totalSalaryBeforeDeduction)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right font-semibold text-[#8f1d22]">{formatCurrency(row.netIncome)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3">
-                        <div className="flex min-w-[140px] gap-2">
-                          <button type="button" onClick={() => handleEditRow(row)} className="inline-flex h-9 items-center justify-center rounded-xl border border-[#0d7f86] px-3 text-xs font-semibold text-[#0d7f86]">Edit</button>
-                          <button type="button" onClick={() => handleDeleteRow(row.id)} disabled={isDeletePending} className="inline-flex h-9 items-center justify-center rounded-xl bg-[#8f1d22] px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">{isDeletePending ? "Proses..." : "Hapus"}</button>
-                        </div>
+                        {canEdit ? (
+                          <div className="flex min-w-[140px] gap-2">
+                            <button type="button" onClick={() => handleEditRow(row)} className="inline-flex h-9 items-center justify-center rounded-xl border border-[#0d7f86] px-3 text-xs font-semibold text-[#0d7f86]">Edit</button>
+                            <button type="button" onClick={() => handleDeleteRow(row.id)} disabled={isDeletePending} className="inline-flex h-9 items-center justify-center rounded-xl bg-[#8f1d22] px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">{isDeletePending ? "Proses..." : "Hapus"}</button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-[#a1a1a1]">Read only</span>
+                        )}
                       </td>
                     </tr>
                   ))}

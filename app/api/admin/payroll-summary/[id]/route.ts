@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentAdminSession } from "@/lib/auth";
+import { getCurrentAdminSession, isPayrollEditor } from "@/lib/auth";
 import { deletePayrollById } from "@/lib/payroll-admin";
 
 function parsePayrollId(value: string) {
@@ -16,6 +16,13 @@ export async function DELETE(
 
   if (!admin) {
     return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
+  }
+
+  if (!isPayrollEditor(admin.email)) {
+    return NextResponse.json(
+      { message: "Hanya admin tertentu yang berhak menghapus payroll." },
+      { status: 403 },
+    );
   }
 
   const resolvedParams = await params;
