@@ -874,11 +874,18 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
     if (isFreelance) {
       if (freelanceRateType === "per_jam") {
         const [hoursRows] = await connection.query<FreelanceHoursRow[]>(
-          `SELECT COALESCE(SUM(TIMESTAMPDIFF(MINUTE, jam_masuk, jam_pulang)), 0) AS total_menit
+          `SELECT COALESCE(SUM(
+             CASE
+               WHEN jam_masuk IS NOT NULL AND jam_pulang IS NOT NULL
+                 THEN TIMESTAMPDIFF(MINUTE, jam_masuk, jam_pulang)
+               WHEN jam_masuk IS NOT NULL
+                 THEN 480
+               ELSE 0
+             END
+           ), 0) AS total_menit
            FROM absensi
            WHERE karyawan_id = ? AND tanggal BETWEEN ? AND ?
-             AND status_absensi = 'hadir'
-             AND jam_masuk IS NOT NULL AND jam_pulang IS NOT NULL`,
+             AND status_absensi = 'hadir'`,
           [payload.employeeId, range.startSql, range.endSql],
         );
         freelancePay = (toNumber(hoursRows[0]?.total_menit) / 60) * (payload.gajiPerJam ?? 0);

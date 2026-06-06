@@ -507,12 +507,19 @@ export async function getAdminPayrollSummarySheet(period?: {
     ),
     pool.query<RowDataPacket[]>(
       `SELECT karyawan_id AS employee_id,
-              COALESCE(SUM(TIMESTAMPDIFF(MINUTE, jam_masuk, jam_pulang)), 0) AS total_menit
+              COALESCE(SUM(
+                CASE
+                  WHEN jam_masuk IS NOT NULL AND jam_pulang IS NOT NULL
+                    THEN TIMESTAMPDIFF(MINUTE, jam_masuk, jam_pulang)
+                  WHEN jam_masuk IS NOT NULL
+                    THEN 480
+                  ELSE 0
+                END
+              ), 0) AS total_menit
        FROM absensi
        WHERE karyawan_id IN (${placeholders})
          AND tanggal BETWEEN ? AND ?
          AND status_absensi = 'hadir'
-         AND jam_masuk IS NOT NULL AND jam_pulang IS NOT NULL
        GROUP BY karyawan_id`,
       [...employeeIds, range.startSql, range.endSql],
     ),
