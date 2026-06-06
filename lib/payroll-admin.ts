@@ -877,7 +877,7 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
           `SELECT COALESCE(SUM(
              CASE
                WHEN jam_masuk IS NOT NULL AND jam_pulang IS NOT NULL
-                 THEN TIMESTAMPDIFF(MINUTE, jam_masuk, jam_pulang)
+                 THEN FLOOR(TIMESTAMPDIFF(MINUTE, jam_masuk, jam_pulang) / 30) * 30
                WHEN jam_masuk IS NOT NULL
                  THEN 480
                ELSE 0

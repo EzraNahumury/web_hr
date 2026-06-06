@@ -510,7 +510,7 @@ export async function getAdminPayrollSummarySheet(period?: {
               COALESCE(SUM(
                 CASE
                   WHEN jam_masuk IS NOT NULL AND jam_pulang IS NOT NULL
-                    THEN TIMESTAMPDIFF(MINUTE, jam_masuk, jam_pulang)
+                    THEN FLOOR(TIMESTAMPDIFF(MINUTE, jam_masuk, jam_pulang) / 30) * 30
                   WHEN jam_masuk IS NOT NULL
                     THEN 480
                   ELSE 0
@@ -717,9 +717,11 @@ export async function getAdminPayrollSummarySheet(period?: {
     const workDays = periodWorkDays;
     const presentDays = inputOverrideMasuk ?? attendance.present;
 
-    // For freelance: use override_gaji_pokok (stored computed amount) directly
+    // For freelance: kalau per_jam, tampilkan rate per_jam di kolom Insentif Kehadiran (bukan per_hari yg 0)
     const dailyBaseSalary = isFreelance
-      ? toNumber(row.raw_gaji_pokok_per_hari)
+      ? (freelanceRateType === "per_jam"
+          ? freelanceRatePerJam
+          : toNumber(row.raw_gaji_pokok_per_hari))
       : (toNumber(row.raw_gaji_pokok_per_hari) || (workDays > 0 ? toNumber(row.gaji_pokok) / workDays : 0));
     const monthlyBaseSalary = isFreelance
       ? (freelanceRateType === "per_jam"
