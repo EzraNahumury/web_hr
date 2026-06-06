@@ -430,6 +430,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     totalEmployeeResult,
     omzetUnitResult,
     employeeUnitCountResult,
+    freelanceHoursResult,
   ] = await Promise.all([
     pool.query<PeriodAttendanceRow[]>(
       `
@@ -504,7 +505,23 @@ export async function getAdminPayrollSummarySheet(period?: {
           AND COALESCE(LOWER(status_kepegawaian), '') <> 'freelance'
         GROUP BY unit`,
     ),
+    pool.query<RowDataPacket[]>(
+      `SELECT karyawan_id AS employee_id,
+              COALESCE(SUM(TIMESTAMPDIFF(MINUTE, jam_masuk, jam_pulang)), 0) AS total_menit
+       FROM absensi
+       WHERE karyawan_id IN (${placeholders})
+         AND tanggal BETWEEN ? AND ?
+         AND status_absensi = 'hadir'
+         AND jam_masuk IS NOT NULL AND jam_pulang IS NOT NULL
+       GROUP BY karyawan_id`,
+      [...employeeIds, range.startSql, range.endSql],
+    ),
   ]);
+
+  const freelanceMinutesMap = new Map<number, number>();
+  for (const row of freelanceHoursResult[0] as Array<{ employee_id: number; total_menit: number | string }>) {
+    freelanceMinutesMap.set(row.employee_id, Number(row.total_menit) || 0);
+  }
 
   const attendanceMap = new Map<
     number,
@@ -676,6 +693,13 @@ export async function getAdminPayrollSummarySheet(period?: {
 
     const statusKepegawaianNorm = (row.status_kepegawaian ?? "").trim().toLowerCase();
     const isFreelance = statusKepegawaianNorm === "freelance";
+    const freelanceRateType = (row.raw_freelance_rate_type ?? "per_hari") as "per_hari" | "per_jam";
+    const freelanceRatePerJam = toNumber(row.raw_gaji_pokok_per_jam);
+    const freelanceMinutes = freelanceMinutesMap.get(row.employee_id) ?? 0;
+    const freelancePay =
+      isFreelance && freelanceRateType === "per_jam"
+        ? (freelanceMinutes / 60) * freelanceRatePerJam
+        : 0;
 
     const payrollType =
       row.raw_payroll_type ??
@@ -691,7 +715,9 @@ export async function getAdminPayrollSummarySheet(period?: {
       ? toNumber(row.raw_gaji_pokok_per_hari)
       : (toNumber(row.raw_gaji_pokok_per_hari) || (workDays > 0 ? toNumber(row.gaji_pokok) / workDays : 0));
     const monthlyBaseSalary = isFreelance
-      ? (inputOverrideGajiPokok ?? toNumber(row.gaji_pokok))
+      ? (freelanceRateType === "per_jam"
+          ? (inputOverrideGajiPokok ?? freelancePay)
+          : (inputOverrideGajiPokok ?? toNumber(row.gaji_pokok)))
       : (inputOverrideGajiPokok ?? dailyBaseSalary * workDays);
 
     const positionAllowance = isFreelance ? 0 : toNumber(row.tunjangan_jabatan);
