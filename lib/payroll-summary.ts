@@ -700,13 +700,9 @@ export async function getAdminPayrollSummarySheet(period?: {
 
     const statusKepegawaianNorm = (row.status_kepegawaian ?? "").trim().toLowerCase();
     const isFreelance = statusKepegawaianNorm === "freelance";
-    const freelanceRateType = (row.raw_freelance_rate_type ?? "per_hari") as "per_hari" | "per_jam";
+    // Freelance selalu dihitung per jam: rate × total jam (dari absensi, dibulatkan per 30 menit)
     const freelanceRatePerJam = toNumber(row.raw_gaji_pokok_per_jam);
     const freelanceMinutes = freelanceMinutesMap.get(row.employee_id) ?? 0;
-    const freelancePay =
-      isFreelance && freelanceRateType === "per_jam"
-        ? (freelanceMinutes / 60) * freelanceRatePerJam
-        : 0;
 
     const payrollType =
       row.raw_payroll_type ??
@@ -717,16 +713,14 @@ export async function getAdminPayrollSummarySheet(period?: {
     const workDays = periodWorkDays;
     const presentDays = inputOverrideMasuk ?? attendance.present;
 
-    // For freelance: kalau per_jam, tampilkan rate per_jam di kolom Insentif Kehadiran (bukan per_hari yg 0)
+    // For freelance: Insentif Kehadiran adalah rate per jam. Tampilkan rate yang admin input
+    // (entah dia saved di kolom per_jam atau per_hari — keduanya artinya sama: rate per jam).
     const dailyBaseSalary = isFreelance
-      ? (freelanceRateType === "per_jam"
-          ? freelanceRatePerJam
-          : toNumber(row.raw_gaji_pokok_per_hari))
+      ? (freelanceRatePerJam || toNumber(row.raw_gaji_pokok_per_hari))
       : (toNumber(row.raw_gaji_pokok_per_hari) || (workDays > 0 ? toNumber(row.gaji_pokok) / workDays : 0));
+    // Take Home Pay freelance = total jam dari absensi (dibulatkan per 30 menit) × rate per jam
     const monthlyBaseSalary = isFreelance
-      ? (freelanceRateType === "per_jam"
-          ? (inputOverrideGajiPokok ?? freelancePay)
-          : (inputOverrideGajiPokok ?? toNumber(row.gaji_pokok)))
+      ? (inputOverrideGajiPokok ?? (freelanceMinutes / 60) * dailyBaseSalary)
       : (inputOverrideGajiPokok ?? dailyBaseSalary * workDays);
 
     const positionAllowance = isFreelance ? 0 : toNumber(row.tunjangan_jabatan);

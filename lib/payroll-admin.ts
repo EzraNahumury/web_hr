@@ -867,31 +867,29 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
     const personalLoanCut = payload.overridePinjamanPribadi ?? 0;
     const gajiPerDay = payload.gajiPerDay;
 
-    // Freelance detection
+    // Freelance detection — selalu dihitung per jam: rate × total jam dari absensi
     const isFreelance = (employee.status_kepegawaian ?? "").trim().toLowerCase() === "freelance";
     const freelanceRateType = payload.freelanceRateType ?? "per_hari";
     let freelancePay = 0;
     if (isFreelance) {
-      if (freelanceRateType === "per_jam") {
-        const [hoursRows] = await connection.query<FreelanceHoursRow[]>(
-          `SELECT COALESCE(SUM(
-             CASE
-               WHEN jam_masuk IS NOT NULL AND jam_pulang IS NOT NULL
-                 THEN FLOOR(TIMESTAMPDIFF(MINUTE, jam_masuk, jam_pulang) / 30) * 30
-               WHEN jam_masuk IS NOT NULL
-                 THEN 480
-               ELSE 0
-             END
-           ), 0) AS total_menit
-           FROM absensi
-           WHERE karyawan_id = ? AND tanggal BETWEEN ? AND ?
-             AND status_absensi = 'hadir'`,
-          [payload.employeeId, range.startSql, range.endSql],
-        );
-        freelancePay = (toNumber(hoursRows[0]?.total_menit) / 60) * (payload.gajiPerJam ?? 0);
-      } else {
-        freelancePay = gajiPerDay * presentDays;
-      }
+      // Rate per jam diambil dari field per_jam (kalau ada), fallback ke per_hari (treat as per jam)
+      const ratePerJam = (payload.gajiPerJam ?? 0) || gajiPerDay;
+      const [hoursRows] = await connection.query<FreelanceHoursRow[]>(
+        `SELECT COALESCE(SUM(
+           CASE
+             WHEN jam_masuk IS NOT NULL AND jam_pulang IS NOT NULL
+               THEN FLOOR(TIMESTAMPDIFF(MINUTE, jam_masuk, jam_pulang) / 30) * 30
+             WHEN jam_masuk IS NOT NULL
+               THEN 480
+             ELSE 0
+           END
+         ), 0) AS total_menit
+         FROM absensi
+         WHERE karyawan_id = ? AND tanggal BETWEEN ? AND ?
+           AND status_absensi = 'hadir'`,
+        [payload.employeeId, range.startSql, range.endSql],
+      );
+      freelancePay = (toNumber(hoursRows[0]?.total_menit) / 60) * ratePerJam;
     }
 
     const monthlyBaseSalary = isFreelance ? freelancePay : (payload.overrideGajiPokok ?? gajiPerDay * workDays);
