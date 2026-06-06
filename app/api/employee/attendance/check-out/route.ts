@@ -71,7 +71,7 @@ export async function POST(request: Request) {
           geofence: {
             reason: geofence.reason,
             distanceMeters: geofence.distanceMeters,
-            maxRadiusMeters: MAX_GEOFENCE_RADIUS_METERS,
+            maxRadiusMeters: geofence.location?.radiusMeters ?? MAX_GEOFENCE_RADIUS_METERS,
             targetLabel: geofence.location?.label ?? null,
             targetLatitude: geofence.location?.latitude ?? null,
             targetLongitude: geofence.location?.longitude ?? null,

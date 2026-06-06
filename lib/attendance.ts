@@ -172,7 +172,8 @@ export function isEarlyLeaveByTime(
 export function getShiftLateMinutes(time: string, shift: AttendanceShift): number {
   const mins = timeToMinutes(time);
   const lateRaw = Math.max(mins - SHIFT_START[shift], 0);
-  const tolerance = SHIFT_TOLERANCE_MINUTES[shift] ?? 0;
+  // Default toleransi 5 menit untuk semua shift; JNE tetap 10 menit lewat SHIFT_TOLERANCE_MINUTES override.
+  const tolerance = SHIFT_TOLERANCE_MINUTES[shift] ?? 5;
   return lateRaw <= tolerance ? 0 : lateRaw;
 }
 
