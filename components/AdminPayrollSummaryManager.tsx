@@ -628,6 +628,7 @@ export default function AdminPayrollSummaryManager({
                     <th rowSpan={2} className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Sakit Tanpa Surat</th>
                     <th colSpan={2} className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Setengah Hari</th>
                     <th colSpan={2} className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Telat</th>
+                    <th rowSpan={2} className="border border-[#fca5a5] bg-[#ef4444] px-3 py-3 text-white">Total Potongan</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Total Gaji</th>
                     <th colSpan={3} className="border border-[#a8ebef] px-3 py-3">Tambahan</th>
                     <th colSpan={4} className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Total Potongan</th>
@@ -698,6 +699,7 @@ export default function AdminPayrollSummaryManager({
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.halfDayDeduction)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-center">{row.lateCount}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.lateDeduction)}</td>
+                      <td className="border border-[#d7ecee] px-3 py-3 text-right font-semibold text-[#8f1d22]">{formatCurrency(row.halfDayDeduction + row.lateDeduction)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right font-semibold">{formatCurrency(row.totalSalary)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.contractDeduction)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.companyLoan)}</td>
