@@ -719,8 +719,9 @@ export async function getAdminPayrollSummarySheet(period?: {
       ? (freelanceRatePerJam || toNumber(row.raw_gaji_pokok_per_hari))
       : (toNumber(row.raw_gaji_pokok_per_hari) || (workDays > 0 ? toNumber(row.gaji_pokok) / workDays : 0));
     // Take Home Pay freelance = total jam dari absensi (dibulatkan per 30 menit) × rate per jam
+    // Tidak pakai inputOverrideGajiPokok karena bisa = 0 dari clone period -> nullish coalescing tidak fallback.
     const monthlyBaseSalary = isFreelance
-      ? (inputOverrideGajiPokok ?? (freelanceMinutes / 60) * dailyBaseSalary)
+      ? (freelanceMinutes / 60) * dailyBaseSalary
       : (inputOverrideGajiPokok ?? dailyBaseSalary * workDays);
 
     const positionAllowance = isFreelance ? 0 : toNumber(row.tunjangan_jabatan);
