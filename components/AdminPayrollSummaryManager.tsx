@@ -632,6 +632,7 @@ export default function AdminPayrollSummaryManager({
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Total Gaji</th>
                     <th colSpan={3} className="border border-[#a8ebef] px-3 py-3">Tambahan</th>
                     <th colSpan={4} className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Total Potongan</th>
+                    <th rowSpan={2} className="border border-[#fca5a5] bg-[#ef4444] px-3 py-3 text-white">Total All Potongan</th>
                     <th rowSpan={2} className="border border-[#fca5a5] bg-[#ef4444] px-3 py-3 text-white">Gaji Kontrak</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Take Home Pay Sebelum Dipotong</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Take Home Pay</th>
@@ -708,6 +709,7 @@ export default function AdminPayrollSummaryManager({
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.contractCut)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.loanCut)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.diligenceCut)}</td>
+                      <td className="border border-[#d7ecee] px-3 py-3 text-right font-semibold text-[#8f1d22]">{formatCurrency(row.fineDeduction + row.contractCut + row.loanCut + row.diligenceCut)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.monthlyBaseSalary)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.totalSalaryBeforeDeduction)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right font-semibold text-[#8f1d22]">{formatCurrency(row.netIncome)}</td>
