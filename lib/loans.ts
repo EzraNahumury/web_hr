@@ -967,6 +967,23 @@ export async function payoffLoanEarly(loanId: number, payoffMonth: number, payof
       );
     }
 
+    // Bersihkan override pinjaman stale agar payroll periode terkait baca cicilan terbaru.
+    const [loanOwner] = await connection.query<(RowDataPacket & { karyawan_id: number })[]>(
+      `SELECT karyawan_id FROM pinjaman WHERE id = ? LIMIT 1`,
+      [loanId],
+    );
+    if (loanOwner[0]) {
+      await connection.query<ResultSetHeader>(
+        `
+          UPDATE payroll_employee_input pei
+          INNER JOIN payroll p ON p.id = pei.payroll_id
+          SET pei.override_pinjaman = NULL
+          WHERE p.karyawan_id = ?
+        `,
+        [loanOwner[0].karyawan_id],
+      );
+    }
+
     await syncLoanSummary(loanId, connection);
     await connection.commit();
 

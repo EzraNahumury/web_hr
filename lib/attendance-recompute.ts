@@ -39,6 +39,25 @@ async function ensureMigrationTable() {
   `);
 }
 
+export async function clearStaleLoanOverridesOnce() {
+  await ensureMigrationTable();
+  const KEY = "clear_stale_loan_override_v1";
+  const [existing] = await pool.query<MigrationRow[]>(
+    `SELECT key_name FROM app_migrations WHERE key_name = ? LIMIT 1`,
+    [KEY],
+  );
+  if (existing.length > 0) return;
+
+  await pool.query(
+    `UPDATE payroll_employee_input SET override_pinjaman = NULL WHERE override_pinjaman IS NOT NULL`,
+  );
+
+  await pool.query(
+    `INSERT IGNORE INTO app_migrations (key_name) VALUES (?)`,
+    [KEY],
+  );
+}
+
 export async function recomputeMediaHostliveAdvertiserLateOnce() {
   await ensureMigrationTable();
   const KEY = "recompute_late_v1_media_hostlive_advertiser";
