@@ -119,6 +119,8 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
     installmentCount: "",
     requestDate: todayIsoDate(),
   });
+  const [customInstallments, setCustomInstallments] = useState<string[]>([]);
+  const [editingInstallmentLabels, setEditingInstallmentLabels] = useState<string[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [formFeedback, setFormFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -134,6 +136,8 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
       installmentCount: "",
       requestDate: todayIsoDate(),
     });
+    setCustomInstallments([]);
+    setEditingInstallmentLabels([]);
     setFormFeedback(null);
     setEditingLoanId(null);
   }
@@ -146,9 +150,48 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
       installmentCount: String(loan.installmentCount),
       requestDate: loan.requestDate || todayIsoDate(),
     });
+    // Auto-populate dari installments yang sudah ada (kalau ada)
+    if (loan.installments && loan.installments.length > 0) {
+      setCustomInstallments(
+        loan.installments.map((inst) =>
+          formatRupiahInput(String(Math.trunc(toNumber(inst.plannedDeduction)))),
+        ),
+      );
+      setEditingInstallmentLabels(loan.installments.map((inst) => inst.monthLabel));
+    } else {
+      // Belum ada schedule (status pending) — distribusi rata
+      const total = toNumber(loan.totalLoan);
+      const count = loan.installmentCount;
+      const base = count > 0 ? Math.floor(total / count) : 0;
+      const remainder = total - base * count;
+      const amounts = Array.from({ length: count }, (_, i) => base + (i < remainder ? 1 : 0));
+      setCustomInstallments(amounts.map((v) => formatRupiahInput(String(v))));
+      setEditingInstallmentLabels(Array.from({ length: count }, (_, i) => `Bulan ke-${i + 1}`));
+    }
     setFormFeedback(null);
     setFeedback(null);
     formCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function updateInstallmentAmount(index: number, value: string) {
+    setCustomInstallments((current) => {
+      const next = [...current];
+      next[index] = formatRupiahInput(value);
+      return next;
+    });
+  }
+
+  function regenerateInstallmentsUniform() {
+    const total = Number(digitsOnly(form.totalLoan));
+    const count = Number(form.installmentCount);
+    if (!total || !count) return;
+    const base = Math.floor(total / count);
+    const remainder = total - base * count;
+    const amounts = Array.from({ length: count }, (_, i) => base + (i < remainder ? 1 : 0));
+    setCustomInstallments(amounts.map((v) => formatRupiahInput(String(v))));
+    if (editingInstallmentLabels.length !== count) {
+      setEditingInstallmentLabels(Array.from({ length: count }, (_, i) => `Bulan ke-${i + 1}`));
+    }
   }
 
   async function handleDeleteLoan(loan: LoanListItem) {
@@ -199,6 +242,23 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
     setIsCreating(true);
     try {
       const isEditing = editingLoanId !== null;
+
+      // Validasi customInstallments saat edit (kalau diisi)
+      let customInstallmentsPayload: number[] | undefined;
+      if (isEditing && customInstallments.length === installmentCount && customInstallments.length > 0) {
+        const parsed = customInstallments.map((v) => Number(digitsOnly(v)));
+        const sumCustom = parsed.reduce((a, b) => a + b, 0);
+        if (Math.abs(sumCustom - totalLoan) > 1) {
+          setFormFeedback({
+            type: "error",
+            text: `Total cicilan per bulan (Rp ${sumCustom.toLocaleString("id-ID")}) tidak sama dengan Jumlah Pinjaman (Rp ${totalLoan.toLocaleString("id-ID")}).`,
+          });
+          setIsCreating(false);
+          return;
+        }
+        customInstallmentsPayload = parsed;
+      }
+
       const response = await fetch(
         isEditing ? `/api/admin/loans/${editingLoanId}` : "/api/admin/loans",
         {
@@ -209,6 +269,7 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
             totalLoan,
             installmentCount,
             requestDate: form.requestDate,
+            ...(customInstallmentsPayload ? { customInstallments: customInstallmentsPayload } : {}),
           }),
         },
       );
@@ -453,6 +514,72 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
               />
             </label>
           </div>
+
+          {editingLoanId && customInstallments.length > 0 ? (
+            <div className="rounded-[24px] border border-[#ead7ce] bg-white p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#a16f63]">
+                    Detail Cicilan Per Bulan
+                  </p>
+                  <p className="mt-1 text-sm text-[#7a6059]">
+                    Custom nominal cicilan per bulan untuk case khusus. Total semua bulan harus sama dengan Jumlah Pinjaman.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={regenerateInstallmentsUniform}
+                  className="inline-flex h-9 items-center justify-center rounded-xl border border-[#e7d4cb] bg-white px-4 text-xs font-semibold text-[#3b2622] transition hover:border-[#c8a99e] hover:bg-[#fffbf9]"
+                >
+                  Bagi Rata Otomatis
+                </button>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {customInstallments.map((amount, index) => (
+                  <label key={index} className="space-y-1.5">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#a16f63]">
+                      {editingInstallmentLabels[index] ?? `Bulan ke-${index + 1}`}
+                    </span>
+                    <input
+                      inputMode="numeric"
+                      value={amount}
+                      onChange={(event) => updateInstallmentAmount(index, event.target.value)}
+                      placeholder="0"
+                      className="h-11 w-full rounded-xl border border-[#ead7ce] bg-white px-3 text-sm font-semibold text-[#241716] outline-none transition focus:border-[#c8716d] focus:ring-2 focus:ring-[#c8716d]/10"
+                    />
+                  </label>
+                ))}
+              </div>
+              {(() => {
+                const sum = customInstallments.reduce((s, v) => s + Number(digitsOnly(v) || 0), 0);
+                const target = Number(digitsOnly(form.totalLoan) || 0);
+                const diff = sum - target;
+                return (
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[#fdf7f3] px-4 py-3 text-sm">
+                    <span className="text-[#7a6059]">
+                      Total cicilan: <span className="font-semibold text-[#241716]">Rp {sum.toLocaleString("id-ID")}</span>
+                    </span>
+                    <span className="text-[#7a6059]">
+                      Jumlah pinjaman: <span className="font-semibold text-[#241716]">Rp {target.toLocaleString("id-ID")}</span>
+                    </span>
+                    <span
+                      className={
+                        diff === 0
+                          ? "rounded-full bg-[#e8faf0] px-3 py-1 text-xs font-semibold text-[#17603b]"
+                          : "rounded-full bg-[#fff0f0] px-3 py-1 text-xs font-semibold text-[#b13232]"
+                      }
+                    >
+                      {diff === 0
+                        ? "✓ Cocok"
+                        : diff > 0
+                          ? `Lebih Rp ${diff.toLocaleString("id-ID")}`
+                          : `Kurang Rp ${Math.abs(diff).toLocaleString("id-ID")}`}
+                    </span>
+                  </div>
+                );
+              })()}
+            </div>
+          ) : null}
 
           {formFeedback ? (
             <div

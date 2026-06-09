@@ -488,10 +488,15 @@ async function rebuildLoanInstallments(
   installmentCount: number,
   approvalDate: string,
   connection?: QueryExecutor,
+  customAmounts?: number[],
 ) {
   const executor = connection ?? pool;
   const periods = buildLoanInstallmentPeriods(approvalDate, installmentCount);
-  const installmentAmounts = buildInstallmentAmounts(totalLoan, installmentCount);
+  // Kalau admin kirim customAmounts dan jumlahnya cocok, pakai itu. Kalau tidak, distribute uniform.
+  const installmentAmounts =
+    customAmounts && customAmounts.length === installmentCount
+      ? customAmounts.map((value) => roundMoney(Math.max(0, value)))
+      : buildInstallmentAmounts(totalLoan, installmentCount);
 
   await executor.query<ResultSetHeader>(
     "DELETE FROM pinjaman_cicilan WHERE pinjaman_id = ?",
@@ -717,7 +722,13 @@ export async function createEmployeeLoanRequest(payload: CreateLoanRequestPayloa
 
 export async function updateLoanRequest(
   loanId: number,
-  payload: { employeeId: number; totalLoan: number; installmentCount: number; requestDate: string },
+  payload: {
+    employeeId: number;
+    totalLoan: number;
+    installmentCount: number;
+    requestDate: string;
+    customInstallments?: number[];
+  },
 ) {
   if (!Number.isInteger(loanId) || loanId <= 0) {
     throw new Error("ID pinjaman tidak valid.");
@@ -733,6 +744,20 @@ export async function updateLoanRequest(
   }
   if (!isValidSqlDate(payload.requestDate)) {
     throw new Error("Tanggal pengajuan tidak valid.");
+  }
+
+  // Kalau ada custom installments, validasi total harus = jumlah pinjaman
+  if (payload.customInstallments) {
+    if (payload.customInstallments.length !== payload.installmentCount) {
+      throw new Error("Jumlah cicilan custom harus sama dengan jumlah angsuran.");
+    }
+    const sumCustom = payload.customInstallments.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0);
+    const totalRounded = roundMoney(payload.totalLoan);
+    if (Math.abs(sumCustom - totalRounded) > 1) {
+      throw new Error(
+        `Total cicilan custom (Rp ${sumCustom.toLocaleString("id-ID")}) tidak sama dengan jumlah pinjaman (Rp ${totalRounded.toLocaleString("id-ID")}).`,
+      );
+    }
   }
 
   const connection = await pool.getConnection();
@@ -779,6 +804,7 @@ export async function updateLoanRequest(
         payload.installmentCount,
         loan.tanggal_approval,
         connection,
+        payload.customInstallments,
       );
     }
 

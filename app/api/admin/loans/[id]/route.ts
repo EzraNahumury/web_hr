@@ -82,17 +82,33 @@ export async function PUT(
     return NextResponse.json({ message: "ID pinjaman tidak valid." }, { status: 400 });
   }
   const body = (await request.json().catch(() => null)) as
-    | { employeeId?: number; totalLoan?: number; installmentCount?: number; requestDate?: string }
+    | {
+        employeeId?: number;
+        totalLoan?: number;
+        installmentCount?: number;
+        requestDate?: string;
+        customInstallments?: unknown;
+      }
     | null;
   if (!body) {
     return NextResponse.json({ message: "Body tidak valid." }, { status: 400 });
   }
+
+  let customInstallments: number[] | undefined;
+  if (Array.isArray(body.customInstallments)) {
+    customInstallments = body.customInstallments.map((value) => {
+      const n = Number(value);
+      return Number.isFinite(n) && n >= 0 ? n : 0;
+    });
+  }
+
   try {
     const loan = await updateLoanRequest(loanId, {
       employeeId: Number(body.employeeId),
       totalLoan: Number(body.totalLoan),
       installmentCount: Number(body.installmentCount),
       requestDate: String(body.requestDate ?? ""),
+      customInstallments,
     });
     return NextResponse.json({
       message: "Pengajuan pinjaman berhasil diupdate.",
