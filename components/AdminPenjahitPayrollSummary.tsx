@@ -19,6 +19,7 @@ type FormState = {
   gajiPerDay: string;
   tunjanganJabatan: string;
   uangMakan: string;
+  uangKerajinan: string;
   bpjs: string;
   bonusPerforma: string;
   potonganLainLain: string;
@@ -70,6 +71,7 @@ function emptyForm(employeeId = ""): FormState {
     gajiPerDay: "",
     tunjanganJabatan: "",
     uangMakan: "",
+    uangKerajinan: "",
     bpjs: "",
     bonusPerforma: "",
     potonganLainLain: "",
@@ -93,6 +95,7 @@ function formFromRow(row: PenjahitComputedRow): FormState {
     gajiPerDay: fv(row.inputGajiPerDay),
     tunjanganJabatan: fv(row.inputTunjanganJabatan),
     uangMakan: fv(row.inputUangMakan),
+    uangKerajinan: fv(row.inputUangKerajinan),
     bpjs: fv(row.inputBpjs),
     bonusPerforma: fv(row.inputBonusPerforma),
     potonganLainLain: fo(row.inputPotonganLainLain),
@@ -195,7 +198,7 @@ export default function AdminPenjahitPayrollSummary({ sheet, periodOptions, empl
       tunjanganJabatan: parseNumber(form.tunjanganJabatan),
       uangMakan: parseNumber(form.uangMakan),
       subsidi: 0,
-      uangKerajinan: 0,
+      uangKerajinan: parseNumber(form.uangKerajinan),
       bpjs: parseNumber(form.bpjs),
       bonusPerforma: parseNumber(form.bonusPerforma),
       insentif: 0,
@@ -608,6 +611,15 @@ export default function AdminPenjahitPayrollSummary({ sheet, periodOptions, empl
                     placeholder="0"
                     value={form.bpjs}
                     onChange={(e) => setField("bpjs", formatNumericInput(e.target.value))}
+                  />
+                </Field>
+                <Field label="Uang Kerajinan (kosongkan = 10% gaji pokok)">
+                  <input
+                    className={inputCls}
+                    inputMode="numeric"
+                    placeholder="Otomatis 10% gaji pokok"
+                    value={form.uangKerajinan}
+                    onChange={(e) => setField("uangKerajinan", formatNumericInput(e.target.value))}
                   />
                 </Field>
                 <Field label="Bonus Performa">
