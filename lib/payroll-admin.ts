@@ -492,10 +492,20 @@ export async function listPayrollEmployeeOptions(options?: {
   }));
 }
 
+async function runOneOffMigrationsSilently() {
+  try {
+    const mod = await import("@/lib/attendance-recompute");
+    await mod.clearStaleLoanOverridesOnce();
+  } catch (error) {
+    console.error("clearStaleLoanOverridesOnce failed", error);
+  }
+}
+
 export async function ensurePayrollPeriodCloned(
   targetMonth: number,
   targetYear: number,
 ): Promise<{ cloned: boolean; sourceMonth?: number; sourceYear?: number }> {
+  await runOneOffMigrationsSilently();
   if (!Number.isInteger(targetMonth) || targetMonth < 1 || targetMonth > 12) {
     return { cloned: false };
   }
