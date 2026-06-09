@@ -816,10 +816,9 @@ export async function getAdminPayrollSummarySheet(period?: {
       contractMap.get(row.employee_id) ??
       toNumber(row.potongan_kontrak);
     const contractDeduction = isContractWaived ? 0 : rawContractDeduction;
-    const companyLoan = isFreelance ? 0 :
-      (inputOverridePinjaman ??
-      loanMap.get(row.employee_id) ??
-      toNumber(row.potongan_pinjaman));
+    const companyLoan = isFreelance
+      ? 0
+      : (inputOverridePinjaman ?? loanMap.get(row.employee_id) ?? 0);
     const personalLoan = isFreelance ? 0 : (inputOverridePinjamanPribadi ?? 0);
     const diligenceCut = Math.max(
       fixedDiligenceAllowance - diligenceAllowance,

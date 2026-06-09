@@ -305,7 +305,9 @@ export async function getPenjahitSheet(period?: {
     const rawPotonganKontrak =
       row.raw_override_kontrak !== null ? toNum(row.raw_override_kontrak) : toNum(row.potongan_kontrak);
     const potonganKontrak = isContractWaived ? 0 : rawPotonganKontrak;
-    const potonganPinjaman = row.raw_override_pinjaman !== null ? toNum(row.raw_override_pinjaman) : (loanMap.get(row.employee_id) ?? toNum(row.potongan_pinjaman));
+    const potonganPinjaman = row.raw_override_pinjaman !== null
+      ? toNum(row.raw_override_pinjaman)
+      : (loanMap.get(row.employee_id) ?? 0);
     const potonganLainLain = row.raw_override_pinjaman_pribadi !== null ? toNum(row.raw_override_pinjaman_pribadi) : 0;
     const cicilanPerMinggu = Math.round(potonganPinjaman / 4);
     const penerimaanBersih = totalGaji - potonganKontrak - potonganPinjaman - potonganLainLain;

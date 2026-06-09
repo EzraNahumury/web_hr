@@ -494,8 +494,8 @@ export async function listPayrollEmployeeOptions(options?: {
 
 async function runOneOffMigrationsSilently() {
   try {
-    const mod = await import("@/lib/attendance-recompute");
-    await mod.clearStaleLoanOverridesOnce();
+    const { clearStaleLoanOverridesOnce } = await import("./attendance-recompute");
+    await clearStaleLoanOverridesOnce();
   } catch (error) {
     console.error("clearStaleLoanOverridesOnce failed", error);
   }
