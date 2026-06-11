@@ -12,6 +12,7 @@ function countPeriodWorkDays(start: Date, end: Date) {
   return total;
 }
 import {
+  autoAttachLoanInstallmentsForPeriod,
   ensureLoanSupportTables,
   getLoanDeductionRowsForPeriod,
 } from "@/lib/loans";
@@ -331,6 +332,14 @@ export async function getAdminPayrollSummarySheet(period?: {
   const periodYear = latest.periode_tahun;
   const range = getPayrollDateRange(periodMonth, periodYear);
   const periodWorkDays = countPeriodWorkDays(range.start, range.end);
+
+  // Auto-catat cicilan pinjaman periode ini (karyawan yang ada di payroll otomatis terpotong,
+  // tanpa perlu Simpan manual). Hanya untuk periode berjalan/lampau — periode masa depan
+  // yang sedang di-browse admin tidak boleh ditandai terpotong duluan.
+  const activeForLoan = getActivePayrollPeriod();
+  if (periodYear * 100 + periodMonth <= activeForLoan.year * 100 + activeForLoan.month) {
+    await autoAttachLoanInstallmentsForPeriod(periodMonth, periodYear);
+  }
 
   const [rows] = await pool.query<PayrollSheetBaseRow[]>(
     `

@@ -1181,11 +1181,94 @@ async function getLoansBase(whereSql = "", params: Array<number | string> = []) 
   return loanRows[0].map((row) => buildLoanItem(row, installmentRows[0]));
 }
 
+// Periode payroll aktif: tgl 26 (M-1) s/d 25 M; setelah tgl 25 pindah ke bulan berikutnya.
+// Duplikat kecil dari getActivePayrollPeriod (payroll-admin.ts) untuk hindari circular import.
+function getActiveLoanPayrollPeriod() {
+  const today = getJakartaTodayIsoDate();
+  const year = Number(today.slice(0, 4));
+  const month = Number(today.slice(5, 7));
+  const day = Number(today.slice(8, 10));
+  if (day > 25) {
+    return month === 12 ? { month: 1, year: year + 1 } : { month: month + 1, year };
+  }
+  return { month, year };
+}
+
+type AutoAttachAffectedRow = RowDataPacket & { pinjaman_id: number };
+
+// Auto-attach: selama karyawan ada di payroll suatu periode, cicilan periode itu
+// otomatis tercatat terpotong tanpa perlu admin klik Simpan Payroll per karyawan.
+// Mencakup SEMUA periode cicilan s/d (month, year) — backlog bulan lampau ikut tercatat.
+// - Hanya mengisi cicilan yang BELUM ter-attach (hasil Simpan manual tidak disentuh)
+// - Menghormati override_pinjaman eksplisit dari admin (skip kalau ada override)
+// - Idempotent: cicilan yang sudah terisi tidak match kriteria lagi
+export async function autoAttachLoanInstallmentsForPeriod(
+  month: number,
+  year: number,
+  connection?: QueryExecutor,
+) {
+  const executor = connection ?? pool;
+  await ensureLoanSupportTables(connection);
+
+  const periodKey = year * 100 + month;
+  // Freelance tidak kena potongan pinjaman di payroll (loanCut selalu 0 di upsert manual),
+  // jadi cicilannya tidak boleh ditandai terpotong otomatis.
+  const matchCriteria = `
+      (pc.tahun * 100 + pc.bulan) <= ?
+      AND pc.payroll_id IS NULL
+      AND pc.nominal_terpotong IS NULL
+      AND pc.nominal_potongan > 0
+      AND p.status_pinjaman IN ('approved', 'berjalan')
+      AND pei.override_pinjaman IS NULL
+      AND LOWER(COALESCE(k.status_kepegawaian, '')) <> 'freelance'
+  `;
+
+  const [affectedRows] = await executor.query<AutoAttachAffectedRow[]>(
+    `
+      SELECT DISTINCT pc.pinjaman_id
+      FROM pinjaman_cicilan pc
+      INNER JOIN pinjaman p ON p.id = pc.pinjaman_id
+      INNER JOIN karyawan k ON k.id = p.karyawan_id
+      INNER JOIN payroll pay ON pay.karyawan_id = p.karyawan_id
+        AND pay.periode_bulan = pc.bulan AND pay.periode_tahun = pc.tahun
+      LEFT JOIN payroll_employee_input pei ON pei.payroll_id = pay.id
+      WHERE ${matchCriteria}
+    `,
+    [periodKey],
+  );
+
+  if (!affectedRows.length) {
+    return;
+  }
+
+  await executor.query<ResultSetHeader>(
+    `
+      UPDATE pinjaman_cicilan pc
+      INNER JOIN pinjaman p ON p.id = pc.pinjaman_id
+      INNER JOIN karyawan k ON k.id = p.karyawan_id
+      INNER JOIN payroll pay ON pay.karyawan_id = p.karyawan_id
+        AND pay.periode_bulan = pc.bulan AND pay.periode_tahun = pc.tahun
+      LEFT JOIN payroll_employee_input pei ON pei.payroll_id = pay.id
+      SET pc.payroll_id = pay.id, pc.nominal_terpotong = pc.nominal_potongan
+      WHERE ${matchCriteria}
+    `,
+    [periodKey],
+  );
+
+  await syncLoanSummariesByIds(affectedRows.map((row) => row.pinjaman_id), executor);
+}
+
 export async function listAdminLoans() {
+  // Otomatis catat cicilan periode berjalan supaya status approved → berjalan
+  // langsung terlihat tanpa harus buka & simpan Summary Payroll dulu.
+  const active = getActiveLoanPayrollPeriod();
+  await autoAttachLoanInstallmentsForPeriod(active.month, active.year);
   return getLoansBase("WHERE p.status_pinjaman <> 'rejected'");
 }
 
 export async function listEmployeeLoans(employeeId: number) {
+  const active = getActiveLoanPayrollPeriod();
+  await autoAttachLoanInstallmentsForPeriod(active.month, active.year);
   return getLoansBase("WHERE p.karyawan_id = ?", [employeeId]);
 }
 
