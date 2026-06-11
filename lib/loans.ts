@@ -331,7 +331,12 @@ function getLoanDeductionStartDate(approvalDate: string) {
     return null;
   }
 
-  return addMonthsToIsoDate(`${approvalDate.slice(0, 7)}-01`, 1);
+  // Periode payroll berjalan dari tgl 26 (M-1) s/d tgl 25 M.
+  // Approval tgl 1-25 → masih masuk periode bulan ini, potongan mulai periode bulan approval.
+  // Approval tgl 26-31 → sudah masuk periode bulan berikutnya.
+  const approvalDay = Number(approvalDate.slice(8, 10));
+  const monthStart = `${approvalDate.slice(0, 7)}-01`;
+  return approvalDay <= 25 ? monthStart : addMonthsToIsoDate(monthStart, 1);
 }
 
 function buildLoanInstallmentPeriods(approvalDate: string, installmentCount: number) {
@@ -569,6 +574,74 @@ async function bootstrapExistingLoanSchedules(connection?: QueryExecutor) {
   }
 }
 
+type MisalignedLoanRow = RowDataPacket & {
+  id: number;
+  tanggal_approval: string;
+  first_period: number | string;
+};
+
+type InstallmentPeriodRow = RowDataPacket & {
+  id: number;
+  bulan: number;
+  tahun: number;
+};
+
+// Migration sekali-efek: pinjaman lama dibuat dengan aturan "cicilan mulai bulan setelah approval".
+// Aturan baru: approval tgl 1-25 → cicilan mulai periode bulan approval itu sendiri.
+// Geser jadwal mundur 1 bulan untuk pinjaman approved/berjalan yang BELUM ada cicilan terbayar.
+// Nominal per bulan dipertahankan (digeser, bukan rebuild) supaya cicilan custom admin tidak hilang.
+// Idempotent: setelah digeser, first period = bulan approval sehingga tidak match kriteria lagi.
+async function realignLoanSchedulesToApprovalPeriod(connection?: QueryExecutor) {
+  const executor = connection ?? pool;
+
+  const [rows] = await executor.query<MisalignedLoanRow[]>(
+    `
+      SELECT
+        p.id,
+        DATE_FORMAT(p.tanggal_approval, '%Y-%m-%d') AS tanggal_approval,
+        MIN(pc.tahun * 100 + pc.bulan) AS first_period
+      FROM pinjaman p
+      INNER JOIN pinjaman_cicilan pc ON pc.pinjaman_id = p.id
+      WHERE p.status_pinjaman IN ('approved', 'berjalan')
+        AND p.tanggal_approval IS NOT NULL
+        AND DAY(p.tanggal_approval) <= 25
+      GROUP BY p.id, p.tanggal_approval
+      HAVING SUM(CASE WHEN pc.nominal_terpotong IS NOT NULL OR pc.payroll_id IS NOT NULL THEN 1 ELSE 0 END) = 0
+    `,
+  );
+
+  for (const row of rows) {
+    const approvalYear = Number(row.tanggal_approval.slice(0, 4));
+    const approvalMonth = Number(row.tanggal_approval.slice(5, 7));
+
+    // Period pertama menurut aturan lama (= bulan setelah approval)
+    const oldRuleMonth = approvalMonth === 12 ? 1 : approvalMonth + 1;
+    const oldRuleYear = approvalMonth === 12 ? approvalYear + 1 : approvalYear;
+    const oldRulePeriod = oldRuleYear * 100 + oldRuleMonth;
+
+    if (toNumber(row.first_period) !== oldRulePeriod) {
+      continue; // sudah sesuai aturan baru atau punya jadwal custom lain — jangan disentuh
+    }
+
+    const [installments] = await executor.query<InstallmentPeriodRow[]>(
+      `SELECT id, bulan, tahun FROM pinjaman_cicilan
+       WHERE pinjaman_id = ?
+       ORDER BY tahun ASC, bulan ASC`,
+      [row.id],
+    );
+
+    // Geser ascending agar tidak bentrok unique key (pinjaman_id, bulan, tahun)
+    for (const inst of installments) {
+      const newMonth = inst.bulan === 1 ? 12 : inst.bulan - 1;
+      const newYear = inst.bulan === 1 ? inst.tahun - 1 : inst.tahun;
+      await executor.query<ResultSetHeader>(
+        `UPDATE pinjaman_cicilan SET bulan = ?, tahun = ? WHERE id = ?`,
+        [newMonth, newYear, inst.id],
+      );
+    }
+  }
+}
+
 export async function ensureLoanSupportTables(connection?: QueryExecutor) {
   const executor = connection ?? pool;
 
@@ -648,6 +721,7 @@ export async function ensureLoanSupportTables(connection?: QueryExecutor) {
   `);
 
   await bootstrapExistingLoanSchedules(executor);
+  await realignLoanSchedulesToApprovalPeriod(executor);
 }
 
 export async function createEmployeeLoanRequest(payload: CreateLoanRequestPayload) {

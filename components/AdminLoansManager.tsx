@@ -97,7 +97,7 @@ function StatusBadge({ status }: { status: LoanListItem["status"] }) {
 
 function mapApprovalMessage(status: "approved" | "rejected") {
   return status === "approved"
-    ? "Pengajuan pinjaman berhasil di-approve. Jadwal cicilan otomatis dibuat mulai bulan berikutnya."
+    ? "Pengajuan pinjaman berhasil di-approve. Jadwal cicilan otomatis dibuat mulai periode payroll berjalan."
     : "Pengajuan pinjaman berhasil ditolak.";
 }
 
@@ -619,7 +619,7 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
           </div>
           <h3 className="mt-4 text-2xl font-semibold tracking-[-0.04em] text-[#241716]">Pinjaman Karyawan</h3>
           <p className="mt-2 max-w-3xl text-sm leading-7 text-[#7a6059]">
-            Setelah admin approve, sistem langsung membuat jadwal cicilan otomatis mulai bulan berikutnya dan payroll summary akan menarik potongan pinjaman sesuai bulan cicilan.
+            Setelah admin approve, sistem langsung membuat jadwal cicilan otomatis mulai periode payroll berjalan (approval tgl 1-25 masuk periode bulan itu; tgl 26-31 masuk periode bulan berikutnya) dan payroll summary akan menarik potongan pinjaman sesuai bulan cicilan.
           </p>
         </div>
 

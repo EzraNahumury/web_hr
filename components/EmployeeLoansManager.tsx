@@ -207,7 +207,7 @@ export default function EmployeeLoansManager({ employeeName, initialRows, defaul
           </div>
           <h3 className="mt-4 text-2xl font-semibold tracking-[-0.04em] text-[#241716]">Ajukan Pinjaman Karyawan</h3>
           <p className="mt-2 max-w-3xl text-sm leading-7 text-[#7a6059]">
-            Setelah admin approve, potongan pinjaman akan otomatis mulai di bulan berikutnya dan langsung masuk ke payroll summary pada bulan cicilan yang sesuai.
+            Setelah admin approve, potongan pinjaman otomatis mulai di periode payroll berjalan dan langsung masuk ke payroll summary pada bulan cicilan yang sesuai.
           </p>
         </div>
 
@@ -302,7 +302,7 @@ export default function EmployeeLoansManager({ employeeName, initialRows, defaul
                 <p className="mt-2 text-2xl font-semibold text-[#241716]">Rp{formatMoney(estimatedMonthlyDeduction)}</p>
               </div>
               <div className="rounded-[22px] bg-[#f9f3ef] px-4 py-4 text-sm leading-7 text-[#6f5a54]">
-                Cicilan baru aktif mulai bulan setelah pinjaman di-approve admin. Sistem akan menghitung bulan potongan otomatis tanpa input tambahan.
+                Cicilan aktif mulai periode payroll saat pinjaman di-approve admin. Sistem akan menghitung bulan potongan otomatis tanpa input tambahan.
               </div>
             </div>
           </div>
