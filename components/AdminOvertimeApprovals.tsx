@@ -9,6 +9,7 @@ type OvertimeRow = {
   nama: string;
   divisi?: string | null;
   tanggal: string;
+  tanggal_iso?: string;
   jam_mulai: string;
   jam_selesai: string;
   total_jam: string;
@@ -76,6 +77,9 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
   const [success, setSuccess] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ url: string; isImage: boolean } | null>(null);
   const [detailRow, setDetailRow] = useState<OvertimeRow | null>(null);
+  const [editRow, setEditRow] = useState<OvertimeRow | null>(null);
+  const [editForm, setEditForm] = useState({ tanggal: "", jamMulai: "", jamSelesai: "" });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [isDownloading, setIsDownloading] = useState(false);
@@ -127,6 +131,81 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
       router.refresh();
     });
   }
+
+  function openEdit(row: OvertimeRow) {
+    setError(null);
+    setSuccess(null);
+    const isoFromDisplay = (() => {
+      if (row.tanggal_iso) return row.tanggal_iso;
+      const d = parseTanggal(row.tanggal);
+      if (!d) return "";
+      const y = d.getFullYear();
+      const m = `${d.getMonth() + 1}`.padStart(2, "0");
+      const day = `${d.getDate()}`.padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    })();
+    setEditForm({
+      tanggal: isoFromDisplay,
+      jamMulai: row.jam_mulai,
+      jamSelesai: row.jam_selesai,
+    });
+    setEditRow(row);
+  }
+
+  function handleSaveEdit() {
+    if (!editRow) return;
+    setError(null);
+    setSuccess(null);
+
+    if (!editForm.tanggal) {
+      setError("Tanggal lembur wajib diisi.");
+      return;
+    }
+    if (!editForm.jamMulai || !editForm.jamSelesai) {
+      setError("Jam mulai dan jam selesai wajib diisi.");
+      return;
+    }
+    const start = new Date(`${editForm.tanggal}T${editForm.jamMulai}:00`);
+    const end = new Date(`${editForm.tanggal}T${editForm.jamSelesai}:00`);
+    const diffHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+    if (!Number.isFinite(diffHours) || diffHours <= 0) {
+      setError("Jam selesai harus lebih besar dari jam mulai.");
+      return;
+    }
+
+    setIsSavingEdit(true);
+    startTransition(async () => {
+      try {
+        const response = await fetch(`/api/admin/overtime/${editRow.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tanggal: editForm.tanggal,
+            jamMulai: editForm.jamMulai,
+            jamSelesai: editForm.jamSelesai,
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          setError(result.error ?? "Gagal memperbarui tanggal/jam lembur.");
+          return;
+        }
+        setSuccess("Tanggal & jam lembur berhasil diperbarui.");
+        setEditRow(null);
+        router.refresh();
+      } finally {
+        setIsSavingEdit(false);
+      }
+    });
+  }
+
+  const editEstimatedHours = (() => {
+    if (!editForm.tanggal || !editForm.jamMulai || !editForm.jamSelesai) return "0.00";
+    const start = new Date(`${editForm.tanggal}T${editForm.jamMulai}:00`);
+    const end = new Date(`${editForm.tanggal}T${editForm.jamSelesai}:00`);
+    const diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+    return Number.isFinite(diff) && diff > 0 ? diff.toFixed(2) : "0.00";
+  })();
 
   async function handleDownloadPDF() {
     setIsDownloading(true);
@@ -490,6 +569,18 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
                           </button>
                           <button
                             type="button"
+                            onClick={() => openEdit(row)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#d7deea] bg-white text-[#5b6680] transition hover:border-[#8f1d22] hover:text-[#8f1d22]"
+                            aria-label="Update tanggal & jam lembur"
+                            title="Update tanggal & jam lembur"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+                              <path d="M12 20h9" strokeLinecap="round" strokeLinejoin="round" />
+                              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => updateApproval(row.id, "approved")}
                             disabled={isPending || !canAdminAct}
                             title={waitingFirstApprover ? "Atasan belum menyetujui" : undefined}
@@ -620,6 +711,92 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
               <div className="mt-6 grid gap-4">
                 <DetailField label="Catatan Karyawan" value={detailRow.catatan_karyawan || "-"} fullWidth multiline />
                 <DetailField label="Catatan Atasan" value={detailRow.catatan_atasan || "-"} fullWidth multiline />
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {editRow ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
+          <div className="w-full max-w-lg overflow-hidden rounded-[28px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.22)]">
+            <div className="flex items-center justify-between gap-4 border-b border-[#e7edf5] bg-[linear-gradient(135deg,#8f1d22_0%,#c44b3f_100%)] px-6 py-5 text-white">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/80">Update Tanggal &amp; Jam Lembur</p>
+                <p className="mt-2 text-lg font-semibold uppercase">{editRow.nama}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditRow(null)}
+                disabled={isSavingEdit}
+                className="rounded-2xl bg-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/25 disabled:opacity-50"
+              >
+                Tutup
+              </button>
+            </div>
+            <div className="space-y-5 p-6">
+              <label className="block space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8a96ad]">Tanggal Lembur</span>
+                <input
+                  type="date"
+                  value={editForm.tanggal}
+                  onChange={(e) => setEditForm((c) => ({ ...c, tanggal: e.target.value }))}
+                  className="h-12 w-full rounded-2xl border border-[#d7deea] bg-[#fbfcfe] px-4 text-sm text-[#172033] outline-none transition focus:border-[#8f1d22]"
+                />
+              </label>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block space-y-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8a96ad]">Jam Mulai</span>
+                  <input
+                    type="time"
+                    value={editForm.jamMulai}
+                    onChange={(e) => setEditForm((c) => ({ ...c, jamMulai: e.target.value }))}
+                    className="h-12 w-full rounded-2xl border border-[#d7deea] bg-[#fbfcfe] px-4 text-sm text-[#172033] outline-none transition focus:border-[#8f1d22]"
+                  />
+                </label>
+                <label className="block space-y-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8a96ad]">Jam Selesai</span>
+                  <input
+                    type="time"
+                    value={editForm.jamSelesai}
+                    onChange={(e) => setEditForm((c) => ({ ...c, jamSelesai: e.target.value }))}
+                    className="h-12 w-full rounded-2xl border border-[#d7deea] bg-[#fbfcfe] px-4 text-sm text-[#172033] outline-none transition focus:border-[#8f1d22]"
+                  />
+                </label>
+              </div>
+
+              <div className="rounded-2xl border border-[#e7edf5] bg-[#f8fafc] px-4 py-3 text-sm text-[#5b6680]">
+                Estimasi total lembur: <span className="font-semibold text-[#172033]">{editEstimatedHours} jam</span>
+              </div>
+
+              <div className="flex items-start gap-2 rounded-2xl border border-[#f3dcc4] bg-[#fff8ef] px-4 py-3 text-xs leading-5 text-[#8a5a1f]">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="mt-0.5 h-4 w-4 flex-none" aria-hidden="true">
+                  <path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span>
+                  Summary Payroll otomatis menyesuaikan. Tapi jika slip gaji periode terkait sudah didistribusikan,
+                  buka Summary Payroll lalu <span className="font-semibold">Simpan ulang</span> payroll karyawan ini agar slip ikut terbarui.
+                </span>
+              </div>
+
+              <div className="flex flex-wrap justify-end gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setEditRow(null)}
+                  disabled={isSavingEdit}
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-[#dbe3f1] bg-white px-5 text-sm font-semibold text-[#1f2a3d] disabled:opacity-50"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEdit}
+                  disabled={isSavingEdit}
+                  className="inline-flex h-11 items-center justify-center rounded-2xl bg-[#8f1d22] px-6 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(143,29,34,0.2)] transition hover:bg-[#7a171c] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isSavingEdit ? "Menyimpan..." : "Simpan Perubahan"}
+                </button>
               </div>
             </div>
           </div>

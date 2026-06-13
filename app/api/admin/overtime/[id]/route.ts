@@ -64,3 +64,63 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   return NextResponse.json({ success: true });
 }
+
+// Admin update tanggal & jam lembur (koreksi data). Total jam dihitung ulang otomatis.
+export async function PUT(request: NextRequest, { params }: Params) {
+  const admin = await requireAdminSession();
+  void admin;
+  const { id } = await params;
+  const overtimeId = Number(id);
+
+  if (!Number.isInteger(overtimeId) || overtimeId <= 0) {
+    return NextResponse.json({ error: "ID lembur tidak valid." }, { status: 400 });
+  }
+
+  const body = await request.json().catch(() => null);
+  const tanggal = typeof body?.tanggal === "string" ? body.tanggal.trim() : "";
+  const jamMulai = typeof body?.jamMulai === "string" ? body.jamMulai.trim() : "";
+  const jamSelesai = typeof body?.jamSelesai === "string" ? body.jamSelesai.trim() : "";
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(tanggal)) {
+    return NextResponse.json({ error: "Tanggal lembur tidak valid." }, { status: 400 });
+  }
+  if (!/^\d{2}:\d{2}$/.test(jamMulai) || !/^\d{2}:\d{2}$/.test(jamSelesai)) {
+    return NextResponse.json({ error: "Jam lembur tidak valid." }, { status: 400 });
+  }
+
+  const start = new Date(`${tanggal}T${jamMulai}:00`);
+  const end = new Date(`${tanggal}T${jamSelesai}:00`);
+  const diffHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+
+  if (!Number.isFinite(diffHours) || diffHours <= 0) {
+    return NextResponse.json(
+      { error: "Jam selesai harus lebih besar dari jam mulai." },
+      { status: 400 },
+    );
+  }
+
+  const [existingRows] = await pool.query<RowDataPacket[]>(
+    "SELECT id FROM lembur WHERE id = ? LIMIT 1",
+    [overtimeId],
+  );
+  if (!existingRows[0]) {
+    return NextResponse.json({ error: "Data lembur tidak ditemukan." }, { status: 404 });
+  }
+
+  await pool.query<ResultSetHeader>(
+    `
+      UPDATE lembur
+      SET tanggal = ?, jam_mulai = ?, jam_selesai = ?, total_jam = ?
+      WHERE id = ?
+    `,
+    [
+      tanggal,
+      `${tanggal} ${jamMulai}:00`,
+      `${tanggal} ${jamSelesai}:00`,
+      diffHours.toFixed(2),
+      overtimeId,
+    ],
+  );
+
+  return NextResponse.json({ success: true });
+}

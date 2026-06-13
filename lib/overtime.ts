@@ -185,6 +185,7 @@ type OvertimeApprovalRow = RowDataPacket & {
   nama: string;
   divisi: string | null;
   tanggal: string;
+  tanggal_iso: string;
   jam_mulai: string;
   jam_selesai: string;
   total_jam: string;
@@ -214,6 +215,7 @@ const overtimeListQuery = `
     k.nama,
     k.divisi,
     DATE_FORMAT(l.tanggal, '%d %b %Y') AS tanggal,
+    DATE_FORMAT(l.tanggal, '%Y-%m-%d') AS tanggal_iso,
     DATE_FORMAT(l.jam_mulai, '%H:%i') AS jam_mulai,
     DATE_FORMAT(l.jam_selesai, '%H:%i') AS jam_selesai,
     l.total_jam,
