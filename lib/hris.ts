@@ -148,6 +148,8 @@ function mapAttendanceCode(
 
   if (code) {
     switch (code) {
+      case "PA":
+        return "PA";
       case "O":
       case "T":
       case "S":
@@ -381,11 +383,13 @@ const ATTENDANCE_CODE_TO_STATUS: Record<string, string> = {
   L: "libur",
   C: "libur",
   X: "alfa",
+  PA: "hadir", // Pulang Awal — tetap dihitung hadir untuk payroll
 };
 
 export const ADMIN_ATTENDANCE_CODE_OPTIONS = [
   { code: "O", label: "Hadir (O)" },
   { code: "T", label: "Terlambat (T)" },
+  { code: "PA", label: "Pulang Awal (PA)" },
   { code: "H", label: "Setengah Hari (H)" },
   { code: "S", label: "Sakit + Surat (S)" },
   { code: "SX", label: "Sakit Tanpa Surat (SX)" },

@@ -8,6 +8,7 @@ import type { AttendanceDayDetail } from "@/lib/hris";
 const ATTENDANCE_CODE_OPTIONS: { code: string; label: string }[] = [
   { code: "O", label: "Hadir (O)" },
   { code: "T", label: "Terlambat (T)" },
+  { code: "PA", label: "Pulang Awal (PA)" },
   { code: "H", label: "Setengah Hari (H)" },
   { code: "S", label: "Sakit + Surat (S)" },
   { code: "SX", label: "Sakit Tanpa Surat (SX)" },
@@ -255,7 +256,7 @@ function AttendanceDetailModal({
               <p className="mt-2">
                 Terlambat: {selected.detail.lateMinutes > 0 ? `${selected.detail.lateMinutes} menit` : "-"}
               </p>
-              {(isSick || selected.detail.isEarlyLeave) ? (
+              {(isSick || selected.detail.isEarlyLeave || selected.detail.code === "PA") ? (
                 <p className="mt-4">Keterangan: {selected.detail.note || "-"}</p>
               ) : null}
               <p className="mt-4">Latitude masuk: {selected.detail.latitudeIn ?? "-"}</p>
@@ -455,10 +456,11 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                     !detail.timeOut;
                   const earlyLeave =
                     !!detail &&
-                    detail.code === "O" &&
-                    !!detail.timeIn &&
-                    !!detail.timeOut &&
-                    detail.isEarlyLeave;
+                    (detail.code === "PA" ||
+                      (detail.code === "O" &&
+                        !!detail.timeIn &&
+                        !!detail.timeOut &&
+                        detail.isEarlyLeave));
                   const lateOver30 =
                     !!detail &&
                     detail.code === "T" &&
