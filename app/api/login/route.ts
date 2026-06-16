@@ -8,6 +8,17 @@ import {
   setSpvSessionCookie,
 } from "@/lib/auth";
 
+// Pastikan route ini selalu dinamis dan tidak pernah di-cache oleh CDN/proxy (hcdn Hostinger).
+export const dynamic = "force-dynamic";
+
+// Helper: balas JSON + header anti-cache supaya CDN/WAF tidak menyimpan respons login.
+function jsonNoStore(data: unknown, status = 200) {
+  const res = NextResponse.json(data, { status });
+  res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+  res.headers.set("Pragma", "no-cache");
+  return res;
+}
+
 type UserRow = RowDataPacket & {
   id: number;
   nama: string;
@@ -29,10 +40,7 @@ export async function POST(request: Request) {
     const password = body.password?.trim();
 
     if (!email || !password) {
-      return NextResponse.json(
-        { message: "Email dan password wajib diisi." },
-        { status: 400 },
-      );
+      return jsonNoStore({ message: "Email dan password wajib diisi." }, 400);
     }
 
     const [rows] = await pool.query<UserRow[]>(
@@ -50,19 +58,16 @@ export async function POST(request: Request) {
     const user = rows[0];
 
     if (!user || user.status_aktif !== 1) {
-      return NextResponse.json(
-        { message: "Akun tidak ditemukan atau tidak aktif." },
-        { status: 401 },
-      );
+      return jsonNoStore({ message: "Akun tidak ditemukan atau tidak aktif." }, 401);
     }
 
     if (user.role === "karyawan" && user.status_data === "nonaktif") {
-      return NextResponse.json(
+      return jsonNoStore(
         {
           message:
             "Akun Anda sudah dinonaktifkan karena sudah tidak bekerja di perusahaan. Hubungi HR bila ini keliru.",
         },
-        { status: 403 },
+        403,
       );
     }
 
@@ -74,10 +79,7 @@ export async function POST(request: Request) {
     const inputHash = String(hashRows[0]?.password_hash ?? "");
 
     if (inputHash !== user.password) {
-      return NextResponse.json(
-        { message: "Email atau password salah." },
-        { status: 401 },
-      );
+      return jsonNoStore({ message: "Email atau password salah." }, 401);
     }
 
     await clearAllSessionCookies();
@@ -89,7 +91,7 @@ export async function POST(request: Request) {
         fullName: user.nama,
       });
 
-      return NextResponse.json({
+      return jsonNoStore({
         message: "Login admin berhasil.",
         role: "admin",
         redirectTo: "/admin",
@@ -103,7 +105,7 @@ export async function POST(request: Request) {
         fullName: user.nama,
       });
 
-      return NextResponse.json({
+      return jsonNoStore({
         message: "Login SPV berhasil.",
         role: "spv",
         redirectTo: "/spv/jadwal",
@@ -122,7 +124,7 @@ export async function POST(request: Request) {
     );
     const isPayrollDay = todayJakarta.getDate() === 1;
 
-    return NextResponse.json({
+    return jsonNoStore({
       message: "Login karyawan berhasil.",
       role: "karyawan",
       redirectTo: "/employee/check-in",
@@ -132,9 +134,6 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Login error", error);
 
-    return NextResponse.json(
-      { message: "Gagal memproses login." },
-      { status: 500 },
-    );
+    return jsonNoStore({ message: "Gagal memproses login." }, 500);
   }
 }
