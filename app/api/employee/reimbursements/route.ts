@@ -2,8 +2,26 @@ import { NextResponse } from "next/server";
 
 import { getCurrentEmployeeSession } from "@/lib/auth";
 import { getEmployeeByUserId } from "@/lib/hris";
-import { createEmployeeReimbursement } from "@/lib/reimbursements";
+import {
+  createEmployeeReimbursement,
+  listEmployeeReimbursements,
+} from "@/lib/reimbursements";
 import { saveUploadedFile } from "@/lib/uploads";
+import { jsonNoStore } from "@/lib/api-json";
+
+export const dynamic = "force-dynamic";
+
+// GET /api/employee/reimbursements — daftar reimburse milik karyawan yang login (mobile + web).
+export async function GET() {
+  const session = await getCurrentEmployeeSession();
+  if (!session) return jsonNoStore({ message: "Unauthorized." }, 401);
+
+  const employee = await getEmployeeByUserId(session.userId);
+  if (!employee) return jsonNoStore({ message: "Data karyawan tidak ditemukan." }, 404);
+
+  const rows = await listEmployeeReimbursements(employee.id);
+  return jsonNoStore({ rows });
+}
 
 function parseSqlDate(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return null;

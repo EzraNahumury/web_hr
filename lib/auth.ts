@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
@@ -27,6 +27,15 @@ export type SpvSession = {
   fullName: string;
 };
 
+// Peringatan sekali saat modul dimuat bila secret belum di-set di production.
+// Tidak throw (agar tidak mematikan web yang sedang berjalan), tapi wajib ditindaklanjuti
+// karena dengan auth token mobile, secret default yang bocor bisa dipakai memalsukan sesi.
+if (process.env.NODE_ENV === "production" && !process.env.APP_SESSION_SECRET) {
+  console.warn(
+    "[auth] APP_SESSION_SECRET belum di-set di production — memakai default yang TIDAK AMAN. Segera set env var ini di server.",
+  );
+}
+
 function getSessionSecret() {
   return process.env.APP_SESSION_SECRET ?? "dev-web-hr-session-secret";
 }
@@ -41,8 +50,15 @@ function sign(encodedPayload: string) {
     .digest("base64url");
 }
 
-export function createSignedSession(payload: object) {
-  const encodedPayload = encode(payload);
+// `expiresInMs` opsional: bila di-set (dipakai token mobile), payload diberi klaim `exp`
+// dan readSignedSession akan menolak token yang sudah lewat. Cookie web TIDAK memakai ini,
+// jadi payload-nya tanpa `exp` → perilaku web tidak berubah (masa berlaku diatur cookie maxAge).
+export function createSignedSession(payload: object, opts?: { expiresInMs?: number }) {
+  const finalPayload =
+    opts?.expiresInMs && opts.expiresInMs > 0
+      ? { ...payload, exp: Date.now() + opts.expiresInMs }
+      : payload;
+  const encodedPayload = encode(finalPayload);
   return `${encodedPayload}.${sign(encodedPayload)}`;
 }
 
@@ -69,7 +85,14 @@ export function readSignedSession<T>(value?: string | null) {
   }
 
   try {
-    return JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8")) as T;
+    const parsed = JSON.parse(
+      Buffer.from(encodedPayload, "base64url").toString("utf8"),
+    ) as T & { exp?: number };
+    // Tolak bila ada klaim exp dan sudah kedaluwarsa (hanya berlaku untuk token mobile).
+    if (typeof parsed.exp === "number" && Date.now() > parsed.exp) {
+      return null;
+    }
+    return parsed as T;
   } catch {
     return null;
   }
@@ -103,8 +126,22 @@ export async function setAdminSessionCookie(payload: AdminSession) {
 }
 
 export async function getCurrentEmployeeSession() {
+  // Web: cookie httpOnly (dicek lebih dulu — perilaku web tidak berubah)
   const cookieStore = await cookies();
-  return readSignedSession<EmployeeSession>(cookieStore.get(EMPLOYEE_SESSION_COOKIE)?.value);
+  const fromCookie = readSignedSession<EmployeeSession>(
+    cookieStore.get(EMPLOYEE_SESSION_COOKIE)?.value,
+  );
+  if (fromCookie) return fromCookie;
+
+  // Mobile: Authorization: Bearer <token>  (token = signed-session yang sama dengan cookie)
+  const headerStore = await headers();
+  const authHeader =
+    headerStore.get("authorization") ?? headerStore.get("Authorization");
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    return readSignedSession<EmployeeSession>(authHeader.slice(7).trim());
+  }
+
+  return null;
 }
 
 export async function requireEmployeeSession() {

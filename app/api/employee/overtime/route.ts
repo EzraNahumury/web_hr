@@ -3,6 +3,23 @@ import { ResultSetHeader, RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
 import { saveUploadedFile } from "@/lib/uploads";
 import { ensureOvertimeSchema, shouldRouteToAdmin } from "@/lib/overtime";
+import { getCurrentEmployeeSession } from "@/lib/auth";
+import { getEmployeeByUserId, getEmployeeOvertime } from "@/lib/hris";
+import { jsonNoStore } from "@/lib/api-json";
+
+export const dynamic = "force-dynamic";
+
+// GET /api/employee/overtime — daftar lembur milik karyawan yang login (mobile + web).
+export async function GET() {
+  const session = await getCurrentEmployeeSession();
+  if (!session) return jsonNoStore({ message: "Unauthorized." }, 401);
+
+  const employee = await getEmployeeByUserId(session.userId);
+  if (!employee) return jsonNoStore({ message: "Data karyawan tidak ditemukan." }, 404);
+
+  const rows = await getEmployeeOvertime(employee.id);
+  return jsonNoStore({ rows });
+}
 
 function toDateTimeString(date: string, time: string) {
   return `${date} ${time}:00`;

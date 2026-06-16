@@ -1,9 +1,27 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentEmployeeSession } from "@/lib/auth";
-import { createEmployeeBusinessTrip } from "@/lib/business-trips";
+import {
+  createEmployeeBusinessTrip,
+  listEmployeeBusinessTrips,
+} from "@/lib/business-trips";
 import { getEmployeeByUserId } from "@/lib/hris";
 import { saveUploadedFile } from "@/lib/uploads";
+import { jsonNoStore } from "@/lib/api-json";
+
+export const dynamic = "force-dynamic";
+
+// GET /api/employee/business-trips — daftar perjalanan dinas milik karyawan yang login (mobile + web).
+export async function GET() {
+  const session = await getCurrentEmployeeSession();
+  if (!session) return jsonNoStore({ message: "Unauthorized." }, 401);
+
+  const employee = await getEmployeeByUserId(session.userId);
+  if (!employee) return jsonNoStore({ message: "Data karyawan tidak ditemukan." }, 404);
+
+  const rows = await listEmployeeBusinessTrips(employee.id);
+  return jsonNoStore({ rows });
+}
 
 function parseSqlDate(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return null;

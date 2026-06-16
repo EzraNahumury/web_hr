@@ -2,7 +2,27 @@ import { NextResponse } from "next/server";
 
 import { getCurrentEmployeeSession } from "@/lib/auth";
 import { getEmployeeByUserId } from "@/lib/hris";
-import { checkFullLoanEligibility, createEmployeeLoanRequest, EMPLOYEE_LOAN_MAX_AMOUNT } from "@/lib/loans";
+import {
+  checkFullLoanEligibility,
+  createEmployeeLoanRequest,
+  EMPLOYEE_LOAN_MAX_AMOUNT,
+  listEmployeeLoans,
+} from "@/lib/loans";
+import { jsonNoStore } from "@/lib/api-json";
+
+export const dynamic = "force-dynamic";
+
+// GET /api/employee/loans — daftar pinjaman + sisa milik karyawan yang login (mobile + web).
+export async function GET() {
+  const session = await getCurrentEmployeeSession();
+  if (!session) return jsonNoStore({ message: "Unauthorized." }, 401);
+
+  const employee = await getEmployeeByUserId(session.userId);
+  if (!employee) return jsonNoStore({ message: "Data karyawan tidak ditemukan." }, 404);
+
+  const rows = await listEmployeeLoans(employee.id);
+  return jsonNoStore({ rows });
+}
 
 function parsePositiveNumber(value: unknown) {
   const parsed = Number(value);
