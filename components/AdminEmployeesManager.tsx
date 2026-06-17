@@ -738,12 +738,12 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
               </div>
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
                 <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama, NIP, unit, jabatan..." className={`${inputClassName} xl:max-w-sm`} />
-                <div className="flex flex-col gap-2">
+                <div className="flex shrink-0 flex-col gap-2">
                   {!isFormOpen && (
                     <button
                       type="button"
                       onClick={openAddForm}
-                      className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#8f1d22] px-6 text-sm font-semibold text-white transition hover:bg-[#7a181c]"
+                      className="inline-flex h-12 items-center justify-center whitespace-nowrap rounded-2xl bg-[#8f1d22] px-6 text-sm font-semibold text-white transition hover:bg-[#7a181c]"
                     >
                       + Tambah Karyawan
                     </button>
@@ -751,10 +751,10 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                   <button
                     type="button"
                     onClick={handleDownloadExcel}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-[#0d7f86] bg-white px-6 text-sm font-semibold text-[#0d7f86] transition hover:bg-[#f0fbfb]"
+                    className="inline-flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-2xl border border-[#0d7f86] bg-white px-6 text-sm font-semibold text-[#0d7f86] transition hover:bg-[#f0fbfb]"
                     title={`Download data karyawan tab "${statusFilter === "aktif" ? "Aktif" : statusFilter === "nonaktif" ? "Nonaktif" : "Semua"}" ke Excel`}
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-4 w-4" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-4 w-4 shrink-0" aria-hidden="true">
                       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" strokeLinecap="round" strokeLinejoin="round" />
                       <polyline points="7 10 12 15 17 10" strokeLinecap="round" strokeLinejoin="round" />
                       <line x1="12" y1="15" x2="12" y2="3" strokeLinecap="round" />
