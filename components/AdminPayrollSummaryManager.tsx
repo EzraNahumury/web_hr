@@ -599,7 +599,7 @@ export default function AdminPayrollSummaryManager({
               />
               {searchQuery ? <button type="button" onClick={() => setSearchQuery("")} className="shrink-0 text-xs font-semibold text-[#a16f63] hover:text-[#7a3f35]">Hapus</button> : null}
             </div>
-            <div className="overflow-auto max-h-[calc(100vh-260px)]">
+            <div className="overflow-auto overscroll-contain max-h-[calc(100dvh-200px)] [-webkit-overflow-scrolling:touch]">
               <table className="min-w-[3960px] border-collapse text-left text-sm text-[#1d1d1d]">
                 <thead className="sticky top-0 z-20">
                   <tr className="bg-[#19d7df] text-center text-xs font-semibold uppercase tracking-[0.14em] text-[#062e31]">
