@@ -181,7 +181,7 @@ export function isCheckInWithinOnTimeWindow(
   if (!candidate) return false;
   const mins = timeToMinutes(checkInTime);
   const start = SHIFT_START[candidate];
-  return mins >= start && mins <= start + toleranceMinutes;
+  return mins > start && mins <= start + toleranceMinutes;
 }
 
 export function getShiftLateMinutes(time: string, shift: AttendanceShift): number {
