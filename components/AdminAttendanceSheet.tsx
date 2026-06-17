@@ -465,6 +465,13 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                     !!detail &&
                     detail.code === "T" &&
                     detail.lateMinutes > 30;
+                  const onTimeOk =
+                    !!detail &&
+                    detail.code === "O" &&
+                    !!detail.timeIn &&
+                    !!detail.timeOut &&
+                    !detail.isEarlyLeave &&
+                    detail.lateMinutes <= 5;
                   const displayCode = earlyLeave ? "PA" : detail?.code || "-";
                   const cellTitle = missingCheckout
                     ? "Belum presensi pulang"
@@ -472,7 +479,9 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                       ? "Pulang awal (sebelum jadwal selesai)"
                       : lateOver30
                         ? `Terlambat ${detail?.lateMinutes} menit (>30 menit)`
-                        : undefined;
+                        : onTimeOk
+                          ? "Hadir tepat waktu"
+                          : undefined;
 
                   return (
                     <td key={day} className="px-3 py-4 text-center font-medium">
@@ -497,9 +506,11 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                                 ? "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fff5d6] px-2 py-1 text-xs font-bold text-[#8d6200] transition hover:bg-[#fde9a4]"
                                 : lateOver30
                                   ? "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fde2dd] px-2 py-1 text-xs font-bold text-[#c0392b] transition hover:bg-[#fbcec7]"
-                                  : isClickable
-                                    ? "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fff4ee] px-2 py-1 text-xs transition hover:bg-[#f5ddd2] hover:text-[#8f1d22]"
-                                    : "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fff4ee] px-2 py-1 text-xs"
+                                  : onTimeOk
+                                    ? "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#d6f5dd] px-2 py-1 text-xs font-bold text-[#1e7a3a] transition hover:bg-[#bdecc8]"
+                                    : isClickable
+                                      ? "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fff4ee] px-2 py-1 text-xs transition hover:bg-[#f5ddd2] hover:text-[#8f1d22]"
+                                      : "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fff4ee] px-2 py-1 text-xs"
                           }
                         >
                           {displayCode}
