@@ -169,6 +169,21 @@ export function isEarlyLeaveByTime(
   return outMins < coStart;
 }
 
+export function isCheckInWithinOnTimeWindow(
+  checkInTime: string | null | undefined,
+  knownShift?: string | null,
+  toleranceMinutes = 5,
+): boolean {
+  if (!checkInTime) return false;
+  const candidate = knownShift && knownShift in SHIFT_START
+    ? (knownShift as AttendanceShift)
+    : detectShiftFromCheckIn(checkInTime);
+  if (!candidate) return false;
+  const mins = timeToMinutes(checkInTime);
+  const start = SHIFT_START[candidate];
+  return mins >= start && mins <= start + toleranceMinutes;
+}
+
 export function getShiftLateMinutes(time: string, shift: AttendanceShift): number {
   const mins = timeToMinutes(time);
   const lateRaw = Math.max(mins - SHIFT_START[shift], 0);

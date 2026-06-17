@@ -471,7 +471,7 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                     !!detail.timeIn &&
                     !!detail.timeOut &&
                     !detail.isEarlyLeave &&
-                    detail.lateMinutes <= 5;
+                    !!detail.isOnTimeWindow;
                   const displayCode = earlyLeave ? "PA" : detail?.code || "-";
                   const cellTitle = missingCheckout
                     ? "Belum presensi pulang"
@@ -540,6 +540,7 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                                 lateMinutes: 0,
                                 note: null,
                                 isEarlyLeave: false,
+                                isOnTimeWindow: false,
                               },
                             });
                           }}

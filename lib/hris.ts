@@ -1,6 +1,6 @@
 import { RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
-import { isEarlyLeaveByTime } from "@/lib/attendance";
+import { isCheckInWithinOnTimeWindow, isEarlyLeaveByTime } from "@/lib/attendance";
 import { getEmployeeRemainingLoanTotal } from "@/lib/loans";
 import { getAdminPayrollSummarySheet } from "@/lib/payroll-summary";
 import {
@@ -74,6 +74,7 @@ export type AttendanceDayDetail = {
   lateMinutes: number;
   note: string | null;
   isEarlyLeave: boolean;
+  isOnTimeWindow: boolean;
 };
 
 type AttendanceSheetRow = {
@@ -299,6 +300,8 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
           : row.absensi_shift;
       const isEarlyLeave =
         code === "O" && isEarlyLeaveByTime(row.jam_masuk, row.jam_pulang, knownShift);
+      const isOnTimeWindow =
+        code === "O" && isCheckInWithinOnTimeWindow(row.jam_masuk, knownShift);
       byEmployee.get(row.employee_id)!.daily[day] = {
         code,
         date: row.attendance_date,
@@ -314,6 +317,7 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         lateMinutes: row.terlambat_menit,
         note: row.keterangan,
         isEarlyLeave,
+        isOnTimeWindow,
       };
     }
   }
@@ -357,6 +361,7 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         lateMinutes: 0,
         note: "Libur terjadwal",
         isEarlyLeave: false,
+        isOnTimeWindow: false,
       };
     }
   }
