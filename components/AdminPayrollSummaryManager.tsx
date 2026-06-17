@@ -588,8 +588,8 @@ export default function AdminPayrollSummaryManager({
             <article className="rounded-[26px] border border-[#ead7ce] bg-white px-5 py-4"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">Range</p><p className="mt-2 text-lg font-semibold text-[#241716]">{displayedRange}</p></article>
           </section>
 
-          <div className="overflow-hidden rounded-[32px] border border-[#d9efef] bg-white">
-            <div className="flex items-center gap-3 border-b border-[#d9efef] px-5 py-4">
+          <div className="overflow-hidden rounded-[32px] border border-[#d9efef] bg-white lg:flex lg:flex-col lg:h-[calc(100dvh-96px)]">
+            <div className="flex items-center gap-3 border-b border-[#d9efef] px-5 py-4 lg:shrink-0">
               <svg className="shrink-0 text-[#3bbfc6]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
               <input
                 value={searchQuery}
@@ -599,7 +599,7 @@ export default function AdminPayrollSummaryManager({
               />
               {searchQuery ? <button type="button" onClick={() => setSearchQuery("")} className="shrink-0 text-xs font-semibold text-[#a16f63] hover:text-[#7a3f35]">Hapus</button> : null}
             </div>
-            <div className="overflow-auto overscroll-contain max-h-[calc(100dvh-200px)] [-webkit-overflow-scrolling:touch]">
+            <div className="overflow-auto [-webkit-overflow-scrolling:touch] max-h-[calc(100dvh-200px)] lg:max-h-none lg:min-h-0 lg:flex-1">
               <table className="min-w-[3960px] border-collapse text-left text-sm text-[#1d1d1d]">
                 <thead className="sticky top-0 z-20">
                   <tr className="bg-[#19d7df] text-center text-xs font-semibold uppercase tracking-[0.14em] text-[#062e31]">
