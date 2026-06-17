@@ -380,6 +380,17 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  // Download Excel data karyawan sesuai tab aktif (aktif/nonaktif/semua).
+  function handleDownloadExcel() {
+    const url = `/api/admin/employees/export?status=${statusFilter}`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
@@ -727,15 +738,30 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
               </div>
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
                 <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama, NIP, unit, jabatan..." className={`${inputClassName} xl:max-w-sm`} />
-                {!isFormOpen && (
+                <div className="flex flex-col gap-2">
+                  {!isFormOpen && (
+                    <button
+                      type="button"
+                      onClick={openAddForm}
+                      className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#8f1d22] px-6 text-sm font-semibold text-white transition hover:bg-[#7a181c]"
+                    >
+                      + Tambah Karyawan
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={openAddForm}
-                    className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#8f1d22] px-6 text-sm font-semibold text-white transition hover:bg-[#7a181c]"
+                    onClick={handleDownloadExcel}
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-[#0d7f86] bg-white px-6 text-sm font-semibold text-[#0d7f86] transition hover:bg-[#f0fbfb]"
+                    title={`Download data karyawan tab "${statusFilter === "aktif" ? "Aktif" : statusFilter === "nonaktif" ? "Nonaktif" : "Semua"}" ke Excel`}
                   >
-                    + Tambah Karyawan
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-4 w-4" aria-hidden="true">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" strokeLinecap="round" strokeLinejoin="round" />
+                      <polyline points="7 10 12 15 17 10" strokeLinecap="round" strokeLinejoin="round" />
+                      <line x1="12" y1="15" x2="12" y2="3" strokeLinecap="round" />
+                    </svg>
+                    Download Data Karyawan
                   </button>
-                )}
+                </div>
               </div>
             </div>
 
