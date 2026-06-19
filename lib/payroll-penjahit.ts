@@ -248,7 +248,7 @@ export async function getPenjahitSheet(period?: {
         SUM(CASE WHEN status_absensi = 'sakit' AND COALESCE(kode_absensi,'') <> 'SX' THEN 1 ELSE 0 END) AS sick_count,
         SUM(CASE WHEN status_absensi = 'sakit' AND kode_absensi = 'SX' THEN 1 ELSE 0 END) AS sick_without_note_count,
         SUM(CASE WHEN status_absensi = 'setengah_hari' OR setengah_hari = 1 THEN 1 ELSE 0 END) AS half_day_count,
-        SUM(CASE WHEN terlambat_menit > 0 THEN 1 ELSE 0 END) AS late_count,
+        SUM(CASE WHEN terlambat_menit > 0 AND status_absensi = 'hadir' THEN 1 ELSE 0 END) AS late_count,
         SUM(CASE WHEN status_absensi = 'libur' OR kode_absensi = 'L' OR kode_absensi = 'C' THEN 1 ELSE 0 END) AS holiday_count,
         SUM(CASE WHEN status_absensi = 'alfa' THEN 1 ELSE 0 END) AS alfa_count
        FROM absensi

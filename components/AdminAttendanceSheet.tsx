@@ -461,10 +461,7 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                         !!detail.timeIn &&
                         !!detail.timeOut &&
                         detail.isEarlyLeave));
-                  const lateOver30 =
-                    !!detail &&
-                    detail.code === "T" &&
-                    detail.lateMinutes > 30;
+                  const lateOver30 = !!detail && detail.code === "T";
                   const onTimeOk =
                     !!detail &&
                     detail.code === "O" &&
@@ -478,7 +475,7 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                     : earlyLeave
                       ? "Pulang awal (sebelum jadwal selesai)"
                       : lateOver30
-                        ? `Terlambat ${detail?.lateMinutes} menit (>30 menit)`
+                        ? `Terlambat${detail && detail.lateMinutes > 0 ? ` ${detail.lateMinutes} menit` : ""}`
                         : onTimeOk
                           ? "Hadir tepat waktu"
                           : undefined;

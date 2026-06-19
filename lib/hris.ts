@@ -420,15 +420,22 @@ export async function setAttendanceCodeForDate(
     throw new Error("Kode absensi tidak valid.");
   }
 
+  // Reset terlambat hanya saat kode = T (terlambat). Kode lain (H/O/S/I/dll)
+  // tidak boleh menyisakan terlambat_menit lama agar tidak salah hitung di payroll.
+  const setengahHariFlag = code === "H" ? 1 : 0;
+  const resetTerlambat = code !== "T";
+
   await pool.query(
     `
-      INSERT INTO absensi (karyawan_id, tanggal, status_absensi, kode_absensi)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO absensi (karyawan_id, tanggal, status_absensi, kode_absensi, setengah_hari, terlambat_menit)
+      VALUES (?, ?, ?, ?, ?, 0)
       ON DUPLICATE KEY UPDATE
         status_absensi = VALUES(status_absensi),
-        kode_absensi = VALUES(kode_absensi)
+        kode_absensi = VALUES(kode_absensi),
+        setengah_hari = VALUES(setengah_hari),
+        terlambat_menit = IF(? = 1, 0, terlambat_menit)
     `,
-    [employeeId, dateIso, status, code],
+    [employeeId, dateIso, status, code, setengahHariFlag, resetTerlambat ? 1 : 0],
   );
 
   return { employeeId, date: dateIso, code, status };

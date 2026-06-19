@@ -583,7 +583,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       current.halfDay += 1;
     }
 
-    if (row.terlambat_menit > 0) {
+    if (row.terlambat_menit > 0 && row.status_absensi === "hadir") {
       current.late += 1;
     }
 
