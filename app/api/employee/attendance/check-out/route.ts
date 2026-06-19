@@ -129,7 +129,27 @@ export async function POST(request: Request) {
     const checkOutTime = attendanceDateTime.split(" ")[1];
     const keterangan = body.keterangan?.trim() || null;
 
-    if (isEarlyLeaveByTime(attendance.jam_masuk_str, checkOutTime) && !keterangan) {
+    const subDivLower = (employee.sub_divisi ?? "").trim().toLowerCase();
+    const isMedia = subDivLower === "media";
+    const isHostlive = subDivLower === "hostlive";
+    const isAdvertiser = subDivLower === "advertiser";
+    const isPenjahit = subDivLower === "penjahit";
+    const isJne = employee.penempatan === "JNE";
+    const isShiftEligible =
+      isTokoGudangPlacement(employee.penempatan) || isMedia || isHostlive || isAdvertiser || isJne;
+
+    const scheduledShift = isShiftEligible
+      ? await getScheduledShiftForDate(employee.id, attendanceDate)
+      : null;
+    const effectiveScheduledShift =
+      scheduledShift && scheduledShift !== "libur" ? scheduledShift : null;
+
+    // Penjahit fleksibel (setengah hari) tidak punya jadwal shift → lewati cek pulang awal.
+    // Untuk lainnya, pakai shift terjadwal bila ada; jika tidak, fallback deteksi dari jam.
+    const earlyLeaveFlagged =
+      !isPenjahit &&
+      isEarlyLeaveByTime(attendance.jam_masuk_str, checkOutTime, effectiveScheduledShift);
+    if (earlyLeaveFlagged && !keterangan) {
       return NextResponse.json(
         { message: "Kamu pulang lebih awal dari jadwal. Wajib mengisi keterangan sebelum submit." },
         { status: 400 },
@@ -138,20 +158,10 @@ export async function POST(request: Request) {
 
     const photoPath = await saveAttendancePhoto(body.photoDataUrl, employee.id, "out");
 
-    const subDivLower = (employee.sub_divisi ?? "").trim().toLowerCase();
-    const isMedia = subDivLower === "media";
-    const isHostlive = subDivLower === "hostlive";
-    const isAdvertiser = subDivLower === "advertiser";
-    const isJne = employee.penempatan === "JNE";
-    if (
-      (isTokoGudangPlacement(employee.penempatan) || isMedia || isHostlive || isAdvertiser || isJne) &&
-      attendance.jam_masuk_str
-    ) {
-      const scheduledShift = await getScheduledShiftForDate(employee.id, attendanceDate);
+    if (isShiftEligible && attendance.jam_masuk_str) {
       const finalShift =
-        scheduledShift && scheduledShift !== "libur"
-          ? scheduledShift
-          : detectTokoGudangShiftFinal(attendance.jam_masuk_str, checkOutTime);
+        effectiveScheduledShift ??
+        detectTokoGudangShiftFinal(attendance.jam_masuk_str, checkOutTime);
 
       await pool.query(
         `

@@ -1276,6 +1276,8 @@ type EmployeeCardRow = RowDataPacket & {
   no_karyawan: string;
   jabatan: string;
   divisi: string;
+  sub_divisi?: string | null;
+  penempatan?: string | null;
   departemen: string;
   tanggal_masuk_pertama?: string | null;
 };
@@ -1311,6 +1313,8 @@ export async function getEmployeeByUserId(userId: number) {
         k.no_karyawan,
         k.jabatan,
         k.divisi,
+        k.sub_divisi,
+        k.penempatan,
         k.departemen,
         DATE_FORMAT(k.tanggal_masuk_pertama, '%Y-%m-%d') AS tanggal_masuk_pertama
       FROM karyawan k

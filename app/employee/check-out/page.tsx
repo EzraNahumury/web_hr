@@ -1,7 +1,9 @@
 import EmployeeAttendanceCapture from "@/components/EmployeeAttendanceCapture";
 import EmployeeShell from "@/components/EmployeeShell";
 import { requireEmployeeSession } from "@/lib/auth";
+import { getJakartaDate } from "@/lib/attendance";
 import { getEmployeeByUserId, getEmployeeTodayAttendance } from "@/lib/hris";
+import { getScheduledShiftForDate } from "@/lib/jadwal-karyawan";
 
 export default async function EmployeeCheckOutPage() {
   const session = await requireEmployeeSession();
@@ -12,6 +14,8 @@ export default async function EmployeeCheckOutPage() {
   }
 
   const todayAttendance = await getEmployeeTodayAttendance(employee.id);
+  const scheduledShift = await getScheduledShiftForDate(employee.id, getJakartaDate());
+  const isPenjahit = (employee.sub_divisi ?? "").trim().toLowerCase() === "penjahit";
 
   return (
     <EmployeeShell
@@ -27,6 +31,8 @@ export default async function EmployeeCheckOutPage() {
         employeeName={employee.nama}
         employeeMeta={`${employee.no_karyawan} • ${employee.jabatan}`}
         todayAttendance={todayAttendance}
+        scheduledShift={scheduledShift && scheduledShift !== "libur" ? scheduledShift : null}
+        skipEarlyLeaveCheck={isPenjahit}
       />
     </EmployeeShell>
   );

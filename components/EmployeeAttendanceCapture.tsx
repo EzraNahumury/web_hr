@@ -14,6 +14,8 @@ type Props = {
     jamPulang: string | null;
     statusAbsensi: string | null;
   } | null;
+  scheduledShift?: string | null;
+  skipEarlyLeaveCheck?: boolean;
 };
 
 type CheckInStatus = "hadir" | "izin" | "sakit" | "sakit_tanpa_surat" | "setengah_hari";
@@ -67,6 +69,8 @@ export default function EmployeeAttendanceCapture({
   employeeName,
   employeeMeta,
   todayAttendance,
+  scheduledShift = null,
+  skipEarlyLeaveCheck = false,
 }: Props) {
   const isCheckIn = mode === "check-in";
   const isCheckOutBlocked =
@@ -110,6 +114,7 @@ export default function EmployeeAttendanceCapture({
 
   const isEarlyLeaveNow = (() => {
     if (isCheckIn) return false;
+    if (skipEarlyLeaveCheck) return false;
     const jamMasuk = todayAttendance?.jamMasuk;
     if (!jamMasuk) return false;
     const t2m = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
@@ -125,9 +130,15 @@ export default function EmployeeAttendanceCapture({
       pagi_short: [870, 930], siang_sore: [990, 1050],
       jne_pagi: [930, 990], jne_siang: [1230, 1290], jne_minggu: [1170, 1230],
     };
-    const order = ["lembur","siang","siang_sore","pagi","pagi_full","pagi_short","setengah_2","setengah_1","jne_pagi","jne_siang","jne_minggu"];
-    const ciMins = t2m(jamMasuk);
-    const shift = order.find((s) => ciMins >= CI[s][0] && ciMins <= CI[s][1]);
+    // Shift terjadwal lebih akurat daripada deteksi dari jam check-in
+    // (jam check-in siang ambigu antara office-siang vs setengah hari).
+    let shift: string | undefined =
+      scheduledShift && scheduledShift in CO ? scheduledShift : undefined;
+    if (!shift) {
+      const order = ["lembur","siang","siang_sore","pagi","pagi_full","pagi_short","setengah_2","setengah_1","jne_pagi","jne_siang","jne_minggu"];
+      const ciMins = t2m(jamMasuk);
+      shift = order.find((s) => ciMins >= CI[s][0] && ciMins <= CI[s][1]);
+    }
     if (!shift) return false;
     return nowMins < CO[shift][0];
   })();
