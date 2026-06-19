@@ -721,6 +721,9 @@ export async function getAdminPayrollSummarySheet(period?: {
     const isSalesNasional = isSalesNasionalRole(row.jabatan);
     const workDays = periodWorkDays;
     const presentDays = inputOverrideMasuk ?? attendance.present;
+    // Setengah hari: gaji pokok dihitung 1 hari penuh di base, lalu dipotong 1/2 hari
+    // via halfDayDeduction → bersih = 1/2 hari (bukan dobel potong).
+    const halfDayCount = isFreelance ? 0 : (inputOverrideSetengahHari ?? attendance.halfDay);
 
     // For freelance: Insentif Kehadiran adalah rate per jam. Tampilkan rate yang admin input
     // (entah dia saved di kolom per_jam atau per_hari — keduanya artinya sama: rate per jam).
@@ -761,10 +764,12 @@ export async function getAdminPayrollSummarySheet(period?: {
       row.tanggal_masuk_pertama >= range.startSql &&
       row.tanggal_masuk_pertama <= range.endSql;
     const isNewEmployeeBelow15 = isNewEmployee && presentDays < 15;
-    const prorateBase = isNewEmployeeBelow15 ? (monthlyBaseSalary / 25) * presentDays : null;
+    const prorateBase = isNewEmployeeBelow15
+      ? (monthlyBaseSalary / 25) * (presentDays + halfDayCount)
+      : null;
     const totalBaseSalary = isFreelance
       ? monthlyBaseSalary
-      : (prorateBase ?? dailyBaseSalary * (presentDays + holidayDays));
+      : (prorateBase ?? dailyBaseSalary * (presentDays + holidayDays + halfDayCount));
     const roleFactor = getOmzetFactor(row.jabatan, row.status_kepegawaian);
     const employeeGroupKey = getOmzetGroupKeyForUnit(row.unit);
     const groupOmzet = employeeGroupKey ? omzetByGroup.get(employeeGroupKey) : undefined;
@@ -786,8 +791,6 @@ export async function getAdminPayrollSummarySheet(period?: {
     const overtimeHours = isFreelance ? 0 :
       (inputOverrideLembur ?? (overtimeMap.get(row.employee_id) ?? 0));
     const overtimeBonus = overtimeHours * 20000;
-    const halfDayCount = isFreelance ? 0 :
-      (inputOverrideSetengahHari ?? attendance.halfDay);
 
     const kerajinanNoIssue =
       sickCount <= 2 && sickWithoutNoteCount === 0 && alfaCount === 0;

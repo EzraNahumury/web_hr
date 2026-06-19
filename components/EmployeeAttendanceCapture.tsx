@@ -16,6 +16,7 @@ type Props = {
   } | null;
   scheduledShift?: string | null;
   skipEarlyLeaveCheck?: boolean;
+  allowHalfDay?: boolean;
 };
 
 type CheckInStatus = "hadir" | "izin" | "sakit" | "sakit_tanpa_surat" | "setengah_hari";
@@ -71,7 +72,20 @@ export default function EmployeeAttendanceCapture({
   todayAttendance,
   scheduledShift = null,
   skipEarlyLeaveCheck = false,
+  allowHalfDay = false,
 }: Props) {
+  const checkInOptions = allowHalfDay
+    ? [
+        CHECK_IN_OPTIONS[0],
+        {
+          value: "setengah_hari" as CheckInStatus,
+          label: "Setengah Hari",
+          short: "H",
+          helper: "Selfie wajib, dihitung 1/2 hari.",
+        },
+        ...CHECK_IN_OPTIONS.slice(1),
+      ]
+    : CHECK_IN_OPTIONS;
   const isCheckIn = mode === "check-in";
   const isCheckOutBlocked =
     mode === "check-out" &&
@@ -115,6 +129,7 @@ export default function EmployeeAttendanceCapture({
   const isEarlyLeaveNow = (() => {
     if (isCheckIn) return false;
     if (skipEarlyLeaveCheck) return false;
+    if (todayAttendance?.statusAbsensi === "setengah_hari") return false;
     const jamMasuk = todayAttendance?.jamMasuk;
     if (!jamMasuk) return false;
     const t2m = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
@@ -638,7 +653,7 @@ export default function EmployeeAttendanceCapture({
                   Jenis Presensi
                 </p>
                 <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-2 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  {CHECK_IN_OPTIONS.map((option) => {
+                  {checkInOptions.map((option) => {
                     const selected = checkInStatus === option.value;
                     return (
                       <button

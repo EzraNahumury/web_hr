@@ -144,10 +144,12 @@ export async function POST(request: Request) {
     const effectiveScheduledShift =
       scheduledShift && scheduledShift !== "libur" ? scheduledShift : null;
 
-    // Penjahit fleksibel (setengah hari) tidak punya jadwal shift → lewati cek pulang awal.
+    // Penjahit fleksibel & hari setengah memang pulang lebih awal → lewati cek pulang awal.
     // Untuk lainnya, pakai shift terjadwal bila ada; jika tidak, fallback deteksi dari jam.
+    const isHalfDay = attendance.status_absensi === "setengah_hari";
     const earlyLeaveFlagged =
       !isPenjahit &&
+      !isHalfDay &&
       isEarlyLeaveByTime(attendance.jam_masuk_str, checkOutTime, effectiveScheduledShift);
     if (earlyLeaveFlagged && !keterangan) {
       return NextResponse.json(

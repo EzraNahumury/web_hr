@@ -208,9 +208,12 @@ export async function POST(request: Request) {
         ? (scheduledShift as AttendanceShift)
         : detectTokoGudangShift(currentTime)
       : null;
-    const lateMinutes = requiresSelfie
-      ? getShiftLateMinutes(currentTime, detectedShift ?? "pagi")
-      : 0;
+    // Keterlambatan hanya berlaku untuk karyawan ber-jadwal (punya shift pasti).
+    // Karyawan fleksibel (penjahit/office) & setengah hari tidak dihitung telat.
+    const lateMinutes =
+      requiresSelfie && detectedShift && attendanceRequestStatus === "hadir"
+        ? getShiftLateMinutes(currentTime, detectedShift)
+        : 0;
     const attendanceStatus =
       attendanceRequestStatus === "izin"
         ? "izin"
