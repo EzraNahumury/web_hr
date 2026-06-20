@@ -1,6 +1,6 @@
 import { RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
-import { isCheckInWithinOnTimeWindow, isEarlyLeaveByTime } from "@/lib/attendance";
+import { isCheckInWithinOnTimeWindow, isEarlyLeaveByTime, isHalfDayByTime } from "@/lib/attendance";
 import { getEmployeeRemainingLoanTotal } from "@/lib/loans";
 import { getAdminPayrollSummarySheet } from "@/lib/payroll-summary";
 import {
@@ -96,32 +96,6 @@ type AttendanceSheetOptions = {
   week?: number;
 };
 
-function isTimeWithinRange(time: string, start: string, end: string) {
-  return time >= start && time <= end;
-}
-
-function isHalfDayAttendance(
-  timeIn: string | null,
-  timeOut: string | null,
-  halfDayFlag: number,
-) {
-  if (halfDayFlag === 1) {
-    return true;
-  }
-
-  if (!timeIn || !timeOut) {
-    return false;
-  }
-
-  const isMorningHalfDay =
-    isTimeWithinRange(timeIn, "08:30", "12:00") &&
-    isTimeWithinRange(timeOut, "08:30", "12:00");
-  const isAfternoonHalfDay =
-    isTimeWithinRange(timeIn, "13:00", "16:30") &&
-    isTimeWithinRange(timeOut, "13:00", "16:30");
-
-  return isMorningHalfDay || isAfternoonHalfDay;
-}
 
 function mapAttendanceCode(
   row: Pick<
@@ -132,6 +106,8 @@ function mapAttendanceCode(
     | "jam_pulang"
     | "foto_masuk"
     | "setengah_hari"
+    | "absensi_shift"
+    | "scheduled_shift"
   >,
 ) {
   const {
@@ -142,9 +118,11 @@ function mapAttendanceCode(
     foto_masuk: photoIn,
     setengah_hari: halfDayFlag,
   } = row;
+  const hasShift =
+    !!(row.scheduled_shift && row.scheduled_shift !== "libur") || !!row.absensi_shift;
   const isHalfDay =
     status === "setengah_hari" ||
-    isHalfDayAttendance(timeIn, timeOut, halfDayFlag);
+    isHalfDayByTime(timeIn, timeOut, halfDayFlag, hasShift);
   const isSickWithoutProof = status === "sakit" && !photoIn;
 
   if (code) {

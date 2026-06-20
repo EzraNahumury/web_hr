@@ -16,6 +16,7 @@ import {
   ensureLoanSupportTables,
   getLoanDeductionRowsForPeriod,
 } from "@/lib/loans";
+import { isHalfDayByTime } from "@/lib/attendance";
 import {
   ensurePayrollPeriodCloned,
   ensurePayrollSupportTables,
@@ -111,6 +112,10 @@ type PeriodAttendanceRow = RowDataPacket & {
   kode_absensi: string | null;
   setengah_hari: number;
   terlambat_menit: number;
+  jam_masuk_str: string | null;
+  jam_pulang_str: string | null;
+  shift: string | null;
+  scheduled_shift: string | null;
 };
 
 type PeriodOvertimeRow = RowDataPacket & {
@@ -444,14 +449,21 @@ export async function getAdminPayrollSummarySheet(period?: {
     pool.query<PeriodAttendanceRow[]>(
       `
         SELECT
-          karyawan_id AS employee_id,
-          status_absensi,
-          kode_absensi,
-          setengah_hari,
-          terlambat_menit
-        FROM absensi
-        WHERE karyawan_id IN (${placeholders})
-          AND tanggal BETWEEN ? AND ?
+          a.karyawan_id AS employee_id,
+          a.status_absensi,
+          a.kode_absensi,
+          a.setengah_hari,
+          a.terlambat_menit,
+          DATE_FORMAT(a.jam_masuk, '%H:%i') AS jam_masuk_str,
+          DATE_FORMAT(a.jam_pulang, '%H:%i') AS jam_pulang_str,
+          a.shift,
+          j.shift AS scheduled_shift
+        FROM absensi a
+        LEFT JOIN jadwal_karyawan j
+          ON j.karyawan_id = a.karyawan_id
+          AND j.tanggal = a.tanggal
+        WHERE a.karyawan_id IN (${placeholders})
+          AND a.tanggal BETWEEN ? AND ?
       `,
       [...employeeIds, range.startSql, range.endSql],
     ),
@@ -565,8 +577,29 @@ export async function getAdminPayrollSummarySheet(period?: {
       alfa: 0,
     };
 
-    if (row.status_absensi === "hadir") {
+    // Satu sumber kebenaran: hitung setengah hari berbasis jam (konsisten dgn rekap absensi).
+    // Record setengah hari TIDAK dihitung sebagai hadir penuh & TIDAK dihitung telat.
+    // hasShift dihitung SAMA PERSIS dengan rekap absensi (lib/hris.ts): pakai jadwal
+    // terjadwal dulu, baru fallback ke absensi.shift — supaya klasifikasi shift vs non-shift
+    // tidak pernah berbeda antara rekap & payroll (mis. media/JNE shift lebar pagi_full/jne_*).
+    const hasShift =
+      !!(row.scheduled_shift && row.scheduled_shift !== "libur") || !!row.shift;
+    const isHalf =
+      row.status_absensi === "setengah_hari" ||
+      isHalfDayByTime(
+        row.jam_masuk_str,
+        row.jam_pulang_str,
+        row.setengah_hari,
+        hasShift,
+      );
+
+    if (isHalf) {
+      current.halfDay += 1;
+    } else if (row.status_absensi === "hadir") {
       current.present += 1;
+      if (row.terlambat_menit > 0) {
+        current.late += 1;
+      }
     }
 
     if (row.status_absensi === "izin") {
@@ -577,14 +610,6 @@ export async function getAdminPayrollSummarySheet(period?: {
       current.sickWithoutNote += 1;
     } else if (row.status_absensi === "sakit") {
       current.sick += 1;
-    }
-
-    if (row.status_absensi === "setengah_hari" || row.setengah_hari === 1) {
-      current.halfDay += 1;
-    }
-
-    if (row.terlambat_menit > 0 && row.status_absensi === "hadir") {
-      current.late += 1;
     }
 
     if (

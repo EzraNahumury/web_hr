@@ -154,6 +154,36 @@ export function detectShiftFromCheckIn(checkInTime: string): AttendanceShift | n
   return null;
 }
 
+// Aturan setengah hari berbasis jam. Satu sumber kebenaran untuk rekap absensi & payroll.
+// - Manual: kalau karyawan memilih "Setengah Hari" saat check-in (halfDayFlag === 1) -> selalu half.
+// - Karyawan NON-SHIFT (hasShift = false), masuk & pulang dua-duanya harus di window:
+//     * Setengah Hari 1 : masuk 10:30 - 13:00 DAN pulang 16:30 - 17:30
+//     * Setengah Hari 2 : masuk 08:00 - 08:30 DAN pulang 12:00 - 13:00
+// - Karyawan BER-SHIFT (toko/gudang/media/jne): pakai window lama (masuk & pulang dua-duanya
+//   di 08:30-12:00 untuk pagi, atau 13:00-16:30 untuk siang) supaya perilakunya tidak berubah.
+export function isHalfDayByTime(
+  timeIn: string | null | undefined,
+  timeOut: string | null | undefined,
+  halfDayFlag: number,
+  hasShift: boolean,
+): boolean {
+  if (halfDayFlag === 1) return true;
+  if (!timeIn || !timeOut) return false;
+
+  const within = (t: string, a: string, b: string) => t >= a && t <= b;
+
+  if (hasShift) {
+    const pagi = within(timeIn, "08:30", "12:00") && within(timeOut, "08:30", "12:00");
+    const siang = within(timeIn, "13:00", "16:30") && within(timeOut, "13:00", "16:30");
+    return pagi || siang;
+  }
+
+  // Non-shift: aturan baru (sesuai window setengah_1 & setengah_2)
+  const setengah1 = within(timeIn, "10:30", "13:00") && within(timeOut, "16:30", "17:30");
+  const setengah2 = within(timeIn, "08:00", "08:30") && within(timeOut, "12:00", "13:00");
+  return setengah1 || setengah2;
+}
+
 export function isEarlyLeaveByTime(
   checkInTime: string | null | undefined,
   checkOutTime: string | null | undefined,

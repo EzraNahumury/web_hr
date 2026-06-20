@@ -1,6 +1,7 @@
 import { RowDataPacket } from "mysql2";
 
 import { pool } from "@/lib/db";
+import { isHalfDayByTime } from "@/lib/attendance";
 
 function countPeriodWorkDays(start: Date, end: Date) {
   const cursor = new Date(start);
@@ -62,8 +63,19 @@ type PenjahitPayrollRow = RowDataPacket & {
   potongan_pinjaman: string;
 };
 
-type AttendanceRow = RowDataPacket & {
+type AttendanceRawRow = RowDataPacket & {
   employee_id: number;
+  status_absensi: string;
+  kode_absensi: string | null;
+  setengah_hari: number;
+  terlambat_menit: number;
+  jam_masuk_str: string | null;
+  jam_pulang_str: string | null;
+  shift: string | null;
+  scheduled_shift: string | null;
+};
+
+type AttendanceCounts = {
   present_count: number;
   leave_count: number;
   sick_count: number;
@@ -241,19 +253,21 @@ export async function getPenjahitSheet(period?: {
   const placeholders = employeeIds.map(() => "?").join(",");
 
   const [[attendanceRows], [overtimeRows], loanRows] = await Promise.all([
-    pool.query<AttendanceRow[]>(
-      `SELECT karyawan_id AS employee_id,
-        SUM(CASE WHEN status_absensi = 'hadir' THEN 1 ELSE 0 END) AS present_count,
-        SUM(CASE WHEN status_absensi = 'izin' THEN 1 ELSE 0 END) AS leave_count,
-        SUM(CASE WHEN status_absensi = 'sakit' AND COALESCE(kode_absensi,'') <> 'SX' THEN 1 ELSE 0 END) AS sick_count,
-        SUM(CASE WHEN status_absensi = 'sakit' AND kode_absensi = 'SX' THEN 1 ELSE 0 END) AS sick_without_note_count,
-        SUM(CASE WHEN status_absensi = 'setengah_hari' OR setengah_hari = 1 THEN 1 ELSE 0 END) AS half_day_count,
-        SUM(CASE WHEN terlambat_menit > 0 AND status_absensi = 'hadir' THEN 1 ELSE 0 END) AS late_count,
-        SUM(CASE WHEN status_absensi = 'libur' OR kode_absensi = 'L' OR kode_absensi = 'C' THEN 1 ELSE 0 END) AS holiday_count,
-        SUM(CASE WHEN status_absensi = 'alfa' THEN 1 ELSE 0 END) AS alfa_count
-       FROM absensi
-       WHERE karyawan_id IN (${placeholders}) AND tanggal BETWEEN ? AND ?
-       GROUP BY karyawan_id`,
+    pool.query<AttendanceRawRow[]>(
+      `SELECT a.karyawan_id AS employee_id,
+        a.status_absensi,
+        a.kode_absensi,
+        a.setengah_hari,
+        a.terlambat_menit,
+        DATE_FORMAT(a.jam_masuk, '%H:%i') AS jam_masuk_str,
+        DATE_FORMAT(a.jam_pulang, '%H:%i') AS jam_pulang_str,
+        a.shift,
+        j.shift AS scheduled_shift
+       FROM absensi a
+       LEFT JOIN jadwal_karyawan j
+         ON j.karyawan_id = a.karyawan_id
+         AND j.tanggal = a.tanggal
+       WHERE a.karyawan_id IN (${placeholders}) AND a.tanggal BETWEEN ? AND ?`,
       [...employeeIds, range.startSql, range.endSql],
     ),
     pool.query<OvertimeRow[]>(
@@ -266,7 +280,63 @@ export async function getPenjahitSheet(period?: {
     getLoanDeductionRowsForPeriod(employeeIds, periodMonth, periodYear),
   ]);
 
-  const attendanceMap = new Map(attendanceRows.map((r) => [r.employee_id, r]));
+  // Hitung per-hari di JS pakai isHalfDayByTime supaya konsisten dengan rekap absensi & payroll lain.
+  // Record setengah hari TIDAK dihitung sebagai hadir penuh & TIDAK dihitung telat.
+  const attendanceMap = new Map<number, AttendanceCounts>();
+  for (const r of attendanceRows) {
+    const cur =
+      attendanceMap.get(r.employee_id) ?? {
+        present_count: 0,
+        leave_count: 0,
+        sick_count: 0,
+        sick_without_note_count: 0,
+        half_day_count: 0,
+        late_count: 0,
+        holiday_count: 0,
+        alfa_count: 0,
+      };
+
+    // hasShift dihitung SAMA PERSIS dengan rekap absensi (lib/hris.ts) supaya klasifikasi
+    // shift vs non-shift konsisten antara rekap & payroll.
+    const hasShift =
+      !!(r.scheduled_shift && r.scheduled_shift !== "libur") || !!r.shift;
+    const isHalf =
+      r.status_absensi === "setengah_hari" ||
+      isHalfDayByTime(r.jam_masuk_str, r.jam_pulang_str, r.setengah_hari, hasShift);
+
+    if (isHalf) {
+      cur.half_day_count += 1;
+    } else if (r.status_absensi === "hadir") {
+      cur.present_count += 1;
+      if (r.terlambat_menit > 0) {
+        cur.late_count += 1;
+      }
+    }
+
+    if (r.status_absensi === "izin") {
+      cur.leave_count += 1;
+    }
+
+    if (r.status_absensi === "sakit" && r.kode_absensi === "SX") {
+      cur.sick_without_note_count += 1;
+    } else if (r.status_absensi === "sakit") {
+      cur.sick_count += 1;
+    }
+
+    if (
+      r.status_absensi === "libur" ||
+      r.kode_absensi === "L" ||
+      r.kode_absensi === "C"
+    ) {
+      cur.holiday_count += 1;
+    }
+
+    if (r.status_absensi === "alfa") {
+      cur.alfa_count += 1;
+    }
+
+    attendanceMap.set(r.employee_id, cur);
+  }
   const overtimeMap = new Map(overtimeRows.map((r) => [r.employee_id, toNum(r.total_jam)]));
   const loanMap = new Map(loanRows.map((r) => [r.employeeId, toNum(r.totalDeduction)]));
 
