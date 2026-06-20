@@ -142,6 +142,7 @@ export default function AdminPayrollSummaryManager({
   );
   const [form, setForm] = useState<FormState>(emptyForm(""));
   const [searchQuery, setSearchQuery] = useState("");
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const [periodYear, periodMonth] = useMemo(() => {
     const [year, month] = selectedPeriod.split("-");
@@ -345,6 +346,93 @@ export default function AdminPayrollSummaryManager({
     );
   }
 
+  async function handleDownloadPdf() {
+    if (isExportingPdf || filteredRows.length === 0) return;
+    setIsExportingPdf(true);
+    try {
+      const { default: jsPDF } = await import("jspdf");
+      const { default: autoTable } = await import("jspdf-autotable");
+
+      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text("Rekap Potongan Payroll", 14, 15);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`Periode: ${selectedPeriodLabel}`, 14, 22);
+      doc.text(`Rentang absensi: ${displayedRange}`, 14, 27.5);
+      doc.text(`Total karyawan: ${filteredRows.length}`, 14, 33);
+
+      autoTable(doc, {
+        startY: 38,
+        head: [
+          [
+            { content: "No", rowSpan: 2 },
+            { content: "Nama", rowSpan: 2 },
+            { content: "Izin / Off", rowSpan: 2 },
+            { content: "Sakit", rowSpan: 2 },
+            { content: "Sakit Tanpa Surat", rowSpan: 2 },
+            { content: "Setengah Hari", colSpan: 2 },
+            { content: "Telat", colSpan: 2 },
+            { content: "Total Potongan", rowSpan: 2 },
+            { content: "Total Potongan", colSpan: 4 },
+            { content: "Total All Potongan", rowSpan: 2 },
+          ],
+          [
+            "1/2 Hari",
+            "Potongan",
+            "Telat",
+            "Potongan",
+            "Potongan Denda",
+            "Potongan Kontrak",
+            "Potongan Pinjaman",
+            "Potongan Absensi",
+          ],
+        ],
+        body: filteredRows.map((row) => [
+          row.number,
+          row.name,
+          row.leaveCount,
+          row.sickCount,
+          row.sickWithoutNoteCount,
+          row.halfDayCount,
+          formatCurrency(row.halfDayDeduction),
+          row.lateCount,
+          formatCurrency(row.lateDeduction),
+          formatCurrency(row.halfDayDeduction + row.lateDeduction),
+          formatCurrency(row.fineDeduction),
+          formatCurrency(row.contractCut),
+          formatCurrency(row.loanCut),
+          formatCurrency(row.diligenceCut),
+          formatCurrency(
+            row.fineDeduction + row.contractCut + row.loanCut + row.diligenceCut,
+          ),
+        ]),
+        theme: "grid",
+        styles: { fontSize: 7, cellPadding: 1.8, halign: "right", valign: "middle", lineColor: [215, 236, 238] },
+        headStyles: { fillColor: [25, 215, 223], textColor: [6, 46, 49], fontStyle: "bold", halign: "center", valign: "middle" },
+        alternateRowStyles: { fillColor: [248, 254, 254] },
+        columnStyles: {
+          0: { halign: "center", cellWidth: 9 },
+          1: { halign: "left", cellWidth: 40 },
+          2: { halign: "center" },
+          3: { halign: "center" },
+          4: { halign: "center" },
+          5: { halign: "center" },
+          7: { halign: "center" },
+        },
+      });
+
+      const month = String(periodMonth).padStart(2, "0");
+      doc.save(`rekap-potongan-payroll-${periodYear}-${month}.pdf`);
+    } catch (error) {
+      console.error("PDF export failed:", error);
+    } finally {
+      setIsExportingPdf(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
       {!canEdit ? (
@@ -361,6 +449,24 @@ export default function AdminPayrollSummaryManager({
               Hubungi admin pengelola payroll untuk perubahan data.
             </p>
           </div>
+        </div>
+      ) : null}
+
+      {sheet && sheet.rows.length > 0 ? (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            disabled={isExportingPdf || filteredRows.length === 0}
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#8f1d22] px-6 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(143,29,34,0.22)] transition hover:-translate-y-0.5 hover:bg-[#a3262c] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 3v12" />
+              <path d="m7 10 5 5 5-5" />
+              <path d="M5 21h14" />
+            </svg>
+            {isExportingPdf ? "Membuat PDF..." : "Download PDF"}
+          </button>
         </div>
       ) : null}
 
