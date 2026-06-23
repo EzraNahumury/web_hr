@@ -1237,7 +1237,7 @@ export async function autoAttachLoanInstallmentsForPeriod(
   // dan menimpa hasil edit cicilan. Periode berjalan dicatat lewat Simpan Payroll manual.
   // Freelance tidak kena potongan pinjaman → tidak di-attach otomatis.
   const matchCriteria = `
-      (pc.tahun * 100 + pc.bulan) < ?
+      (pc.tahun * 100 + pc.bulan) <= ?
       AND pc.payroll_id IS NULL
       AND pc.nominal_terpotong IS NULL
       AND pc.nominal_potongan > 0
