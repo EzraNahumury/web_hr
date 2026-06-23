@@ -38,15 +38,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Data lembur tidak ditemukan." }, { status: 404 });
   }
 
-  if (existing.status_approval !== "pending") {
-    return NextResponse.json(
-      { error: "Approval lembur sudah final dan tidak bisa diubah lagi." },
-      { status: 409 },
-    );
-  }
-
-  // Untuk double flow, admin tidak boleh approve sebelum atasan approve.
-  if (existing.approval_flow === "double" && existing.first_approval_status !== "approved") {
+  // Admin boleh mengatur ulang status (override) meski sudah final — koreksi salah klik.
+  // Khusus approve di double flow, atasan tetap harus menyetujui lebih dulu.
+  if (
+    statusApproval === "approved" &&
+    existing.approval_flow === "double" &&
+    existing.first_approval_status !== "approved"
+  ) {
     return NextResponse.json(
       { error: "Atasan belum menyetujui pengajuan ini. Admin tidak bisa approve sebelum atasan menyetujui." },
       { status: 409 },

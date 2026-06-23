@@ -77,6 +77,7 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
   const [success, setSuccess] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ url: string; isImage: boolean } | null>(null);
   const [detailRow, setDetailRow] = useState<OvertimeRow | null>(null);
+  const [statusRow, setStatusRow] = useState<OvertimeRow | null>(null);
   const [editRow, setEditRow] = useState<OvertimeRow | null>(null);
   const [editForm, setEditForm] = useState({ tanggal: "", jamMulai: "", jamSelesai: "" });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -128,6 +129,7 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
       }
 
       setSuccess(`Pengajuan lembur berhasil di-${status === "approved" ? "approve" : "reject"}.`);
+      setStatusRow(null);
       router.refresh();
     });
   }
@@ -569,6 +571,20 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
                           </button>
                           <button
                             type="button"
+                            onClick={() => { setError(null); setSuccess(null); setStatusRow(row); }}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#d7deea] bg-white text-[#5b6680] transition hover:border-[#19a15f] hover:text-[#19a15f]"
+                            aria-label="Update status lembur"
+                            title="Update status lembur (approve / reject)"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+                              <path d="M3 12a9 9 0 0 1 15-6.7L21 8" strokeLinecap="round" strokeLinejoin="round" />
+                              <path d="M21 3v5h-5" strokeLinecap="round" strokeLinejoin="round" />
+                              <path d="M21 12a9 9 0 0 1-15 6.7L3 16" strokeLinecap="round" strokeLinejoin="round" />
+                              <path d="M3 21v-5h5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => openEdit(row)}
                             className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#d7deea] bg-white text-[#5b6680] transition hover:border-[#8f1d22] hover:text-[#8f1d22]"
                             aria-label="Update tanggal & jam lembur"
@@ -711,6 +727,69 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
               <div className="mt-6 grid gap-4">
                 <DetailField label="Catatan Karyawan" value={detailRow.catatan_karyawan || "-"} fullWidth multiline />
                 <DetailField label="Catatan Atasan" value={detailRow.catatan_atasan || "-"} fullWidth multiline />
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {statusRow ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
+          <div className="w-full max-w-md overflow-hidden rounded-[28px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.22)]">
+            <div className="flex items-center justify-between gap-4 border-b border-[#e7edf5] bg-[linear-gradient(135deg,#19a15f_0%,#0f7a47_100%)] px-6 py-5 text-white">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/80">Update Status Lembur</p>
+                <p className="mt-2 text-lg font-semibold uppercase">{statusRow.nama}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStatusRow(null)}
+                disabled={isPending}
+                className="rounded-2xl bg-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/25 disabled:opacity-50"
+              >
+                Tutup
+              </button>
+            </div>
+            <div className="space-y-5 p-6">
+              <div className="rounded-2xl border border-[#e7edf5] bg-[#f8fafc] px-4 py-3 text-sm text-[#5b6680]">
+                <div className="flex items-center justify-between gap-3">
+                  <span>Status saat ini</span>
+                  <StatusBadge status={statusRow.status_approval} />
+                </div>
+                <p className="mt-2 text-xs text-[#7a879f]">
+                  {statusRow.tanggal} • {statusRow.jam_mulai}-{statusRow.jam_selesai} • {statusRow.total_jam} jam
+                </p>
+              </div>
+
+              <label className="block space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8a96ad]">Catatan Atasan (opsional)</span>
+                <input
+                  value={notes[statusRow.id] ?? ""}
+                  onChange={(event) =>
+                    setNotes((current) => ({ ...current, [statusRow.id]: event.target.value }))
+                  }
+                  placeholder="Catatan atasan"
+                  className="h-11 w-full rounded-xl border border-[#d7deea] bg-[#fbfcfe] px-3 text-sm text-[#172033] outline-none transition focus:border-[#19a15f]"
+                />
+              </label>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => updateApproval(statusRow.id, "approved")}
+                  disabled={isPending}
+                  className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#19a15f] px-4 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(25,161,95,0.22)] transition hover:bg-[#14874f] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateApproval(statusRow.id, "rejected")}
+                  disabled={isPending}
+                  className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#ef4444] px-4 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(239,68,68,0.22)] transition hover:bg-[#d73737] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Reject
+                </button>
               </div>
             </div>
           </div>
