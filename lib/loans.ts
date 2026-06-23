@@ -241,6 +241,10 @@ type LoanPaidAggregateRow = RowDataPacket & {
   total_paid: string | null;
 };
 
+type DueInstallmentRow = RowDataPacket & {
+  has_due: number;
+};
+
 type ExistingScheduleRow = RowDataPacket & {
   id: number;
   jumlah_pinjaman: string;
@@ -448,13 +452,26 @@ async function syncLoanSummary(loanId: number, connection?: QueryExecutor) {
   const totalPaid = toNumber(paidRows[0]?.total_paid);
   const totalLoan = toNumber(loan.jumlah_pinjaman);
   const remaining = Math.max(roundMoney(totalLoan - totalPaid), 0);
+  const active = getActiveLoanPayrollPeriod();
+  const activePeriodKey = active.year * 100 + active.month;
+  const [dueRows] = await executor.query<DueInstallmentRow[]>(
+    `
+      SELECT 1 AS has_due
+      FROM pinjaman_cicilan
+      WHERE pinjaman_id = ?
+        AND (tahun * 100 + bulan) <= ?
+        AND nominal_potongan > 0
+      LIMIT 1
+    `,
+    [loanId, activePeriodKey],
+  );
 
   let nextStatus = loan.status_pinjaman;
 
   if (["approved", "berjalan", "lunas"].includes(loan.status_pinjaman)) {
     if (remaining <= 0 && totalLoan > 0) {
       nextStatus = "lunas";
-    } else if (totalPaid > 0) {
+    } else if (totalPaid > 0 || dueRows.length > 0) {
       nextStatus = "berjalan";
     } else {
       nextStatus = "approved";
@@ -1264,17 +1281,37 @@ export async function autoAttachLoanInstallmentsForPeriod(
   await syncLoanSummariesByIds(affectedRows.map((row) => row.pinjaman_id), executor);
 }
 
+async function syncDueLoanStatusesForPeriod(month: number, year: number) {
+  await ensureLoanSupportTables();
+
+  const periodKey = year * 100 + month;
+  const [rows] = await pool.query<AutoAttachAffectedRow[]>(
+    `
+      SELECT DISTINCT p.id AS pinjaman_id
+      FROM pinjaman p
+      INNER JOIN pinjaman_cicilan pc ON pc.pinjaman_id = p.id
+      WHERE p.status_pinjaman = 'approved'
+        AND pc.nominal_potongan > 0
+        AND (pc.tahun * 100 + pc.bulan) <= ?
+    `,
+    [periodKey],
+  );
+
+  await syncLoanSummariesByIds(rows.map((row) => row.pinjaman_id));
+}
+
 export async function listAdminLoans() {
-  // Otomatis catat cicilan periode berjalan supaya status approved → berjalan
-  // langsung terlihat tanpa harus buka & simpan Summary Payroll dulu.
+  // Periode berjalan mengubah status ke "berjalan" tanpa menandai cicilan sebagai terpotong.
   const active = getActiveLoanPayrollPeriod();
   await autoAttachLoanInstallmentsForPeriod(active.month, active.year);
+  await syncDueLoanStatusesForPeriod(active.month, active.year);
   return getLoansBase("WHERE p.status_pinjaman <> 'rejected'");
 }
 
 export async function listEmployeeLoans(employeeId: number) {
   const active = getActiveLoanPayrollPeriod();
   await autoAttachLoanInstallmentsForPeriod(active.month, active.year);
+  await syncDueLoanStatusesForPeriod(active.month, active.year);
   return getLoansBase("WHERE p.karyawan_id = ?", [employeeId]);
 }
 
