@@ -1211,10 +1211,13 @@ export async function autoAttachLoanInstallmentsForPeriod(
   await ensureLoanSupportTables(connection);
 
   const periodKey = year * 100 + month;
-  // Freelance tidak kena potongan pinjaman di payroll (loanCut selalu 0 di upsert manual),
-  // jadi cicilannya tidak boleh ditandai terpotong otomatis.
+  // Hanya auto-catat cicilan untuk periode yang SUDAH TUTUP (< periode aktif berjalan).
+  // Periode aktif yang masih berjalan tidak boleh ditandai lunas otomatis hanya karena
+  // ada baris payroll (mis. hasil clone periode) — itu bikin pinjaman "tiba-tiba lunas"
+  // dan menimpa hasil edit cicilan. Periode berjalan dicatat lewat Simpan Payroll manual.
+  // Freelance tidak kena potongan pinjaman → tidak di-attach otomatis.
   const matchCriteria = `
-      (pc.tahun * 100 + pc.bulan) <= ?
+      (pc.tahun * 100 + pc.bulan) < ?
       AND pc.payroll_id IS NULL
       AND pc.nominal_terpotong IS NULL
       AND pc.nominal_potongan > 0
