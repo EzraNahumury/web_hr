@@ -35,6 +35,7 @@ type OvertimeRow = {
 
 type Props = {
   rows: OvertimeRow[];
+  canApprove?: boolean;
 };
 
 const MONTH_MAP: Record<string, number> = {
@@ -67,7 +68,7 @@ function StatusBadge({ status }: { status: OvertimeRow["status_approval"] }) {
   );
 }
 
-export default function AdminOvertimeApprovals({ rows }: Props) {
+export default function AdminOvertimeApprovals({ rows, canApprove = false }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [notes, setNotes] = useState<Record<number, string>>(
@@ -550,7 +551,7 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
                             }))
                           }
                           placeholder="Catatan atasan"
-                          disabled={isLocked}
+                          disabled={isLocked || !canApprove}
                           className="h-11 w-[220px] rounded-xl border border-[#d7deea] bg-[#fbfcfe] px-3 text-sm text-[#172033] outline-none transition focus:border-[#5b4fff] disabled:cursor-not-allowed disabled:bg-[#f1f4f8] disabled:text-[#7a879f]"
                         />
                       </td>
@@ -569,50 +570,56 @@ export default function AdminOvertimeApprovals({ rows }: Props) {
                               <line x1="12" y1="8" x2="12.01" y2="8" />
                             </svg>
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => { setError(null); setSuccess(null); setStatusRow(row); }}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#d7deea] bg-white text-[#5b6680] transition hover:border-[#19a15f] hover:text-[#19a15f]"
-                            aria-label="Update status lembur"
-                            title="Update status lembur (approve / reject)"
-                          >
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
-                              <path d="M3 12a9 9 0 0 1 15-6.7L21 8" strokeLinecap="round" strokeLinejoin="round" />
-                              <path d="M21 3v5h-5" strokeLinecap="round" strokeLinejoin="round" />
-                              <path d="M21 12a9 9 0 0 1-15 6.7L3 16" strokeLinecap="round" strokeLinejoin="round" />
-                              <path d="M3 21v-5h5" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openEdit(row)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#d7deea] bg-white text-[#5b6680] transition hover:border-[#8f1d22] hover:text-[#8f1d22]"
-                            aria-label="Update tanggal & jam lembur"
-                            title="Update tanggal & jam lembur"
-                          >
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
-                              <path d="M12 20h9" strokeLinecap="round" strokeLinejoin="round" />
-                              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => updateApproval(row.id, "approved")}
-                            disabled={isPending || !canAdminAct}
-                            title={waitingFirstApprover ? "Atasan belum menyetujui" : undefined}
-                            className="rounded-xl bg-[#19a15f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#14874f] disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => updateApproval(row.id, "rejected")}
-                            disabled={isPending || !canAdminAct}
-                            title={waitingFirstApprover ? "Atasan belum menyetujui" : undefined}
-                            className="rounded-xl bg-[#ef4444] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#d73737] disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            Reject
-                          </button>
+                          {canApprove ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => { setError(null); setSuccess(null); setStatusRow(row); }}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#d7deea] bg-white text-[#5b6680] transition hover:border-[#19a15f] hover:text-[#19a15f]"
+                                aria-label="Update status lembur"
+                                title="Update status lembur (approve / reject)"
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+                                  <path d="M3 12a9 9 0 0 1 15-6.7L21 8" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d="M21 3v5h-5" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d="M21 12a9 9 0 0 1-15 6.7L3 16" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d="M3 21v-5h5" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openEdit(row)}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#d7deea] bg-white text-[#5b6680] transition hover:border-[#8f1d22] hover:text-[#8f1d22]"
+                                aria-label="Update tanggal & jam lembur"
+                                title="Update tanggal & jam lembur"
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+                                  <path d="M12 20h9" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateApproval(row.id, "approved")}
+                                disabled={isPending || !canAdminAct}
+                                title={waitingFirstApprover ? "Atasan belum menyetujui" : undefined}
+                                className="rounded-xl bg-[#19a15f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#14874f] disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateApproval(row.id, "rejected")}
+                                disabled={isPending || !canAdminAct}
+                                title={waitingFirstApprover ? "Atasan belum menyetujui" : undefined}
+                                className="rounded-xl bg-[#ef4444] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#d73737] disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          ) : (
+                            <span className="text-xs font-medium text-[#8a96ad]">Read-only</span>
+                          )}
                         </div>
                       </td>
                     </tr>

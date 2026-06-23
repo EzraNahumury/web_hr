@@ -232,3 +232,15 @@ export function isPayrollEditor(email: string | null | undefined): boolean {
   const normalized = email.trim().toLowerCase();
   return PAYROLL_EDITOR_EMAILS.includes(normalized);
 }
+
+// Whitelist email admin yang boleh APPROVE/REJECT pengajuan lembur.
+// Admin lain tetap bisa MELIHAT (read-only), tapi tidak bisa approve/reject/edit status.
+const OVERTIME_APPROVER_EMAILS: ReadonlyArray<string> = [
+  "aryaceo@gmail.com",
+];
+
+export function isOvertimeApprover(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const normalized = email.trim().toLowerCase();
+  return OVERTIME_APPROVER_EMAILS.includes(normalized);
+}

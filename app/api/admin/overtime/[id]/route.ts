@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ResultSetHeader, RowDataPacket } from "mysql2";
-import { requireAdminSession } from "@/lib/auth";
+import { isOvertimeApprover, requireAdminSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
 
 type Params = {
@@ -9,6 +9,14 @@ type Params = {
 
 export async function PATCH(request: NextRequest, { params }: Params) {
   const admin = await requireAdminSession();
+
+  if (!isOvertimeApprover(admin.email)) {
+    return NextResponse.json(
+      { error: "Hanya admin yang berwenang yang bisa approve/reject lembur." },
+      { status: 403 },
+    );
+  }
+
   const { id } = await params;
   const overtimeId = Number(id);
 
@@ -66,7 +74,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 // Admin update tanggal & jam lembur (koreksi data). Total jam dihitung ulang otomatis.
 export async function PUT(request: NextRequest, { params }: Params) {
   const admin = await requireAdminSession();
-  void admin;
+
+  if (!isOvertimeApprover(admin.email)) {
+    return NextResponse.json(
+      { error: "Hanya admin yang berwenang yang bisa mengubah data lembur." },
+      { status: 403 },
+    );
+  }
+
   const { id } = await params;
   const overtimeId = Number(id);
 
