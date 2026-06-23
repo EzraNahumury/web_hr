@@ -246,10 +246,6 @@ type EmployeeRow = RowDataPacket & {
   updated_at: string;
 };
 
-type ValueRow = RowDataPacket & {
-  value: string;
-};
-
 type CountRow = RowDataPacket & {
   total: number;
 };
@@ -296,26 +292,6 @@ function mapEmployee(row: EmployeeRow): EmployeeListItem {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
-}
-
-async function fetchDistinctOptions(
-  column:
-    | "pembagian_rekapan"
-    | "agama",
-) {
-  const [rows] = await pool.query<ValueRow[]>(
-    `
-      SELECT DISTINCT ${column} AS value
-      FROM karyawan
-      WHERE ${column} IS NOT NULL AND ${column} <> ''
-      ORDER BY ${column} ASC
-    `,
-  );
-
-  return rows.map((row) => ({
-    label: row.value,
-    value: row.value,
-  }));
 }
 
 const employeeSelectQuery = `

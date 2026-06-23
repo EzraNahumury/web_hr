@@ -10,7 +10,6 @@ import {
   listFinancePencairanGaji,
   listKeteranganHutangKontrak,
   type FinanceUnitDeptData,
-  type FinanceUnitGroup,
   type PencairanGajiByUnit,
   type KeteranganItem,
 } from "@/lib/hris";

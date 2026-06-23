@@ -55,16 +55,23 @@ export default function PayrollGreetingModal() {
   const particlesRef = useRef<Particle[]>([]);
 
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem("payrollGreeting");
-      if (!raw) return;
-      sessionStorage.removeItem("payrollGreeting");
-      const parsed = JSON.parse(raw) as GreetingPayload;
-      setEmployeeName(parsed.name ?? "");
-      setOpen(true);
-    } catch {
-      // ignore
-    }
+    const raw = sessionStorage.getItem("payrollGreeting");
+    if (!raw) return;
+
+    const timer = window.setTimeout(() => {
+      try {
+        const stored = sessionStorage.getItem("payrollGreeting");
+        if (!stored) return;
+        sessionStorage.removeItem("payrollGreeting");
+        const parsed = JSON.parse(stored) as GreetingPayload;
+        setEmployeeName(parsed.name ?? "");
+        setOpen(true);
+      } catch {
+        // ignore
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {

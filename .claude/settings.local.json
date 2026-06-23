@@ -52,7 +52,13 @@
       "Read(//c/laragon/bin/**)",
       "Bash(ls /c/wamp*/bin/mysql/*/bin/mysql.exe)",
       "Bash(npx --no-install tsc --noEmit)",
-      "Bash(curl -sLI \"https://maps.app.goo.gl/vEqbPEe4eHmUZxL5A\")"
+      "Bash(curl -sLI \"https://maps.app.goo.gl/vEqbPEe4eHmUZxL5A\")",
+      "Bash(npx -p typescript tsc --noEmit -p tsconfig.json)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git stash *)",
+      "Bash(git pull *)"
     ]
   }
 }

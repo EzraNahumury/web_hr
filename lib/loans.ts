@@ -871,7 +871,10 @@ export async function updateLoanRequest(
       ],
     );
 
-    if (["approved", "berjalan"].includes(loan.status_pinjaman) && loan.tanggal_approval) {
+    if (
+      ["approved", "berjalan", "lunas"].includes(loan.status_pinjaman) &&
+      loan.tanggal_approval
+    ) {
       await rebuildLoanInstallments(
         loanId,
         roundMoney(payload.totalLoan),

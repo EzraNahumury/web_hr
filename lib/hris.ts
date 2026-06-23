@@ -419,19 +419,6 @@ export async function setAttendanceCodeForDate(
   return { employeeId, date: dateIso, code, status };
 }
 
-type OvertimeRow = RowDataPacket & {
-  id: number;
-  nama: string;
-  tanggal: string;
-  jam_mulai: string;
-  jam_selesai: string;
-  total_jam: string;
-  bukti_lembur: string | null;
-  status_approval: "pending" | "approved" | "rejected";
-  approver_name: string | null;
-  catatan_atasan: string | null;
-};
-
 export async function listOvertimeRecords() {
   const { listOvertimeAll } = await import("@/lib/overtime");
   return listOvertimeAll();

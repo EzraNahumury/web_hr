@@ -29,11 +29,12 @@ const SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
   { value: "libur", label: "Libur" },
 ];
 
-// Toko Solo hanya beroperasi shift Pagi (08.30-16.30); Libur dipertahankan
-// supaya bisa menandai hari off karyawan.
+// Toko Solo non-shift: Pagi, setengah hari, atau Libur.
 const TOKO_SOLO_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
   { value: "", label: "—" },
   { value: "pagi", label: "Pagi" },
+  { value: "setengah_1", label: "Setengah 1" },
+  { value: "setengah_2", label: "Setengah 2" },
   { value: "libur", label: "Libur" },
 ];
 
@@ -82,6 +83,7 @@ function getShiftOptionsFor(
 ) {
   if (noKaryawan === IMEL_NIP) return IMEL_SHIFT_OPTIONS;
   if (penempatan === "JNE") return JNE_SHIFT_OPTIONS;
+  if (penempatan.trim().toLowerCase() === "toko solo") return TOKO_SOLO_SHIFT_OPTIONS;
   const subDiv = (subDivisi ?? "").trim().toLowerCase();
   if (subDiv === "media") return MEDIA_SHIFT_OPTIONS;
   if (subDiv === "hostlive") return HOSTLIVE_SHIFT_OPTIONS;

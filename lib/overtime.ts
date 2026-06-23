@@ -1,7 +1,6 @@
 import type { RowDataPacket } from "mysql2";
 
 import { pool } from "@/lib/db";
-import { canSetSchedule } from "@/lib/scheduler-roles";
 
 let overtimeSchemaReady: Promise<void> | null = null;
 

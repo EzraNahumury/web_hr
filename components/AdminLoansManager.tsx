@@ -80,6 +80,19 @@ function formatMoney(value: string | number | null | undefined) {
   });
 }
 
+function buildUniformInstallmentInputs(total: number, count: number) {
+  if (!Number.isFinite(total) || total <= 0 || !Number.isInteger(count) || count <= 0) {
+    return [] as string[];
+  }
+
+  const base = Math.floor(total / count);
+  const remainder = total - base * count;
+
+  return Array.from({ length: count }, (_, index) =>
+    formatRupiahInput(String(base + (index < remainder ? 1 : 0))),
+  );
+}
+
 function StatusBadge({ status }: { status: LoanListItem["status"] }) {
   const styles =
     status === "approved"
@@ -162,10 +175,7 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
       // Belum ada schedule (status pending) — distribusi rata
       const total = toNumber(loan.totalLoan);
       const count = loan.installmentCount;
-      const base = count > 0 ? Math.floor(total / count) : 0;
-      const remainder = total - base * count;
-      const amounts = Array.from({ length: count }, (_, i) => base + (i < remainder ? 1 : 0));
-      setCustomInstallments(amounts.map((v) => formatRupiahInput(String(v))));
+      setCustomInstallments(buildUniformInstallmentInputs(total, count));
       setEditingInstallmentLabels(Array.from({ length: count }, (_, i) => `Bulan ke-${i + 1}`));
     }
     setFormFeedback(null);
@@ -185,13 +195,28 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
     const total = Number(digitsOnly(form.totalLoan));
     const count = Number(form.installmentCount);
     if (!total || !count) return;
-    const base = Math.floor(total / count);
-    const remainder = total - base * count;
-    const amounts = Array.from({ length: count }, (_, i) => base + (i < remainder ? 1 : 0));
-    setCustomInstallments(amounts.map((v) => formatRupiahInput(String(v))));
+    setCustomInstallments(buildUniformInstallmentInputs(total, count));
     if (editingInstallmentLabels.length !== count) {
       setEditingInstallmentLabels(Array.from({ length: count }, (_, i) => `Bulan ke-${i + 1}`));
     }
+  }
+
+  function updateInstallmentCount(value: string) {
+    const digits = digitsOnly(value);
+    setForm((current) => ({ ...current, installmentCount: digits }));
+
+    if (!editingLoanId) return;
+
+    const total = Number(digitsOnly(form.totalLoan));
+    const count = Number(digits);
+    if (!total || !count) {
+      setCustomInstallments([]);
+      setEditingInstallmentLabels([]);
+      return;
+    }
+
+    setCustomInstallments(buildUniformInstallmentInputs(total, count));
+    setEditingInstallmentLabels(Array.from({ length: count }, (_, i) => `Bulan ke-${i + 1}`));
   }
 
   async function handleDeleteLoan(loan: LoanListItem) {
@@ -507,7 +532,7 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
               <input
                 inputMode="numeric"
                 value={form.installmentCount}
-                onChange={(event) => setForm((p) => ({ ...p, installmentCount: digitsOnly(event.target.value) }))}
+                onChange={(event) => updateInstallmentCount(event.target.value)}
                 placeholder="Contoh: 5"
                 className={inputClassName}
                 required
