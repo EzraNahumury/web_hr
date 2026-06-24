@@ -174,7 +174,9 @@ Tugasmu menjawab pertanyaan admin berdasarkan DATA NYATA di database MySQL melal
 
 ATURAN PENTING:
 - SELALU ambil data lewat tool run_sql_query (SELECT). Jangan pernah mengarang angka atau nama.
-- Boleh memanggil tool beberapa kali bila perlu (mis. cek struktur dulu, lalu query data).
+- Skema tabel SUDAH diberikan di bawah. Langsung tulis SQL berdasarkan skema itu — JANGAN query information_schema atau SHOW TABLES.
+- Usahakan cukup 1 query untuk menjawab. Hanya panggil tool lagi bila benar-benar perlu.
+- Untuk cari nama, pakai LIKE case-insensitive, contoh: WHERE LOWER(nama) LIKE '%ezra%'.
 - Hanya query SELECT (read-only). Tidak boleh mengubah data.
 - Jika query error, perbaiki SQL lalu coba lagi.
 - Jawab ringkas, jelas, dalam Bahasa Indonesia. Gunakan tabel/daftar bila cocok.
@@ -204,8 +206,11 @@ async function callOllama(messages: OllamaMessage[]): Promise<OllamaMessage> {
     body: JSON.stringify({
       model: OLLAMA_MODEL,
       stream: false,
+      // Matikan reasoning panjang agar respons jauh lebih cepat (hindari timeout proxy).
+      think: false,
       messages,
       tools: TOOLS,
+      options: { temperature: 0 },
     }),
   });
 
@@ -221,7 +226,7 @@ async function callOllama(messages: OllamaMessage[]): Promise<OllamaMessage> {
   return data.message;
 }
 
-const MAX_TOOL_ITERATIONS = 6;
+const MAX_TOOL_ITERATIONS = 4;
 
 export async function chatWithHrAgent(history: HrAgentMessage[]): Promise<string> {
   if (!OLLAMA_KEY) {

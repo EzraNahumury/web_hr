@@ -81,7 +81,19 @@ export default function HrAgentChat() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: nextMessages }),
       });
-      const result = (await response.json()) as { reply?: string; message?: string };
+
+      const raw = await response.text();
+      let result: { reply?: string; message?: string };
+      try {
+        result = JSON.parse(raw) as { reply?: string; message?: string };
+      } catch {
+        // Respons bukan JSON (mis. halaman HTML 504 dari proxy saat timeout).
+        throw new Error(
+          response.status === 504 || response.status === 502
+            ? "Permintaan terlalu lama diproses (timeout). Coba pertanyaan yang lebih spesifik atau ulangi lagi."
+            : "Server sedang sibuk. Coba ulangi sebentar lagi.",
+        );
+      }
       if (!response.ok || !result.reply) {
         throw new Error(result.message || "Gagal mendapatkan jawaban.");
       }
