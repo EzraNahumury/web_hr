@@ -35,23 +35,90 @@ function BotIcon() {
   );
 }
 
-// Render markdown sederhana: bold, list, baris baru.
+function inlineHtml(text: string) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+}
+
+function splitRow(line: string): string[] {
+  return line
+    .replace(/^\s*\|/, "")
+    .replace(/\|\s*$/, "")
+    .split("|")
+    .map((c) => c.trim());
+}
+
+function isSeparatorRow(line: string): boolean {
+  return /^\s*\|?\s*:?-{2,}/.test(line) && /\|/.test(line) && !/[a-z0-9]/i.test(line.replace(/[\s|:-]/g, ""));
+}
+
+// Render markdown sederhana: bold, baris baru, dan TABEL (| a | b |).
 function renderContent(text: string) {
   const lines = text.split("\n");
-  return lines.map((line, idx) => {
-    const html = line
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-    return (
+  const blocks: React.ReactNode[] = [];
+  let i = 0;
+  let key = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const isTableLine = line.trim().startsWith("|") && line.includes("|");
+
+    if (isTableLine) {
+      const tableLines: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith("|") && lines[i].includes("|")) {
+        tableLines.push(lines[i]);
+        i++;
+      }
+      const rows = tableLines.filter((l) => !isSeparatorRow(l)).map(splitRow);
+      if (rows.length === 0) continue;
+      const [header, ...body] = rows;
+      blocks.push(
+        <div key={key++} className="my-2 overflow-x-auto">
+          <table className="w-full border-collapse text-xs sm:text-[13px]">
+            <thead>
+              <tr className="bg-[#f6e7e0]">
+                {header.map((cell, ci) => (
+                  <th
+                    key={ci}
+                    className="border border-[#e6d2c9] px-3 py-2 text-left font-semibold text-[#5a2d24]"
+                    dangerouslySetInnerHTML={{ __html: inlineHtml(cell) }}
+                  />
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {body.map((cells, ri) => (
+                <tr key={ri} className={ri % 2 ? "bg-[#fffaf7]" : "bg-white"}>
+                  {cells.map((cell, ci) => (
+                    <td
+                      key={ci}
+                      className="border border-[#eee0da] px-3 py-2 text-[#2d1b18]"
+                      dangerouslySetInnerHTML={{ __html: inlineHtml(cell) }}
+                    />
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>,
+      );
+      continue;
+    }
+
+    blocks.push(
       <p
-        key={idx}
+        key={key++}
         className={line.trim() === "" ? "h-2" : "leading-relaxed"}
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
+        dangerouslySetInnerHTML={{ __html: inlineHtml(line) }}
+      />,
     );
-  });
+    i++;
+  }
+
+  return blocks;
 }
 
 export default function HrAgentChat() {
