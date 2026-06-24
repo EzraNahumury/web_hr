@@ -41,6 +41,7 @@ const menuItems: MenuItem[] = [
   { label: "Distribusi Slip", href: "/admin/payslip-distribution", description: "Log distribusi slip" },
   { label: "Slip Bonus", href: "/admin/bonus-slips", description: "Detail slip bonus" },
   { label: "Distribusi Slip Bonus", href: "/admin/bonus-slip-distribution", description: "Log distribusi slip bonus" },
+  { label: "HR Agent", href: "/admin/hr-agent", description: "Asisten AI tanya-jawab data HR" },
   { label: "Role", href: "/admin/roles", description: "Kelola akun admin & SPV" },
 ];
 
