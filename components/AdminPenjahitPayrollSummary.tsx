@@ -146,6 +146,7 @@ export default function AdminPenjahitPayrollSummary({ sheet, periodOptions, empl
   const [form, setForm] = useState<FormState>(emptyForm());
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   function handlePeriodChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const [month, year] = e.target.value.split("-").map(Number);
@@ -236,6 +237,107 @@ export default function AdminPenjahitPayrollSummary({ sheet, periodOptions, empl
     });
   }
 
+  async function handleDownloadPdf() {
+    if (isExportingPdf || !sheet || sheet.rows.length === 0) return;
+    setIsExportingPdf(true);
+    try {
+      const { default: jsPDF } = await import("jspdf");
+      const { default: autoTable } = await import("jspdf-autotable");
+
+      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      const rp0 = (n: number) => (n > 0 ? formatRupiah(n) : "-");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text("Rekap Payroll Penjahit", 14, 15);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`Periode: ${sheet.periodLabel}`, 14, 22);
+      doc.text(`Total penjahit: ${sheet.rows.length}`, 14, 27.5);
+
+      autoTable(doc, {
+        startY: 32,
+        head: [
+          [
+            { content: "No", rowSpan: 2 },
+            { content: "Nama", rowSpan: 2 },
+            { content: "Hari Kerja", rowSpan: 2 },
+            { content: "Masuk", rowSpan: 2 },
+            { content: "Lembur", colSpan: 2 },
+            { content: "Izin", rowSpan: 2 },
+            { content: "Sakit", rowSpan: 2 },
+            { content: "Sakit Tanpa Surat", rowSpan: 2 },
+            { content: "Setengah Hari", colSpan: 2 },
+            { content: "Telat", colSpan: 2 },
+            { content: "Total Potongan", colSpan: 5 },
+            { content: "Penerimaan Bersih", rowSpan: 2 },
+          ],
+          [
+            "Jam",
+            "Bonus",
+            "Count",
+            "Potongan",
+            "Count",
+            "Potongan",
+            "Denda",
+            "Kontrak",
+            "Pinjaman",
+            "Lain-Lain",
+            "Total",
+          ],
+        ],
+        body: sheet.rows.map((row, index) => {
+          const totalPotongan =
+            row.potonganDenda + row.potonganKontrak + row.potonganPinjaman + row.potonganLainLain;
+          return [
+            index + 1,
+            row.nama,
+            row.hariKerja,
+            row.masuk,
+            formatNum(row.lemburJam),
+            rp0(row.bonusLembur),
+            row.izin,
+            row.sakit,
+            row.sakitTanpaSurat,
+            row.setengahHari,
+            rp0(row.potonganSetengahHari),
+            row.telat,
+            rp0(row.potonganTelat),
+            rp0(row.potonganDenda),
+            rp0(row.potonganKontrak),
+            rp0(row.potonganPinjaman),
+            rp0(row.potonganLainLain),
+            rp0(totalPotongan),
+            formatRupiah(Math.max(0, row.penerimaanBersih)),
+          ];
+        }),
+        theme: "grid",
+        styles: { fontSize: 7, cellPadding: 1.6, halign: "right", valign: "middle", lineColor: [237, 224, 216] },
+        headStyles: { fillColor: [143, 29, 34], textColor: [255, 255, 255], fontStyle: "bold", halign: "center", valign: "middle" },
+        alternateRowStyles: { fillColor: [255, 250, 247] },
+        columnStyles: {
+          0: { halign: "center", cellWidth: 8 },
+          1: { halign: "left", cellWidth: 34 },
+          2: { halign: "center" },
+          3: { halign: "center" },
+          4: { halign: "center" },
+          6: { halign: "center" },
+          7: { halign: "center" },
+          8: { halign: "center" },
+          9: { halign: "center" },
+          11: { halign: "center" },
+        },
+      });
+
+      const month = String(sheet.periodMonth).padStart(2, "0");
+      doc.save(`rekap-payroll-penjahit-${sheet.periodYear}-${month}.pdf`);
+    } catch (error) {
+      console.error("PDF export failed:", error);
+    } finally {
+      setIsExportingPdf(false);
+    }
+  }
+
   const existingIds = new Set(sheet?.rows.map((r) => r.employeeId) ?? []);
   const availableEmployeeOptions = employeeOptions.filter((e) => !existingIds.has(e.employeeId));
 
@@ -274,6 +376,20 @@ export default function AdminPenjahitPayrollSummary({ sheet, periodOptions, empl
                 </option>
               ))}
             </select>
+            {sheet && sheet.rows.length > 0 ? (
+              <button
+                onClick={handleDownloadPdf}
+                disabled={isExportingPdf}
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#ead7ce] bg-white px-4 text-sm font-semibold text-[#8f1d22] hover:bg-[#fff2ec] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 3v12" />
+                  <path d="m7 10 5 5 5-5" />
+                  <path d="M5 21h14" />
+                </svg>
+                {isExportingPdf ? "Membuat PDF..." : "Download PDF"}
+              </button>
+            ) : null}
             <button
               onClick={openAdd}
               className="h-10 rounded-xl bg-[#8f1d22] px-5 text-sm font-semibold text-white hover:bg-[#7a1a1e] active:bg-[#6a1519]"
