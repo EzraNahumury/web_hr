@@ -378,6 +378,8 @@ export default function AdminPayrollSummaryManager({
             { content: "Total Potongan", rowSpan: 2 },
             { content: "Total Potongan", colSpan: 4 },
             { content: "Total All Potongan", rowSpan: 2 },
+            { content: "Take Home Pay Sebelum Dipotong", rowSpan: 2 },
+            { content: "Take Home Pay", rowSpan: 2 },
           ],
           [
             "1/2 Hari",
@@ -408,6 +410,8 @@ export default function AdminPayrollSummaryManager({
           formatCurrency(
             row.fineDeduction + row.contractCut + row.loanCut + row.diligenceCut,
           ),
+          formatCurrency(row.totalSalaryBeforeDeduction),
+          formatCurrency(row.netIncome),
         ]),
         theme: "grid",
         styles: { fontSize: 7, cellPadding: 1.8, halign: "right", valign: "middle", lineColor: [215, 236, 238] },
