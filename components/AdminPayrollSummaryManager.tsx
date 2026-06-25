@@ -370,6 +370,8 @@ export default function AdminPayrollSummaryManager({
           [
             { content: "No", rowSpan: 2 },
             { content: "Nama", rowSpan: 2 },
+            { content: "Hari Kerja", rowSpan: 2 },
+            { content: "Masuk", rowSpan: 2 },
             { content: "Izin / Off", rowSpan: 2 },
             { content: "Sakit", rowSpan: 2 },
             { content: "Sakit Tanpa Surat", rowSpan: 2 },
@@ -395,6 +397,8 @@ export default function AdminPayrollSummaryManager({
         body: filteredRows.map((row) => [
           row.number,
           row.name,
+          row.workDays,
+          row.presentDays,
           row.leaveCount,
           row.sickCount,
           row.sickWithoutNoteCount,
@@ -424,7 +428,9 @@ export default function AdminPayrollSummaryManager({
           3: { halign: "center" },
           4: { halign: "center" },
           5: { halign: "center" },
+          6: { halign: "center" },
           7: { halign: "center" },
+          9: { halign: "center" },
         },
       });
 
