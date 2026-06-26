@@ -1521,16 +1521,25 @@ export async function updateLoanApprovalDate(loanId: number, newApprovalDate: st
     const totalLoan = toNumber(loan.jumlah_pinjaman);
     const installmentCount = Math.max(loan.jumlah_angsuran, 1);
 
+    const allPeriods = buildLoanInstallmentPeriods(newApprovalDate, installmentCount);
+    const installmentAmounts = buildInstallmentAmounts(totalLoan, installmentCount);
+
     if (paidCount === 0) {
       await rebuildLoanInstallments(loanId, totalLoan, installmentCount, newApprovalDate, connection);
     } else {
-      // Keep paid installments; shift unpaid ones to new schedule
+      // Geser bulan/tahun cicilan terbayar ke jadwal baru (nominal_terpotong & payroll_id tetap)
+      for (let i = 0; i < paidCount && i < allPeriods.length; i++) {
+        const period = allPeriods[i];
+        await connection.query<ResultSetHeader>(
+          `UPDATE pinjaman_cicilan SET bulan = ?, tahun = ? WHERE pinjaman_id = ? AND urutan_cicilan = ?`,
+          [period.month, period.year, loanId, period.sequence],
+        );
+      }
+      // Hapus cicilan belum terbayar lalu sisipkan kembali dengan periode baru
       await connection.query<ResultSetHeader>(
         `DELETE FROM pinjaman_cicilan WHERE pinjaman_id = ? AND nominal_terpotong IS NULL AND payroll_id IS NULL`,
         [loanId],
       );
-      const allPeriods = buildLoanInstallmentPeriods(newApprovalDate, installmentCount);
-      const installmentAmounts = buildInstallmentAmounts(totalLoan, installmentCount);
       for (let i = paidCount; i < allPeriods.length; i++) {
         const period = allPeriods[i];
         await connection.query<ResultSetHeader>(
