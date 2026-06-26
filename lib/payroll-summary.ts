@@ -409,10 +409,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       LEFT JOIN payroll_employee_input pei ON pei.payroll_id = p.id
       WHERE p.periode_bulan = ? AND p.periode_tahun = ?
         AND COALESCE(LOWER(k.sub_divisi), '') <> 'penjahit'
-        AND (
-          CURDATE() > CONCAT(?, '-', LPAD(?, 2, '0'), '-25')
-          OR k.status_data = 'aktif'
-        )
+        AND k.status_data = 'aktif'
         ${placementFilter ? "AND LOWER(COALESCE(k.penempatan, '')) = LOWER(?)" : ""}
         ${excludePlacement ? "AND LOWER(COALESCE(k.penempatan, '')) <> LOWER(?)" : ""}
       ORDER BY k.nama ASC
@@ -420,8 +417,6 @@ export async function getAdminPayrollSummarySheet(period?: {
     [
       periodMonth,
       periodYear,
-      periodYear,
-      periodMonth,
       ...(placementFilter ? [placementFilter] : []),
       ...(excludePlacement ? [excludePlacement] : []),
     ],

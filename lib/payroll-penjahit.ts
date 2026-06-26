@@ -230,13 +230,10 @@ export async function getPenjahitSheet(period?: {
       LEFT JOIN payroll_employee_input pei ON pei.payroll_id = p.id
       WHERE p.periode_bulan = ? AND p.periode_tahun = ?
         AND LOWER(COALESCE(k.sub_divisi, '')) = 'penjahit'
-        AND (
-          CURDATE() > CONCAT(?, '-', LPAD(?, 2, '0'), '-25')
-          OR k.status_data = 'aktif'
-        )
+        AND k.status_data = 'aktif'
       ORDER BY k.nama ASC
     `,
-    [periodMonth, periodYear, periodYear, periodMonth],
+    [periodMonth, periodYear],
   );
 
   const periodLabel = new Intl.DateTimeFormat("id-ID", {
