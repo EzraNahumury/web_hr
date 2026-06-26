@@ -1,4 +1,4 @@
-import { RowDataPacket } from "mysql2";
+import { RowDataPacket, type ResultSetHeader } from "mysql2";
 
 import { pool } from "@/lib/db";
 import {
@@ -115,4 +115,46 @@ export async function recomputeMediaHostliveAdvertiserLateOnce() {
   );
 
   return { updated };
+}
+
+// Karyawan ber-jadwal shift PAGI yang masuk lewat 11:30 -> jadikan SETENGAH HARI (kode H),
+// bukan telat. Memperbaiki data lama agar konsisten dengan aturan check-in baru.
+export async function recomputePagiHalfDayOnce() {
+  await ensureMigrationTable();
+  const KEY = "recompute_pagi_halfday_after_1130_v1";
+
+  const [existing] = await pool.query<MigrationRow[]>(
+    `SELECT key_name FROM app_migrations WHERE key_name = ? LIMIT 1`,
+    [KEY],
+  );
+  if (existing.length > 0) return { updated: 0 };
+
+  const [result] = await pool.query<ResultSetHeader>(
+    `
+      UPDATE absensi a
+      INNER JOIN karyawan k ON k.id = a.karyawan_id
+      INNER JOIN jadwal_karyawan j
+        ON j.karyawan_id = a.karyawan_id AND j.tanggal = a.tanggal
+      SET
+        a.status_absensi = 'setengah_hari',
+        a.kode_absensi = 'H',
+        a.setengah_hari = 1,
+        a.terlambat_menit = 0
+      WHERE a.jam_masuk IS NOT NULL
+        AND a.status_absensi = 'hadir'
+        AND j.shift IN ('pagi', 'pagi_full', 'pagi_short')
+        AND TIME(a.jam_masuk) > '11:30:00'
+        AND (
+          LOWER(COALESCE(k.sub_divisi, '')) IN ('media', 'hostlive', 'advertiser')
+          OR k.penempatan IN ('Toko', 'Gudang', 'JNE')
+        )
+    `,
+  );
+
+  await pool.query(
+    `INSERT IGNORE INTO app_migrations (key_name) VALUES (?)`,
+    [KEY],
+  );
+
+  return { updated: result.affectedRows ?? 0 };
 }

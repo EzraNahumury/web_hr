@@ -214,6 +214,20 @@ export function isCheckInWithinOnTimeWindow(
   return mins > start && mins <= start + toleranceMinutes;
 }
 
+// Shift pagi: kalau jam masuk sudah lewat 11:30, otomatis dihitung SETENGAH HARI
+// (bukan telat), walaupun di Set Jadwal shift-nya pagi. Hanya berlaku utk shift pagi.
+export const PAGI_AUTO_HALF_DAY_CUTOFF_MIN = 11 * 60 + 30; // 11:30
+const PAGI_AUTO_HALF_DAY_SHIFTS = new Set<AttendanceShift>(["pagi", "pagi_full", "pagi_short"]);
+
+export function isPagiAutoHalfDay(
+  shift: AttendanceShift | null | undefined,
+  checkInTime: string | null | undefined,
+): boolean {
+  if (!shift || !checkInTime) return false;
+  if (!PAGI_AUTO_HALF_DAY_SHIFTS.has(shift)) return false;
+  return timeToMinutes(checkInTime) > PAGI_AUTO_HALF_DAY_CUTOFF_MIN;
+}
+
 export function getShiftLateMinutes(time: string, shift: AttendanceShift): number {
   const mins = timeToMinutes(time);
   const lateRaw = Math.max(mins - SHIFT_START[shift], 0);

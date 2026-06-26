@@ -4,6 +4,7 @@ import { requireAdminSession } from "@/lib/auth";
 import {
   clearStaleLoanOverridesOnce,
   recomputeMediaHostliveAdvertiserLateOnce,
+  recomputePagiHalfDayOnce,
 } from "@/lib/attendance-recompute";
 import { getAttendanceSheet } from "@/lib/hris";
 import { listNationalHolidaysInRange } from "@/lib/holidays";
@@ -39,9 +40,15 @@ export default async function AdminAttendancePage({
 }) {
   const admin = await requireAdminSession();
   await Promise.all([
-    recomputeMediaHostliveAdvertiserLateOnce().catch((error) => {
-      console.error("recomputeMediaHostliveAdvertiserLateOnce failed", error);
-    }),
+    // Half-day pagi harus jalan SETELAH recompute telat agar kode H tidak ketimpa T.
+    (async () => {
+      await recomputeMediaHostliveAdvertiserLateOnce().catch((error) => {
+        console.error("recomputeMediaHostliveAdvertiserLateOnce failed", error);
+      });
+      await recomputePagiHalfDayOnce().catch((error) => {
+        console.error("recomputePagiHalfDayOnce failed", error);
+      });
+    })(),
     clearStaleLoanOverridesOnce().catch((error) => {
       console.error("clearStaleLoanOverridesOnce failed", error);
     }),

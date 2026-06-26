@@ -9,6 +9,7 @@ import {
   getJakartaDateTime,
   getShiftLateMinutes,
   getShiftRangeLabel,
+  isPagiAutoHalfDay,
   isTokoGudangPlacement,
   isWithinScheduledShiftRange,
   saveAttendancePhoto,
@@ -208,28 +209,38 @@ export async function POST(request: Request) {
         ? (scheduledShift as AttendanceShift)
         : detectTokoGudangShift(currentTime)
       : null;
+    // Shift pagi: kalau masuk sudah lewat 11:30, otomatis dihitung SETENGAH HARI
+    // (bukan telat), walaupun di Set Jadwal shift-nya pagi.
+    const autoHalfDay =
+      requiresSelfie &&
+      attendanceRequestStatus === "hadir" &&
+      isPagiAutoHalfDay(detectedShift, currentTime);
+    const effectiveRequestStatus: AttendanceRequestStatus = autoHalfDay
+      ? "setengah_hari"
+      : attendanceRequestStatus;
+
     // Keterlambatan hanya berlaku untuk karyawan ber-jadwal (punya shift pasti).
     // Karyawan fleksibel (penjahit/office) & setengah hari tidak dihitung telat.
     const lateMinutes =
-      requiresSelfie && detectedShift && attendanceRequestStatus === "hadir"
+      requiresSelfie && detectedShift && effectiveRequestStatus === "hadir"
         ? getShiftLateMinutes(currentTime, detectedShift)
         : 0;
     const attendanceStatus =
-      attendanceRequestStatus === "izin"
+      effectiveRequestStatus === "izin"
         ? "izin"
-        : attendanceRequestStatus === "setengah_hari"
+        : effectiveRequestStatus === "setengah_hari"
           ? "setengah_hari"
-          : attendanceRequestStatus === "sakit" || attendanceRequestStatus === "sakit_tanpa_surat"
+          : effectiveRequestStatus === "sakit" || effectiveRequestStatus === "sakit_tanpa_surat"
             ? "sakit"
             : "hadir";
     const attendanceCode =
-      attendanceRequestStatus === "izin"
+      effectiveRequestStatus === "izin"
         ? "I"
-        : attendanceRequestStatus === "sakit"
+        : effectiveRequestStatus === "sakit"
           ? "S"
-          : attendanceRequestStatus === "sakit_tanpa_surat"
+          : effectiveRequestStatus === "sakit_tanpa_surat"
             ? "SX"
-            : attendanceRequestStatus === "setengah_hari"
+            : effectiveRequestStatus === "setengah_hari"
               ? "H"
               : lateMinutes > 0
                 ? "T"
@@ -237,7 +248,7 @@ export async function POST(request: Request) {
     const attendanceTime = requiresSelfie ? attendanceDateTime : null;
     const attendanceLatitude = requiresSelfie ? latitude : null;
     const attendanceLongitude = requiresSelfie ? longitude : null;
-    const halfDayFlag = attendanceRequestStatus === "setengah_hari" ? 1 : 0;
+    const halfDayFlag = effectiveRequestStatus === "setengah_hari" ? 1 : 0;
 
     await pool.query(
       `
