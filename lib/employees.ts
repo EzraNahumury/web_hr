@@ -378,6 +378,15 @@ async function ensureEmployeeSchemaSupport() {
       await safeMigrate(
         `ALTER TABLE karyawan ADD COLUMN penempatan_extra VARCHAR(500) NULL AFTER penempatan`,
       );
+      // Tanggal karyawan di-nonaktifkan (resign). Dipakai filter Summary Payroll:
+      // karyawan nonaktif tetap muncul di periode SEBELUM resign, hilang dari periode resign & seterusnya.
+      await safeMigrate(
+        `ALTER TABLE karyawan ADD COLUMN tanggal_nonaktif DATE NULL DEFAULT NULL AFTER status_data`,
+      );
+      // Backfill perkiraan tanggal resign utk yang SUDAH nonaktif (pakai tanggal edit terakhir).
+      await safeMigrate(
+        `UPDATE karyawan SET tanggal_nonaktif = DATE(updated_at) WHERE status_data = 'nonaktif' AND tanggal_nonaktif IS NULL`,
+      );
 
       // One-time data migration: pindahin karyawan jabatan="Penjahit" ke sub_divisi="Penjahit".
       // Jabatan diisi "Staff" default (admin bisa override manual via form).
@@ -673,12 +682,13 @@ export async function insertEmployee(payload: EmployeePayload) {
           status_kepegawaian,
           status_kerja,
           status_data,
+          tanggal_nonaktif,
           tanggal_masuk_pertama,
           tanggal_kontrak,
           tanggal_selesai_kontrak,
           kenaikan_tiap_tahun,
           tipe_payroll_penjahit
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 'nonaktif' THEN CURDATE() ELSE NULL END, ?, ?, ?, ?, ?)
       `,
       [
         userId,
@@ -706,6 +716,7 @@ export async function insertEmployee(payload: EmployeePayload) {
         payload.ktpPhoto,
         payload.employmentStatus,
         payload.workStatus,
+        payload.dataStatus,
         payload.dataStatus,
         resolvedTimeline.firstJoinDate,
         resolvedTimeline.contractDate,
@@ -849,6 +860,7 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
           status_kepegawaian = ?,
           status_kerja = ?,
           status_data = ?,
+          tanggal_nonaktif = CASE WHEN ? = 'nonaktif' THEN COALESCE(tanggal_nonaktif, CURDATE()) ELSE NULL END,
           tanggal_masuk_pertama = ?,
           tanggal_kontrak = ?,
           tanggal_selesai_kontrak = ?,
@@ -881,6 +893,7 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
         payload.ktpPhoto,
         payload.employmentStatus,
         payload.workStatus,
+        payload.dataStatus,
         payload.dataStatus,
         resolvedTimeline.firstJoinDate,
         resolvedTimeline.contractDate,

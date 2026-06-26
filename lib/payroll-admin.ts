@@ -349,6 +349,18 @@ export async function ensurePayrollSupportTables(connection?: QueryExecutor) {
     "omzet_bulanan unique unit",
   );
 
+  // karyawan.tanggal_nonaktif: dipakai filter Summary agar nonaktif hilang dari periode resign & seterusnya.
+  await safeMigrateOmzet(
+    `ALTER TABLE karyawan ADD COLUMN tanggal_nonaktif DATE NULL DEFAULT NULL AFTER status_data`,
+    "ER_DUP_FIELDNAME",
+    "karyawan.tanggal_nonaktif",
+  );
+  await safeMigrateOmzet(
+    `UPDATE karyawan SET tanggal_nonaktif = DATE(updated_at) WHERE status_data = 'nonaktif' AND tanggal_nonaktif IS NULL`,
+    "ER_BAD_FIELD_ERROR",
+    "karyawan.tanggal_nonaktif backfill",
+  );
+
   await executor.query(`
     CREATE TABLE IF NOT EXISTS payroll_employee_input (
       id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
