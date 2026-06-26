@@ -656,7 +656,7 @@ export async function getAdminPayrollSummarySheet(period?: {
   }
 
   // Bonus omzet di-pool per group (mis. "AVA+Ayres" gabung; "JNE" terpisah)
-  const omzetByGroup = new Map<string, { totalOmzet: number; bonusPool: number }>();
+  const omzetByGroup = new Map<string, { totalOmzet: number; bonusPool: number; isCustomBonus: boolean }>();
   let totalOmzetAll = 0;
   let totalBonusOmzetAll = 0;
   for (const row of omzetUnitResult[0]) {
@@ -664,13 +664,14 @@ export async function getAdminPayrollSummarySheet(period?: {
     if (!rawUnit) continue;
     const groupKey = getOmzetGroupKeyForUnit(rawUnit) ?? rawUnit;
     const omzet = toNumber(row.total_omzet);
-    const bonusPool = row.is_custom_bonus ? omzet : omzet * PAYROLL_OMZET_BONUS_RATE;
+    const isCustomBonus = !!row.is_custom_bonus;
+    const bonusPool = isCustomBonus ? omzet : omzet * PAYROLL_OMZET_BONUS_RATE;
     const existing = omzetByGroup.get(groupKey);
     if (existing) {
       existing.totalOmzet += omzet;
       existing.bonusPool += bonusPool;
     } else {
-      omzetByGroup.set(groupKey, { totalOmzet: omzet, bonusPool });
+      omzetByGroup.set(groupKey, { totalOmzet: omzet, bonusPool, isCustomBonus });
     }
     totalOmzetAll += omzet;
     totalBonusOmzetAll += bonusPool;
@@ -804,7 +805,9 @@ export async function getAdminPayrollSummarySheet(period?: {
       isOmzetEligible(row.jabatan, row.status_kepegawaian) &&
       groupOmzet &&
       groupEligibleCount > 0
-        ? (groupOmzet.bonusPool / groupEligibleCount) * roleFactor
+        ? groupOmzet.isCustomBonus
+          ? groupOmzet.bonusPool
+          : (groupOmzet.bonusPool / groupEligibleCount) * roleFactor
         : 0;
     const mealAllowance = isFreelance ? 0 : fixedMealAllowance * presentDays;
 
