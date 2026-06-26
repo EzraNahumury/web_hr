@@ -495,14 +495,16 @@ export async function getAdminPayrollSummarySheet(period?: {
     pool.query<RemainingLoanRow[]>(
       `
         SELECT
-          karyawan_id AS employee_id,
-          COALESCE(SUM(sisa_pinjaman), 0) AS remaining_total
-        FROM pinjaman
-        WHERE karyawan_id IN (${placeholders})
-          AND status_pinjaman IN ('approved', 'berjalan')
-        GROUP BY karyawan_id
+          p.karyawan_id AS employee_id,
+          COALESCE(SUM(pc.nominal_potongan), 0) AS remaining_total
+        FROM pinjaman_cicilan pc
+        INNER JOIN pinjaman p ON p.id = pc.pinjaman_id
+        WHERE p.karyawan_id IN (${placeholders})
+          AND p.status_pinjaman IN ('approved', 'berjalan', 'lunas')
+          AND (pc.tahun * 100 + pc.bulan) > (? * 100 + ?)
+        GROUP BY p.karyawan_id
       `,
-      employeeIds,
+      [...employeeIds, periodYear, periodMonth],
     ),
     getApprovedReimbursementRowsForPeriod(employeeIds, range.startSql, range.endSql),
     pool.query<TotalEmployeeCountRow[]>(
