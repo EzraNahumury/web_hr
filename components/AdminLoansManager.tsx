@@ -142,6 +142,10 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
   const [isPayingOff, setIsPayingOff] = useState(false);
   const [payoffFeedback, setPayoffFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  const [editingApprovalId, setEditingApprovalId] = useState<number | null>(null);
+  const [approvalDateInput, setApprovalDateInput] = useState<string>("");
+  const [isSavingApproval, setIsSavingApproval] = useState(false);
+
   function resetForm() {
     setForm({
       employeeId: "",
@@ -407,6 +411,35 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
       });
     } finally {
       setIsPayingOff(false);
+    }
+  }
+
+  async function handleSaveApprovalDate() {
+    if (!editingApprovalId || !approvalDateInput) return;
+    setIsSavingApproval(true);
+    setFeedback(null);
+    try {
+      const response = await fetch(`/api/admin/loans/${editingApprovalId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approvalDate: approvalDateInput }),
+      });
+      const result = (await response.json()) as { message?: string; loan?: LoanListItem };
+      if (!response.ok || !result.loan) {
+        throw new Error(result.message || "Gagal memperbarui tanggal approval.");
+      }
+      setRows((current) => current.map((row) => (row.id === result.loan!.id ? result.loan! : row)));
+      setFeedback({ type: "success", text: result.message || "Tanggal approval diperbarui." });
+      router.refresh();
+    } catch (error) {
+      setFeedback({
+        type: "error",
+        text: error instanceof Error ? error.message : "Terjadi kesalahan.",
+      });
+    } finally {
+      setIsSavingApproval(false);
+      setEditingApprovalId(null);
+      setApprovalDateInput("");
     }
   }
 
@@ -706,7 +739,46 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
                       <td className="px-6 py-5">{row.installmentCount}x</td>
                       <td className="px-6 py-5 font-semibold text-[#241716]">Rp{formatMoney(row.monthlyDeduction)}</td>
                       <td className="px-6 py-5">{row.requestDate}</td>
-                      <td className="px-6 py-5">{row.approvalDate || "-"}</td>
+                      <td className="px-6 py-5">
+                        {editingApprovalId === row.id ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="date"
+                              value={approvalDateInput}
+                              onChange={(e) => setApprovalDateInput(e.target.value)}
+                              className="rounded-lg border border-[#c8716d] px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-[#c8716d]/20"
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              onClick={handleSaveApprovalDate}
+                              disabled={isSavingApproval || !approvalDateInput}
+                              className="rounded-lg bg-[#2f231c] px-3 py-1 text-xs font-semibold text-white disabled:opacity-50"
+                            >
+                              {isSavingApproval ? "..." : "Simpan"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setEditingApprovalId(null); setApprovalDateInput(""); }}
+                              className="rounded-lg border border-[#e3d5cf] px-3 py-1 text-xs text-[#7a6059]"
+                            >
+                              Batal
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingApprovalId(row.id);
+                              setApprovalDateInput(row.approvalDate || todayIsoDate());
+                            }}
+                            title="Klik untuk ubah tanggal approval"
+                            className="rounded px-1 text-left hover:bg-[#fdf0ec] hover:text-[#c8716d]"
+                          >
+                            {row.approvalDate || "-"}
+                          </button>
+                        )}
+                      </td>
                       <td className="px-6 py-5">{row.deductionStartDate || "Menunggu approval"}</td>
                       <td className="px-6 py-5">
                         {row.installments.length ? (

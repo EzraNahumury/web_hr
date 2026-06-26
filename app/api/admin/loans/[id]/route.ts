@@ -5,6 +5,7 @@ import {
   approveLoanRequest,
   deleteLoanRequest,
   rejectLoanRequest,
+  updateLoanApprovalDate,
   updateLoanRequest,
 } from "@/lib/loans";
 
@@ -42,9 +43,19 @@ export async function PATCH(
     return NextResponse.json({ message: "ID pinjaman tidak valid." }, { status: 400 });
   }
 
-  const body = (await request.json().catch(() => null)) as { status?: string } | null;
-  const status = body?.status;
+  const body = (await request.json().catch(() => null)) as { status?: string; approvalDate?: string } | null;
 
+  if (body?.approvalDate !== undefined) {
+    try {
+      const loan = await updateLoanApprovalDate(loanId, body.approvalDate);
+      return NextResponse.json({ message: "Tanggal approval berhasil diperbarui.", loan });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal memperbarui tanggal approval.";
+      return NextResponse.json({ message }, { status: getErrorStatus(message) });
+    }
+  }
+
+  const status = body?.status;
   if (status !== "approved" && status !== "rejected") {
     return NextResponse.json({ message: "Status approval pinjaman tidak valid." }, { status: 400 });
   }

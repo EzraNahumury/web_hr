@@ -1486,6 +1486,72 @@ export async function detachLoanInstallmentsFromPayroll(
   await syncLoanSummariesByIds(rows.map((row) => row.pinjaman_id), executor);
 }
 
+export async function updateLoanApprovalDate(loanId: number, newApprovalDate: string) {
+  if (!isValidSqlDate(newApprovalDate)) {
+    throw new Error("Tanggal approval tidak valid (format YYYY-MM-DD).");
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    await ensureLoanSupportTables(connection);
+
+    const [loanRows] = await connection.query<LoanIdentityRow[]>(
+      `SELECT id, jumlah_pinjaman, jumlah_angsuran, status_pinjaman FROM pinjaman WHERE id = ? LIMIT 1`,
+      [loanId],
+    );
+    const loan = loanRows[0];
+    if (!loan) throw new Error("Pengajuan pinjaman tidak ditemukan.");
+    if (loan.status_pinjaman === "pending" || loan.status_pinjaman === "rejected") {
+      throw new Error("Tanggal approval hanya bisa diubah untuk pinjaman yang sudah disetujui.");
+    }
+
+    const [paidRows] = await connection.query<(RowDataPacket & { cnt: number })[]>(
+      `SELECT COUNT(*) AS cnt FROM pinjaman_cicilan
+       WHERE pinjaman_id = ? AND (nominal_terpotong IS NOT NULL OR payroll_id IS NOT NULL)`,
+      [loanId],
+    );
+    const paidCount = Number(paidRows[0]?.cnt ?? 0);
+
+    await connection.query<ResultSetHeader>(
+      `UPDATE pinjaman SET tanggal_approval = ? WHERE id = ?`,
+      [newApprovalDate, loanId],
+    );
+
+    const totalLoan = toNumber(loan.jumlah_pinjaman);
+    const installmentCount = Math.max(loan.jumlah_angsuran, 1);
+
+    if (paidCount === 0) {
+      await rebuildLoanInstallments(loanId, totalLoan, installmentCount, newApprovalDate, connection);
+    } else {
+      // Keep paid installments; shift unpaid ones to new schedule
+      await connection.query<ResultSetHeader>(
+        `DELETE FROM pinjaman_cicilan WHERE pinjaman_id = ? AND nominal_terpotong IS NULL AND payroll_id IS NULL`,
+        [loanId],
+      );
+      const allPeriods = buildLoanInstallmentPeriods(newApprovalDate, installmentCount);
+      const installmentAmounts = buildInstallmentAmounts(totalLoan, installmentCount);
+      for (let i = paidCount; i < allPeriods.length; i++) {
+        const period = allPeriods[i];
+        await connection.query<ResultSetHeader>(
+          `INSERT INTO pinjaman_cicilan (pinjaman_id, urutan_cicilan, bulan, tahun, nominal_potongan, nominal_terpotong, payroll_id)
+           VALUES (?, ?, ?, ?, ?, NULL, NULL)`,
+          [loanId, period.sequence, period.month, period.year, installmentAmounts[i] ?? 0],
+        );
+      }
+    }
+
+    await syncLoanSummary(loanId, connection);
+    await connection.commit();
+    return getLoanById(loanId);
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 export async function getEmployeeRemainingLoanTotal(employeeId: number) {
   await ensureLoanSupportTables();
 
