@@ -378,7 +378,8 @@ export default function AdminPayrollSummaryManager({
             { content: "Setengah Hari", colSpan: 2 },
             { content: "Telat", colSpan: 2 },
             { content: "Total Potongan", rowSpan: 2 },
-            { content: "Total Potongan", colSpan: 4 },
+            { content: "Total Potongan", colSpan: 3 },
+            { content: "Potongan Absensi", rowSpan: 2 },
             { content: "Total All Potongan", rowSpan: 2 },
             { content: "Take Home Pay Sebelum Dipotong", rowSpan: 2 },
             { content: "Take Home Pay", rowSpan: 2 },
@@ -391,7 +392,6 @@ export default function AdminPayrollSummaryManager({
             "Potongan Denda",
             "Potongan Kontrak",
             "Potongan Pinjaman",
-            "Potongan Absensi",
           ],
         ],
         body: filteredRows.map((row) => [
@@ -411,9 +411,7 @@ export default function AdminPayrollSummaryManager({
           formatCurrency(row.contractCut),
           formatCurrency(row.loanCut),
           formatCurrency(row.diligenceCut),
-          formatCurrency(
-            row.fineDeduction + row.contractCut + row.loanCut + row.diligenceCut,
-          ),
+          formatCurrency(row.fineDeduction + row.contractCut + row.loanCut),
           formatCurrency(row.totalSalaryBeforeDeduction),
           formatCurrency(row.netIncome),
         ]),
@@ -747,7 +745,8 @@ export default function AdminPayrollSummaryManager({
                     <th rowSpan={2} className="border border-[#fca5a5] bg-[#ef4444] px-3 py-3 text-white">Total Potongan</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Total Gaji</th>
                     <th colSpan={3} className="border border-[#a8ebef] px-3 py-3">Tambahan</th>
-                    <th colSpan={4} className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Total Potongan</th>
+                    <th colSpan={3} className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Total Potongan</th>
+                    <th rowSpan={2} className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Potongan Absensi</th>
                     <th rowSpan={2} className="border border-[#fca5a5] bg-[#ef4444] px-3 py-3 text-white">Total All Potongan</th>
                     <th rowSpan={2} className="border border-[#fca5a5] bg-[#ef4444] px-3 py-3 text-white">Gaji Kontrak</th>
                     <th rowSpan={2} className="border border-[#a8ebef] px-3 py-3">Take Home Pay Sebelum Dipotong</th>
@@ -774,7 +773,6 @@ export default function AdminPayrollSummaryManager({
                     <th className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Potongan Denda</th>
                     <th className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Potongan Kontrak</th>
                     <th className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Potongan Pinjaman</th>
-                    <th className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Potongan Absensi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -825,7 +823,7 @@ export default function AdminPayrollSummaryManager({
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.contractCut)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.loanCut)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.diligenceCut)}</td>
-                      <td className="border border-[#d7ecee] px-3 py-3 text-right font-semibold text-[#8f1d22]">{formatCurrency(row.fineDeduction + row.contractCut + row.loanCut + row.diligenceCut)}</td>
+                      <td className="border border-[#d7ecee] px-3 py-3 text-right font-semibold text-[#8f1d22]">{formatCurrency(row.fineDeduction + row.contractCut + row.loanCut)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.monthlyBaseSalary)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.totalSalaryBeforeDeduction)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right font-semibold text-[#8f1d22]">{formatCurrency(row.netIncome)}</td>
