@@ -126,7 +126,6 @@ const tdGreen = `${tdNum} bg-[#f0fdf4] font-semibold`;
 
 export default function AdminSalesNasionalPayrollSummary({
   sheet,
-  periodOptions,
   employeeOptions,
 }: Props) {
   const router = useRouter();
@@ -136,8 +135,9 @@ export default function AdminSalesNasionalPayrollSummary({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  function handlePeriodChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const [month, year] = e.target.value.split("-").map(Number);
+  function handlePeriodChange(e: React.ChangeEvent<HTMLInputElement>) {
+    // input type="month" -> value format "YYYY-MM"
+    const [year, month] = e.target.value.split("-").map(Number);
     const params = new URLSearchParams(searchParams.toString());
     if (month && year) {
       params.set("month", String(month));
@@ -225,7 +225,9 @@ export default function AdminSalesNasionalPayrollSummary({
     });
   }
 
-  const currentPeriodValue = sheet ? `${sheet.periodMonth}-${sheet.periodYear}` : "";
+  const currentPeriodValue = sheet
+    ? `${sheet.periodYear}-${String(sheet.periodMonth).padStart(2, "0")}`
+    : "";
   const existingIds = new Set(sheet?.rows.map((r) => r.employeeId) ?? []);
   const availableOptions = employeeOptions.filter((e) => !existingIds.has(e.employeeId));
   const dialogTitle =
@@ -253,17 +255,12 @@ export default function AdminSalesNasionalPayrollSummary({
             )}
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <select
+            <input
+              type="month"
               value={currentPeriodValue}
               onChange={handlePeriodChange}
               className="h-10 rounded-xl border border-[#ead7ce] bg-white px-3 text-sm text-[#2d1b18] outline-none focus:border-[#c8716d]"
-            >
-              {periodOptions.map((opt) => (
-                <option key={`${opt.month}-${opt.year}`} value={`${opt.month}-${opt.year}`}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            />
             <button
               onClick={openAdd}
               className="h-10 rounded-xl bg-[#8f1d22] px-5 text-sm font-semibold text-white hover:bg-[#7a1a1e] active:bg-[#6a1519]"
