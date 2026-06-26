@@ -136,6 +136,7 @@ export type PenjahitComputedRow = {
   potonganKontrak: number;
   potonganPinjaman: number;
   potonganLainLain: number;
+  remainingLoanBalance: number;
   cicilanPerMinggu: number;
   penerimaanBersih: number;
   pencairan: {
@@ -252,7 +253,7 @@ export async function getPenjahitSheet(period?: {
   const employeeIds = rows.map((r) => r.employee_id);
   const placeholders = employeeIds.map(() => "?").join(",");
 
-  const [[attendanceRows], [overtimeRows], loanRows] = await Promise.all([
+  const [[attendanceRows], [overtimeRows], loanRows, [remainingLoanRows]] = await Promise.all([
     pool.query<AttendanceRawRow[]>(
       `SELECT a.karyawan_id AS employee_id,
         a.status_absensi,
@@ -278,6 +279,17 @@ export async function getPenjahitSheet(period?: {
       [...employeeIds, range.startSql, range.endSql],
     ),
     getLoanDeductionRowsForPeriod(employeeIds, periodMonth, periodYear),
+    pool.query<RowDataPacket[]>(
+      `SELECT p.karyawan_id AS employee_id,
+              COALESCE(SUM(pc.nominal_potongan), 0) AS remaining_total
+       FROM pinjaman_cicilan pc
+       INNER JOIN pinjaman p ON p.id = pc.pinjaman_id
+       WHERE p.karyawan_id IN (${placeholders})
+         AND p.status_pinjaman IN ('approved', 'berjalan', 'lunas')
+         AND (pc.tahun * 100 + pc.bulan) > (? * 100 + ?)
+       GROUP BY p.karyawan_id`,
+      [...employeeIds, periodYear, periodMonth],
+    ),
   ]);
 
   // Hitung per-hari di JS pakai isHalfDayByTime supaya konsisten dengan rekap absensi & payroll lain.
@@ -339,6 +351,7 @@ export async function getPenjahitSheet(period?: {
   }
   const overtimeMap = new Map(overtimeRows.map((r) => [r.employee_id, toNum(r.total_jam)]));
   const loanMap = new Map(loanRows.map((r) => [r.employeeId, toNum(r.totalDeduction)]));
+  const remainingLoanMap = new Map(remainingLoanRows.map((r) => [r.employee_id as number, toNum(r.remaining_total)]));
 
   const computedRows: PenjahitComputedRow[] = rows.map((row) => {
     const att = attendanceMap.get(row.employee_id);
@@ -443,6 +456,7 @@ export async function getPenjahitSheet(period?: {
       potonganKontrak,
       potonganPinjaman,
       potonganLainLain,
+      remainingLoanBalance: remainingLoanMap.get(row.employee_id) ?? 0,
       cicilanPerMinggu,
       penerimaanBersih,
       pencairan,

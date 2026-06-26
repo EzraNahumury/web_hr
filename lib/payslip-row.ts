@@ -52,7 +52,7 @@ export function mapPenjahitRow(row: PenjahitComputedRow): AdminPayrollSummaryShe
     contractDeduction: row.potonganKontrak,
     companyLoan: row.potonganPinjaman,
     personalLoan: row.potonganLainLain,
-    remainingLoanBalance: 0,
+    remainingLoanBalance: row.remainingLoanBalance,
     fineDeduction: row.potonganDenda,
     contractCut: row.potonganKontrak,
     loanCut: row.potonganPinjaman + row.potonganLainLain,
