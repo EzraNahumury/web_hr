@@ -80,7 +80,7 @@ export function mapPenjahitRow(row: PenjahitComputedRow): AdminPayrollSummaryShe
     inputOverridePinjamanPribadi: row.inputPotonganLainLain,
     inputOverrideGajiPokok: row.inputOverrideGajiPokok,
     inputOverridePotonganAbsensi: null,
-    contractReturn: 0,
+    contractReturn: row.contractReturn,
     freelanceRateType: "per_hari",
     inputGajiPerJam: 0,
   };

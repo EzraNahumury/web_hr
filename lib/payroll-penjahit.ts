@@ -23,6 +23,7 @@ import {
   getActivePayrollPeriod,
   getPayrollDateRange,
 } from "@/lib/payroll-admin";
+import { ensureContractReturnTable } from "@/lib/contract-returns";
 
 type PenjahitPayrollRow = RowDataPacket & {
   payroll_id: number;
@@ -138,6 +139,7 @@ export type PenjahitComputedRow = {
   potonganLainLain: number;
   remainingLoanBalance: number;
   cicilanPerMinggu: number;
+  contractReturn: number;
   penerimaanBersih: number;
   pencairan: {
     minggu1: number;
@@ -175,7 +177,7 @@ export async function getPenjahitSheet(period?: {
   month?: number;
   year?: number;
 }): Promise<PenjahitPayrollSummarySheet | null> {
-  await Promise.all([ensurePayrollSupportTables(), ensureLoanSupportTables()]);
+  await Promise.all([ensurePayrollSupportTables(), ensureLoanSupportTables(), ensureContractReturnTable()]);
 
   const activePeriod = {
     month: period?.month ?? getActivePayrollPeriod().month,
@@ -254,7 +256,7 @@ export async function getPenjahitSheet(period?: {
   const employeeIds = rows.map((r) => r.employee_id);
   const placeholders = employeeIds.map(() => "?").join(",");
 
-  const [[attendanceRows], [overtimeRows], [jadwalLemburRows], loanRows, [remainingLoanRows]] = await Promise.all([
+  const [[attendanceRows], [overtimeRows], [jadwalLemburRows], loanRows, [remainingLoanRows], [contractReturnRows]] = await Promise.all([
     pool.query<AttendanceRawRow[]>(
       `SELECT a.karyawan_id AS employee_id,
         a.status_absensi,
@@ -304,7 +306,21 @@ export async function getPenjahitSheet(period?: {
        GROUP BY p.karyawan_id`,
       [...employeeIds, periodYear, periodMonth],
     ),
+    // Pengembalian kontrak yang tanggalnya jatuh di periode ini -> menambah penerimaan bersih.
+    pool.query<RowDataPacket[]>(
+      `SELECT karyawan_id AS employee_id, nominal
+       FROM pengembalian_kontrak
+       WHERE karyawan_id IN (${placeholders})
+         AND tanggal_pengembalian IS NOT NULL
+         AND tanggal_pengembalian BETWEEN ? AND ?`,
+      [...employeeIds, range.startSql, range.endSql],
+    ),
   ]);
+
+  const contractReturnMap = new Map<number, number>();
+  for (const r of contractReturnRows as Array<{ employee_id: number; nominal: number | string }>) {
+    contractReturnMap.set(r.employee_id, toNum(r.nominal));
+  }
 
   // Hitung per-hari di JS pakai isHalfDayByTime supaya konsisten dengan rekap absensi & payroll lain.
   // Record setengah hari TIDAK dihitung sebagai hadir penuh & TIDAK dihitung telat.
@@ -422,7 +438,9 @@ export async function getPenjahitSheet(period?: {
       : (loanMap.get(row.employee_id) ?? 0);
     const potonganLainLain = row.raw_override_pinjaman_pribadi !== null ? toNum(row.raw_override_pinjaman_pribadi) : 0;
     const cicilanPerMinggu = Math.round(potonganPinjaman / 4);
-    const penerimaanBersih = totalGaji - potonganKontrak - potonganPinjaman - potonganLainLain;
+    const contractReturn = contractReturnMap.get(row.employee_id) ?? 0;
+    const penerimaanBersih =
+      totalGaji - potonganKontrak - potonganPinjaman - potonganLainLain + contractReturn;
 
     let pencairan: PenjahitComputedRow["pencairan"] = null;
     if (tipePayroll === "mingguan") {
@@ -475,6 +493,7 @@ export async function getPenjahitSheet(period?: {
       potonganLainLain,
       remainingLoanBalance: remainingLoanMap.get(row.employee_id) ?? 0,
       cicilanPerMinggu,
+      contractReturn,
       penerimaanBersih,
       pencairan,
       inputGajiPerDay: toNum(row.raw_gaji_per_hari),

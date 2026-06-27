@@ -270,6 +270,7 @@ export default function AdminPenjahitPayrollSummary({ sheet, periodOptions, empl
             { content: "Setengah Hari", colSpan: 2 },
             { content: "Telat", colSpan: 2 },
             { content: "Total Potongan", colSpan: 5 },
+            { content: "Pengembalian Kontrak", rowSpan: 2 },
             { content: "Penerimaan Bersih", rowSpan: 2 },
           ],
           [
@@ -308,6 +309,7 @@ export default function AdminPenjahitPayrollSummary({ sheet, periodOptions, empl
             rp0(row.potonganPinjaman),
             rp0(row.potonganLainLain),
             rp0(totalPotongan),
+            rp0(row.contractReturn),
             formatRupiah(Math.max(0, row.penerimaanBersih)),
           ];
         }),
@@ -465,6 +467,12 @@ export default function AdminPenjahitPayrollSummary({ sheet, periodOptions, empl
                   <th className={thGroup} colSpan={6}>Potongan</th>
                   <th className={thGroup} colSpan={5}>Total Potongan</th>
                   <th
+                    className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-white whitespace-nowrap border border-[#86efac] bg-[#16a34a]"
+                    rowSpan={2}
+                  >
+                    Pengembalian Kontrak
+                  </th>
+                  <th
                     className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[#14532d] whitespace-nowrap border border-[#bbf7d0] bg-[#dcfce7]"
                     rowSpan={2}
                   >
@@ -598,6 +606,8 @@ export default function AdminPenjahitPayrollSummary({ sheet, periodOptions, empl
                       <td className={tdRed}>{row.potonganLainLain > 0 ? formatRupiah(row.potonganLainLain) : "-"}</td>
                       <td className={tdRed + " font-semibold"}>{totalPotongan > 0 ? formatRupiah(totalPotongan) : "-"}</td>
 
+                      {/* Pengembalian Kontrak */}
+                      <td className={`${tdNum} font-semibold text-[#16a34a]`}>{row.contractReturn > 0 ? formatRupiah(row.contractReturn) : "-"}</td>
                       {/* Penerimaan Bersih */}
                       <td className={tdGreen}>{formatRupiah(Math.max(0, row.penerimaanBersih))}</td>
 
