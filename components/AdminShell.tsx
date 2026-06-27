@@ -36,6 +36,7 @@ const menuItems: MenuItem[] = [
   { label: "Payroll Bonus", href: "/admin/payroll-bonus", description: "Payroll bonus Sales, SPV, Manager, CS, Host Live, Marketplace, Media Marketing, Advertiser" },
   { label: "Summary Sales Nasional", href: "/admin/payroll-summary/sales-nasional", description: "Payroll khusus Sales Nasional" },
   { label: "Summary Penjahit", href: "/admin/payroll-summary/penjahit", description: "Payroll khusus Penjahit (mingguan & bulanan)" },
+  { label: "Summary Payroll Freelance", href: "/admin/payroll-freelance", description: "Payroll karyawan Freelance (jam, pengerjaan, harian, custom)" },
   { label: "Finance", href: "/admin/finance", description: "Pembebanan dan pencairan" },
   { label: "Slip Gaji", href: "/admin/payslips", description: "Detail slip gaji" },
   { label: "Distribusi Slip", href: "/admin/payslip-distribution", description: "Log distribusi slip" },

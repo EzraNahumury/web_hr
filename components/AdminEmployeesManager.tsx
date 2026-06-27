@@ -49,6 +49,7 @@ type FormState = {
   annualRaise: string;
   userActive: boolean;
   penjahitPayrollType: "mingguan" | "bulanan" | "";
+  freelanceTipePayroll: "jam" | "pengerjaan" | "custom_pengerjaan" | "harian" | "";
 };
 
 const emptyForm: FormState = {
@@ -69,6 +70,7 @@ const emptyForm: FormState = {
   annualRaise: "0",
   userActive: true,
   penjahitPayrollType: "",
+  freelanceTipePayroll: "",
 };
 
 const inputClassName =
@@ -199,6 +201,7 @@ function toFormState(employee: EmployeeListItem): FormState {
     annualRaise: formatRupiahInput(String(Math.trunc(Number(employee.annualRaise) || 0))),
     userActive: employee.userActive,
     penjahitPayrollType: employee.penjahitPayrollType ?? "",
+    freelanceTipePayroll: employee.freelanceTipePayroll ?? "",
   };
 }
 
@@ -413,6 +416,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
         annualRaise: Number(sanitizeCurrencyInput(form.annualRaise) || 0),
         userActive: form.userActive,
         penjahitPayrollType: form.penjahitPayrollType || null,
+        freelanceTipePayroll: form.freelanceTipePayroll || null,
       };
 
       const response = await fetch(editingId ? `/api/admin/employees/${editingId}` : "/api/admin/employees", {
@@ -593,7 +597,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <Field label="Jabatan"><select value={form.role} onChange={(event) => updateField("role", event.target.value)} className={selectClassName}><option value="">Pilih jabatan</option>{lookups.roles.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+              <Field label="Jabatan"><select value={form.role} onChange={(event) => { updateField("role", event.target.value); if (event.target.value.toLowerCase() !== "freelance") { updateField("freelanceTipePayroll", ""); } }} className={selectClassName}><option value="">Pilih jabatan</option>{lookups.roles.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
               <Field label="Departemen"><select value={form.department} onChange={(event) => updateField("department", event.target.value)} className={selectClassName}><option value="">Pilih departemen</option>{lookups.departments.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
               <Field label="Divisi"><select value={form.division} onChange={(event) => updateField("division", event.target.value)} className={selectClassName}><option value="">Pilih divisi</option>{lookups.divisions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
               <Field label="Sub Divisi"><select value={form.subDivision} onChange={(event) => { updateField("subDivision", event.target.value); if (event.target.value.toLowerCase() !== "penjahit") { updateField("penjahitPayrollType", ""); } }} className={selectClassName}><option value="">Pilih sub divisi</option>{lookups.subDivisions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
@@ -650,6 +654,30 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                   <label className="flex cursor-pointer items-center gap-2.5">
                     <input type="radio" name="penjahitPayrollType" value="bulanan" checked={form.penjahitPayrollType === "bulanan"} onChange={() => updateField("penjahitPayrollType", "bulanan")} className="h-4 w-4 accent-[#8f1d22]" />
                     <span className="text-sm text-[#2d1b18]">Bulanan <span className="text-xs text-[#a16f63]">(bayar tgl 25)</span></span>
+                  </label>
+                </div>
+              </div>
+            ) : null}
+
+            {form.role.toLowerCase() === "freelance" ? (
+              <div className="rounded-[18px] border border-[#c8e6c9] bg-[#f1f8e9] px-5 py-4">
+                <p className="mb-3 text-[13px] font-semibold text-[#33691e]">Tipe Payroll Freelance</p>
+                <div className="flex flex-wrap gap-5">
+                  <label className="flex cursor-pointer items-center gap-2.5">
+                    <input type="radio" name="freelanceTipePayroll" value="jam" checked={form.freelanceTipePayroll === "jam"} onChange={() => updateField("freelanceTipePayroll", "jam")} className="h-4 w-4 accent-[#558b2f]" />
+                    <span className="text-sm text-[#2d1b18]">Jam <span className="text-xs text-[#6f9a5a]">(otomatis dari absensi)</span></span>
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2.5">
+                    <input type="radio" name="freelanceTipePayroll" value="pengerjaan" checked={form.freelanceTipePayroll === "pengerjaan"} onChange={() => updateField("freelanceTipePayroll", "pengerjaan")} className="h-4 w-4 accent-[#558b2f]" />
+                    <span className="text-sm text-[#2d1b18]">Freelance Pengerjaan <span className="text-xs text-[#6f9a5a]">(harga/pcs × jumlah pcs)</span></span>
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2.5">
+                    <input type="radio" name="freelanceTipePayroll" value="custom_pengerjaan" checked={form.freelanceTipePayroll === "custom_pengerjaan"} onChange={() => updateField("freelanceTipePayroll", "custom_pengerjaan")} className="h-4 w-4 accent-[#558b2f]" />
+                    <span className="text-sm text-[#2d1b18]">Custom Pengerjaan <span className="text-xs text-[#6f9a5a]">(multi jenis pekerjaan)</span></span>
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2.5">
+                    <input type="radio" name="freelanceTipePayroll" value="harian" checked={form.freelanceTipePayroll === "harian"} onChange={() => updateField("freelanceTipePayroll", "harian")} className="h-4 w-4 accent-[#558b2f]" />
+                    <span className="text-sm text-[#2d1b18]">Harian <span className="text-xs text-[#6f9a5a]">(harga/hari × hari masuk)</span></span>
                   </label>
                 </div>
               </div>

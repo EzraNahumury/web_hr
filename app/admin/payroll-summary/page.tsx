@@ -9,6 +9,7 @@ import {
 import { getAdminPayrollSummarySheet, type AdminPayrollSummarySheet } from "@/lib/payroll-summary";
 import { isSalesNasionalRole } from "@/lib/sales-roles";
 import { isPenjahit } from "@/lib/penjahit-roles";
+import { isFreelanceJabatan } from "@/lib/freelance-roles";
 
 function parsePositiveInt(value: string | string[] | undefined) {
   if (typeof value !== "string") {
@@ -25,7 +26,7 @@ function excludeSalesNasionalSheet(sheet: AdminPayrollSummarySheet | null) {
   }
 
   const rows = sheet.rows
-    .filter((row) => !isSalesNasionalRole(row.role))
+    .filter((row) => !isSalesNasionalRole(row.role) && !isFreelanceJabatan(row.role))
     .map((row, index) => ({ ...row, number: index + 1 }));
 
   return {
@@ -70,7 +71,7 @@ export default async function AdminPayrollSummaryPage({
     >
       <AdminPayrollSummaryManager
         sheet={excludeSalesNasionalSheet(sheet)}
-        employeeOptions={employeeOptions.filter((employee) => !isSalesNasionalRole(employee.role) && !isPenjahit(employee.subDivision))}
+        employeeOptions={employeeOptions.filter((employee) => !isSalesNasionalRole(employee.role) && !isPenjahit(employee.subDivision) && !isFreelanceJabatan(employee.role))}
         omzetPeriod={omzetPeriod}
         periodOptions={periodOptions}
         canEdit={isPayrollEditor(admin.email)}

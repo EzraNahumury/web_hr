@@ -40,6 +40,7 @@ export type EmployeeListItem = {
   annualRaise: string;
   userActive: boolean;
   penjahitPayrollType: "mingguan" | "bulanan" | null;
+  freelanceTipePayroll: "jam" | "pengerjaan" | "custom_pengerjaan" | "harian" | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -205,6 +206,7 @@ export type EmployeePayload = {
   annualRaise: number;
   userActive: boolean;
   penjahitPayrollType: "mingguan" | "bulanan" | null;
+  freelanceTipePayroll: "jam" | "pengerjaan" | "custom_pengerjaan" | "harian" | null;
 };
 
 type EmployeeRow = RowDataPacket & {
@@ -240,6 +242,7 @@ type EmployeeRow = RowDataPacket & {
   tanggal_selesai_kontrak: string | null;
   kenaikan_tiap_tahun: string;
   tipe_payroll_penjahit: "mingguan" | "bulanan" | null;
+  tipe_freelance: "jam" | "pengerjaan" | "custom_pengerjaan" | "harian" | null;
   penempatan_extra: string | null;
   status_aktif: number;
   created_at: string;
@@ -289,6 +292,7 @@ function mapEmployee(row: EmployeeRow): EmployeeListItem {
     annualRaise: row.kenaikan_tiap_tahun,
     userActive: row.status_aktif === 1,
     penjahitPayrollType: row.tipe_payroll_penjahit ?? null,
+    freelanceTipePayroll: row.tipe_freelance ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -329,6 +333,7 @@ const employeeSelectQuery = `
     DATE_FORMAT(k.tanggal_selesai_kontrak, '%Y-%m-%d') AS tanggal_selesai_kontrak,
     k.kenaikan_tiap_tahun,
     k.tipe_payroll_penjahit,
+    k.tipe_freelance,
     u.status_aktif,
     DATE_FORMAT(k.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
     DATE_FORMAT(k.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
@@ -374,6 +379,9 @@ async function ensureEmployeeSchemaSupport() {
       );
       await safeMigrate(
         `ALTER TABLE karyawan ADD COLUMN tipe_payroll_penjahit ENUM('mingguan','bulanan') NULL AFTER jabatan`,
+      );
+      await safeMigrate(
+        `ALTER TABLE karyawan ADD COLUMN tipe_freelance ENUM('jam','pengerjaan','custom_pengerjaan','harian') NULL AFTER tipe_payroll_penjahit`,
       );
       await safeMigrate(
         `ALTER TABLE karyawan ADD COLUMN penempatan_extra VARCHAR(500) NULL AFTER penempatan`,
@@ -687,8 +695,9 @@ export async function insertEmployee(payload: EmployeePayload) {
           tanggal_kontrak,
           tanggal_selesai_kontrak,
           kenaikan_tiap_tahun,
-          tipe_payroll_penjahit
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 'nonaktif' THEN CURDATE() ELSE NULL END, ?, ?, ?, ?, ?)
+          tipe_payroll_penjahit,
+          tipe_freelance
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 'nonaktif' THEN CURDATE() ELSE NULL END, ?, ?, ?, ?, ?, ?)
       `,
       [
         userId,
@@ -723,6 +732,7 @@ export async function insertEmployee(payload: EmployeePayload) {
         resolvedTimeline.contractEndDate,
         payload.annualRaise,
         payload.penjahitPayrollType ?? null,
+        payload.freelanceTipePayroll ?? null,
       ],
     );
 
@@ -865,7 +875,8 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
           tanggal_kontrak = ?,
           tanggal_selesai_kontrak = ?,
           kenaikan_tiap_tahun = ?,
-          tipe_payroll_penjahit = ?
+          tipe_payroll_penjahit = ?,
+          tipe_freelance = ?
         WHERE id = ?
       `,
       [
@@ -900,6 +911,7 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
         resolvedTimeline.contractEndDate,
         payload.annualRaise,
         payload.penjahitPayrollType ?? null,
+        payload.freelanceTipePayroll ?? null,
         id,
       ],
     );

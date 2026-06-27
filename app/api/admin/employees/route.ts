@@ -142,6 +142,11 @@ function validatePayload(body: Record<string, unknown>) {
       body.penjahitPayrollType === "mingguan" || body.penjahitPayrollType === "bulanan"
         ? (body.penjahitPayrollType as "mingguan" | "bulanan")
         : null,
+    freelanceTipePayroll: (["jam", "pengerjaan", "custom_pengerjaan", "harian"] as const).includes(
+      body.freelanceTipePayroll as "jam" | "pengerjaan" | "custom_pengerjaan" | "harian",
+    )
+      ? (body.freelanceTipePayroll as "jam" | "pengerjaan" | "custom_pengerjaan" | "harian")
+      : null,
   };
 
   return { payload };
