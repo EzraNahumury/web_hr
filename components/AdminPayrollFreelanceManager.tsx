@@ -85,11 +85,9 @@ function JamDetailModal({
       .catch(() => setRows([]));
   }, [employeeId, bulan, tahun]);
 
-  // Total dibulatkan CEIL per 30 menit per hari (sama dengan perhitungan gaji)
-  const totalMenitBulat = (rows ?? []).reduce((s, r) => {
-    const m = Number(r.menit_kerja);
-    return s + Math.ceil(m / 30) * 30;
-  }, 0);
+  // Jumlahkan menit persis dulu, baru CEIL sekali ke total
+  const totalMenitReal = (rows ?? []).reduce((s, r) => s + Number(r.menit_kerja), 0);
+  const totalMenitBulat = Math.ceil(totalMenitReal / 30) * 30;
   const totalJam = Math.floor(totalMenitBulat / 60);
   const sisaMenit = totalMenitBulat % 60;
 

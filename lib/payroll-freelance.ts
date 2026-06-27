@@ -233,14 +233,14 @@ export async function getFreelanceSheet(period?: {
   const [allFreelance] = await pool.query<KaryawanFreelanceRow[]>(
     `SELECT k.id, k.nama, k.tipe_freelance,
             COALESCE(fj.rate_per_jam, 0) AS rate_per_jam,
-            (SELECT COALESCE(SUM(
+            (SELECT CEIL(COALESCE(SUM(
                CASE
                  WHEN a.jam_masuk IS NOT NULL AND a.jam_pulang IS NOT NULL
-                   THEN CEIL(TIMESTAMPDIFF(MINUTE, a.jam_masuk, a.jam_pulang) / 30) * 30
+                   THEN TIMESTAMPDIFF(MINUTE, a.jam_masuk, a.jam_pulang)
                  WHEN a.jam_masuk IS NOT NULL THEN 480
                  ELSE 0
                END
-             ), 0)
+             ), 0) / 30) * 30
              FROM absensi a
              WHERE a.karyawan_id = k.id AND a.tanggal BETWEEN ? AND ? AND a.status_absensi = 'hadir'
             ) AS total_menit
