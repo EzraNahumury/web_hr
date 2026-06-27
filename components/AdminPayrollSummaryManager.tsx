@@ -445,99 +445,16 @@ export default function AdminPayrollSummaryManager({
     }
   }
 
-  // Export Excel untuk Finance: No, Nama, Bank, No Rekening, Take Home Pay.
-  async function handleDownloadFinance() {
-    if (isExportingFinance || filteredRows.length === 0) return;
+  // Download Finance: 1 file Excel berisi SEMUA karyawan dari semua summary
+  // (Summary Payroll + Solo + Sales Nasional + Penjahit + Freelance). Digenerate server.
+  function handleDownloadFinance() {
     setIsExportingFinance(true);
     try {
-      const ExcelJSModule = await import("exceljs");
-      const ExcelJS = ExcelJSModule.default ?? ExcelJSModule;
-
-      const wb = new ExcelJS.Workbook();
-      wb.creator = "Web HR AvA Group";
-      wb.created = new Date();
-      const ws = wb.addWorksheet("Finance", { views: [{ state: "frozen", ySplit: 3 }] });
-
-      ws.getColumn(1).width = 6;
-      ws.getColumn(2).width = 30;
-      ws.getColumn(3).width = 14;
-      ws.getColumn(4).width = 22;
-      ws.getColumn(5).width = 20;
-
-      const thin = { style: "thin" as const, color: { argb: "FFE0CFC8" } };
-      const border = { top: thin, left: thin, bottom: thin, right: thin };
-
-      // Row 1 — judul
-      ws.mergeCells(1, 1, 1, 5);
-      const titleCell = ws.getCell(1, 1);
-      titleCell.value = "FINANCE — TAKE HOME PAY";
-      titleCell.font = { bold: true, size: 16, color: { argb: "FF8F1D22" } };
-      titleCell.alignment = { vertical: "middle", horizontal: "left" };
-      ws.getRow(1).height = 26;
-
-      // Row 2 — meta
-      ws.mergeCells(2, 1, 2, 5);
-      const metaCell = ws.getCell(2, 1);
-      const totalThp = filteredRows.reduce((sum, r) => sum + r.netIncome, 0);
-      metaCell.value = `Periode: ${selectedPeriodLabel}     •     Total: ${filteredRows.length} karyawan     •     Total Take Home Pay: ${formatCurrency(totalThp)}`;
-      metaCell.font = { italic: true, size: 10, color: { argb: "FF7A6059" } };
-      ws.getRow(2).height = 18;
-
-      // Row 3 — header
-      const headers = ["No", "Nama", "Bank", "No Rekening", "Take Home Pay"];
-      const headerRow = ws.getRow(3);
-      headers.forEach((h, idx) => {
-        const cell = headerRow.getCell(idx + 1);
-        cell.value = h;
-        cell.font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF8F1D22" } };
-        cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
-        cell.border = border;
-      });
-      headerRow.height = 26;
-
-      filteredRows.forEach((r, i) => {
-        const row = ws.getRow(4 + i);
-        const values: (string | number)[] = [
-          i + 1,
-          r.name || "-",
-          r.bank || "-",
-          r.accountNumber || "-",
-          r.netIncome,
-        ];
-        values.forEach((v, idx) => {
-          const cell = row.getCell(idx + 1);
-          cell.value = v;
-          cell.font = { size: 10, color: { argb: "FF2D1B18" } };
-          cell.alignment = {
-            vertical: "middle",
-            horizontal: idx === 0 ? "center" : idx === 4 ? "right" : "left",
-          };
-          cell.border = border;
-          if (idx === 4) cell.numFmt = '"Rp"#,##0';
-          if (i % 2 === 1) {
-            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFDF7F4" } };
-          }
-        });
-      });
-
-      ws.autoFilter = { from: { row: 3, column: 1 }, to: { row: 3, column: 5 } };
-
-      const buffer = await wb.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      const month = String(periodMonth).padStart(2, "0");
-      link.download = `finance-take-home-pay-${periodYear}-${month}.xlsx`;
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Finance export failed:", error);
+      const url = `/api/admin/payroll-summary/finance-export?month=${periodMonth}&year=${periodYear}`;
+      window.location.href = url;
     } finally {
-      setIsExportingFinance(false);
+      // Reset state setelah navigasi unduhan dimulai.
+      setTimeout(() => setIsExportingFinance(false), 1500);
     }
   }
 
