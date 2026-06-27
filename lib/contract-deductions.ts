@@ -175,15 +175,11 @@ function buildPlan(
   const deductionEndDate = addMonthsToIsoDate(employee.contractDate, 5);
   const defaultMonthlyDeduction = getContractDeductionNominalByRole(employee.role);
 
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1;
-  const currentYear = now.getFullYear();
-  const isPastMonth = (month: number, year: number) =>
-    year < currentYear || (year === currentYear && month < currentMonth);
-
-  // Periode payroll AKTIF (mis. tgl > 25 -> bulan berikutnya). Periode SETELAH
-  // periode aktif = masa depan -> belum boleh dianggap terpotong, walau ada
-  // baris payroll-nya (mis. dari clone/browse periode depan).
+  // Periode payroll AKTIF (mis. tgl > 25 -> bulan berikutnya).
+  // - Periode SETELAH periode aktif = masa depan -> "Belum dipotong" (walau ada
+  //   baris payroll-nya dari clone/browse periode depan).
+  // - Periode <= periode aktif = sudah jatuh tempo -> dianggap terpotong
+  //   (pakai nilai payroll bila ada, kalau belum ada tandai "Otomatis").
   const active = getActivePayrollPeriod();
   const activeYearMonth = active.year * 100 + active.month;
   const isFuturePeriod = (month: number, year: number) =>
@@ -201,11 +197,9 @@ function buildPlan(
         );
     const planned = matched?.nominalDeduction ?? String(defaultMonthlyDeduction);
     const actualDeducted = usage?.deductedAmount ?? null;
-    const past = !future && isPastMonth(period.month, period.year);
-    const autoDeducted = actualDeducted === null && past;
-    const effectiveDeducted = future
-      ? null
-      : (actualDeducted ?? (autoDeducted ? planned : null));
+    // Belum ada nilai payroll tapi periode sudah jatuh tempo (<= aktif) -> Otomatis.
+    const autoDeducted = !future && actualDeducted === null;
+    const effectiveDeducted = future ? null : (actualDeducted ?? planned);
 
     return {
       id: matched?.id ?? null,
