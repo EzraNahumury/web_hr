@@ -197,8 +197,9 @@ function buildPlan(
         );
     const planned = matched?.nominalDeduction ?? String(defaultMonthlyDeduction);
     const actualDeducted = usage?.deductedAmount ?? null;
-    // Belum ada nilai payroll tapi periode sudah jatuh tempo (<= aktif) -> Otomatis.
-    const autoDeducted = !future && actualDeducted === null;
+    // Periode jatuh tempo (<= aktif) selalu dianggap terpotong di payroll
+    // (potongannya memang sudah diterapkan di perhitungan payroll live).
+    const autoDeducted = false;
     const effectiveDeducted = future ? null : (actualDeducted ?? planned);
 
     return {
