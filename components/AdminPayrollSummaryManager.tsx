@@ -144,6 +144,9 @@ export default function AdminPayrollSummaryManager({
   const [searchQuery, setSearchQuery] = useState("");
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingFinance, setIsExportingFinance] = useState(false);
+  const [absensiEditRow, setAbsensiEditRow] = useState<AdminPayrollSummarySheetRow | null>(null);
+  const [absensiValue, setAbsensiValue] = useState("");
+  const [isAbsensiPending, startAbsensiTransition] = useTransition();
 
   const [periodYear, periodMonth] = useMemo(() => {
     const [year, month] = selectedPeriod.split("-");
@@ -536,6 +539,42 @@ export default function AdminPayrollSummaryManager({
     } finally {
       setIsExportingFinance(false);
     }
+  }
+
+  function openAbsensiEdit(row: AdminPayrollSummarySheetRow) {
+    setAbsensiEditRow(row);
+    setAbsensiValue(formatNumericInput(String(Math.round(row.diligenceCut))));
+  }
+
+  function submitAbsensiOverride(reset: boolean) {
+    if (!absensiEditRow) return;
+    const employeeId = absensiEditRow.employeeId;
+    const body = {
+      action: "save_potongan_absensi",
+      employeeId,
+      month: periodMonth,
+      year: periodYear,
+      potonganAbsensi: reset ? "" : String(parseNumber(absensiValue)),
+    };
+    startAbsensiTransition(async () => {
+      try {
+        const res = await fetch("/api/admin/payroll-summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = (await res.json()) as { message?: string };
+        if (!res.ok) {
+          setPayrollMessage({ type: "error", text: data.message ?? "Gagal menyimpan potongan absensi." });
+          return;
+        }
+        setPayrollMessage({ type: "success", text: data.message ?? "Potongan absensi tersimpan." });
+        setAbsensiEditRow(null);
+        router.refresh();
+      } catch {
+        setPayrollMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
+      }
+    });
   }
 
   return (
@@ -932,7 +971,21 @@ export default function AdminPayrollSummaryManager({
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.fineDeduction)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.contractCut)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.loanCut)}</td>
-                      <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.diligenceCut)}</td>
+                      <td className="border border-[#d7ecee] px-1 py-1 text-right">
+                        {canEdit ? (
+                          <button
+                            type="button"
+                            onClick={() => openAbsensiEdit(row)}
+                            title="Klik untuk edit potongan absensi (hanya periode ini)"
+                            className={`inline-flex w-full items-center justify-end gap-1 rounded-lg px-2 py-2 transition hover:bg-[#fff2ec] ${row.inputOverridePotonganAbsensi !== null ? "font-semibold text-[#0d7f86] underline decoration-dotted underline-offset-2" : "text-[#3a2b27]"}`}
+                          >
+                            {formatCurrency(row.diligenceCut)}
+                            {row.inputOverridePotonganAbsensi !== null ? <span className="text-[10px]">✎</span> : null}
+                          </button>
+                        ) : (
+                          <span className="block px-2 py-2">{formatCurrency(row.diligenceCut)}</span>
+                        )}
+                      </td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right font-semibold text-[#8f1d22]">{formatCurrency(row.fineDeduction + row.contractCut + row.loanCut)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.monthlyBaseSalary)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.totalSalaryBeforeDeduction)}</td>
@@ -957,6 +1010,65 @@ export default function AdminPayrollSummaryManager({
       ) : (
         <div className="rounded-[32px] border border-[#ead7ce] bg-white px-6 py-10 text-sm text-[#7a6059]">Belum ada payroll tersimpan untuk periode yang dipilih.</div>
       )}
+
+      {absensiEditRow ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="bg-[#0d7f86] px-6 py-4">
+              <h3 className="text-lg font-semibold text-white">Edit Potongan Absensi</h3>
+              <p className="mt-0.5 text-sm text-white/80">
+                {absensiEditRow.name} • {selectedPeriodLabel}
+              </p>
+            </div>
+            <div className="space-y-4 px-6 py-5">
+              <p className="rounded-xl bg-[#f5fbfb] px-4 py-3 text-[13px] text-[#47696b]">
+                Nilai diubah <span className="font-semibold">hanya untuk periode ini</span>. Periode lain tetap otomatis dari sistem.
+                {absensiEditRow.inputOverridePotonganAbsensi !== null
+                  ? " Saat ini memakai nilai manual."
+                  : " Saat ini otomatis dari sistem."}
+              </p>
+              <label className="block space-y-1.5">
+                <span className="block text-[13px] font-semibold text-[#466668]">Potongan Absensi (Rp)</span>
+                <input
+                  value={absensiValue}
+                  onChange={(e) => setAbsensiValue(formatNumericInput(e.target.value))}
+                  inputMode="numeric"
+                  autoFocus
+                  className="h-12 w-full rounded-2xl border border-[#d5e9ea] bg-white px-4 text-[#173033] outline-none focus:border-[#0d7f86] focus:shadow-[0_0_0_4px_rgba(13,127,134,0.16)]"
+                  placeholder="0"
+                />
+              </label>
+              <div className="flex flex-wrap gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setAbsensiEditRow(null)}
+                  className="h-11 flex-1 rounded-xl border border-[#ead7ce] text-sm font-semibold text-[#8f1d22] hover:bg-[#fff2ec]"
+                >
+                  Batal
+                </button>
+                {absensiEditRow.inputOverridePotonganAbsensi !== null ? (
+                  <button
+                    type="button"
+                    onClick={() => submitAbsensiOverride(true)}
+                    disabled={isAbsensiPending}
+                    className="h-11 flex-1 rounded-xl border border-[#0d7f86] text-sm font-semibold text-[#0d7f86] hover:bg-[#effbfb] disabled:opacity-60"
+                  >
+                    Reset Otomatis
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => submitAbsensiOverride(false)}
+                  disabled={isAbsensiPending}
+                  className="h-11 flex-1 rounded-xl bg-[#0d7f86] text-sm font-semibold text-white hover:bg-[#0a6a70] disabled:opacity-60"
+                >
+                  {isAbsensiPending ? "Menyimpan..." : "Simpan"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

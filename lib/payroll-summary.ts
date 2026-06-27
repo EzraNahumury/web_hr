@@ -88,6 +88,7 @@ type PayrollSheetBaseRow = RowDataPacket & {
   raw_override_pinjaman: string | null;
   raw_override_pinjaman_pribadi: string | null;
   raw_override_gaji_pokok: string | null;
+  raw_override_potongan_absensi: string | null;
   raw_freelance_rate_type: "per_hari" | "per_jam" | null;
   raw_gaji_pokok_per_jam: string | null;
   total_omzet_global: string | null;
@@ -219,6 +220,7 @@ export type AdminPayrollSummarySheetRow = {
   inputOverridePinjaman: number | null;
   inputOverridePinjamanPribadi: number | null;
   inputOverrideGajiPokok: number | null;
+  inputOverridePotonganAbsensi: number | null;
   freelanceRateType: "per_hari" | "per_jam";
   inputGajiPerJam: number;
 };
@@ -399,6 +401,7 @@ export async function getAdminPayrollSummarySheet(period?: {
         pei.override_pinjaman AS raw_override_pinjaman,
         pei.override_pinjaman_pribadi AS raw_override_pinjaman_pribadi,
         pei.override_gaji_pokok AS raw_override_gaji_pokok,
+        pei.override_potongan_absensi AS raw_override_potongan_absensi,
         pei.freelance_rate_type AS raw_freelance_rate_type,
         pei.gaji_pokok_per_jam AS raw_gaji_pokok_per_jam,
         NULL AS total_omzet_global,
@@ -762,6 +765,10 @@ export async function getAdminPayrollSummarySheet(period?: {
       row.raw_override_gaji_pokok !== null
         ? toNumber(row.raw_override_gaji_pokok)
         : null;
+    const inputOverridePotonganAbsensi =
+      row.raw_override_potongan_absensi !== null
+        ? toNumber(row.raw_override_potongan_absensi)
+        : null;
 
     const statusKepegawaianNorm = (row.status_kepegawaian ?? "").trim().toLowerCase();
     const isFreelance = statusKepegawaianNorm === "freelance";
@@ -854,10 +861,18 @@ export async function getAdminPayrollSummarySheet(period?: {
       sickCount <= 2 && sickWithoutNoteCount === 0 && alfaCount === 0;
     const kerajinanReachesWorkDays =
       presentDays + sickCount + halfDayCount + holidayDays >= workDays;
-    const diligenceAllowance =
+    const autoDiligenceAllowance =
       workDays > 0 && kerajinanNoIssue && kerajinanReachesWorkDays
         ? fixedDiligenceAllowance
         : 0;
+    const autoDiligenceCut = Math.max(fixedDiligenceAllowance - autoDiligenceAllowance, 0);
+    // Potongan absensi bisa di-override manual per-periode (null = otomatis dari sistem).
+    // Override hanya berlaku di periode ini; periode lain tetap otomatis.
+    const diligenceCut = isFreelance ? 0 : (inputOverridePotonganAbsensi ?? autoDiligenceCut);
+    // Uang kerajinan yang benar-benar dibayar = nilai penuh dikurangi potongan absensi.
+    const diligenceAllowance = isFreelance
+      ? 0
+      : Math.max(fixedDiligenceAllowance - diligenceCut, 0);
     const halfDayDeduction = isFreelance ? 0 : (dailyBaseSalary / 2) * halfDayCount;
     const lateCount = isFreelance ? 0 : attendance.late;
     const lateDeduction = isFreelance ? 0 : lateCount * 20000;
@@ -890,10 +905,6 @@ export async function getAdminPayrollSummarySheet(period?: {
       ? 0
       : (inputOverridePinjaman ?? loanMap.get(row.employee_id) ?? 0);
     const personalLoan = isFreelance ? 0 : (inputOverridePinjamanPribadi ?? 0);
-    const diligenceCut = Math.max(
-      fixedDiligenceAllowance - diligenceAllowance,
-      0,
-    );
     const fineDeduction = halfDayDeduction + lateDeduction + diligenceCut;
     const netIncome =
       totalSalary - contractDeduction - companyLoan - personalLoan;
@@ -971,6 +982,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       inputOverridePinjaman,
       inputOverridePinjamanPribadi,
       inputOverrideGajiPokok,
+      inputOverridePotonganAbsensi,
       freelanceRateType: (row.raw_freelance_rate_type ?? "per_hari") as "per_hari" | "per_jam",
       inputGajiPerJam: toNumber(row.raw_gaji_pokok_per_jam),
     };

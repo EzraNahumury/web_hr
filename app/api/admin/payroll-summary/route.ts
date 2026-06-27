@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getCurrentAdminSession, isPayrollEditor } from "@/lib/auth";
 import {
+  setPotonganAbsensiOverride,
   upsertPayrollPeriodOmzet,
   upsertPayrollFromForm,
   type OmzetUnitInput,
@@ -172,7 +173,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: periodResult.error }, { status: 400 });
     }
 
-    const action = body.action === "save_omzet" ? "save_omzet" : "save_payroll";
+    const action =
+      body.action === "save_omzet"
+        ? "save_omzet"
+        : body.action === "save_potongan_absensi"
+          ? "save_potongan_absensi"
+          : "save_payroll";
+
+    if (action === "save_potongan_absensi") {
+      const employeeId = Number(body.employeeId);
+      if (!Number.isInteger(employeeId) || employeeId <= 0) {
+        return NextResponse.json({ message: "Karyawan tidak valid." }, { status: 400 });
+      }
+      // value null/"" -> reset ke otomatis
+      const value = parseOverride(body.potonganAbsensi);
+      const saved = await setPotonganAbsensiOverride(employeeId, periodResult.period, value);
+      return NextResponse.json({
+        message:
+          value === null
+            ? `Potongan absensi periode ${saved.periodMonth}/${saved.periodYear} dikembalikan ke otomatis.`
+            : `Potongan absensi periode ${saved.periodMonth}/${saved.periodYear} berhasil diubah.`,
+        saved,
+      });
+    }
 
     if (action === "save_omzet") {
       const result = validateOmzetPayload(body);
