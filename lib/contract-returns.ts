@@ -1,6 +1,7 @@
 import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 
 import { pool } from "@/lib/db";
+import { getActivePayrollPeriod } from "@/lib/payroll-admin";
 
 // Deposit kontrak standar = 200.000 x 5 bulan.
 export const STANDARD_CONTRACT_DEPOSIT = 1_000_000;
@@ -106,10 +107,18 @@ export async function listContractReturns(): Promise<ContractReturnItem[]> {
       `SELECT karyawan_id AS employee_id, COALESCE(SUM(nominal_potongan), 0) AS total
        FROM potongan_kontrak GROUP BY karyawan_id`,
     ),
-    pool.query<SumRow[]>(
-      `SELECT karyawan_id AS employee_id, COALESCE(SUM(potongan_kontrak), 0) AS total
-       FROM payroll WHERE potongan_kontrak > 0 GROUP BY karyawan_id`,
-    ),
+    // Hanya hitung potongan sampai periode payroll AKTIF (jangan ikut periode masa depan).
+    (() => {
+      const active = getActivePayrollPeriod();
+      return pool.query<SumRow[]>(
+        `SELECT karyawan_id AS employee_id, COALESCE(SUM(potongan_kontrak), 0) AS total
+         FROM payroll
+         WHERE potongan_kontrak > 0
+           AND (periode_tahun * 100 + periode_bulan) <= ?
+         GROUP BY karyawan_id`,
+        [active.year * 100 + active.month],
+      );
+    })(),
     pool.query<ReturnRow[]>(
       `SELECT karyawan_id, nominal,
               DATE_FORMAT(tanggal_pengembalian, '%Y-%m-%d') AS tanggal_pengembalian,

@@ -8,6 +8,7 @@ import {
   isContractDeductionActive,
 } from "@/lib/contract-timeline";
 import { pool } from "@/lib/db";
+import { getActivePayrollPeriod } from "@/lib/payroll-admin";
 
 export type ContractDeductionItem = {
   id: number;
@@ -180,18 +181,31 @@ function buildPlan(
   const isPastMonth = (month: number, year: number) =>
     year < currentYear || (year === currentYear && month < currentMonth);
 
+  // Periode payroll AKTIF (mis. tgl > 25 -> bulan berikutnya). Periode SETELAH
+  // periode aktif = masa depan -> belum boleh dianggap terpotong, walau ada
+  // baris payroll-nya (mis. dari clone/browse periode depan).
+  const active = getActivePayrollPeriod();
+  const activeYearMonth = active.year * 100 + active.month;
+  const isFuturePeriod = (month: number, year: number) =>
+    year * 100 + month > activeYearMonth;
+
   const installments = periods.map((period) => {
+    const future = isFuturePeriod(period.month, period.year);
     const matched = employeeRows.find(
       (row) => row.month === period.month && row.year === period.year,
     );
-    const usage = employeeUsages.find(
-      (item) => item.month === period.month && item.year === period.year,
-    );
+    const usage = future
+      ? undefined
+      : employeeUsages.find(
+          (item) => item.month === period.month && item.year === period.year,
+        );
     const planned = matched?.nominalDeduction ?? String(defaultMonthlyDeduction);
     const actualDeducted = usage?.deductedAmount ?? null;
-    const past = isPastMonth(period.month, period.year);
+    const past = !future && isPastMonth(period.month, period.year);
     const autoDeducted = actualDeducted === null && past;
-    const effectiveDeducted = actualDeducted ?? (autoDeducted ? planned : null);
+    const effectiveDeducted = future
+      ? null
+      : (actualDeducted ?? (autoDeducted ? planned : null));
 
     return {
       id: matched?.id ?? null,
