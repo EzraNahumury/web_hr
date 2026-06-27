@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type {
   FreelanceSheet,
   FreelanceJamRow,
@@ -62,6 +62,100 @@ function SectionCard({ title, subtitle, children }: { title: string; subtitle?: 
 
 // ── Table 1: Freelance Jam ───────────────────────────────────────────────────
 
+type AbsensiDetailItem = {
+  tanggal: string;
+  jam_masuk: string | null;
+  jam_pulang: string | null;
+  menit_kerja: number;
+};
+
+function JamDetailModal({
+  name, bulan, tahun, employeeId, onClose,
+}: {
+  name: string; bulan: number; tahun: number; employeeId: number;
+  onClose: () => void;
+}) {
+  const [rows, setRows] = useState<AbsensiDetailItem[] | null>(null);
+
+  useEffect(() => {
+    setRows(null);
+    fetch(`/api/admin/freelance/jam?karyawanId=${employeeId}&bulan=${bulan}&tahun=${tahun}`)
+      .then((r) => r.json())
+      .then(setRows)
+      .catch(() => setRows([]));
+  }, [employeeId, bulan, tahun]);
+
+  const totalMenit = (rows ?? []).reduce((s, r) => s + Number(r.menit_kerja), 0);
+  const totalJam = Math.floor(totalMenit / 60);
+  const sisaMenit = totalMenit % 60;
+
+  function fmt(t: string | null) {
+    if (!t) return "-";
+    return t.slice(0, 5);
+  }
+  function fmtMenit(m: number) {
+    const h = Math.floor(m / 60);
+    const mn = m % 60;
+    if (mn === 0) return `${h} jam`;
+    return `${h} jam ${mn} mnt`;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between rounded-t-2xl bg-[#8f1d22] px-5 py-4">
+          <div>
+            <p className="font-semibold text-white">{name}</p>
+            <p className="text-xs text-[#f7c6c6]">Detail absensi periode ini</p>
+          </div>
+          <button onClick={onClose} className="text-white/70 hover:text-white text-xl leading-none">✕</button>
+        </div>
+        <div className="max-h-[60vh] overflow-y-auto">
+          {rows === null ? (
+            <p className="px-5 py-6 text-center text-sm text-[#9e7a72]">Memuat...</p>
+          ) : rows.length === 0 ? (
+            <p className="px-5 py-6 text-center text-sm text-[#9e7a72]">Tidak ada data absensi.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-[#fef9f0] text-[#7c3c24] sticky top-0">
+                <tr>
+                  <th className="px-4 py-2.5 text-left font-semibold">#</th>
+                  <th className="px-4 py-2.5 text-left font-semibold">Tanggal</th>
+                  <th className="px-4 py-2.5 text-center font-semibold">Jam Masuk</th>
+                  <th className="px-4 py-2.5 text-center font-semibold">Jam Pulang</th>
+                  <th className="px-4 py-2.5 text-right font-semibold">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr key={r.tanggal} className={i % 2 === 0 ? "bg-white" : "bg-[#fdf7f5]"}>
+                    <td className="px-4 py-2 text-[#9e7a72]">{i + 1}</td>
+                    <td className="px-4 py-2 text-[#2d1b18]">{r.tanggal}</td>
+                    <td className="px-4 py-2 text-center text-[#4a3430]">{fmt(r.jam_masuk)}</td>
+                    <td className="px-4 py-2 text-center text-[#4a3430]">{fmt(r.jam_pulang)}</td>
+                    <td className="px-4 py-2 text-right text-[#4a3430]">{fmtMenit(Number(r.menit_kerja))}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="bg-[#fef3e4] font-bold text-[#7c3c24]">
+                <tr>
+                  <td colSpan={4} className="px-4 py-2.5 text-right">TOTAL</td>
+                  <td className="px-4 py-2.5 text-right">{totalJam} jam {sisaMenit > 0 ? `${sisaMenit} mnt` : ""}</td>
+                </tr>
+              </tfoot>
+            </table>
+          )}
+        </div>
+        <div className="border-t border-[#ead7ce] px-5 py-3 text-right">
+          <button onClick={onClose} className="rounded-xl border border-[#e0c8c2] px-4 py-2 text-sm font-semibold text-[#4a3430] hover:bg-[#fdf7f5]">
+            Tutup
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function JamTable({
   rows, bulan, tahun, onSaved,
 }: {
@@ -71,6 +165,7 @@ function JamTable({
 }) {
   const [editing, setEditing] = useState<{ [empId: number]: string }>({});
   const [saving, setSaving] = useState<{ [empId: number]: boolean }>({});
+  const [detail, setDetail] = useState<{ employeeId: number; name: string } | null>(null);
 
   async function saveRate(row: FreelanceJamRow) {
     const rate = editing[row.employeeId];
@@ -103,6 +198,7 @@ function JamTable({
   }, 0);
 
   return (
+    <>
     <SectionCard title="Freelance Jam" subtitle="Otomatis dari absensi × rate per jam — klik Edit untuk set rate">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -140,20 +236,25 @@ function JamTable({
                   </td>
                   <td className="px-4 py-2.5 text-right font-semibold text-[#2d1b18]">{formatCurrency(row.jamKerja * rate)}</td>
                   <td className="px-4 py-2.5 text-right">
-                    {isEditing ? (
-                      <div className="flex justify-end gap-1">
-                        <button onClick={() => saveRate(row)} disabled={saving[row.employeeId]} className="rounded-lg bg-[#8f1d22] px-3 py-1 text-xs font-semibold text-white hover:bg-[#7a1a1e] disabled:opacity-50">
-                          {saving[row.employeeId] ? "..." : "Simpan"}
-                        </button>
-                        <button onClick={() => setEditing((p) => { const n = { ...p }; delete n[row.employeeId]; return n; })} className="rounded-lg border border-[#e0c8c2] px-3 py-1 text-xs font-semibold text-[#4a3430] hover:bg-[#fdf7f5]">
-                          Batal
-                        </button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setEditing((p) => ({ ...p, [row.employeeId]: String(row.ratePerJam) }))} className="rounded-lg border border-[#e0c8c2] px-3 py-1 text-xs font-semibold text-[#7c3c24] hover:bg-[#fef9f0]">
-                        Edit
+                    <div className="flex justify-end gap-1">
+                      <button onClick={() => setDetail({ employeeId: row.employeeId, name: row.name })} className="rounded-lg border border-[#c8e0f7] bg-[#f0f7ff] px-3 py-1 text-xs font-semibold text-[#1e4d8c] hover:bg-[#dceeff]">
+                        Detail
                       </button>
-                    )}
+                      {isEditing ? (
+                        <>
+                          <button onClick={() => saveRate(row)} disabled={saving[row.employeeId]} className="rounded-lg bg-[#8f1d22] px-3 py-1 text-xs font-semibold text-white hover:bg-[#7a1a1e] disabled:opacity-50">
+                            {saving[row.employeeId] ? "..." : "Simpan"}
+                          </button>
+                          <button onClick={() => setEditing((p) => { const n = { ...p }; delete n[row.employeeId]; return n; })} className="rounded-lg border border-[#e0c8c2] px-3 py-1 text-xs font-semibold text-[#4a3430] hover:bg-[#fdf7f5]">
+                            Batal
+                          </button>
+                        </>
+                      ) : (
+                        <button onClick={() => setEditing((p) => ({ ...p, [row.employeeId]: String(row.ratePerJam) }))} className="rounded-lg border border-[#e0c8c2] px-3 py-1 text-xs font-semibold text-[#7c3c24] hover:bg-[#fef9f0]">
+                          Edit
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
@@ -169,6 +270,16 @@ function JamTable({
         </table>
       </div>
     </SectionCard>
+    {detail && (
+      <JamDetailModal
+        employeeId={detail.employeeId}
+        name={detail.name}
+        bulan={bulan}
+        tahun={tahun}
+        onClose={() => setDetail(null)}
+      />
+    )}
+    </>
   );
 }
 
