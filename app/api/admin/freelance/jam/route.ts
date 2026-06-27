@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
        TIME_FORMAT(a.jam_pulang, '%H:%i') AS jam_pulang,
        CASE
          WHEN a.jam_masuk IS NOT NULL AND a.jam_pulang IS NOT NULL
-           THEN CEIL(TIMESTAMPDIFF(MINUTE, a.jam_masuk, a.jam_pulang) / 30) * 30
+           THEN TIMESTAMPDIFF(MINUTE, a.jam_masuk, a.jam_pulang)
          WHEN a.jam_masuk IS NOT NULL THEN 480
          ELSE 0
        END AS menit_kerja
