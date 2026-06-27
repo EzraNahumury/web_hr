@@ -31,6 +31,7 @@ import {
 } from "@/lib/reimbursements";
 import { isSalesNasionalRole } from "@/lib/sales-roles";
 import { PAYROLL_OMZET_BONUS_RATE } from "@/lib/payroll-constants";
+import { ensureContractReturnTable } from "@/lib/contract-returns";
 
 type LatestPeriodRow = RowDataPacket & {
   periode_bulan: number;
@@ -198,6 +199,7 @@ export type AdminPayrollSummarySheetRow = {
   contractCut: number;
   loanCut: number;
   diligenceCut: number;
+  contractReturn: number;
   netIncome: number;
   inputGajiPerDay: number;
   inputTunjanganJabatan: number;
@@ -313,7 +315,7 @@ export async function getAdminPayrollSummarySheet(period?: {
 }, options?: { placementFilter?: string; excludePlacement?: string }) {
   const placementFilter = options?.placementFilter?.trim();
   const excludePlacement = options?.excludePlacement?.trim();
-  await Promise.all([ensurePayrollSupportTables(), ensureLoanSupportTables(), ensureReimbursementSchema()]);
+  await Promise.all([ensurePayrollSupportTables(), ensureLoanSupportTables(), ensureReimbursementSchema(), ensureContractReturnTable()]);
   const activePeriod = {
     month: period?.month ?? getActivePayrollPeriod().month,
     year: period?.year ?? getActivePayrollPeriod().year,
@@ -451,6 +453,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     employeeUnitCountResult,
     freelanceHoursResult,
     jadwalStatsResult,
+    contractReturnResult,
   ] = await Promise.all([
     pool.query<PeriodAttendanceRow[]>(
       `
@@ -585,7 +588,21 @@ export async function getAdminPayrollSummarySheet(period?: {
        GROUP BY karyawan_id`,
       [...employeeIds, range.startSql, range.endSql],
     ),
+    // Pengembalian kontrak yang tanggalnya jatuh di periode ini -> ditambahkan ke take home pay.
+    pool.query<RowDataPacket[]>(
+      `SELECT karyawan_id AS employee_id, nominal
+       FROM pengembalian_kontrak
+       WHERE karyawan_id IN (${placeholders})
+         AND tanggal_pengembalian IS NOT NULL
+         AND tanggal_pengembalian BETWEEN ? AND ?`,
+      [...employeeIds, range.startSql, range.endSql],
+    ),
   ]);
+
+  const contractReturnMap = new Map<number, number>();
+  for (const row of contractReturnResult[0] as Array<{ employee_id: number; nominal: number | string }>) {
+    contractReturnMap.set(row.employee_id, toNumber(row.nominal));
+  }
 
   // Map jadwal: kalau karyawan punya jadwal, simpan jumlah hari kerja terjadwalnya.
   const scheduledWorkDaysMap = new Map<number, number>();
@@ -936,8 +953,10 @@ export async function getAdminPayrollSummarySheet(period?: {
       : (inputOverridePinjaman ?? loanMap.get(row.employee_id) ?? 0);
     const personalLoan = isFreelance ? 0 : (inputOverridePinjamanPribadi ?? 0);
     const fineDeduction = halfDayDeduction + lateDeduction + diligenceCut;
+    // Pengembalian deposit kontrak (periode sesuai tanggal pengembalian) menambah take home pay.
+    const contractReturn = contractReturnMap.get(row.employee_id) ?? 0;
     const netIncome =
-      totalSalary - contractDeduction - companyLoan - personalLoan;
+      totalSalary - contractDeduction - companyLoan - personalLoan + contractReturn;
 
     return {
       id: row.payroll_id,
@@ -990,6 +1009,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       contractCut: contractDeduction,
       loanCut: companyLoan,
       diligenceCut,
+      contractReturn,
       netIncome,
       inputGajiPerDay: toNumber(row.raw_gaji_pokok_per_hari),
       inputTunjanganJabatan: toNumber(row.tunjangan_jabatan),
