@@ -142,9 +142,7 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
               { label: "Bonus", value: row.performanceBonus },
             ]
           : [{ label: "Insentif", value: row.incentive }]),
-        ...(row.contractReturn > 0
-          ? [{ label: "Pengembalian Kontrak", value: row.contractReturn }]
-          : []),
+        { label: "Pengembalian Kontrak", value: row.contractReturn },
       ]
     : [
         { label: "Gaji Pokok", value: row.totalBaseSalary },
@@ -152,9 +150,7 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
         { label: "Tunjangan Lain-Lain", value: tunjanganLainLain },
         { label: "Bonus Performa", value: row.performanceBonus },
         { label: "Lembur", value: row.overtimeBonus },
-        ...(row.contractReturn > 0
-          ? [{ label: "Pengembalian Kontrak", value: row.contractReturn }]
-          : []),
+        { label: "Pengembalian Kontrak", value: row.contractReturn },
       ];
 
   const pencairanItems =
