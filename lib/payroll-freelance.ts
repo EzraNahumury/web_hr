@@ -111,24 +111,29 @@ let freelanceSchemaReady: Promise<void> | null = null;
 export async function ensureFreelanceSchemaSupport() {
   if (!freelanceSchemaReady) {
     freelanceSchemaReady = (async () => {
+      // Catch semua error migrasi — jangan sampai schema setup mencrash halaman
       const safeMigrate = async (sql: string) => {
         try {
           await pool.query(sql);
         } catch (error: unknown) {
+          // Abaikan error "already exists" / "duplicate column" — kondisi normal pada deploy ulang
           const code = typeof error === "object" && error !== null && "code" in error
             ? (error as { code: string }).code
             : null;
-          if (code !== "ER_TABLE_EXISTS_ERROR" && code !== "ER_DUP_FIELDNAME" && code !== "ER_BAD_FIELD_ERROR") {
+          const ignoredCodes = ["ER_TABLE_EXISTS_ERROR", "ER_DUP_FIELDNAME", "ER_BAD_FIELD_ERROR", "ER_DUP_KEY", "ER_DUP_KEYNAME"];
+          if (!ignoredCodes.includes(code ?? "")) {
+            console.error("[payroll-freelance] safeMigrate error", { code, sql: sql.slice(0, 120), error });
             throw error;
           }
         }
       };
 
-      // Pastikan kolom tipe_freelance ada di karyawan (bisa belum ada jika employee page belum pernah dibuka)
+      // Kolom tipe_freelance di karyawan
       await safeMigrate(
         `ALTER TABLE karyawan ADD COLUMN tipe_freelance ENUM('jam','pengerjaan','custom_pengerjaan','harian') NULL AFTER tipe_payroll_penjahit`,
       );
 
+      // Tabel freelance — tanpa FOREIGN KEY agar kompatibel di semua MySQL config
       await safeMigrate(`
         CREATE TABLE IF NOT EXISTS freelance_pengerjaan (
           id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -139,9 +144,8 @@ export async function ensureFreelanceSchemaSupport() {
           jumlah_pcs INT NOT NULL DEFAULT 0,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          UNIQUE KEY uq_freelance_pengerjaan (karyawan_id, bulan, tahun),
-          FOREIGN KEY (karyawan_id) REFERENCES karyawan(id) ON DELETE CASCADE
-        )
+          UNIQUE KEY uq_fp (karyawan_id, bulan, tahun)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
 
       await safeMigrate(`
@@ -153,9 +157,8 @@ export async function ensureFreelanceSchemaSupport() {
           harga_per_hari INT NOT NULL DEFAULT 0,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          UNIQUE KEY uq_freelance_harian (karyawan_id, bulan, tahun),
-          FOREIGN KEY (karyawan_id) REFERENCES karyawan(id) ON DELETE CASCADE
-        )
+          UNIQUE KEY uq_fh (karyawan_id, bulan, tahun)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
 
       await safeMigrate(`
@@ -164,9 +167,8 @@ export async function ensureFreelanceSchemaSupport() {
           karyawan_id BIGINT NOT NULL,
           nama_jenis VARCHAR(100) NOT NULL,
           urutan INT NOT NULL DEFAULT 0,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (karyawan_id) REFERENCES karyawan(id) ON DELETE CASCADE
-        )
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
 
       await safeMigrate(`
@@ -180,10 +182,8 @@ export async function ensureFreelanceSchemaSupport() {
           jumlah_pcs INT NOT NULL DEFAULT 0,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          UNIQUE KEY uq_freelance_custom_pengerjaan (item_id, bulan, tahun),
-          FOREIGN KEY (karyawan_id) REFERENCES karyawan(id) ON DELETE CASCADE,
-          FOREIGN KEY (item_id) REFERENCES freelance_custom_item(id) ON DELETE CASCADE
-        )
+          UNIQUE KEY uq_fcp (item_id, bulan, tahun)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
     })();
   }
@@ -208,7 +208,12 @@ export async function getFreelanceSheet(period?: {
   month?: number | null;
   year?: number | null;
 }): Promise<FreelanceSheet> {
-  await ensureFreelanceSchemaSupport();
+  try {
+    await ensureFreelanceSchemaSupport();
+  } catch (err) {
+    console.error("[payroll-freelance] ensureFreelanceSchemaSupport gagal:", err);
+    throw err;
+  }
   const { periodMonth, periodYear, startSql, endSql } = resolvePeriod(period?.month, period?.year);
 
   // All active freelance employees
