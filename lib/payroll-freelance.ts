@@ -236,7 +236,7 @@ export async function getFreelanceSheet(period?: {
             (SELECT COALESCE(SUM(
                CASE
                  WHEN a.jam_masuk IS NOT NULL AND a.jam_pulang IS NOT NULL
-                   THEN TIMESTAMPDIFF(MINUTE, a.jam_masuk, a.jam_pulang)
+                   THEN CEIL(TIMESTAMPDIFF(MINUTE, a.jam_masuk, a.jam_pulang) / 30) * 30
                  WHEN a.jam_masuk IS NOT NULL THEN 480
                  ELSE 0
                END
