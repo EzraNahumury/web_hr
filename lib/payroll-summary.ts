@@ -450,6 +450,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     omzetUnitResult,
     employeeUnitCountResult,
     freelanceHoursResult,
+    jadwalStatsResult,
   ] = await Promise.all([
     pool.query<PeriodAttendanceRow[]>(
       `
@@ -571,7 +572,32 @@ export async function getAdminPayrollSummarySheet(period?: {
        GROUP BY karyawan_id`,
       [...employeeIds, range.startSql, range.endSql],
     ),
+    // Set Jadwal per karyawan: jumlah hari TERJADWAL KERJA (shift != 'libur') dalam periode.
+    // Karyawan yang punya jadwal -> kewajiban hari kerja = jumlah hari kerja terjadwalnya,
+    // BUKAN total hari kerja global. Supaya yang off sesuai jadwal tidak kehilangan kerajinan.
+    pool.query<RowDataPacket[]>(
+      `SELECT karyawan_id AS employee_id,
+              SUM(CASE WHEN shift <> 'libur' THEN 1 ELSE 0 END) AS work_days,
+              COUNT(*) AS total_entries
+       FROM jadwal_karyawan
+       WHERE karyawan_id IN (${placeholders})
+         AND tanggal BETWEEN ? AND ?
+       GROUP BY karyawan_id`,
+      [...employeeIds, range.startSql, range.endSql],
+    ),
   ]);
+
+  // Map jadwal: kalau karyawan punya jadwal, simpan jumlah hari kerja terjadwalnya.
+  const scheduledWorkDaysMap = new Map<number, number>();
+  for (const row of jadwalStatsResult[0] as Array<{
+    employee_id: number;
+    work_days: number | string;
+    total_entries: number | string;
+  }>) {
+    if ((Number(row.total_entries) || 0) > 0) {
+      scheduledWorkDaysMap.set(row.employee_id, Number(row.work_days) || 0);
+    }
+  }
 
   const freelanceMinutesMap = new Map<number, number>();
   for (const row of freelanceHoursResult[0] as Array<{ employee_id: number; total_menit: number | string }>) {
@@ -859,8 +885,12 @@ export async function getAdminPayrollSummarySheet(period?: {
 
     const kerajinanNoIssue =
       sickCount <= 2 && sickWithoutNoteCount === 0 && alfaCount === 0;
+    // Kewajiban hari kerja: kalau karyawan ada di Set Jadwal, pakai jumlah hari kerja
+    // terjadwalnya. Kalau tidak ada jadwal (office/non-shift), pakai hari kerja global.
+    const scheduledWorkDays = scheduledWorkDaysMap.get(row.employee_id);
+    const effectiveWorkDays = scheduledWorkDays ?? workDays;
     const kerajinanReachesWorkDays =
-      presentDays + sickCount + halfDayCount + holidayDays >= workDays;
+      presentDays + sickCount + halfDayCount + holidayDays >= effectiveWorkDays;
     const autoDiligenceAllowance =
       workDays > 0 && kerajinanNoIssue && kerajinanReachesWorkDays
         ? fixedDiligenceAllowance
