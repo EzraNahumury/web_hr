@@ -124,6 +124,11 @@ export async function ensureFreelanceSchemaSupport() {
         }
       };
 
+      // Pastikan kolom tipe_freelance ada di karyawan (bisa belum ada jika employee page belum pernah dibuka)
+      await safeMigrate(
+        `ALTER TABLE karyawan ADD COLUMN tipe_freelance ENUM('jam','pengerjaan','custom_pengerjaan','harian') NULL AFTER tipe_payroll_penjahit`,
+      );
+
       await safeMigrate(`
         CREATE TABLE IF NOT EXISTS freelance_pengerjaan (
           id BIGINT AUTO_INCREMENT PRIMARY KEY,
