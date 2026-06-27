@@ -23,35 +23,25 @@ function formatHours(hours: number) {
 
 // ── Period selector ──────────────────────────────────────────────────────────
 
-const MONTHS = [
-  "Januari","Februari","Maret","April","Mei","Juni",
-  "Juli","Agustus","September","Oktober","November","Desember",
-];
-
 function PeriodSelector({
   month, year, onChange,
 }: {
   month: number; year: number;
   onChange: (month: number, year: number) => void;
 }) {
-  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
+  const value = `${year}-${String(month).padStart(2, "0")}`;
   return (
     <div className="flex flex-wrap items-center gap-3">
       <span className="text-sm font-medium text-[#4a3430]">Periode:</span>
-      <select
-        value={month}
-        onChange={(e) => onChange(Number(e.target.value), year)}
+      <input
+        type="month"
+        value={value}
+        onChange={(e) => {
+          const [y, m] = e.target.value.split("-");
+          if (y && m) onChange(Number(m), Number(y));
+        }}
         className="h-10 rounded-xl border border-[#ead7ce] bg-white px-3 text-sm text-[#2d1b18] outline-none focus:border-[#c8716d]"
-      >
-        {MONTHS.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
-      </select>
-      <select
-        value={year}
-        onChange={(e) => onChange(month, Number(e.target.value))}
-        className="h-10 rounded-xl border border-[#ead7ce] bg-white px-3 text-sm text-[#2d1b18] outline-none focus:border-[#c8716d]"
-      >
-        {years.map((y) => <option key={y} value={y}>{y}</option>)}
-      </select>
+      />
     </div>
   );
 }
@@ -72,7 +62,33 @@ function SectionCard({ title, subtitle, children }: { title: string; subtitle?: 
 
 // ── Table 1: Freelance Jam ───────────────────────────────────────────────────
 
-function JamTable({ rows }: { rows: FreelanceJamRow[] }) {
+function JamTable({
+  rows, bulan, tahun, onSaved,
+}: {
+  rows: FreelanceJamRow[];
+  bulan: number; tahun: number;
+  onSaved: () => void;
+}) {
+  const [editing, setEditing] = useState<{ [empId: number]: string }>({});
+  const [saving, setSaving] = useState<{ [empId: number]: boolean }>({});
+
+  async function saveRate(row: FreelanceJamRow) {
+    const rate = editing[row.employeeId];
+    if (rate === undefined) return;
+    setSaving((p) => ({ ...p, [row.employeeId]: true }));
+    try {
+      await fetch("/api/admin/freelance/jam", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ karyawanId: row.employeeId, bulan, tahun, ratePerJam: Number(rate) || 0 }),
+      });
+      setEditing((p) => { const n = { ...p }; delete n[row.employeeId]; return n; });
+      onSaved();
+    } finally {
+      setSaving((p) => ({ ...p, [row.employeeId]: false }));
+    }
+  }
+
   if (rows.length === 0) {
     return (
       <SectionCard title="Freelance Jam" subtitle="Otomatis dari absensi × rate per jam">
@@ -80,9 +96,14 @@ function JamTable({ rows }: { rows: FreelanceJamRow[] }) {
       </SectionCard>
     );
   }
-  const totalGaji = rows.reduce((s, r) => s + r.total, 0);
+
+  const totalGaji = rows.reduce((s, r) => {
+    const rate = editing[r.employeeId] !== undefined ? (Number(editing[r.employeeId]) || 0) : r.ratePerJam;
+    return s + r.jamKerja * rate;
+  }, 0);
+
   return (
-    <SectionCard title="Freelance Jam" subtitle="Otomatis dari absensi × rate per jam">
+    <SectionCard title="Freelance Jam" subtitle="Otomatis dari absensi × rate per jam — klik Edit untuk set rate">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-[#fef9f0] text-[#7c3c24]">
@@ -92,23 +113,57 @@ function JamTable({ rows }: { rows: FreelanceJamRow[] }) {
               <th className="px-4 py-3 text-right font-semibold">Jam Kerja</th>
               <th className="px-4 py-3 text-right font-semibold">Rate/Jam</th>
               <th className="px-4 py-3 text-right font-semibold">Total Gaji</th>
+              <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, i) => (
-              <tr key={row.employeeId} className={i % 2 === 0 ? "bg-white" : "bg-[#fdf7f5]"}>
-                <td className="px-4 py-2.5 text-[#9e7a72]">{i + 1}</td>
-                <td className="px-4 py-2.5 font-medium text-[#2d1b18]">{row.name}</td>
-                <td className="px-4 py-2.5 text-right text-[#4a3430]">{formatHours(row.jamKerja)}</td>
-                <td className="px-4 py-2.5 text-right text-[#4a3430]">{formatCurrency(row.ratePerJam)}</td>
-                <td className="px-4 py-2.5 text-right font-semibold text-[#2d1b18]">{formatCurrency(row.total)}</td>
-              </tr>
-            ))}
+            {rows.map((row, i) => {
+              const isEditing = row.employeeId in editing;
+              const rate = isEditing ? (Number(editing[row.employeeId]) || 0) : row.ratePerJam;
+              return (
+                <tr key={row.employeeId} className={i % 2 === 0 ? "bg-white" : "bg-[#fdf7f5]"}>
+                  <td className="px-4 py-2.5 text-[#9e7a72]">{i + 1}</td>
+                  <td className="px-4 py-2.5 font-medium text-[#2d1b18]">{row.name}</td>
+                  <td className="px-4 py-2.5 text-right text-[#4a3430]">{formatHours(row.jamKerja)}</td>
+                  <td className="px-4 py-2.5 text-right">
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={editing[row.employeeId]}
+                        onChange={(e) => setEditing((p) => ({ ...p, [row.employeeId]: e.target.value }))}
+                        className="w-32 rounded-lg border border-[#ead7ce] px-2 py-1 text-right text-sm outline-none focus:border-[#c8716d]"
+                        placeholder="Rate/jam"
+                      />
+                    ) : (
+                      <span className="text-[#4a3430]">{formatCurrency(row.ratePerJam)}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5 text-right font-semibold text-[#2d1b18]">{formatCurrency(row.jamKerja * rate)}</td>
+                  <td className="px-4 py-2.5 text-right">
+                    {isEditing ? (
+                      <div className="flex justify-end gap-1">
+                        <button onClick={() => saveRate(row)} disabled={saving[row.employeeId]} className="rounded-lg bg-[#8f1d22] px-3 py-1 text-xs font-semibold text-white hover:bg-[#7a1a1e] disabled:opacity-50">
+                          {saving[row.employeeId] ? "..." : "Simpan"}
+                        </button>
+                        <button onClick={() => setEditing((p) => { const n = { ...p }; delete n[row.employeeId]; return n; })} className="rounded-lg border border-[#e0c8c2] px-3 py-1 text-xs font-semibold text-[#4a3430] hover:bg-[#fdf7f5]">
+                          Batal
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setEditing((p) => ({ ...p, [row.employeeId]: String(row.ratePerJam) }))} className="rounded-lg border border-[#e0c8c2] px-3 py-1 text-xs font-semibold text-[#7c3c24] hover:bg-[#fef9f0]">
+                        Edit
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
           <tfoot className="bg-[#fef3e4] font-bold text-[#7c3c24]">
             <tr>
               <td colSpan={4} className="px-4 py-3 text-right">TOTAL</td>
               <td className="px-4 py-3 text-right">{formatCurrency(totalGaji)}</td>
+              <td></td>
             </tr>
           </tfoot>
         </table>
@@ -666,7 +721,7 @@ export default function AdminPayrollFreelanceManager({ initialSheet }: { initial
 
       {!loading && (
         <div className="space-y-5">
-          <JamTable rows={sheet.jam} />
+          <JamTable rows={sheet.jam} bulan={sheet.periodMonth} tahun={sheet.periodYear} onSaved={reload} />
           <PengerjaanTable rows={sheet.pengerjaan} bulan={sheet.periodMonth} tahun={sheet.periodYear} onSaved={reload} />
           <HarianTable rows={sheet.harian} bulan={sheet.periodMonth} tahun={sheet.periodYear} onSaved={reload} />
           <CustomTable rows={sheet.custom} bulan={sheet.periodMonth} tahun={sheet.periodYear} onSaved={reload} />

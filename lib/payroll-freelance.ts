@@ -67,7 +67,7 @@ type KaryawanFreelanceRow = RowDataPacket & {
   id: number;
   nama: string;
   tipe_freelance: "jam" | "pengerjaan" | "custom_pengerjaan" | "harian" | null;
-  gaji_pokok_per_jam: string | null;
+  rate_per_jam: string | null;
   total_menit: string | null;
 };
 
@@ -185,6 +185,19 @@ export async function ensureFreelanceSchemaSupport() {
           UNIQUE KEY uq_fcp (item_id, bulan, tahun)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
+
+      await safeMigrate(`
+        CREATE TABLE IF NOT EXISTS freelance_jam (
+          id BIGINT AUTO_INCREMENT PRIMARY KEY,
+          karyawan_id BIGINT NOT NULL,
+          bulan TINYINT UNSIGNED NOT NULL,
+          tahun SMALLINT UNSIGNED NOT NULL,
+          rate_per_jam INT NOT NULL DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_fj (karyawan_id, bulan, tahun)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
     })();
   }
   return freelanceSchemaReady;
@@ -219,7 +232,7 @@ export async function getFreelanceSheet(period?: {
   // All active freelance employees
   const [allFreelance] = await pool.query<KaryawanFreelanceRow[]>(
     `SELECT k.id, k.nama, k.tipe_freelance,
-            pei.gaji_pokok_per_jam,
+            COALESCE(fj.rate_per_jam, 0) AS rate_per_jam,
             (SELECT COALESCE(SUM(
                CASE
                  WHEN a.jam_masuk IS NOT NULL AND a.jam_pulang IS NOT NULL
@@ -232,8 +245,7 @@ export async function getFreelanceSheet(period?: {
              WHERE a.karyawan_id = k.id AND a.tanggal BETWEEN ? AND ? AND a.status_absensi = 'hadir'
             ) AS total_menit
      FROM karyawan k
-     LEFT JOIN payroll p ON p.karyawan_id = k.id AND p.periode_bulan = ? AND p.periode_tahun = ?
-     LEFT JOIN payroll_employee_input pei ON pei.payroll_id = p.id
+     LEFT JOIN freelance_jam fj ON fj.karyawan_id = k.id AND fj.bulan = ? AND fj.tahun = ?
      WHERE LOWER(k.jabatan) = 'freelance'
        AND k.status_data = 'aktif'
      ORDER BY k.nama ASC`,
@@ -245,7 +257,7 @@ export async function getFreelanceSheet(period?: {
     .filter((r) => r.tipe_freelance === "jam")
     .map((r) => {
       const jamKerja = Number(r.total_menit ?? 0) / 60;
-      const ratePerJam = Number(r.gaji_pokok_per_jam ?? 0);
+      const ratePerJam = Number(r.rate_per_jam ?? 0);
       return {
         employeeId: r.id,
         name: r.nama,
@@ -367,6 +379,21 @@ export async function getFreelanceSheet(period?: {
 }
 
 // ─── CRUD: Pengerjaan ─────────────────────────────────────────────────────────
+
+export async function upsertFreelanceJam(
+  karyawanId: number,
+  bulan: number,
+  tahun: number,
+  ratePerJam: number,
+) {
+  await ensureFreelanceSchemaSupport();
+  await pool.query(
+    `INSERT INTO freelance_jam (karyawan_id, bulan, tahun, rate_per_jam)
+     VALUES (?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE rate_per_jam = VALUES(rate_per_jam)`,
+    [karyawanId, bulan, tahun, ratePerJam],
+  );
+}
 
 export async function upsertFreelancePengerjaan(
   karyawanId: number,
