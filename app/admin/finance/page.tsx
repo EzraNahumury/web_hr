@@ -14,7 +14,7 @@ import {
   type KeteranganItem,
 } from "@/lib/hris";
 import { listPayrollPeriods } from "@/lib/payroll-admin";
-import { EMPLOYEE_DEPARTMENTS, listEmployees } from "@/lib/employees";
+import { listEmployees } from "@/lib/employees";
 
 function parsePositiveInt(value: string | string[] | undefined) {
   if (typeof value !== "string") return null;
@@ -95,22 +95,6 @@ function ZeroCells() {
   );
 }
 
-/** Fixed department list per unit keyword */
-const UNIT_DEPARTMENTS: Record<string, string[]> = {
-  ava: ["Logistik", "Penjualan", "Umum"],
-  ayres: ["Produksi", "Penjualan", "Umum"],
-};
-
-/** Return the fixed department list for a given unit name */
-function getDepartmentsForUnit(unit: string): string[] {
-  const key = unit.toLowerCase();
-  for (const [keyword, depts] of Object.entries(UNIT_DEPARTMENTS)) {
-    if (key.includes(keyword)) return depts;
-  }
-  // Fallback: use the global list
-  return [...EMPLOYEE_DEPARTMENTS].sort();
-}
-
 export default async function AdminFinancePage({
   searchParams,
 }: {
@@ -176,7 +160,16 @@ export default async function AdminFinancePage({
   // 6 columns per unit: Departemen + Gaji + Pot.Denda + Pot.Kontrak + Pot.Pinjaman + Total
   const totalCols = unitGroups.length * 6;
 
-  // (departments resolved per-unit inside the render loop)
+  // Departemen yang ditampilkan = departemen ASLI yang ada datanya per unit (live),
+  // bukan daftar hardcode — supaya semua karyawan tampil sesuai departemennya.
+  const deptNamesByUnit = new Map<string, string[]>();
+  for (const g of unitGroups) {
+    deptNamesByUnit.set(
+      g.unit,
+      g.departments.map((d) => d.departemen),
+    );
+  }
+  const deptsForUnit = (unit: string) => deptNamesByUnit.get(unit) ?? [];
 
   return (
     <AdminShell
@@ -283,9 +276,7 @@ export default async function AdminFinancePage({
                 // Build the max row count across all units using their fixed dept list
                 const maxRows = Math.max(
                   0,
-                  ...unitGroups.map(
-                    (g) => getDepartmentsForUnit(g.unit).length,
-                  ),
+                  ...unitGroups.map((g) => deptsForUnit(g.unit).length),
                 );
                 return Array.from({ length: maxRows }, (_, i) => (
                   <tr
@@ -293,7 +284,7 @@ export default async function AdminFinancePage({
                     className={i % 2 === 0 ? "bg-white" : "bg-[#fffaf8]"}
                   >
                     {unitGroups.map((group) => {
-                      const fixedDepts = getDepartmentsForUnit(group.unit);
+                      const fixedDepts = deptsForUnit(group.unit);
                       const deptName = fixedDepts[i];
                       if (!deptName) {
                         // This unit has fewer rows — render blank cells
@@ -327,7 +318,7 @@ export default async function AdminFinancePage({
               {/* ── Total row — sum only the fixed depts shown in rows ── */}
               <tr className="bg-[#f5e8e4]">
                 {unitGroups.map((group) => {
-                  const fixedDepts = getDepartmentsForUnit(group.unit);
+                  const fixedDepts = deptsForUnit(group.unit);
                   const visibleDepts = fixedDepts
                     .map((name) =>
                       group.departments.find((d) => d.departemen === name),
