@@ -254,7 +254,7 @@ export async function getPenjahitSheet(period?: {
   const employeeIds = rows.map((r) => r.employee_id);
   const placeholders = employeeIds.map(() => "?").join(",");
 
-  const [[attendanceRows], [overtimeRows], loanRows, [remainingLoanRows]] = await Promise.all([
+  const [[attendanceRows], [overtimeRows], [jadwalLemburRows], loanRows, [remainingLoanRows]] = await Promise.all([
     pool.query<AttendanceRawRow[]>(
       `SELECT a.karyawan_id AS employee_id,
         a.status_absensi,
@@ -277,6 +277,19 @@ export async function getPenjahitSheet(period?: {
        FROM lembur
        WHERE karyawan_id IN (${placeholders}) AND tanggal BETWEEN ? AND ? AND status_approval = 'approved'
        GROUP BY karyawan_id`,
+      [...employeeIds, range.startSql, range.endSql],
+    ),
+    pool.query<OvertimeRow[]>(
+      `SELECT a.karyawan_id AS employee_id,
+              SUM(FLOOR(GREATEST(TIMESTAMPDIFF(MINUTE, a.jam_masuk, a.jam_pulang) - 480, 0) / 30) * 30) / 60 AS total_jam
+       FROM absensi a
+       INNER JOIN jadwal_karyawan j ON j.karyawan_id = a.karyawan_id AND j.tanggal = a.tanggal
+       WHERE a.karyawan_id IN (${placeholders})
+         AND a.tanggal BETWEEN ? AND ?
+         AND a.status_absensi = 'hadir'
+         AND j.shift = 'lembur'
+         AND a.jam_masuk IS NOT NULL AND a.jam_pulang IS NOT NULL
+       GROUP BY a.karyawan_id`,
       [...employeeIds, range.startSql, range.endSql],
     ),
     getLoanDeductionRowsForPeriod(employeeIds, periodMonth, periodYear),
@@ -351,6 +364,9 @@ export async function getPenjahitSheet(period?: {
     attendanceMap.set(r.employee_id, cur);
   }
   const overtimeMap = new Map(overtimeRows.map((r) => [r.employee_id, toNum(r.total_jam)]));
+  for (const r of jadwalLemburRows) {
+    overtimeMap.set(r.employee_id, (overtimeMap.get(r.employee_id) ?? 0) + toNum(r.total_jam));
+  }
   const loanMap = new Map(loanRows.map((r) => [r.employeeId, toNum(r.totalDeduction)]));
   const remainingLoanMap = new Map(remainingLoanRows.map((r) => [r.employee_id as number, toNum(r.remaining_total)]));
 

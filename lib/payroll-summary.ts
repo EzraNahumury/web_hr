@@ -438,6 +438,7 @@ export async function getAdminPayrollSummarySheet(period?: {
   const [
     attendanceResult,
     overtimeResult,
+    jadwalLemburResult,
     contractResult,
     loanResult,
     remainingLoanResult,
@@ -477,6 +478,26 @@ export async function getAdminPayrollSummarySheet(period?: {
         WHERE karyawan_id IN (${placeholders})
           AND tanggal BETWEEN ? AND ?
           AND status_approval = 'approved'
+      `,
+      [...employeeIds, range.startSql, range.endSql],
+    ),
+    pool.query<PeriodOvertimeRow[]>(
+      `
+        SELECT
+          a.karyawan_id AS employee_id,
+          SUM(
+            FLOOR(GREATEST(TIMESTAMPDIFF(MINUTE, a.jam_masuk, a.jam_pulang) - 480, 0) / 30) * 30
+          ) / 60 AS total_jam
+        FROM absensi a
+        INNER JOIN jadwal_karyawan j
+          ON j.karyawan_id = a.karyawan_id AND j.tanggal = a.tanggal
+        WHERE a.karyawan_id IN (${placeholders})
+          AND a.tanggal BETWEEN ? AND ?
+          AND a.status_absensi = 'hadir'
+          AND j.shift = 'lembur'
+          AND a.jam_masuk IS NOT NULL
+          AND a.jam_pulang IS NOT NULL
+        GROUP BY a.karyawan_id
       `,
       [...employeeIds, range.startSql, range.endSql],
     ),
@@ -632,6 +653,12 @@ export async function getAdminPayrollSummarySheet(period?: {
 
   const overtimeMap = new Map<number, number>();
   for (const row of overtimeResult[0]) {
+    overtimeMap.set(
+      row.employee_id,
+      (overtimeMap.get(row.employee_id) ?? 0) + toNumber(row.total_jam),
+    );
+  }
+  for (const row of jadwalLemburResult[0]) {
     overtimeMap.set(
       row.employee_id,
       (overtimeMap.get(row.employee_id) ?? 0) + toNumber(row.total_jam),
