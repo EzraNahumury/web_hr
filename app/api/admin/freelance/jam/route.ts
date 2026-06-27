@@ -36,9 +36,9 @@ export async function GET(request: NextRequest) {
 
   const [rows] = await pool.query<AbsensiDetailRow[]>(
     `SELECT
-       a.tanggal,
-       a.jam_masuk,
-       a.jam_pulang,
+       DATE_FORMAT(a.tanggal, '%Y-%m-%d') AS tanggal,
+       TIME_FORMAT(a.jam_masuk, '%H:%i') AS jam_masuk,
+       TIME_FORMAT(a.jam_pulang, '%H:%i') AS jam_pulang,
        CASE
          WHEN a.jam_masuk IS NOT NULL AND a.jam_pulang IS NOT NULL
            THEN CEIL(TIMESTAMPDIFF(MINUTE, a.jam_masuk, a.jam_pulang) / 30) * 30
