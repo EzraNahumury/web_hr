@@ -31,6 +31,7 @@ const menuItems: MenuItem[] = [
   { label: "Approval Reimburse", href: "/admin/reimbursements", description: "Approve nota reimburse" },
   { label: "Pinjaman", href: "/admin/loans", description: "Pinjaman karyawan" },
   { label: "Potongan Kontrak", href: "/admin/contract-deductions", description: "Potongan per bulan" },
+  { label: "Pengembalian Kontrak", href: "/admin/contract-returns", description: "Pengembalian deposit kontrak 5 bulan" },
   { label: "Summary Payroll", href: "/admin/payroll-summary", description: "Ringkasan payroll" },
   { label: "Summary Payroll Solo", href: "/admin/payroll-summary/solo", description: "Payroll khusus penempatan Toko Solo" },
   { label: "Payroll Bonus", href: "/admin/payroll-bonus", description: "Payroll bonus Sales, SPV, Manager, CS, Host Live, Marketplace, Media Marketing, Advertiser" },
