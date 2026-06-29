@@ -139,7 +139,7 @@ const tdYellow = `${tdNum} bg-[#fefce8]`;
 const tdYellowBold = `${tdNum} bg-[#fef08a] font-semibold`;
 const tdGreen = `${tdNum} bg-[#f0fdf4] font-semibold`;
 
-export default function AdminPenjahitPayrollSummary({ sheet, periodOptions, employeeOptions }: Props) {
+export default function AdminPenjahitPayrollSummary({ sheet, employeeOptions }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [dialog, setDialog] = useState<DialogState>({ open: false });
@@ -148,8 +148,9 @@ export default function AdminPenjahitPayrollSummary({ sheet, periodOptions, empl
   const [isPending, startTransition] = useTransition();
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
-  function handlePeriodChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const [month, year] = e.target.value.split("-").map(Number);
+  function handlePeriodChange(e: React.ChangeEvent<HTMLInputElement>) {
+    // input type="month" -> value "YYYY-MM"
+    const [year, month] = e.target.value.split("-").map(Number);
     const params = new URLSearchParams(searchParams.toString());
     if (month && year) {
       params.set("month", String(month));
@@ -343,7 +344,9 @@ export default function AdminPenjahitPayrollSummary({ sheet, periodOptions, empl
   const existingIds = new Set(sheet?.rows.map((r) => r.employeeId) ?? []);
   const availableEmployeeOptions = employeeOptions.filter((e) => !existingIds.has(e.employeeId));
 
-  const currentPeriodValue = sheet ? `${sheet.periodMonth}-${sheet.periodYear}` : "";
+  const currentPeriodValue = sheet
+    ? `${sheet.periodYear}-${String(sheet.periodMonth).padStart(2, "0")}`
+    : "";
   const dialogTitle =
     dialog.open && dialog.mode === "edit"
       ? `Edit Payroll — ${dialog.row.nama}`
@@ -367,17 +370,12 @@ export default function AdminPenjahitPayrollSummary({ sheet, periodOptions, empl
             </h3>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <select
+            <input
+              type="month"
               value={currentPeriodValue}
               onChange={handlePeriodChange}
               className="h-10 rounded-xl border border-[#ead7ce] bg-white px-3 text-sm text-[#2d1b18] outline-none focus:border-[#c8716d]"
-            >
-              {periodOptions.map((opt) => (
-                <option key={`${opt.month}-${opt.year}`} value={`${opt.month}-${opt.year}`}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            />
             {sheet && sheet.rows.length > 0 ? (
               <button
                 onClick={handleDownloadPdf}

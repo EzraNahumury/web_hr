@@ -1,7 +1,7 @@
-import Link from "next/link";
 import type { RowDataPacket } from "mysql2";
 
 import EmployeeShell from "@/components/EmployeeShell";
+import EmployeePayslipPeriodPicker from "@/components/EmployeePayslipPeriodPicker";
 import PayslipSheet from "@/components/PayslipSheet";
 import { requireEmployeeSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
@@ -59,47 +59,6 @@ async function getDistributedPeriods(employeeId: number): Promise<{ month: numbe
   return rows.map((r) => ({ month: r.month, year: r.year }));
 }
 
-function CalendarIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect width="18" height="18" x="3" y="4" rx="2" />
-      <path d="M16 2v4" />
-      <path d="M8 2v4" />
-      <path d="M3 10h18" />
-    </svg>
-  );
-}
-
-function ChevronDownIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}
-
 export default async function EmployeePayslipsPage({
   searchParams,
 }: {
@@ -117,15 +76,19 @@ export default async function EmployeePayslipsPage({
   const requestedYear = parsePositiveInt(resolvedSearchParams.year);
 
   const fallbackPeriod = periods[0] ?? null;
+  // Calendar bebas pilih bulan; slip hanya tampil utk periode yang sudah DIDISTRIBUSI.
   const selectedPeriod =
-    requestedMonth && requestedYear && periods.some((p) => p.month === requestedMonth && p.year === requestedYear)
+    requestedMonth && requestedYear
       ? { month: requestedMonth, year: requestedYear }
       : fallbackPeriod;
+  const isSelectedDistributed = selectedPeriod
+    ? periods.some((p) => p.month === selectedPeriod.month && p.year === selectedPeriod.year)
+    : false;
 
   const isPenjahit = (employee.sub_divisi ?? "").trim().toLowerCase() === "penjahit";
 
   const payslipRow: AdminPayrollSummarySheetRow | null = await (async () => {
-    if (!selectedPeriod) return null;
+    if (!selectedPeriod || !isSelectedDistributed) return null;
 
     if (isPenjahit) {
       const sheet = await getPenjahitSheet({ month: selectedPeriod.month, year: selectedPeriod.year });
@@ -172,34 +135,13 @@ export default async function EmployeePayslipsPage({
               <p className="mt-1 text-sm text-[#7b665d]">Pilih bulan untuk melihat slip gaji periode lain.</p>
             </div>
 
-            {periods.length > 0 ? (
-              <details className="group relative">
-                <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full border border-[#ead7ce] bg-white px-4 py-2.5 text-sm font-semibold text-[#241716] shadow-[0_10px_24px_rgba(96,45,34,0.08)] transition hover:border-[#c97f5b] hover:text-[#8f1d22] [&::-webkit-details-marker]:hidden">
-                  <CalendarIcon />
-                  <span>{selectedPeriodLabel}</span>
-                  <ChevronDownIcon />
-                </summary>
-                <div className="absolute right-0 z-30 mt-2 w-56 overflow-hidden rounded-2xl border border-[#ead7ce] bg-white shadow-[0_24px_60px_rgba(96,45,34,0.18)]">
-                  <ul className="max-h-72 overflow-y-auto py-1 text-sm">
-                    {periods.map((p) => {
-                      const isActive =
-                        selectedPeriod?.month === p.month && selectedPeriod?.year === p.year;
-                      return (
-                        <li key={`${p.year}-${p.month}`}>
-                          <Link
-                            href={`/employee/payslips?month=${p.month}&year=${p.year}`}
-                            className={`flex items-center justify-between px-4 py-2.5 transition ${isActive ? "bg-[#fff3ed] text-[#8f1d22] font-semibold" : "text-[#241716] hover:bg-[#fdf6f1]"}`}
-                          >
-                            <span>{formatPeriodLabel(p.month, p.year)}</span>
-                            {isActive ? <span aria-hidden="true">•</span> : null}
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              </details>
-            ) : null}
+            <EmployeePayslipPeriodPicker
+              value={
+                selectedPeriod
+                  ? `${selectedPeriod.year}-${String(selectedPeriod.month).padStart(2, "0")}`
+                  : ""
+              }
+            />
           </div>
         </section>
 
