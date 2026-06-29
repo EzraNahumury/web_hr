@@ -955,8 +955,16 @@ export async function getAdminPayrollSummarySheet(period?: {
     const fineDeduction = halfDayDeduction + lateDeduction + diligenceCut;
     // Pengembalian deposit kontrak (periode sesuai tanggal pengembalian) menambah take home pay.
     const contractReturn = contractReturnMap.get(row.employee_id) ?? 0;
+    // Sales Nasional: gaji penuh per bulan (TIDAK diprorata absensi), sama dengan
+    // Summary Sales Nasional. Komponennya: gaji pokok + transport + bpjs + kendaraan + bonus.
+    const salesNasionalGross =
+      monthlyBaseSalary + transportAllowance + bpjs + vehicleAllowance + performanceBonus;
     const netIncome =
-      totalSalary - contractDeduction - companyLoan - personalLoan + contractReturn;
+      (isSalesNasional ? salesNasionalGross : totalSalary) -
+      contractDeduction -
+      companyLoan -
+      personalLoan +
+      contractReturn;
 
     return {
       id: row.payroll_id,
