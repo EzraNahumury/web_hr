@@ -599,6 +599,28 @@ export async function getAdminPayrollSummarySheet(period?: {
     ),
   ]);
 
+  // Gaji Kontrak (override gaji pokok) bersifat manual & tetap -> warisi dari periode
+  // SEBELUMNYA bila periode ini belum punya override sendiri (mis. hasil clone lama).
+  const carriedOverrideGajiPokokMap = new Map<number, number>();
+  {
+    const [carriedRows] = await pool.query<RowDataPacket[]>(
+      `SELECT pei.karyawan_id AS employee_id, pei.override_gaji_pokok AS val
+       FROM payroll_employee_input pei
+       INNER JOIN payroll p ON p.id = pei.payroll_id
+       WHERE pei.karyawan_id IN (${placeholders})
+         AND pei.override_gaji_pokok IS NOT NULL
+         AND (p.periode_tahun * 100 + p.periode_bulan) < ?
+       ORDER BY (p.periode_tahun * 100 + p.periode_bulan) DESC`,
+      [...employeeIds, periodYear * 100 + periodMonth],
+    );
+    for (const r of carriedRows as Array<{ employee_id: number; val: string | number }>) {
+      // ORDER BY DESC -> entri pertama per karyawan = periode terbaru sebelum periode ini.
+      if (!carriedOverrideGajiPokokMap.has(r.employee_id)) {
+        carriedOverrideGajiPokokMap.set(r.employee_id, toNumber(r.val));
+      }
+    }
+  }
+
   const contractReturnMap = new Map<number, number>();
   for (const row of contractReturnResult[0] as Array<{ employee_id: number; nominal: number | string }>) {
     contractReturnMap.set(row.employee_id, toNumber(row.nominal));
@@ -838,9 +860,11 @@ export async function getAdminPayrollSummarySheet(period?: {
       : (toNumber(row.raw_gaji_pokok_per_hari) || (workDays > 0 ? toNumber(row.gaji_pokok) / workDays : 0));
     // Take Home Pay freelance = total jam dari absensi (dibulatkan per 30 menit) × rate per jam
     // Tidak pakai inputOverrideGajiPokok karena bisa = 0 dari clone period -> nullish coalescing tidak fallback.
+    // Gaji Kontrak: override periode ini -> warisan dari periode sebelumnya -> auto (gaji/hari × hari kerja).
+    const carriedOverrideGajiPokok = carriedOverrideGajiPokokMap.get(row.employee_id) ?? null;
     const monthlyBaseSalary = isFreelance
       ? (freelanceMinutes / 60) * dailyBaseSalary
-      : (inputOverrideGajiPokok ?? dailyBaseSalary * workDays);
+      : (inputOverrideGajiPokok ?? carriedOverrideGajiPokok ?? dailyBaseSalary * workDays);
 
     const positionAllowance = isFreelance ? 0 : toNumber(row.tunjangan_jabatan);
     const fixedMealAllowance = isFreelance ? 0 :

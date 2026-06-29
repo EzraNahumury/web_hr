@@ -598,13 +598,13 @@ export async function ensurePayrollPeriodCloned(
           payroll_id, karyawan_id, payroll_type,
           gaji_pokok_per_hari, uang_makan_per_hari, subsidi, uang_kerajinan, bpjs,
           bonus_performa, insentif, uang_transport, kendaraan,
-          freelance_rate_type, gaji_pokok_per_jam
+          freelance_rate_type, gaji_pokok_per_jam, override_gaji_pokok
         )
         SELECT
           new_p.id, src.karyawan_id, src.payroll_type,
           src.gaji_pokok_per_hari, src.uang_makan_per_hari, src.subsidi, src.uang_kerajinan, src.bpjs,
           src.bonus_performa, src.insentif, src.uang_transport, src.kendaraan,
-          src.freelance_rate_type, src.gaji_pokok_per_jam
+          src.freelance_rate_type, src.gaji_pokok_per_jam, src.override_gaji_pokok
         FROM payroll_employee_input src
         INNER JOIN payroll old_p ON old_p.id = src.payroll_id
         INNER JOIN payroll new_p ON new_p.karyawan_id = src.karyawan_id
