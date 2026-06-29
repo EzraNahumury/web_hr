@@ -149,8 +149,10 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
   const [isSavingApproval, setIsSavingApproval] = useState(false);
 
   // Penjahit mingguan: cicilan dihitung per MINGGU, bukan per bulan.
+  // Sumber kebenaran = status karyawan (isWeekly), bukan baris cicilan lama
+  // (pinjaman yang dibuat sebelum fitur ini punya baris bulanan).
   const selectedEmployee = employeeOptions.find((e) => e.employeeId === Number(form.employeeId)) ?? null;
-  const isWeeklyContext = editingLoanId ? editingIsWeekly : (selectedEmployee?.isWeekly ?? false);
+  const isWeeklyContext = selectedEmployee?.isWeekly ?? editingIsWeekly;
   const unitWord = isWeeklyContext ? "Minggu" : "Bulan";
 
   function resetForm() {
@@ -169,16 +171,19 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
 
   function openEditLoan(loan: LoanListItem) {
     setEditingLoanId(loan.id);
-    setEditingIsWeekly(loan.isWeekly);
-    const unit = loan.isWeekly ? "Minggu" : "Bulan";
+    // Weekly ditentukan dari status karyawan (penjahit mingguan), bukan baris cicilan lama.
+    const empWeekly = employeeOptions.find((e) => e.employeeId === loan.employeeId)?.isWeekly ?? loan.isWeekly;
+    setEditingIsWeekly(empWeekly);
+    const unit = empWeekly ? "Minggu" : "Bulan";
     setForm({
       employeeId: String(loan.employeeId),
       totalLoan: formatRupiahInput(String(Math.trunc(toNumber(loan.totalLoan)))),
       installmentCount: String(loan.installmentCount),
       requestDate: loan.requestDate || todayIsoDate(),
     });
-    // Auto-populate dari installments yang sudah ada (kalau ada)
-    if (loan.installments && loan.installments.length > 0) {
+    const scheduleMatchesMode = loan.installments.length > 0 && loan.isWeekly === empWeekly;
+    if (scheduleMatchesMode) {
+      // Jadwal sudah sesuai mode (bulanan->bulanan / mingguan->mingguan): pakai label aslinya.
       setCustomInstallments(
         loan.installments.map((inst) =>
           formatRupiahInput(String(Math.trunc(toNumber(inst.plannedDeduction)))),
@@ -186,7 +191,8 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
       );
       setEditingInstallmentLabels(loan.installments.map((inst) => inst.monthLabel));
     } else {
-      // Belum ada schedule (status pending) — distribusi rata
+      // Belum ada schedule, ATAU karyawan mingguan tapi pinjaman lama masih bulanan
+      // -> distribusi rata + label sesuai mode (Minggu/Bulan ke-N). Admin bisa ubah jumlah angsuran.
       const total = toNumber(loan.totalLoan);
       const count = loan.installmentCount;
       setCustomInstallments(buildUniformInstallmentInputs(total, count));

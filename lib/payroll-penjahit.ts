@@ -449,9 +449,11 @@ export async function getPenjahitSheet(period?: {
     let pencairan: PenjahitComputedRow["pencairan"] = null;
     if (tipePayroll === "mingguan") {
       const weeklyBase = 800_000;
-      // Cicilan per minggu: pakai nominal custom per minggu bila ada, kalau tidak bagi rata /4.
+      // Cicilan per minggu: kalau pinjaman punya jadwal MINGGUAN, pakai nominal tiap minggu
+      // (minggu tanpa cicilan = 0). Kalau tidak ada jadwal mingguan (pinjaman lama bulanan),
+      // bagi rata potongan bulan /4 seperti perilaku lama.
       const wk = weeklyLoanMap.get(row.employee_id);
-      const w = (n: number) => (wk && wk[n] !== undefined ? wk[n] : cicilanPerMinggu);
+      const w = (n: number) => (wk ? (wk[n] ?? 0) : cicilanPerMinggu);
       const minggu1 = weeklyBase - w(1);
       const minggu2 = weeklyBase - w(2);
       const minggu3 = weeklyBase - w(3) - potonganKontrak;
