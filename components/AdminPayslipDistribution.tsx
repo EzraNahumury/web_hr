@@ -3,6 +3,8 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
+import { useConfirm } from "@/components/ConfirmDialog";
+
 type PendingItem = {
   payrollId: number;
   employeeId: number;
@@ -32,7 +34,9 @@ type Props = {
 export default function AdminPayslipDistribution({ pending, logs, periodMonth, periodYear }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const confirm = useConfirm();
   const [isPending, startTransition] = useTransition();
+  const [undoingId, setUndoingId] = useState<number | null>(null);
   const currentMonthInputValue = `${periodYear}-${String(periodMonth).padStart(2, "0")}`;
 
   function handlePeriodChange(value: string) {
@@ -78,7 +82,7 @@ export default function AdminPayslipDistribution({ pending, logs, periodMonth, p
     });
   }
 
-  function handleDistribute() {
+  async function handleDistribute() {
     setFeedback(null);
     const payrollIds = Array.from(selectedIds);
 
@@ -86,6 +90,14 @@ export default function AdminPayslipDistribution({ pending, logs, periodMonth, p
       setFeedback({ type: "error", text: "Centang minimal satu karyawan terlebih dahulu." });
       return;
     }
+
+    const ok = await confirm({
+      title: "Distribusikan slip gaji?",
+      description: `Slip gaji ${payrollIds.length} karyawan akan dikirim ke akun masing-masing dan bisa mereka lihat. Lanjutkan?`,
+      confirmLabel: "Ya, Distribusikan",
+      cancelLabel: "Batal",
+    });
+    if (!ok) return;
 
     startTransition(async () => {
       try {
@@ -107,6 +119,38 @@ export default function AdminPayslipDistribution({ pending, logs, periodMonth, p
         setFeedback({ type: "error", text: "Terjadi kesalahan jaringan." });
       }
     });
+  }
+
+  async function handleUndo(row: LogItem) {
+    const ok = await confirm({
+      tone: "danger",
+      title: "Batalkan distribusi slip?",
+      description: `Slip ${row.nomorSlip} (${row.name}) akan ditarik kembali. Karyawan tidak bisa melihatnya lagi dan slip kembali ke daftar pending. Lanjutkan?`,
+      confirmLabel: "Ya, Batalkan",
+      cancelLabel: "Tidak",
+    });
+    if (!ok) return;
+
+    setUndoingId(row.id);
+    setFeedback(null);
+    try {
+      const response = await fetch("/api/admin/payslip-distribution", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ logId: row.id }),
+      });
+      const result = (await response.json().catch(() => ({}))) as { message?: string };
+      if (!response.ok) {
+        setFeedback({ type: "error", text: result.message || "Gagal membatalkan distribusi." });
+        return;
+      }
+      setFeedback({ type: "success", text: result.message || "Distribusi dibatalkan." });
+      router.refresh();
+    } catch {
+      setFeedback({ type: "error", text: "Terjadi kesalahan jaringan." });
+    } finally {
+      setUndoingId(null);
+    }
   }
 
   const selectedCount = selectedIds.size;
@@ -259,12 +303,13 @@ export default function AdminPayslipDistribution({ pending, logs, periodMonth, p
                 <th className="px-6 py-4">Tanggal Distribusi</th>
                 <th className="px-6 py-4">Status Slip</th>
                 <th className="px-6 py-4">Status Baca</th>
+                <th className="px-6 py-4 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody>
               {logs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-sm text-[#7a6059]">
+                  <td colSpan={7} className="px-6 py-8 text-center text-sm text-[#7a6059]">
                     Belum ada slip yang didistribusikan.
                   </td>
                 </tr>
@@ -277,6 +322,16 @@ export default function AdminPayslipDistribution({ pending, logs, periodMonth, p
                     <td className="px-6 py-4">{row.distributedAt}</td>
                     <td className="px-6 py-4">{row.slipStatus}</td>
                     <td className="px-6 py-4">{row.isRead ? "Sudah dibaca" : "Belum dibaca"}</td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleUndo(row)}
+                        disabled={undoingId === row.id}
+                        className="inline-flex items-center justify-center rounded-xl border border-[#c8716d] px-3 py-2 text-xs font-semibold text-[#8f1d22] transition hover:bg-[#fff2ec] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {undoingId === row.id ? "Membatalkan..." : "Batalkan"}
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}

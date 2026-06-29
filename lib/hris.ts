@@ -1241,6 +1241,46 @@ export async function distributePendingPayslips(adminUserId: number, payrollIds:
   }
 }
 
+// Batalkan distribusi 1 slip (dari id log distribusi): slip balik ke draft, log dihapus,
+// sehingga karyawan tidak bisa lihat lagi & slip muncul lagi di daftar pending.
+export async function undoPayslipDistribution(logId: number) {
+  if (!Number.isInteger(logId) || logId <= 0) {
+    throw new Error("ID distribusi tidak valid.");
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [rows] = await connection.query<(RowDataPacket & { slip_gaji_id: number })[]>(
+      `SELECT slip_gaji_id FROM log_distribusi_slip WHERE id = ? LIMIT 1`,
+      [logId],
+    );
+    const slipId = rows[0]?.slip_gaji_id;
+    if (!slipId) {
+      await connection.rollback();
+      throw new Error("Data distribusi tidak ditemukan.");
+    }
+
+    await connection.query(
+      `UPDATE slip_gaji SET status_distribusi = 'draft', tanggal_distribusi = NULL WHERE id = ?`,
+      [slipId],
+    );
+    await connection.query(
+      `DELETE FROM log_distribusi_slip WHERE slip_gaji_id = ?`,
+      [slipId],
+    );
+
+    await connection.commit();
+    return { undone: true };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 type EmployeeCardRow = RowDataPacket & {
   id: number;
   user_id?: number;
