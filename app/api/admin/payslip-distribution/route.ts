@@ -51,14 +51,19 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    const body = (await request.json().catch(() => ({}))) as { logId?: unknown };
-    const logId = Number(body.logId);
-    if (!Number.isInteger(logId) || logId <= 0) {
-      return NextResponse.json({ message: "ID distribusi tidak valid." }, { status: 400 });
+    const body = (await request.json().catch(() => ({}))) as { logId?: unknown; logIds?: unknown };
+    const rawIds = Array.isArray(body.logIds) ? body.logIds : body.logId != null ? [body.logId] : [];
+    const logIds = rawIds
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value > 0);
+    if (logIds.length === 0) {
+      return NextResponse.json({ message: "Pilih minimal satu slip untuk dibatalkan." }, { status: 400 });
     }
 
-    await undoPayslipDistribution(logId);
-    return NextResponse.json({ message: "Distribusi slip berhasil dibatalkan." });
+    const result = await undoPayslipDistribution(logIds);
+    return NextResponse.json({
+      message: `${result.undone} distribusi slip berhasil dibatalkan.`,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Gagal membatalkan distribusi slip.";
     console.error("Undo distribute payslip error", error);

@@ -1241,10 +1241,14 @@ export async function distributePendingPayslips(adminUserId: number, payrollIds:
   }
 }
 
-// Batalkan distribusi 1 slip (dari id log distribusi): slip balik ke draft, log dihapus,
+// Batalkan distribusi slip (dari id log distribusi): slip balik ke draft, log dihapus,
 // sehingga karyawan tidak bisa lihat lagi & slip muncul lagi di daftar pending.
-export async function undoPayslipDistribution(logId: number) {
-  if (!Number.isInteger(logId) || logId <= 0) {
+// Menerima satu atau banyak id log sekaligus.
+export async function undoPayslipDistribution(logIds: number | number[]) {
+  const ids = (Array.isArray(logIds) ? logIds : [logIds])
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0);
+  if (ids.length === 0) {
     throw new Error("ID distribusi tidak valid.");
   }
 
@@ -1253,26 +1257,26 @@ export async function undoPayslipDistribution(logId: number) {
     await connection.beginTransaction();
 
     const [rows] = await connection.query<(RowDataPacket & { slip_gaji_id: number })[]>(
-      `SELECT slip_gaji_id FROM log_distribusi_slip WHERE id = ? LIMIT 1`,
-      [logId],
+      `SELECT DISTINCT slip_gaji_id FROM log_distribusi_slip WHERE id IN (?)`,
+      [ids],
     );
-    const slipId = rows[0]?.slip_gaji_id;
-    if (!slipId) {
+    const slipIds = rows.map((row) => row.slip_gaji_id);
+    if (slipIds.length === 0) {
       await connection.rollback();
       throw new Error("Data distribusi tidak ditemukan.");
     }
 
     await connection.query(
-      `UPDATE slip_gaji SET status_distribusi = 'draft', tanggal_distribusi = NULL WHERE id = ?`,
-      [slipId],
+      `UPDATE slip_gaji SET status_distribusi = 'draft', tanggal_distribusi = NULL WHERE id IN (?)`,
+      [slipIds],
     );
     await connection.query(
-      `DELETE FROM log_distribusi_slip WHERE slip_gaji_id = ?`,
-      [slipId],
+      `DELETE FROM log_distribusi_slip WHERE slip_gaji_id IN (?)`,
+      [slipIds],
     );
 
     await connection.commit();
-    return { undone: true };
+    return { undone: slipIds.length };
   } catch (error) {
     await connection.rollback();
     throw error;

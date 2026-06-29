@@ -36,7 +36,8 @@ export default function AdminPayslipDistribution({ pending, logs, periodMonth, p
   const searchParams = useSearchParams();
   const confirm = useConfirm();
   const [isPending, startTransition] = useTransition();
-  const [undoingId, setUndoingId] = useState<number | null>(null);
+  const [isUndoing, setIsUndoing] = useState(false);
+  const [selectedLogIds, setSelectedLogIds] = useState<Set<number>>(new Set());
   const currentMonthInputValue = `${periodYear}-${String(periodMonth).padStart(2, "0")}`;
 
   function handlePeriodChange(value: string) {
@@ -121,23 +122,51 @@ export default function AdminPayslipDistribution({ pending, logs, periodMonth, p
     });
   }
 
-  async function handleUndo(row: LogItem) {
+  const allLogsSelected = useMemo(
+    () => logs.length > 0 && logs.every((row) => selectedLogIds.has(row.id)),
+    [logs, selectedLogIds],
+  );
+
+  function toggleAllLogs() {
+    if (allLogsSelected) {
+      setSelectedLogIds(new Set());
+    } else {
+      setSelectedLogIds(new Set(logs.map((row) => row.id)));
+    }
+  }
+
+  function toggleOneLog(logId: number) {
+    setSelectedLogIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(logId)) next.delete(logId);
+      else next.add(logId);
+      return next;
+    });
+  }
+
+  async function handleUndoSelected() {
+    setFeedback(null);
+    const logIds = Array.from(selectedLogIds);
+    if (logIds.length === 0) {
+      setFeedback({ type: "error", text: "Centang minimal satu slip untuk dibatalkan." });
+      return;
+    }
+
     const ok = await confirm({
       tone: "danger",
       title: "Batalkan distribusi slip?",
-      description: `Slip ${row.nomorSlip} (${row.name}) akan ditarik kembali. Karyawan tidak bisa melihatnya lagi dan slip kembali ke daftar pending. Lanjutkan?`,
+      description: `${logIds.length} slip akan ditarik kembali. Karyawan tidak bisa melihatnya lagi dan slip kembali ke daftar pending. Lanjutkan?`,
       confirmLabel: "Ya, Batalkan",
       cancelLabel: "Tidak",
     });
     if (!ok) return;
 
-    setUndoingId(row.id);
-    setFeedback(null);
+    setIsUndoing(true);
     try {
       const response = await fetch("/api/admin/payslip-distribution", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ logId: row.id }),
+        body: JSON.stringify({ logIds }),
       });
       const result = (await response.json().catch(() => ({}))) as { message?: string };
       if (!response.ok) {
@@ -145,15 +174,17 @@ export default function AdminPayslipDistribution({ pending, logs, periodMonth, p
         return;
       }
       setFeedback({ type: "success", text: result.message || "Distribusi dibatalkan." });
+      setSelectedLogIds(new Set());
       router.refresh();
     } catch {
       setFeedback({ type: "error", text: "Terjadi kesalahan jaringan." });
     } finally {
-      setUndoingId(null);
+      setIsUndoing(false);
     }
   }
 
   const selectedCount = selectedIds.size;
+  const selectedLogCount = selectedLogIds.size;
 
   return (
     <div className="space-y-6">
@@ -284,13 +315,23 @@ export default function AdminPayslipDistribution({ pending, logs, periodMonth, p
       </section>
 
       <section className="overflow-hidden rounded-[32px] border border-[#ead7ce] bg-white">
-        <div className="border-b border-[#eddad1] px-6 py-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.26em] text-[#a16f63]">
-            Riwayat Distribusi
-          </p>
-          <h3 className="mt-2 text-lg font-semibold text-[#241716]">
-            Slip yang Sudah Didistribusikan
-          </h3>
+        <div className="flex flex-col gap-3 border-b border-[#eddad1] px-6 py-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.26em] text-[#a16f63]">
+              Riwayat Distribusi
+            </p>
+            <h3 className="mt-2 text-lg font-semibold text-[#241716]">
+              Slip yang Sudah Didistribusikan
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={handleUndoSelected}
+            disabled={isUndoing || selectedLogCount === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#c8716d] px-4 py-2.5 text-sm font-semibold text-[#8f1d22] transition hover:bg-[#fff2ec] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isUndoing ? "Membatalkan..." : `Batalkan Terpilih (${selectedLogCount})`}
+          </button>
         </div>
 
         <div className="overflow-auto max-h-[calc(100vh-260px)]">
@@ -303,7 +344,18 @@ export default function AdminPayslipDistribution({ pending, logs, periodMonth, p
                 <th className="px-6 py-4">Tanggal Distribusi</th>
                 <th className="px-6 py-4">Status Slip</th>
                 <th className="px-6 py-4">Status Baca</th>
-                <th className="px-6 py-4 text-right">Aksi</th>
+                <th className="px-6 py-4 text-right">
+                  <label className="inline-flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={allLogsSelected}
+                      onChange={toggleAllLogs}
+                      disabled={logs.length === 0}
+                      className="h-4 w-4 cursor-pointer accent-[#8f1d22]"
+                    />
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.18em]">Pilih Semua</span>
+                  </label>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -323,14 +375,13 @@ export default function AdminPayslipDistribution({ pending, logs, periodMonth, p
                     <td className="px-6 py-4">{row.slipStatus}</td>
                     <td className="px-6 py-4">{row.isRead ? "Sudah dibaca" : "Belum dibaca"}</td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleUndo(row)}
-                        disabled={undoingId === row.id}
-                        className="inline-flex items-center justify-center rounded-xl border border-[#c8716d] px-3 py-2 text-xs font-semibold text-[#8f1d22] transition hover:bg-[#fff2ec] disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {undoingId === row.id ? "Membatalkan..." : "Batalkan"}
-                      </button>
+                      <input
+                        type="checkbox"
+                        checked={selectedLogIds.has(row.id)}
+                        onChange={() => toggleOneLog(row.id)}
+                        className="h-5 w-5 cursor-pointer accent-[#8f1d22]"
+                        aria-label={`Centang slip ${row.nomorSlip}`}
+                      />
                     </td>
                   </tr>
                 ))
