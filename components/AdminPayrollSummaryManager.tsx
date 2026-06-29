@@ -437,7 +437,7 @@ export default function AdminPayrollSummaryManager({
       });
 
       const month = String(periodMonth).padStart(2, "0");
-      doc.save(`rekap-potongan-payroll-${periodYear}-${month}.pdf`);
+      doc.save(`REKAP-POTONGAN-PAYROLL-${periodYear}-${month}.pdf`);
     } catch (error) {
       console.error("PDF export failed:", error);
     } finally {

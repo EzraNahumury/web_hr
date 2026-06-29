@@ -264,7 +264,7 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
       });
 
       const dateStr = new Date().toISOString().slice(0, 10);
-      doc.save(`laporan-lembur-${dateStr}.pdf`);
+      doc.save(`LAPORAN-LEMBUR-${dateStr}.pdf`);
     } finally {
       setIsDownloading(false);
     }

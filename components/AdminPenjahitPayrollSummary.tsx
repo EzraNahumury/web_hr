@@ -333,7 +333,7 @@ export default function AdminPenjahitPayrollSummary({ sheet, employeeOptions }: 
       });
 
       const month = String(sheet.periodMonth).padStart(2, "0");
-      doc.save(`rekap-payroll-penjahit-${sheet.periodYear}-${month}.pdf`);
+      doc.save(`REKAP-PAYROLL-PENJAHIT-${sheet.periodYear}-${month}.pdf`);
     } catch (error) {
       console.error("PDF export failed:", error);
     } finally {

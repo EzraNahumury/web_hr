@@ -183,7 +183,7 @@ export async function GET(request: NextRequest) {
   ws.autoFilter = { from: { row: 3, column: 1 }, to: { row: 3, column: lastCol } };
 
   const buffer = await wb.xlsx.writeBuffer();
-  const filename = `Data Karyawan ${kategoriLabel} ${dateStr}.xlsx`;
+  const filename = `DATA KARYAWAN ${kategoriLabel.toUpperCase()} ${dateStr}.xlsx`;
 
   return new Response(buffer as ArrayBuffer, {
     status: 200,

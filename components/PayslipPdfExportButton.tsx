@@ -136,7 +136,8 @@ function drawSignatureBlock(
 }
 
 function createSafeFileName(fileName: string) {
-  return fileName.toLowerCase().endsWith(".pdf") ? fileName : `${fileName}.pdf`;
+  const upper = fileName.toUpperCase();
+  return upper.endsWith(".PDF") ? upper : `${upper}.pdf`;
 }
 
 async function buildPayslipPdf(fileName: string, pdfData: PayslipPdfPayload) {

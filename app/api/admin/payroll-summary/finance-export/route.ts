@@ -195,7 +195,7 @@ export async function GET(request: NextRequest) {
   ws.autoFilter = { from: { row: 3, column: 1 }, to: { row: 3, column: 5 } };
 
   const buffer = await wb.xlsx.writeBuffer();
-  const filename = `Finance Take Home Pay ${periodLabel}.xlsx`;
+  const filename = `FINANCE TAKE HOME PAY ${periodLabel}.xlsx`;
 
   return new Response(buffer as ArrayBuffer, {
     status: 200,
