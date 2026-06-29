@@ -293,7 +293,7 @@ export default function AdminPenjahitPayrollSummary({ sheet, employeeOptions }: 
             row.potonganDenda + row.potonganKontrak + row.potonganPinjaman + row.potonganLainLain;
           return [
             index + 1,
-            row.nama,
+            (row.nama || "").toUpperCase(),
             row.hariKerja,
             row.masuk,
             formatNum(row.lemburJam),

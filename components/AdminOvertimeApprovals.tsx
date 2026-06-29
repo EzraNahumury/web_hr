@@ -235,17 +235,17 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
         startY: 38,
         head: [["Nama", "Tanggal", "Jam", "Total", "Pekerjaan", "Deadline", "Order/QTY/Target", "Status", "Catatan"]],
         body: filteredRows.map((row) => [
-          row.nama,
+          (row.nama || "").toUpperCase(),
           row.tanggal,
           `${row.jam_mulai} - ${row.jam_selesai}`,
           `${row.total_jam} jam`,
-          row.jenis_pekerjaan || "-",
+          (row.jenis_pekerjaan || "-").toUpperCase(),
           row.deadline || "-",
           row.nama_order
-            ? `${row.nama_order}\nQTY: ${row.jumlah_qty ?? "-"}\nSblm: ${row.target_sebelum_lembur ?? "-"} | Sslh: ${row.target_setelah_lembur ?? "-"}`
+            ? `${row.nama_order.toUpperCase()}\nQTY: ${row.jumlah_qty ?? "-"}\nSblm: ${row.target_sebelum_lembur ?? "-"} | Sslh: ${row.target_setelah_lembur ?? "-"}`
             : "-",
-          row.status_approval,
-          row.catatan_atasan || "-",
+          (row.status_approval || "").toUpperCase(),
+          (row.catatan_atasan || "-").toUpperCase(),
         ]),
         styles: { fontSize: 8, cellPadding: 2.5 },
         headStyles: { fillColor: [143, 29, 34], textColor: 255, fontStyle: "bold" },

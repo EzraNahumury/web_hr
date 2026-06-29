@@ -400,7 +400,7 @@ export default function AdminPayrollSummaryManager({
         ],
         body: filteredRows.map((row) => [
           row.number,
-          row.name,
+          (row.name || "").toUpperCase(),
           row.workDays,
           row.presentDays,
           row.leaveCount,

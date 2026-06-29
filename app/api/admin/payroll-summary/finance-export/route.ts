@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
 
   finance.forEach((r, i) => {
     const row = ws.getRow(4 + i);
-    const values: (string | number)[] = [i + 1, r.name || "-", r.bank, r.accountNumber, r.takeHome];
+    const values: (string | number)[] = [i + 1, (r.name || "-").toUpperCase(), r.bank.toUpperCase(), r.accountNumber.toUpperCase(), r.takeHome];
     values.forEach((v, idx) => {
       const cell = row.getCell(idx + 1);
       cell.value = v;

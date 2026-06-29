@@ -185,9 +185,9 @@ async function buildPayslipPdf(fileName: string, pdfData: PayslipPdfPayload) {
 
   doc.setFontSize(9.5);
   drawPairColumn(doc, 19, 58.5, 28, 49, [
-    { label: "Nama Karyawan", value: pdfData.employeeName },
-    { label: "Jabatan / Divisi", value: `${pdfData.role} / ${pdfData.division}` },
-    { label: "Bank", value: pdfData.bank },
+    { label: "Nama Karyawan", value: (pdfData.employeeName || "").toUpperCase() },
+    { label: "Jabatan / Divisi", value: `${(pdfData.role || "").toUpperCase()} / ${(pdfData.division || "").toUpperCase()}` },
+    { label: "Bank", value: (pdfData.bank || "").toUpperCase() },
     { label: "No Rekening", value: pdfData.accountNumber },
   ]);
 

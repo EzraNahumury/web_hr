@@ -162,7 +162,7 @@ export async function GET(request: NextRequest) {
     COLUMNS.forEach((c, idx) => {
       const cell = row.getCell(idx + 1);
       const v = c.value(e, i);
-      cell.value = v;
+      cell.value = typeof v === "string" ? v.toUpperCase() : v;
       cell.font = { size: 10, color: { argb: "FF2D1B18" } };
       cell.alignment = {
         vertical: "top",
