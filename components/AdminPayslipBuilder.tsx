@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import PayslipSheet from "@/components/PayslipSheet";
@@ -14,9 +14,6 @@ type Props = {
   periodMonth: number;
   periodYear: number;
 };
-
-const selectClassName =
-  "h-12 w-full appearance-none rounded-2xl border border-[#d9cbc5] bg-[url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%238a5d52' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")] bg-[length:18px_18px] bg-[right_1rem_center] bg-no-repeat px-4 pr-11 text-[#241716] outline-none focus:border-[#c97f5b] focus:shadow-[0_0_0_4px_rgba(201,127,91,0.14)]";
 
 function buildEmployeeLabel(row: AdminPayrollSummarySheetRow) {
   const typeLabel = row.payrollType === "sales" ? "Sales" : row.payrollType === "penjahit" ? "Penjahit" : "Non Sales";
@@ -57,10 +54,29 @@ export default function AdminPayslipBuilder({ periodLabel, rangeLabel, rows, sel
   }, [rows, selectedEmployeeId]);
 
   const [currentEmployeeId, setCurrentEmployeeId] = useState(defaultEmployeeId);
+  const [search, setSearch] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setCurrentEmployeeId(defaultEmployeeId);
   }, [defaultEmployeeId]);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const filteredRows = useMemo(() => {
+    if (!search.trim()) return rows;
+    const q = search.trim().toLowerCase();
+    return rows.filter((r) => buildEmployeeLabel(r).toLowerCase().includes(q));
+  }, [rows, search]);
 
   const selectedRow = useMemo(
     () => rows.find((row) => row.employeeId === currentEmployeeId) ?? rows[0] ?? null,
@@ -115,21 +131,39 @@ export default function AdminPayslipBuilder({ periodLabel, rangeLabel, rows, sel
 
       <section className="rounded-[32px] border border-[#ead7ce] bg-white p-6 shadow-[0_20px_60px_rgba(96,45,34,0.08)]">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-          <label className="block space-y-2">
+          <div className="block space-y-2">
             <span className="block text-[13px] font-semibold text-[#466668]">Pilih Karyawan</span>
-            <select
-              value={String(currentEmployeeId)}
-              onChange={(event) => handleEmployeeChange(Number(event.target.value))}
-              className={selectClassName}
-              disabled={isPending}
-            >
-              {rows.map((row) => (
-                <option key={row.employeeId} value={row.employeeId}>
-                  {buildEmployeeLabel(row)}
-                </option>
-              ))}
-            </select>
-          </label>
+            <div ref={dropdownRef} className="relative">
+              <input
+                type="text"
+                value={dropdownOpen ? search : (selectedRow ? buildEmployeeLabel(selectedRow) : "")}
+                onChange={(e) => { setSearch(e.target.value); setDropdownOpen(true); }}
+                onFocus={() => { setSearch(""); setDropdownOpen(true); }}
+                placeholder="Cari nama karyawan..."
+                disabled={isPending}
+                className="h-12 w-full rounded-2xl border border-[#d9cbc5] bg-white px-4 pr-10 text-sm text-[#241716] outline-none focus:border-[#c97f5b] focus:shadow-[0_0_0_4px_rgba(201,127,91,0.14)] disabled:opacity-60"
+              />
+              <svg className="pointer-events-none absolute right-3.5 top-3.5 h-5 w-5 text-[#8a5d52]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="7" /><path d="m21 21-4.35-4.35" />
+              </svg>
+              {dropdownOpen && (
+                <div className="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-2xl border border-[#d9cbc5] bg-white shadow-xl">
+                  {filteredRows.length === 0 ? (
+                    <p className="px-4 py-3 text-sm text-[#9e7a72]">Tidak ditemukan.</p>
+                  ) : filteredRows.map((row) => (
+                    <button
+                      key={row.employeeId}
+                      type="button"
+                      onClick={() => { handleEmployeeChange(row.employeeId); setDropdownOpen(false); setSearch(""); }}
+                      className={`w-full px-4 py-2.5 text-left text-sm hover:bg-[#fff0e8] ${row.employeeId === currentEmployeeId ? "bg-[#fff0e8] font-semibold text-[#8f1d22]" : "text-[#241716]"}`}
+                    >
+                      {buildEmployeeLabel(row)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
 
           {selectedRow ? (
             <div className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] ${selectedRow.payrollType === "penjahit" ? "border-[#e3d5a8] bg-[#fff7d6] text-[#7c5b00]" : selectedRow.payrollType === "sales" ? "border-[#c8d8ca] bg-[#eef6ef] text-[#4b6d51]" : "border-[#ead7ce] bg-[#fff7f2] text-[#8a5d52]"}`}>

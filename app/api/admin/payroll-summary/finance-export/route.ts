@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
 
   finance.forEach((r, i) => {
     const row = ws.getRow(4 + i);
-    const values: (string | number)[] = [i + 1, (r.name || "-").toUpperCase(), r.bank.toUpperCase(), r.accountNumber.toUpperCase(), r.takeHome];
+    const values: (string | number)[] = [i + 1, (r.name || "-").toUpperCase(), r.bank.toUpperCase(), r.accountNumber.toUpperCase(), Math.round(r.takeHome)];
     values.forEach((v, idx) => {
       const cell = row.getCell(idx + 1);
       cell.value = v;
@@ -186,7 +186,7 @@ export async function GET(request: NextRequest) {
   totalRow.getCell(4).value = "TOTAL";
   totalRow.getCell(4).font = { bold: true, size: 11, color: { argb: "FF0D7F86" } };
   totalRow.getCell(4).alignment = { horizontal: "right" };
-  totalRow.getCell(5).value = totalThp;
+  totalRow.getCell(5).value = Math.round(totalThp);
   totalRow.getCell(5).numFmt = '"Rp"#,##0';
   totalRow.getCell(5).font = { bold: true, size: 11, color: { argb: "FF0D7F86" } };
   totalRow.getCell(4).border = border;
