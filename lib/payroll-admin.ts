@@ -20,6 +20,7 @@ type PayrollEmployeeOptionRow = RowDataPacket & {
   departemen: string;
   pembagian_rekapan: string | null;
   status_kepegawaian: string | null;
+  tipe_payroll_penjahit: string | null;
 };
 
 type AttendanceAggregateRow = RowDataPacket & {
@@ -84,6 +85,7 @@ export type PayrollEmployeeOption = {
   recapGroup: string;
   isSales: boolean;
   employmentStatus: string | null;
+  isWeekly: boolean;
 };
 
 export type PayrollFormPayload = {
@@ -489,7 +491,8 @@ export async function listPayrollEmployeeOptions(options?: {
         k.sub_divisi,
         k.departemen,
         k.pembagian_rekapan,
-        k.status_kepegawaian
+        k.status_kepegawaian,
+        k.tipe_payroll_penjahit
       FROM karyawan k
       WHERE k.status_data = 'aktif'
         ${placementFilter ? "AND LOWER(COALESCE(k.penempatan, '')) = LOWER(?)" : ""}
@@ -512,6 +515,9 @@ export async function listPayrollEmployeeOptions(options?: {
     recapGroup: row.pembagian_rekapan ?? "-",
     isSales: isSalesEmployeeFromValues(row.jabatan, row.divisi, row.sub_divisi),
     employmentStatus: row.status_kepegawaian ?? null,
+    isWeekly:
+      (row.sub_divisi ?? "").trim().toLowerCase() === "penjahit" &&
+      (row.tipe_payroll_penjahit ?? "").trim().toLowerCase() === "mingguan",
   }));
 }
 

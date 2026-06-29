@@ -155,6 +155,7 @@ export type LoanInstallment = {
   sequence: number;
   month: number;
   year: number;
+  minggu: number; // 0 = bulanan; 1-4 = mingguan (penjahit)
   monthLabel: string;
   plannedDeduction: string;
   paidDeduction: string | null;
@@ -180,6 +181,7 @@ export type LoanListItem = {
   totalPaid: string;
   remainingBalance: string;
   paidInstallmentCount: number;
+  isWeekly: boolean;
   installments: LoanInstallment[];
 };
 
@@ -213,6 +215,7 @@ type LoanInstallmentRow = RowDataPacket & {
   urutan_cicilan: number;
   bulan: number;
   tahun: number;
+  minggu: number;
   nominal_potongan: string;
   nominal_terpotong: string | null;
   payroll_id: number | null;
@@ -377,6 +380,59 @@ function buildLoanInstallmentPeriods(approvalDate: string, installmentCount: num
   });
 }
 
+// Penjahit mingguan: 4 pencairan/bulan -> minggu 1=Tgl 8, 2=Tgl 16, 3=Tgl 25, 4=Tgl 1.
+const MINGGU_TANGGAL_LABEL: Record<number, string> = {
+  1: "Tgl 8",
+  2: "Tgl 16",
+  3: "Tgl 25",
+  4: "Tgl 1",
+};
+
+function formatWeekLabel(month: number, year: number, minggu: number) {
+  const tgl = MINGGU_TANGGAL_LABEL[minggu] ?? `Minggu ${minggu}`;
+  return `${formatMonthOnlyLabel(month, year)} — ${tgl}`;
+}
+
+// Cek apakah karyawan = penjahit dengan penggajian mingguan (cicilan pinjaman per minggu).
+async function isWeeklyLoanEmployee(employeeId: number, connection?: QueryExecutor) {
+  const executor = connection ?? pool;
+  const [rows] = await executor.query<(RowDataPacket & { is_weekly: number })[]>(
+    `SELECT (LOWER(COALESCE(sub_divisi, '')) = 'penjahit'
+             AND LOWER(COALESCE(tipe_payroll_penjahit, '')) = 'mingguan') AS is_weekly
+     FROM karyawan WHERE id = ? LIMIT 1`,
+    [employeeId],
+  );
+  return Number(rows[0]?.is_weekly ?? 0) === 1;
+}
+
+// Bangun periode cicilan MINGGUAN: tiap minggu 1 cicilan. weekCount minggu berturut-turut,
+// dipetakan ke (bulan, tahun, minggu 1-4) mengikuti pencairan penjahit.
+function buildWeeklyLoanInstallmentPeriods(approvalDate: string, weekCount: number) {
+  const startDate = getLoanDeductionStartDate(approvalDate);
+  if (!startDate) {
+    return [] as Array<{ sequence: number; month: number; year: number; minggu: number; label: string }>;
+  }
+  const startMonth = `${startDate.slice(0, 7)}-01`;
+
+  return Array.from({ length: weekCount }, (_, index) => {
+    const monthOffset = Math.floor(index / 4);
+    const mingguInMonth = (index % 4) + 1;
+    const periodDate = addMonthsToIsoDate(startMonth, monthOffset);
+    if (!periodDate) {
+      throw new Error("Periode cicilan mingguan tidak valid.");
+    }
+    const year = Number(periodDate.slice(0, 4));
+    const month = Number(periodDate.slice(5, 7));
+    return {
+      sequence: index + 1,
+      month,
+      year,
+      minggu: mingguInMonth,
+      label: formatWeekLabel(month, year, mingguInMonth),
+    };
+  });
+}
+
 function buildLoanItem(row: LoanRow, installments: LoanInstallmentRow[]): LoanListItem {
   const loanInstallments = installments
     .filter((installment) => installment.pinjaman_id === row.id)
@@ -384,19 +440,26 @@ function buildLoanItem(row: LoanRow, installments: LoanInstallmentRow[]): LoanLi
     .map((installment) => {
       const planned = toNumber(installment.nominal_potongan);
       const paid = toNumber(installment.nominal_terpotong);
+      const minggu = Number(installment.minggu ?? 0);
 
       return {
         id: installment.id,
         sequence: installment.urutan_cicilan,
         month: installment.bulan,
         year: installment.tahun,
-        monthLabel: formatMonthLabel(installment.bulan, installment.tahun),
+        minggu,
+        monthLabel:
+          minggu > 0
+            ? formatWeekLabel(installment.bulan, installment.tahun, minggu)
+            : formatMonthLabel(installment.bulan, installment.tahun),
         plannedDeduction: installment.nominal_potongan,
         paidDeduction: installment.nominal_terpotong,
         payrollId: installment.payroll_id,
         isPaid: paid >= planned && planned > 0,
       } satisfies LoanInstallment;
     });
+
+  const isWeekly = loanInstallments.some((installment) => installment.minggu > 0);
 
   return {
     id: row.id,
@@ -418,6 +481,7 @@ function buildLoanItem(row: LoanRow, installments: LoanInstallmentRow[]): LoanLi
     totalPaid: row.total_sudah_bayar,
     remainingBalance: row.sisa_pinjaman,
     paidInstallmentCount: loanInstallments.filter((installment) => installment.isPaid).length,
+    isWeekly,
     installments: loanInstallments,
   };
 }
@@ -511,9 +575,14 @@ async function rebuildLoanInstallments(
   approvalDate: string,
   connection?: QueryExecutor,
   customAmounts?: number[],
+  weekly = false,
 ) {
   const executor = connection ?? pool;
-  const periods = buildLoanInstallmentPeriods(approvalDate, installmentCount);
+  // Penjahit mingguan: tiap cicilan = 1 minggu (minggu 1-4 per bulan).
+  // Lainnya: tiap cicilan = 1 bulan (minggu = 0).
+  const periods = weekly
+    ? buildWeeklyLoanInstallmentPeriods(approvalDate, installmentCount)
+    : buildLoanInstallmentPeriods(approvalDate, installmentCount).map((p) => ({ ...p, minggu: 0 }));
   // Kalau admin kirim customAmounts dan jumlahnya cocok, pakai itu. Kalau tidak, distribute uniform.
   const installmentAmounts =
     customAmounts && customAmounts.length === installmentCount
@@ -533,12 +602,13 @@ async function rebuildLoanInstallments(
           urutan_cicilan,
           bulan,
           tahun,
+          minggu,
           nominal_potongan,
           nominal_terpotong,
           payroll_id
-        ) VALUES (?, ?, ?, ?, ?, NULL, NULL)
+        ) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL)
       `,
-      [loanId, period.sequence, period.month, period.year, installmentAmounts[index] ?? 0],
+      [loanId, period.sequence, period.month, period.year, period.minggu, installmentAmounts[index] ?? 0],
     );
   }
 }
@@ -702,13 +772,14 @@ export async function ensureLoanSupportTables(connection?: QueryExecutor) {
       urutan_cicilan INT UNSIGNED NOT NULL,
       bulan TINYINT UNSIGNED NOT NULL,
       tahun SMALLINT UNSIGNED NOT NULL,
+      minggu TINYINT UNSIGNED NOT NULL DEFAULT 0,
       nominal_potongan DECIMAL(14,2) NOT NULL DEFAULT 0.00,
       nominal_terpotong DECIMAL(14,2) NULL DEFAULT NULL,
       payroll_id BIGINT UNSIGNED NULL DEFAULT NULL,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       PRIMARY KEY (id),
-      UNIQUE KEY uq_pinjaman_cicilan_periode (pinjaman_id, bulan, tahun),
+      UNIQUE KEY uq_pinjaman_cicilan_periode (pinjaman_id, bulan, tahun, minggu),
       UNIQUE KEY uq_pinjaman_cicilan_urutan (pinjaman_id, urutan_cicilan),
       KEY idx_pinjaman_cicilan_periode (tahun, bulan),
       KEY idx_pinjaman_cicilan_payroll (payroll_id),
@@ -717,6 +788,32 @@ export async function ensureLoanSupportTables(connection?: QueryExecutor) {
         ON UPDATE CASCADE ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `);
+
+  // Migrasi: tambah kolom minggu (0 = cicilan bulanan biasa; 1-4 = mingguan penjahit).
+  try {
+    await executor.query(
+      `ALTER TABLE pinjaman_cicilan ADD COLUMN minggu TINYINT UNSIGNED NOT NULL DEFAULT 0 AFTER tahun`,
+    );
+  } catch (error) {
+    if (!isMysqlErrorWithCode(error, "ER_DUP_FIELDNAME")) throw error;
+  }
+  // Unique key lama (pinjaman_id, bulan, tahun) -> sertakan minggu agar 4 minggu/bulan boleh.
+  try {
+    await executor.query(`ALTER TABLE pinjaman_cicilan DROP INDEX uq_pinjaman_cicilan_periode`);
+  } catch (error) {
+    if (!isMysqlErrorWithCode(error, "ER_CANT_DROP_FIELD_OR_KEY")) {
+      // index mungkin sudah versi baru / tidak ada — abaikan
+    }
+  }
+  try {
+    await executor.query(
+      `ALTER TABLE pinjaman_cicilan ADD UNIQUE KEY uq_pinjaman_cicilan_periode (pinjaman_id, bulan, tahun, minggu)`,
+    );
+  } catch (error) {
+    if (!isMysqlErrorWithCode(error, "ER_DUP_KEYNAME")) {
+      // sudah ada — abaikan
+    }
+  }
 
   await executor.query(`
     UPDATE pinjaman
@@ -892,6 +989,7 @@ export async function updateLoanRequest(
       ["approved", "berjalan", "lunas"].includes(loan.status_pinjaman) &&
       loan.tanggal_approval
     ) {
+      const weekly = await isWeeklyLoanEmployee(payload.employeeId, connection);
       await rebuildLoanInstallments(
         loanId,
         roundMoney(payload.totalLoan),
@@ -899,6 +997,7 @@ export async function updateLoanRequest(
         loan.tanggal_approval,
         connection,
         payload.customInstallments,
+        weekly,
       );
     }
 
@@ -967,12 +1066,15 @@ export async function approveLoanRequest(loanId: number, adminId?: number | null
       [approvalDate, adminId ?? null, loanId],
     );
 
+    const weekly = await isWeeklyLoanEmployee(loan.karyawan_id, connection);
     await rebuildLoanInstallments(
       loanId,
       toNumber(loan.jumlah_pinjaman),
       Math.max(loan.jumlah_angsuran, 1),
       approvalDate,
       connection,
+      undefined,
+      weekly,
     );
 
     await syncLoanSummary(loanId, connection);
@@ -1182,6 +1284,7 @@ async function getLoansBase(whereSql = "", params: Array<number | string> = []) 
           pc.urutan_cicilan,
           pc.bulan,
           pc.tahun,
+          pc.minggu,
           pc.nominal_potongan,
           pc.nominal_terpotong,
           pc.payroll_id
@@ -1354,6 +1457,42 @@ export async function getLoanDeductionRowsForPeriod(
   }));
 }
 
+// Cicilan pinjaman MINGGUAN per karyawan untuk satu periode (bulan, tahun).
+// Mengembalikan map employeeId -> { 1,2,3,4 } nominal cicilan tiap minggu.
+// Dipakai pencairan penjahit agar potongan per minggu pakai nilai custom, bukan /4.
+export async function getWeeklyLoanDeductionMap(
+  employeeIds: number[],
+  month: number,
+  year: number,
+) {
+  await ensureLoanSupportTables();
+  const result = new Map<number, Record<number, number>>();
+  if (!employeeIds.length) return result;
+
+  const placeholders = employeeIds.map(() => "?").join(", ");
+  const [rows] = await pool.query<(RowDataPacket & { employee_id: number; minggu: number; total: string | null })[]>(
+    `
+      SELECT p.karyawan_id AS employee_id, pc.minggu, COALESCE(SUM(pc.nominal_potongan), 0) AS total
+      FROM pinjaman_cicilan pc
+      INNER JOIN pinjaman p ON p.id = pc.pinjaman_id
+      WHERE p.karyawan_id IN (${placeholders})
+        AND pc.bulan = ?
+        AND pc.tahun = ?
+        AND pc.minggu BETWEEN 1 AND 4
+        AND p.status_pinjaman IN ('approved', 'berjalan', 'lunas')
+      GROUP BY p.karyawan_id, pc.minggu
+    `,
+    [...employeeIds, month, year],
+  );
+
+  for (const row of rows) {
+    const current = result.get(row.employee_id) ?? {};
+    current[Number(row.minggu)] = toNumber(row.total);
+    result.set(row.employee_id, current);
+  }
+  return result;
+}
+
 export async function getLoanDeductionForPeriod(
   employeeId: number,
   month: number,
@@ -1496,8 +1635,8 @@ export async function updateLoanApprovalDate(loanId: number, newApprovalDate: st
     await connection.beginTransaction();
     await ensureLoanSupportTables(connection);
 
-    const [loanRows] = await connection.query<LoanIdentityRow[]>(
-      `SELECT id, jumlah_pinjaman, jumlah_angsuran, status_pinjaman FROM pinjaman WHERE id = ? LIMIT 1`,
+    const [loanRows] = await connection.query<(LoanIdentityRow & { karyawan_id: number })[]>(
+      `SELECT id, karyawan_id, jumlah_pinjaman, jumlah_angsuran, status_pinjaman FROM pinjaman WHERE id = ? LIMIT 1`,
       [loanId],
     );
     const loan = loanRows[0];
@@ -1520,19 +1659,22 @@ export async function updateLoanApprovalDate(loanId: number, newApprovalDate: st
 
     const totalLoan = toNumber(loan.jumlah_pinjaman);
     const installmentCount = Math.max(loan.jumlah_angsuran, 1);
+    const weekly = await isWeeklyLoanEmployee(loan.karyawan_id, connection);
 
-    const allPeriods = buildLoanInstallmentPeriods(newApprovalDate, installmentCount);
+    const allPeriods = weekly
+      ? buildWeeklyLoanInstallmentPeriods(newApprovalDate, installmentCount)
+      : buildLoanInstallmentPeriods(newApprovalDate, installmentCount).map((p) => ({ ...p, minggu: 0 }));
     const installmentAmounts = buildInstallmentAmounts(totalLoan, installmentCount);
 
     if (paidCount === 0) {
-      await rebuildLoanInstallments(loanId, totalLoan, installmentCount, newApprovalDate, connection);
+      await rebuildLoanInstallments(loanId, totalLoan, installmentCount, newApprovalDate, connection, undefined, weekly);
     } else {
-      // Geser bulan/tahun cicilan terbayar ke jadwal baru (nominal_terpotong & payroll_id tetap)
+      // Geser bulan/tahun/minggu cicilan terbayar ke jadwal baru (nominal_terpotong & payroll_id tetap)
       for (let i = 0; i < paidCount && i < allPeriods.length; i++) {
         const period = allPeriods[i];
         await connection.query<ResultSetHeader>(
-          `UPDATE pinjaman_cicilan SET bulan = ?, tahun = ? WHERE pinjaman_id = ? AND urutan_cicilan = ?`,
-          [period.month, period.year, loanId, period.sequence],
+          `UPDATE pinjaman_cicilan SET bulan = ?, tahun = ?, minggu = ? WHERE pinjaman_id = ? AND urutan_cicilan = ?`,
+          [period.month, period.year, period.minggu, loanId, period.sequence],
         );
       }
       // Hapus cicilan belum terbayar lalu sisipkan kembali dengan periode baru
@@ -1543,9 +1685,9 @@ export async function updateLoanApprovalDate(loanId: number, newApprovalDate: st
       for (let i = paidCount; i < allPeriods.length; i++) {
         const period = allPeriods[i];
         await connection.query<ResultSetHeader>(
-          `INSERT INTO pinjaman_cicilan (pinjaman_id, urutan_cicilan, bulan, tahun, nominal_potongan, nominal_terpotong, payroll_id)
-           VALUES (?, ?, ?, ?, ?, NULL, NULL)`,
-          [loanId, period.sequence, period.month, period.year, installmentAmounts[i] ?? 0],
+          `INSERT INTO pinjaman_cicilan (pinjaman_id, urutan_cicilan, bulan, tahun, minggu, nominal_potongan, nominal_terpotong, payroll_id)
+           VALUES (?, ?, ?, ?, ?, ?, NULL, NULL)`,
+          [loanId, period.sequence, period.month, period.year, period.minggu, installmentAmounts[i] ?? 0],
         );
       }
     }

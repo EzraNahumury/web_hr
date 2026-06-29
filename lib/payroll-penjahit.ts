@@ -16,6 +16,7 @@ import {
   autoAttachLoanInstallmentsForPeriod,
   ensureLoanSupportTables,
   getLoanDeductionRowsForPeriod,
+  getWeeklyLoanDeductionMap,
 } from "@/lib/loans";
 import {
   ensurePayrollPeriodCloned,
@@ -322,6 +323,9 @@ export async function getPenjahitSheet(period?: {
     contractReturnMap.set(r.employee_id, toNum(r.nominal));
   }
 
+  // Cicilan pinjaman per minggu (custom) untuk pencairan mingguan penjahit.
+  const weeklyLoanMap = await getWeeklyLoanDeductionMap(employeeIds, periodMonth, periodYear);
+
   // Hitung per-hari di JS pakai isHalfDayByTime supaya konsisten dengan rekap absensi & payroll lain.
   // Record setengah hari TIDAK dihitung sebagai hadir penuh & TIDAK dihitung telat.
   const attendanceMap = new Map<number, AttendanceCounts>();
@@ -445,9 +449,12 @@ export async function getPenjahitSheet(period?: {
     let pencairan: PenjahitComputedRow["pencairan"] = null;
     if (tipePayroll === "mingguan") {
       const weeklyBase = 800_000;
-      const minggu1 = weeklyBase - cicilanPerMinggu;
-      const minggu2 = weeklyBase - cicilanPerMinggu;
-      const minggu3 = weeklyBase - cicilanPerMinggu - potonganKontrak;
+      // Cicilan per minggu: pakai nominal custom per minggu bila ada, kalau tidak bagi rata /4.
+      const wk = weeklyLoanMap.get(row.employee_id);
+      const w = (n: number) => (wk && wk[n] !== undefined ? wk[n] : cicilanPerMinggu);
+      const minggu1 = weeklyBase - w(1);
+      const minggu2 = weeklyBase - w(2);
+      const minggu3 = weeklyBase - w(3) - potonganKontrak;
       const minggu4 = penerimaanBersih - minggu1 - minggu2 - minggu3;
       pencairan = { minggu1, minggu2, minggu3, minggu4 };
     }

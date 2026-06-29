@@ -25,6 +25,7 @@ export default async function AdminLoansPage() {
           employeeId: emp.employeeId,
           name: emp.name,
           role: emp.role,
+          isWeekly: emp.isWeekly,
         }))}
       />
     </AdminShell>

@@ -31,6 +31,7 @@ type EmployeeOption = {
   employeeId: number;
   name: string;
   role: string;
+  isWeekly: boolean;
 };
 
 type Props = {
@@ -134,6 +135,7 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
   });
   const [customInstallments, setCustomInstallments] = useState<string[]>([]);
   const [editingInstallmentLabels, setEditingInstallmentLabels] = useState<string[]>([]);
+  const [editingIsWeekly, setEditingIsWeekly] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [formFeedback, setFormFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -146,6 +148,11 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
   const [approvalDateInput, setApprovalDateInput] = useState<string>("");
   const [isSavingApproval, setIsSavingApproval] = useState(false);
 
+  // Penjahit mingguan: cicilan dihitung per MINGGU, bukan per bulan.
+  const selectedEmployee = employeeOptions.find((e) => e.employeeId === Number(form.employeeId)) ?? null;
+  const isWeeklyContext = editingLoanId ? editingIsWeekly : (selectedEmployee?.isWeekly ?? false);
+  const unitWord = isWeeklyContext ? "Minggu" : "Bulan";
+
   function resetForm() {
     setForm({
       employeeId: "",
@@ -155,12 +162,15 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
     });
     setCustomInstallments([]);
     setEditingInstallmentLabels([]);
+    setEditingIsWeekly(false);
     setFormFeedback(null);
     setEditingLoanId(null);
   }
 
   function openEditLoan(loan: LoanListItem) {
     setEditingLoanId(loan.id);
+    setEditingIsWeekly(loan.isWeekly);
+    const unit = loan.isWeekly ? "Minggu" : "Bulan";
     setForm({
       employeeId: String(loan.employeeId),
       totalLoan: formatRupiahInput(String(Math.trunc(toNumber(loan.totalLoan)))),
@@ -180,7 +190,7 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
       const total = toNumber(loan.totalLoan);
       const count = loan.installmentCount;
       setCustomInstallments(buildUniformInstallmentInputs(total, count));
-      setEditingInstallmentLabels(Array.from({ length: count }, (_, i) => `Bulan ke-${i + 1}`));
+      setEditingInstallmentLabels(Array.from({ length: count }, (_, i) => `${unit} ke-${i + 1}`));
     }
     setFormFeedback(null);
     setFeedback(null);
@@ -201,7 +211,7 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
     if (!total || !count) return;
     setCustomInstallments(buildUniformInstallmentInputs(total, count));
     if (editingInstallmentLabels.length !== count) {
-      setEditingInstallmentLabels(Array.from({ length: count }, (_, i) => `Bulan ke-${i + 1}`));
+      setEditingInstallmentLabels(Array.from({ length: count }, (_, i) => `${unitWord} ke-${i + 1}`));
     }
   }
 
@@ -220,7 +230,7 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
     }
 
     setCustomInstallments(buildUniformInstallmentInputs(total, count));
-    setEditingInstallmentLabels(Array.from({ length: count }, (_, i) => `Bulan ke-${i + 1}`));
+    setEditingInstallmentLabels(Array.from({ length: count }, (_, i) => `${unitWord} ke-${i + 1}`));
   }
 
   async function handleDeleteLoan(loan: LoanListItem) {
@@ -280,7 +290,7 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
         if (Math.abs(sumCustom - totalLoan) > 1) {
           setFormFeedback({
             type: "error",
-            text: `Total cicilan per bulan (Rp ${sumCustom.toLocaleString("id-ID")}) tidak sama dengan Jumlah Pinjaman (Rp ${totalLoan.toLocaleString("id-ID")}).`,
+            text: `Total cicilan per ${unitWord.toLowerCase()} (Rp ${sumCustom.toLocaleString("id-ID")}) tidak sama dengan Jumlah Pinjaman (Rp ${totalLoan.toLocaleString("id-ID")}).`,
           });
           setIsCreating(false);
           return;
@@ -561,15 +571,22 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
             </label>
 
             <label className="space-y-2.5">
-              <span className="text-[13px] font-semibold text-[#6f5a54]">Jumlah Angsuran</span>
+              <span className="text-[13px] font-semibold text-[#6f5a54]">
+                Jumlah Angsuran {isWeeklyContext ? "(per minggu)" : ""}
+              </span>
               <input
                 inputMode="numeric"
                 value={form.installmentCount}
                 onChange={(event) => updateInstallmentCount(event.target.value)}
-                placeholder="Contoh: 5"
+                placeholder={isWeeklyContext ? "Contoh: 8 (minggu)" : "Contoh: 5"}
                 className={inputClassName}
                 required
               />
+              {isWeeklyContext ? (
+                <span className="block text-[11px] text-[#a07f59]">
+                  Penjahit mingguan: jumlah angsuran dihitung per minggu (cicilan dipotong tiap pencairan mingguan).
+                </span>
+              ) : null}
             </label>
           </div>
 
@@ -578,10 +595,10 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#a16f63]">
-                    Detail Cicilan Per Bulan
+                    Detail Cicilan Per {unitWord}
                   </p>
                   <p className="mt-1 text-sm text-[#7a6059]">
-                    Custom nominal cicilan per bulan untuk case khusus. Total semua bulan harus sama dengan Jumlah Pinjaman.
+                    Custom nominal cicilan per {unitWord.toLowerCase()} untuk case khusus. Total semua {unitWord.toLowerCase()} harus sama dengan Jumlah Pinjaman.
                   </p>
                 </div>
                 <button
@@ -596,7 +613,7 @@ export default function AdminLoansManager({ initialRows, employeeOptions }: Prop
                 {customInstallments.map((amount, index) => (
                   <label key={index} className="space-y-1.5">
                     <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#a16f63]">
-                      {editingInstallmentLabels[index] ?? `Bulan ke-${index + 1}`}
+                      {editingInstallmentLabels[index] ?? `${unitWord} ke-${index + 1}`}
                     </span>
                     <input
                       inputMode="numeric"
