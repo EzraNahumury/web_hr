@@ -544,12 +544,6 @@ export async function ensurePayrollPeriodCloned(
 
   await ensurePayrollSupportTables();
 
-  const [existing] = await pool.query<RowDataPacket[]>(
-    `SELECT 1 FROM payroll WHERE periode_bulan = ? AND periode_tahun = ? LIMIT 1`,
-    [targetMonth, targetYear],
-  );
-  if (existing.length > 0) return { cloned: false };
-
   const [sourceRows] = await pool.query<RowDataPacket[]>(
     `SELECT periode_bulan, periode_tahun FROM payroll
      WHERE (periode_tahun < ? OR (periode_tahun = ? AND periode_bulan < ?))
@@ -570,7 +564,7 @@ export async function ensurePayrollPeriodCloned(
 
     await connection.query(
       `
-        INSERT INTO payroll (
+        INSERT IGNORE INTO payroll (
           karyawan_id, periode_bulan, periode_tahun,
           hari_kerja, total_masuk, total_lembur_jam, total_terlambat, total_setengah_hari,
           gaji_pokok, tunjangan_jabatan, tunjangan_lain, bonus_performa, bpjs,
@@ -588,13 +582,19 @@ export async function ensurePayrollPeriodCloned(
         FROM payroll p
         INNER JOIN karyawan k ON k.id = p.karyawan_id AND k.status_data = 'aktif'
         WHERE p.periode_bulan = ? AND p.periode_tahun = ?
+          AND NOT EXISTS (
+            SELECT 1 FROM payroll p2
+            WHERE p2.karyawan_id = p.karyawan_id
+              AND p2.periode_bulan = ?
+              AND p2.periode_tahun = ?
+          )
       `,
-      [targetMonth, targetYear, targetWorkDays, sourceMonth, sourceYear],
+      [targetMonth, targetYear, targetWorkDays, sourceMonth, sourceYear, targetMonth, targetYear],
     );
 
     await connection.query(
       `
-        INSERT INTO payroll_employee_input (
+        INSERT IGNORE INTO payroll_employee_input (
           payroll_id, karyawan_id, payroll_type,
           gaji_pokok_per_hari, uang_makan_per_hari, subsidi, uang_kerajinan, bpjs,
           bonus_performa, insentif, uang_transport, kendaraan,
