@@ -49,6 +49,7 @@ type PayrollSheetBaseRow = RowDataPacket & {
   departemen: string;
   pembagian_rekapan: string | null;
   pembebanan: string | null;
+  penempatan: string | null;
   bank: string | null;
   no_rekening: string | null;
   periode_bulan: number;
@@ -149,6 +150,7 @@ export type AdminPayrollSummarySheetRow = {
   recapGroup: string;
   unit: string | null;
   pembebanan: string | null;
+  penempatan: string | null;
   department: string;
   bank: string;
   accountNumber: string;
@@ -363,6 +365,7 @@ export async function getAdminPayrollSummarySheet(period?: {
         k.departemen,
         k.pembagian_rekapan,
         k.pembebanan,
+        k.penempatan,
         k.bank,
         k.no_rekening,
         p.periode_bulan,
@@ -1005,6 +1008,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       recapGroup: row.pembagian_rekapan || "-",
       unit: row.unit ?? null,
       pembebanan: row.pembebanan ?? null,
+      penempatan: row.penempatan ?? null,
       department: row.departemen ?? "-",
       bank: row.bank || "-",
       accountNumber: row.no_rekening || "-",

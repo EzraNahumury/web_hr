@@ -146,7 +146,7 @@ export default async function AdminFinancePage({
   }
   const lemburUnits = pencairan.units.length
     ? pencairan.units
-    : ["AVA Sportivo", "Ayres Apparel", "JNE"];
+    : ["AVA Sportivo", "Ayres Apparel", "Ayres Solo", "JNE"];
 
   const allEmployees = await listEmployees();
   const employeesByUnit: Record<string, string[]> = {};
@@ -485,8 +485,9 @@ export default async function AdminFinancePage({
           };
           const avaTotal = unitTotal("AVA Sportivo");
           const ayresTotal = unitTotal("Ayres Apparel");
+          const ayresSoloTotal = unitTotal("Ayres Solo");
           const jneTotal = unitTotal("JNE");
-          const avaAyres = avaTotal + ayresTotal;
+          const avaAyres = avaTotal + ayresTotal + ayresSoloTotal;
           const allTotal = avaAyres + jneTotal;
 
           return (
@@ -666,12 +667,13 @@ export default async function AdminFinancePage({
 
       {/* ── KETERANGAN HUTANG DAN KONTRAK ── */}
       {(() => {
-        const kontrakUnits = ["AVA Sportivo", "Ayres Apparel"];
-        const hutangPerusahaanUnits = ["AVA Sportivo", "Ayres Apparel"];
+        const kontrakUnits = ["AVA Sportivo", "Ayres Apparel", "Ayres Solo"];
+        const hutangPerusahaanUnits = ["AVA Sportivo", "Ayres Apparel", "Ayres Solo"];
         // Shorthand label untuk header kolom
         const unitLabel: Record<string, string> = {
           "AVA Sportivo": "AVA",
           "Ayres Apparel": "Ayres",
+          "Ayres Solo": "Ayres Solo",
           JNE: "JNE",
         };
 
@@ -706,7 +708,7 @@ export default async function AdminFinancePage({
                 {/* Row 1: judul */}
                 <tr>
                   <th
-                    colSpan={4}
+                    colSpan={columns.length}
                     className="border border-[#e0ccc5] bg-[#f5e8e4] px-4 py-3 text-center text-sm font-bold uppercase tracking-widest text-[#7a3828]"
                   >
                     KETERANGAN HUTANG DAN KONTRAK
@@ -721,13 +723,13 @@ export default async function AdminFinancePage({
                 {/* Row 2: grup kategori */}
                 <tr className="bg-[#fce9e2] text-xs font-bold uppercase tracking-[0.12em] text-[#8b3a2a]">
                   <th
-                    colSpan={2}
+                    colSpan={kontrakUnits.length}
                     className="border border-[#e0ccc5] px-4 py-2 text-center"
                   >
                     Kontrak
                   </th>
                   <th
-                    colSpan={2}
+                    colSpan={hutangPerusahaanUnits.length}
                     className="border border-[#e0ccc5] px-4 py-2 text-center"
                   >
                     Hutang ke perusahaan

@@ -624,6 +624,19 @@ export type FinanceByUnitResult = {
   period: { month: number; year: number } | null;
 };
 
+// Unit untuk Finance: karyawan penempatan "Toko Solo" dipisah jadi unit "Ayres Solo".
+const SOLO_FINANCE_UNIT = "Ayres Solo";
+// Urutan tampil unit di Finance.
+const FINANCE_UNIT_ORDER = ["AVA Sportivo", "Ayres Apparel", "Ayres Solo", "JNE"];
+function financeUnitRank(unit: string) {
+  const idx = FINANCE_UNIT_ORDER.indexOf(unit);
+  return idx === -1 ? FINANCE_UNIT_ORDER.length : idx;
+}
+function financeUnitOf(row: { unit: string | null; penempatan?: string | null }): string {
+  if ((row.penempatan ?? "").trim().toLowerCase() === "toko solo") return SOLO_FINANCE_UNIT;
+  return row.unit ?? "-";
+}
+
 export async function listFinanceByUnit(period?: {
   month?: number;
   year?: number;
@@ -641,7 +654,7 @@ export async function listFinanceByUnit(period?: {
   const unitMap = new Map<string, Map<string, FinanceUnitDeptData>>();
 
   for (const row of sheet.rows) {
-    const unit = row.unit ?? "-";
+    const unit = financeUnitOf(row);
     const dept = row.department;
 
     if (!unitMap.has(unit)) unitMap.set(unit, new Map());
@@ -669,10 +682,10 @@ export async function listFinanceByUnit(period?: {
     deptMap.set(dept, existing);
   }
 
-  // Build sorted unit groups with per-unit totals
+  // Build sorted unit groups with per-unit totals (urutan tetap: AVA, Ayres, Ayres Solo, JNE)
   const unitGroups: FinanceUnitGroup[] = [];
-  for (const [unit, deptMap] of Array.from(unitMap.entries()).sort(([a], [b]) =>
-    a.localeCompare(b),
+  for (const [unit, deptMap] of Array.from(unitMap.entries()).sort(
+    ([a], [b]) => financeUnitRank(a) - financeUnitRank(b) || a.localeCompare(b),
   )) {
     const departments = Array.from(deptMap.values()).sort((a, b) =>
       a.departemen.localeCompare(b.departemen),
@@ -776,9 +789,11 @@ export async function listFinancePembebanan(period?: {
   // Collect ordered unit names from payroll rows (same order as finance table)
   const unitSet = new Set<string>();
   for (const row of sheet.rows) {
-    if (row.unit) unitSet.add(row.unit);
+    unitSet.add(financeUnitOf(row));
   }
-  const units = Array.from(unitSet).sort();
+  const units = Array.from(unitSet).sort(
+    (a, b) => financeUnitRank(a) - financeUnitRank(b) || a.localeCompare(b),
+  );
 
   // Build result
   const rows: PembebananRow[] = PEMBEBANAN_CONFIG.map((cfg) => {
@@ -836,8 +851,7 @@ export async function listKeteranganHutangKontrak(period?: {
   const hutangPribadi: Record<string, KeteranganItem[]> = {};
 
   for (const row of sheet.rows) {
-    const unit = row.unit ?? null;
-    if (!unit) continue;
+    const unit = financeUnitOf(row);
 
     if (row.contractDeduction > 0) {
       if (!kontrak[unit]) kontrak[unit] = [];
@@ -866,7 +880,7 @@ export async function listKeteranganHutangKontrak(period?: {
 // ─── PENCAIRAN GAJI ──────────────────────────────────────────────────────────
 
 /** Unit yang selalu ditampilkan di tabel pencairan gaji, meskipun tidak ada data payroll */
-const PENCAIRAN_UNIT_ORDER = ["AVA Sportivo", "Ayres Apparel", "JNE"];
+const PENCAIRAN_UNIT_ORDER = ["AVA Sportivo", "Ayres Apparel", "Ayres Solo", "JNE"];
 
 export type PencairanGajiByUnit = {
   totalBersih: number;
@@ -959,7 +973,7 @@ export async function listFinancePencairanGaji(period?: {
   const unitSet = new Set<string>(PENCAIRAN_UNIT_ORDER);
   if (sheet) {
     for (const row of sheet.rows) {
-      if (row.unit) unitSet.add(row.unit);
+      unitSet.add(financeUnitOf(row));
     }
   }
   const extraUnits = Array.from(unitSet)
@@ -984,8 +998,7 @@ export async function listFinancePencairanGaji(period?: {
 
   if (sheet) {
     for (const row of sheet.rows) {
-      if (!row.unit) continue;
-      const u = acc[row.unit];
+      const u = acc[financeUnitOf(row)];
       if (!u) continue;
       u.totalBersih += row.netIncome;
       u.uangKontrak += row.contractDeduction;

@@ -12,6 +12,7 @@ export function mapPenjahitRow(row: PenjahitComputedRow): AdminPayrollSummaryShe
     recapGroup: row.pembagianRekapan ?? "",
     unit: null,
     pembebanan: null,
+    penempatan: null,
     department: row.departemen,
     bank: row.bank,
     accountNumber: row.noRekening,
