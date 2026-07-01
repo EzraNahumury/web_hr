@@ -117,6 +117,7 @@ export default function EmployeeAttendanceCapture({
   const [sickFile, setSickFile] = useState<File | null>(null);
   const [sickNote, setSickNote] = useState("");
   const [geofencePopup, setGeofencePopup] = useState<GeofencePopup | null>(null);
+  const [blockedPopup, setBlockedPopup] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<CameraFilter>(CAMERA_FILTERS[0]);
   const needsSelfie = !isCheckIn || checkInStatus === "hadir" || checkInStatus === "setengah_hari";
   const needsSickProof = isCheckIn && checkInStatus === "sakit";
@@ -442,6 +443,7 @@ export default function EmployeeAttendanceCapture({
 
       const result = (await response.json()) as {
         message?: string;
+        blocked?: boolean;
         geofence?: {
           reason: string | null;
           distanceMeters: number | null;
@@ -452,7 +454,12 @@ export default function EmployeeAttendanceCapture({
       };
 
       if (!response.ok) {
-        if (response.status === 403 && result.geofence) {
+        if (response.status === 403 && result.blocked) {
+          setBlockedPopup(
+            result.message ||
+              "Mohon maaf, kamu diblokir dari absensi hari ini. Silakan hubungi admin untuk memulihkan akun Anda.",
+          );
+        } else if (response.status === 403 && result.geofence) {
           setGeofencePopup({
             message: result.message || "Anda berada di luar radius presensi.",
             distanceMeters: result.geofence.distanceMeters,
@@ -516,6 +523,32 @@ export default function EmployeeAttendanceCapture({
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
+      {blockedPopup ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 px-4 py-6">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-[0_24px_60px_rgba(15,23,42,0.32)]">
+            <div className="flex flex-col items-center gap-3 border-b border-[#f3dcd4] px-6 py-6 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#fdecec] text-[#8f1d22]">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M4.9 4.9l14.2 14.2" />
+                </svg>
+              </div>
+              <h4 className="text-lg font-bold text-[#241716]">Absensi Diblokir</h4>
+              <p className="text-sm leading-6 text-[#7a6059]">{blockedPopup}</p>
+            </div>
+            <div className="px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setBlockedPopup(null)}
+                className="h-12 w-full rounded-2xl bg-[#8f1d22] text-sm font-semibold text-white transition hover:bg-[#a12228]"
+              >
+                Mengerti
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {geofencePopup ? (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/55 px-4 py-6">
           <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-[0_24px_60px_rgba(15,23,42,0.28)]">
