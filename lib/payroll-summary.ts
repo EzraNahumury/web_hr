@@ -889,10 +889,12 @@ export async function getAdminPayrollSummarySheet(period?: {
     // sehingga nilai usang di periode ini kalah dari yang baru diedit di periode lain.
     const carriedOverrideGajiPokok = carriedOverrideGajiPokokMap.get(row.employee_id) ?? null;
     const freelanceHarianTotal = freelanceHarianTotalMap.get(row.employee_id) ?? null;
-    const monthlyBaseSalary = isFreelance
-      ? (freelanceMinutes / 60) * dailyBaseSalary
-      : freelanceHarianTotal !== null
-        ? freelanceHarianTotal
+    // Freelance harian: harga/hari × hari_masuk aktual (prioritas di atas semua kalkulasi lain,
+    // termasuk isFreelance=true yang normalnya hitung per jam dari absensi).
+    const monthlyBaseSalary = freelanceHarianTotal !== null
+      ? freelanceHarianTotal
+      : isFreelance
+        ? (freelanceMinutes / 60) * dailyBaseSalary
         : (carriedOverrideGajiPokok ?? dailyBaseSalary * workDays);
 
     const positionAllowance = isFreelance ? 0 : toNumber(row.tunjangan_jabatan);
