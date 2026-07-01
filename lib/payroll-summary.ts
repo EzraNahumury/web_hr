@@ -457,6 +457,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     freelanceHoursResult,
     jadwalStatsResult,
     contractReturnResult,
+    freelanceHarianResult,
   ] = await Promise.all([
     pool.query<PeriodAttendanceRow[]>(
       `
@@ -600,6 +601,18 @@ export async function getAdminPayrollSummarySheet(period?: {
          AND tanggal_pengembalian BETWEEN ? AND ?`,
       [...employeeIds, range.startSql, range.endSql],
     ),
+    // Freelance harian: harga per hari × jumlah hari hadir di periode ini.
+    pool.query<RowDataPacket[]>(
+      `SELECT fh.karyawan_id AS employee_id,
+              fh.harga_per_hari,
+              COUNT(CASE WHEN a.status_absensi = 'hadir' THEN 1 END) AS hari_masuk
+       FROM freelance_harian fh
+       LEFT JOIN absensi a ON a.karyawan_id = fh.karyawan_id AND a.tanggal BETWEEN ? AND ?
+       WHERE fh.karyawan_id IN (${placeholders})
+         AND fh.bulan = ? AND fh.tahun = ?
+       GROUP BY fh.karyawan_id, fh.harga_per_hari`,
+      [range.startSql, range.endSql, ...employeeIds, periodMonth, periodYear],
+    ),
   ]);
 
   // Gaji Kontrak (override gaji pokok) = inputan manual yang seharusnya KONSISTEN
@@ -647,6 +660,11 @@ export async function getAdminPayrollSummarySheet(period?: {
   const freelanceMinutesMap = new Map<number, number>();
   for (const row of freelanceHoursResult[0] as Array<{ employee_id: number; total_menit: number | string }>) {
     freelanceMinutesMap.set(row.employee_id, Number(row.total_menit) || 0);
+  }
+
+  const freelanceHarianTotalMap = new Map<number, number>();
+  for (const row of freelanceHarianResult[0] as Array<{ employee_id: number; harga_per_hari: number | string; hari_masuk: number | string }>) {
+    freelanceHarianTotalMap.set(Number(row.employee_id), Number(row.harga_per_hari) * Number(row.hari_masuk));
   }
 
   const attendanceMap = new Map<
@@ -870,9 +888,12 @@ export async function getAdminPayrollSummarySheet(period?: {
     // carriedOverride sudah mencakup override periode ini sendiri (filter <=), dipilih by updated_at,
     // sehingga nilai usang di periode ini kalah dari yang baru diedit di periode lain.
     const carriedOverrideGajiPokok = carriedOverrideGajiPokokMap.get(row.employee_id) ?? null;
+    const freelanceHarianTotal = freelanceHarianTotalMap.get(row.employee_id) ?? null;
     const monthlyBaseSalary = isFreelance
       ? (freelanceMinutes / 60) * dailyBaseSalary
-      : (carriedOverrideGajiPokok ?? dailyBaseSalary * workDays);
+      : freelanceHarianTotal !== null
+        ? freelanceHarianTotal
+        : (carriedOverrideGajiPokok ?? dailyBaseSalary * workDays);
 
     const positionAllowance = isFreelance ? 0 : toNumber(row.tunjangan_jabatan);
     const fixedMealAllowance = isFreelance ? 0 :
