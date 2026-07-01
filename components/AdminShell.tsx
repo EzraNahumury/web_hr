@@ -11,6 +11,12 @@ type MenuItem = {
   disabled?: boolean;
 };
 
+type MenuGroup = {
+  // null = item berdiri sendiri tanpa header grup (mis. Dashboard).
+  group: string | null;
+  items: MenuItem[];
+};
+
 type Props = {
   title: string;
   description: string;
@@ -20,32 +26,70 @@ type Props = {
   children: React.ReactNode;
 };
 
-const menuItems: MenuItem[] = [
-  { label: "Dashboard", href: "/admin", description: "Ringkasan panel admin" },
-  { label: "Data Karyawan", href: "/admin/employees", description: "Kelola master karyawan" },
-  { label: "Absensi", href: "/admin/attendance", description: "Presensi dan keterlambatan" },
-  { label: "Set Jadwal", href: "/admin/jadwal", description: "Atur shift Toko, Gudang, Media" },
-  { label: "Laporan Kunjungan", href: "/admin/visit-reports", description: "Timeline kunjungan Sales Area" },
-  { label: "Lembur", href: "/admin/overtime", description: "Approval dan rekap lembur" },
-  { label: "Approval Perjalanan Dinas", href: "/admin/business-trips", description: "Approval dinas luar kota karyawan" },
-  { label: "Approval Reimburse", href: "/admin/reimbursements", description: "Approve nota reimburse" },
-  { label: "Pinjaman", href: "/admin/loans", description: "Pinjaman karyawan" },
-  { label: "Potongan Kontrak", href: "/admin/contract-deductions", description: "Potongan per bulan" },
-  { label: "Pengembalian Kontrak", href: "/admin/contract-returns", description: "Pengembalian deposit kontrak 5 bulan" },
-  { label: "Summary Payroll", href: "/admin/payroll-summary", description: "Ringkasan payroll" },
-  { label: "Summary Payroll Solo", href: "/admin/payroll-summary/solo", description: "Payroll khusus penempatan Toko Solo" },
-  { label: "Payroll Bonus", href: "/admin/payroll-bonus", description: "Payroll bonus Sales, SPV, Manager, CS, Host Live, Marketplace, Media Marketing, Advertiser" },
-  { label: "Summary Sales Nasional", href: "/admin/payroll-summary/sales-nasional", description: "Payroll khusus Sales Nasional" },
-  { label: "Summary Penjahit", href: "/admin/payroll-summary/penjahit", description: "Payroll khusus Penjahit (mingguan & bulanan)" },
-  { label: "Summary Payroll Freelance", href: "/admin/payroll-freelance", description: "Payroll karyawan Freelance (jam, pengerjaan, harian, custom)" },
-  { label: "Finance", href: "/admin/finance", description: "Pembebanan dan pencairan" },
-  { label: "Slip Gaji", href: "/admin/payslips", description: "Detail slip gaji" },
-  { label: "Distribusi Slip", href: "/admin/payslip-distribution", description: "Log distribusi slip" },
-  { label: "Slip Bonus", href: "/admin/bonus-slips", description: "Detail slip bonus" },
-  { label: "Distribusi Slip Bonus", href: "/admin/bonus-slip-distribution", description: "Log distribusi slip bonus" },
-  { label: "HR Agent", href: "/admin/hr-agent", description: "Asisten AI tanya-jawab data HR" },
-  { label: "Role", href: "/admin/roles", description: "Kelola akun admin & SPV" },
+const menuGroups: MenuGroup[] = [
+  {
+    group: null,
+    items: [{ label: "Dashboard", href: "/admin", description: "Ringkasan panel admin" }],
+  },
+  {
+    group: "Manajemen Karyawan",
+    items: [
+      { label: "Data Karyawan", href: "/admin/employees", description: "Kelola master karyawan" },
+      { label: "Set Jadwal", href: "/admin/jadwal", description: "Atur shift Toko, Gudang, Media" },
+      { label: "HR Agent", href: "/admin/hr-agent", description: "Asisten AI tanya-jawab data HR" },
+    ],
+  },
+  {
+    group: "Absensi & Aktivitas",
+    items: [
+      { label: "Absensi", href: "/admin/attendance", description: "Presensi dan keterlambatan" },
+      { label: "Lembur", href: "/admin/overtime", description: "Approval dan rekap lembur" },
+      { label: "Laporan Kunjungan", href: "/admin/visit-reports", description: "Timeline kunjungan Sales Area" },
+    ],
+  },
+  {
+    group: "Approval",
+    items: [
+      { label: "Approval Perjalanan Dinas", href: "/admin/business-trips", description: "Approval dinas luar kota karyawan" },
+      { label: "Approval Reimburse", href: "/admin/reimbursements", description: "Approve nota reimburse" },
+    ],
+  },
+  {
+    group: "Payroll",
+    items: [
+      { label: "Summary Payroll", href: "/admin/payroll-summary", description: "Ringkasan payroll" },
+      { label: "Summary Payroll Solo", href: "/admin/payroll-summary/solo", description: "Payroll khusus penempatan Toko Solo" },
+      { label: "Payroll Bonus", href: "/admin/payroll-bonus", description: "Payroll bonus Sales, SPV, Manager, CS, Host Live, Marketplace, Media Marketing, Advertiser" },
+      { label: "Summary Sales Nasional", href: "/admin/payroll-summary/sales-nasional", description: "Payroll khusus Sales Nasional" },
+      { label: "Summary Penjahit", href: "/admin/payroll-summary/penjahit", description: "Payroll khusus Penjahit (mingguan & bulanan)" },
+      { label: "Summary Payroll Freelance", href: "/admin/payroll-freelance", description: "Payroll karyawan Freelance (jam, pengerjaan, harian, custom)" },
+    ],
+  },
+  {
+    group: "Slip Gaji",
+    items: [
+      { label: "Slip Gaji", href: "/admin/payslips", description: "Detail slip gaji" },
+      { label: "Distribusi Slip", href: "/admin/payslip-distribution", description: "Log distribusi slip" },
+      { label: "Slip Bonus", href: "/admin/bonus-slips", description: "Detail slip bonus" },
+      { label: "Distribusi Slip Bonus", href: "/admin/bonus-slip-distribution", description: "Log distribusi slip bonus" },
+    ],
+  },
+  {
+    group: "Keuangan & Kontrak",
+    items: [
+      { label: "Finance", href: "/admin/finance", description: "Pembebanan dan pencairan" },
+      { label: "Pinjaman", href: "/admin/loans", description: "Pinjaman karyawan" },
+      { label: "Potongan Kontrak", href: "/admin/contract-deductions", description: "Potongan per bulan" },
+      { label: "Pengembalian Kontrak", href: "/admin/contract-returns", description: "Pengembalian deposit kontrak 5 bulan" },
+    ],
+  },
+  {
+    group: "Pengaturan",
+    items: [{ label: "Role", href: "/admin/roles", description: "Kelola akun admin & SPV" }],
+  },
 ];
+
+const allMenuItems: MenuItem[] = menuGroups.flatMap((grp) => grp.items);
 
 function GridIcon({ active }: { active?: boolean }) {
   return (
@@ -127,41 +171,52 @@ export default function AdminShell({
     };
   }, [drawerOpen]);
 
-  const eyebrow = menuItems.find((item) => item.href === currentPath)?.label ?? "Admin Workspace";
+  const eyebrow = allMenuItems.find((item) => item.href === currentPath)?.label ?? "Admin Workspace";
+
+  const renderItem = (item: MenuItem) => {
+    const active = item.href === currentPath;
+
+    if (item.disabled) {
+      return (
+        <div
+          key={item.label}
+          className="flex items-center gap-3 rounded-xl px-2.5 py-2 opacity-50"
+        >
+          <GridIcon />
+          <span className="text-sm font-semibold text-[#f4dddd]">{item.label}</span>
+        </div>
+      );
+    }
+
+    return (
+      <Link
+        key={item.label}
+        href={item.href}
+        onClick={() => setDrawerOpen(false)}
+        className={
+          active
+            ? "flex items-center gap-3 rounded-xl bg-[linear-gradient(135deg,#ef4444_0%,#b91c1c_100%)] px-2.5 py-2 text-white shadow-[0_10px_24px_rgba(185,28,28,0.32)]"
+            : "flex items-center gap-3 rounded-xl px-2.5 py-2 text-[#f7eaea] transition hover:bg-white/5"
+        }
+      >
+        <GridIcon active={active} />
+        <span className="text-sm font-semibold">{item.label}</span>
+      </Link>
+    );
+  };
 
   const NavList = (
-    <nav className="mt-6 min-h-0 flex-1 space-y-1 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5">
-      {menuItems.map((item) => {
-        const active = item.href === currentPath;
-
-        if (item.disabled) {
-          return (
-            <div
-              key={item.label}
-              className="flex items-center gap-3 rounded-xl px-2.5 py-2 opacity-50"
-            >
-              <GridIcon />
-              <span className="text-sm font-semibold text-[#f4dddd]">{item.label}</span>
-            </div>
-          );
-        }
-
-        return (
-          <Link
-            key={item.label}
-            href={item.href}
-            onClick={() => setDrawerOpen(false)}
-            className={
-              active
-                ? "flex items-center gap-3 rounded-xl bg-[linear-gradient(135deg,#ef4444_0%,#b91c1c_100%)] px-2.5 py-2 text-white shadow-[0_10px_24px_rgba(185,28,28,0.32)]"
-                : "flex items-center gap-3 rounded-xl px-2.5 py-2 text-[#f7eaea] transition hover:bg-white/5"
-            }
-          >
-            <GridIcon active={active} />
-            <span className="text-sm font-semibold">{item.label}</span>
-          </Link>
-        );
-      })}
+    <nav className="mt-6 min-h-0 flex-1 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5">
+      {menuGroups.map((grp, idx) => (
+        <div key={grp.group ?? "__top"} className={idx === 0 ? "space-y-1" : "mt-4 space-y-1"}>
+          {grp.group ? (
+            <p className="px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#9a7f83]">
+              {grp.group}
+            </p>
+          ) : null}
+          {grp.items.map(renderItem)}
+        </div>
+      ))}
     </nav>
   );
 
