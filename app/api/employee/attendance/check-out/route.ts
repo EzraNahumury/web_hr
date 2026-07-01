@@ -18,6 +18,7 @@ type EmployeeRow = RowDataPacket & {
   id: number;
   penempatan: string | null;
   sub_divisi: string | null;
+  jabatan: string | null;
 };
 
 type AttendanceRow = RowDataPacket & {
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
     }
 
     const [employeeRows] = await pool.query<EmployeeRow[]>(
-      "SELECT id, penempatan, sub_divisi FROM karyawan WHERE user_id = ? LIMIT 1",
+      "SELECT id, penempatan, sub_divisi, jabatan FROM karyawan WHERE user_id = ? LIMIT 1",
       [session.userId],
     );
 
@@ -134,6 +135,7 @@ export async function POST(request: Request) {
     const isHostlive = subDivLower === "hostlive";
     const isAdvertiser = subDivLower === "advertiser";
     const isPenjahit = subDivLower === "penjahit";
+    const isFreelance = (employee.jabatan ?? "").trim().toLowerCase() === "freelance";
     const isJne = employee.penempatan === "JNE";
     const isShiftEligible =
       isTokoGudangPlacement(employee.penempatan) || isMedia || isHostlive || isAdvertiser || isJne;
@@ -144,11 +146,14 @@ export async function POST(request: Request) {
     const effectiveScheduledShift =
       scheduledShift && scheduledShift !== "libur" ? scheduledShift : null;
 
-    // Penjahit fleksibel & hari setengah memang pulang lebih awal → lewati cek pulang awal.
+    // Penjahit & freelance fleksibel, dan hari setengah memang pulang lebih awal → lewati cek
+    // pulang awal. Freelance dibayar per jam (jam dihitung dari masuk–pulang) atau per pcs/jenis
+    // yang tidak terikat jam absensi, jadi boleh pulang kapan pun tanpa keterangan.
     // Untuk lainnya, pakai shift terjadwal bila ada; jika tidak, fallback deteksi dari jam.
     const isHalfDay = attendance.status_absensi === "setengah_hari";
     const earlyLeaveFlagged =
       !isPenjahit &&
+      !isFreelance &&
       !isHalfDay &&
       isEarlyLeaveByTime(attendance.jam_masuk_str, checkOutTime, effectiveScheduledShift);
     if (earlyLeaveFlagged && !keterangan) {

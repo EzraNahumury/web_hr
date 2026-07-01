@@ -16,6 +16,9 @@ export default async function EmployeeCheckOutPage() {
   const todayAttendance = await getEmployeeTodayAttendance(employee.id);
   const scheduledShift = await getScheduledShiftForDate(employee.id, getJakartaDate());
   const isPenjahit = (employee.sub_divisi ?? "").trim().toLowerCase() === "penjahit";
+  // Freelance (jam/pengerjaan/harian/custom) dibayar per jam atau per pcs, jadi boleh pulang
+  // kapan pun tanpa terkena aturan pulang awal.
+  const isFreelance = (employee.jabatan ?? "").trim().toLowerCase() === "freelance";
 
   return (
     <EmployeeShell
@@ -32,7 +35,7 @@ export default async function EmployeeCheckOutPage() {
         employeeMeta={`${employee.no_karyawan} • ${employee.jabatan}`}
         todayAttendance={todayAttendance}
         scheduledShift={scheduledShift && scheduledShift !== "libur" ? scheduledShift : null}
-        skipEarlyLeaveCheck={isPenjahit}
+        skipEarlyLeaveCheck={isPenjahit || isFreelance}
       />
     </EmployeeShell>
   );
