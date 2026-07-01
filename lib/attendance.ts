@@ -307,20 +307,20 @@ export function ensureAttendanceShiftSupport(): Promise<void> {
   return shiftColumnReady;
 }
 
-// Cari 1 record absensi lampau (sebelum hari ini) yang HADIR tapi belum absen pulang &
-// belum dipulihkan admin. Kalau ada -> karyawan diblokir absen sampai admin "Pulihkan".
+// Cek HANYA hari kemarin (hari sebelumnya): kalau HADIR tapi belum absen pulang &
+// belum dipulihkan admin -> karyawan diblokir absen sampai admin "Pulihkan".
+// Hari-hari lama (lebih dari kemarin) dibiarkan, tidak memblokir.
 export async function getBlockingMissingCheckout(employeeId: number, todaySql: string) {
   await ensureAttendanceShiftSupport();
   const [rows] = await pool.query<RowDataPacket[]>(
     `SELECT DATE_FORMAT(tanggal, '%Y-%m-%d') AS tanggal
        FROM absensi
       WHERE karyawan_id = ?
-        AND tanggal < ?
+        AND tanggal = DATE_SUB(?, INTERVAL 1 DAY)
         AND jam_masuk IS NOT NULL
         AND jam_pulang IS NULL
         AND status_absensi IN ('hadir', 'setengah_hari')
         AND absen_dipulihkan = 0
-      ORDER BY tanggal ASC
       LIMIT 1`,
     [employeeId, todaySql],
   );
