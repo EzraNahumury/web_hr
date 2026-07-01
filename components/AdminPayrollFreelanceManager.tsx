@@ -573,27 +573,41 @@ function CustomItemsModal({
     }
   }
 
-  async function saveEntry(itemId: number) {
-    const harga = editingCell[`h_${itemId}`];
-    const pcs = editingCell[`p_${itemId}`];
-    if (harga === undefined && pcs === undefined) return;
-    setSaving((p) => ({ ...p, [`save_${itemId}`]: true }));
-    const existing = items.find((it) => it.itemId === itemId);
-    const finalHarga = harga !== undefined ? Number(harga) || 0 : existing?.hargaPerPcs ?? 0;
-    const finalPcs = pcs !== undefined ? Number(pcs) || 0 : existing?.jumlahPcs ?? 0;
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Simpan SEMUA baris sekali klik (harga/qty semua jenis) — tidak perlu klik per baris.
+  async function saveAll() {
+    setSaveError(null);
+    setSaving((p) => ({ ...p, saveAll: true }));
+    const nextItems = items.map((it) => {
+      const hRaw = editingCell[`h_${it.itemId}`];
+      const pRaw = editingCell[`p_${it.itemId}`];
+      const harga = hRaw !== undefined ? Number(hRaw) || 0 : it.hargaPerPcs;
+      const pcs = pRaw !== undefined ? Number(pRaw) || 0 : it.jumlahPcs;
+      return { ...it, hargaPerPcs: harga, jumlahPcs: pcs, total: harga * pcs };
+    });
     try {
-      await fetch("/api/admin/freelance/custom-pengerjaan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ karyawanId: row.employeeId, itemId, bulan, tahun, hargaPerPcs: finalHarga, jumlahPcs: finalPcs }),
-      });
-      setItems((prev) => prev.map((it) =>
-        it.itemId === itemId ? { ...it, hargaPerPcs: finalHarga, jumlahPcs: finalPcs, total: finalHarga * finalPcs } : it,
-      ));
-      setEditingCell((p) => { const n = { ...p }; delete n[`h_${itemId}`]; delete n[`p_${itemId}`]; return n; });
+      const results = await Promise.all(
+        nextItems.map((it) =>
+          fetch("/api/admin/freelance/custom-pengerjaan", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ karyawanId: row.employeeId, itemId: it.itemId, bulan, tahun, hargaPerPcs: it.hargaPerPcs, jumlahPcs: it.jumlahPcs }),
+          }),
+        ),
+      );
+      if (results.some((r) => !r.ok)) {
+        setSaveError("Sebagian data gagal disimpan. Coba lagi.");
+        return;
+      }
+      setItems(nextItems);
+      setEditingCell({});
       onSaved();
+      onClose();
+    } catch {
+      setSaveError("Gagal menyimpan. Periksa koneksi lalu coba lagi.");
     } finally {
-      setSaving((p) => ({ ...p, [`save_${itemId}`]: false }));
+      setSaving((p) => ({ ...p, saveAll: false }));
     }
   }
 
@@ -640,7 +654,6 @@ function CustomItemsModal({
                 const h = editingCell[`h_${item.itemId}`] ?? String(item.hargaPerPcs);
                 const p = editingCell[`p_${item.itemId}`] ?? String(item.jumlahPcs);
                 const rowTotal = (Number(h) || 0) * (Number(p) || 0);
-                const isSavingRow = saving[`save_${item.itemId}`];
                 return (
                   <tr key={item.itemId} className={i % 2 === 0 ? "bg-white" : "bg-[#fdf7f5]"}>
                     <td className="px-3 py-2 font-medium text-[#2d1b18]">{item.namaJenis}</td>
@@ -662,18 +675,12 @@ function CustomItemsModal({
                     </td>
                     <td className="px-3 py-2 text-right font-semibold text-[#2d1b18]">{formatCurrency(rowTotal)}</td>
                     <td className="px-3 py-2 text-right">
-                      <div className="flex justify-end gap-1">
-                        <button
-                          onClick={() => saveEntry(item.itemId)}
-                          disabled={isSavingRow}
-                          className="rounded-lg bg-[#8f1d22] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[#7a1a1e] disabled:opacity-50"
-                        >
-                          {isSavingRow ? "..." : "Simpan"}
-                        </button>
+                      <div className="flex justify-end">
                         <button
                           onClick={() => deleteItem(item.itemId)}
                           disabled={saving[`del_${item.itemId}`]}
                           className="rounded-lg border border-[#f1c0c0] px-2.5 py-1 text-xs font-semibold text-[#b94040] hover:bg-[#fff2f0] disabled:opacity-50"
+                          title="Hapus jenis"
                         >
                           ✕
                         </button>
@@ -707,6 +714,27 @@ function CustomItemsModal({
               className="h-9 rounded-xl bg-[#558b2f] px-4 text-sm font-semibold text-white hover:bg-[#4a7a29] disabled:opacity-50"
             >
               {saving.add ? "..." : "+ Tambah Jenis"}
+            </button>
+          </div>
+
+          {saveError ? (
+            <p className="mt-3 rounded-lg bg-[#fdecec] px-3 py-2 text-xs font-medium text-[#b94040]">{saveError}</p>
+          ) : null}
+
+          <div className="mt-4 flex items-center justify-end gap-2 border-t border-[#ead7ce] pt-4">
+            <button
+              onClick={onClose}
+              disabled={saving.saveAll}
+              className="h-10 rounded-xl border border-[#ead7ce] px-5 text-sm font-semibold text-[#7c3c24] hover:bg-[#fdf7f5] disabled:opacity-50"
+            >
+              Batal
+            </button>
+            <button
+              onClick={saveAll}
+              disabled={saving.saveAll || items.length === 0}
+              className="h-10 rounded-xl bg-[#8f1d22] px-6 text-sm font-semibold text-white hover:bg-[#7a1a1e] disabled:opacity-50"
+            >
+              {saving.saveAll ? "Menyimpan..." : "Simpan"}
             </button>
           </div>
         </div>
