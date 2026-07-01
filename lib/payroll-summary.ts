@@ -32,6 +32,7 @@ import {
 import { isSalesNasionalRole } from "@/lib/sales-roles";
 import { PAYROLL_OMZET_BONUS_RATE } from "@/lib/payroll-constants";
 import { ensureContractReturnTable } from "@/lib/contract-returns";
+import { getFreelanceSheet } from "@/lib/payroll-freelance";
 
 type LatestPeriodRow = RowDataPacket & {
   periode_bulan: number;
@@ -457,7 +458,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     freelanceHoursResult,
     jadwalStatsResult,
     contractReturnResult,
-    freelanceHarianResult,
+    freelanceSheet,
   ] = await Promise.all([
     pool.query<PeriodAttendanceRow[]>(
       `
@@ -601,18 +602,9 @@ export async function getAdminPayrollSummarySheet(period?: {
          AND tanggal_pengembalian BETWEEN ? AND ?`,
       [...employeeIds, range.startSql, range.endSql],
     ),
-    // Freelance harian: harga per hari × jumlah hari hadir di periode ini.
-    pool.query<RowDataPacket[]>(
-      `SELECT fh.karyawan_id AS employee_id,
-              fh.harga_per_hari,
-              COUNT(CASE WHEN a.status_absensi = 'hadir' THEN 1 END) AS hari_masuk
-       FROM freelance_harian fh
-       LEFT JOIN absensi a ON a.karyawan_id = fh.karyawan_id AND a.tanggal BETWEEN ? AND ?
-       WHERE fh.karyawan_id IN (${placeholders})
-         AND fh.bulan = ? AND fh.tahun = ?
-       GROUP BY fh.karyawan_id, fh.harga_per_hari`,
-      [range.startSql, range.endSql, ...employeeIds, periodMonth, periodYear],
-    ),
+    // Freelance: pakai getFreelanceSheet sebagai SATU-SATUNYA sumber kebenaran gaji freelance
+    // (jam/pengerjaan/harian/custom). Slip gaji & summary WAJIB ikut angka ini persis.
+    getFreelanceSheet({ month: periodMonth, year: periodYear }),
   ]);
 
   // Gaji Kontrak (override gaji pokok) = inputan manual yang seharusnya KONSISTEN
@@ -662,10 +654,16 @@ export async function getAdminPayrollSummarySheet(period?: {
     freelanceMinutesMap.set(row.employee_id, Number(row.total_menit) || 0);
   }
 
-  const freelanceHarianTotalMap = new Map<number, number>();
-  for (const row of freelanceHarianResult[0] as Array<{ employee_id: number; harga_per_hari: number | string; hari_masuk: number | string }>) {
-    freelanceHarianTotalMap.set(Number(row.employee_id), Number(row.harga_per_hari) * Number(row.hari_masuk));
-  }
+  // Total gaji freelance per karyawan = gabungan semua tipe (jam/pengerjaan/harian/custom),
+  // persis seperti yang tampil di halaman Summary Payroll Freelance & Finance export.
+  const freelanceTotalMap = new Map<number, number>();
+  const addFreelanceTotal = (employeeId: number, total: number) => {
+    freelanceTotalMap.set(employeeId, (freelanceTotalMap.get(employeeId) ?? 0) + total);
+  };
+  for (const r of freelanceSheet.jam) addFreelanceTotal(r.employeeId, r.total);
+  for (const r of freelanceSheet.pengerjaan) addFreelanceTotal(r.employeeId, r.total);
+  for (const r of freelanceSheet.harian) addFreelanceTotal(r.employeeId, r.total);
+  for (const r of freelanceSheet.custom) addFreelanceTotal(r.employeeId, r.grandTotal);
 
   const attendanceMap = new Map<
     number,
@@ -861,9 +859,9 @@ export async function getAdminPayrollSummarySheet(period?: {
 
     const statusKepegawaianNorm = (row.status_kepegawaian ?? "").trim().toLowerCase();
     const isFreelance = statusKepegawaianNorm === "freelance";
-    // Freelance selalu dihitung per jam: rate × total jam (dari absensi, dibulatkan per 30 menit)
+    // Rate per jam freelance (dipakai utk tampilan dailyBaseSalary). Total gaji freelance
+    // tetap diambil dari getFreelanceSheet (freelanceTotalMap), bukan dihitung ulang di sini.
     const freelanceRatePerJam = toNumber(row.raw_gaji_pokok_per_jam);
-    const freelanceMinutes = freelanceMinutesMap.get(row.employee_id) ?? 0;
 
     const payrollType =
       row.raw_payroll_type ??
@@ -888,14 +886,14 @@ export async function getAdminPayrollSummarySheet(period?: {
     // carriedOverride sudah mencakup override periode ini sendiri (filter <=), dipilih by updated_at,
     // sehingga nilai usang di periode ini kalah dari yang baru diedit di periode lain.
     const carriedOverrideGajiPokok = carriedOverrideGajiPokokMap.get(row.employee_id) ?? null;
-    const freelanceHarianTotal = freelanceHarianTotalMap.get(row.employee_id) ?? null;
-    // Freelance harian: harga/hari × hari_masuk aktual (prioritas di atas semua kalkulasi lain,
-    // termasuk isFreelance=true yang normalnya hitung per jam dari absensi).
-    const monthlyBaseSalary = freelanceHarianTotal !== null
-      ? freelanceHarianTotal
-      : isFreelance
-        ? (freelanceMinutes / 60) * dailyBaseSalary
-        : (carriedOverrideGajiPokok ?? dailyBaseSalary * workDays);
+    // Freelance (semua tipe): gaji pokok = total dari Summary Payroll Freelance persis.
+    // Ini prioritas di atas semua kalkulasi lain supaya slip gaji & summary konsisten.
+    const freelanceSheetTotal = isFreelance
+      ? (freelanceTotalMap.get(row.employee_id) ?? 0)
+      : null;
+    const monthlyBaseSalary = freelanceSheetTotal !== null
+      ? freelanceSheetTotal
+      : (carriedOverrideGajiPokok ?? dailyBaseSalary * workDays);
 
     const positionAllowance = isFreelance ? 0 : toNumber(row.tunjangan_jabatan);
     const fixedMealAllowance = isFreelance ? 0 :
