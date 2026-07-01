@@ -858,10 +858,15 @@ export async function getAdminPayrollSummarySheet(period?: {
         : null;
 
     const statusKepegawaianNorm = (row.status_kepegawaian ?? "").trim().toLowerCase();
-    const isFreelance = statusKepegawaianNorm === "freelance";
-    // Rate per jam freelance (dipakai utk tampilan dailyBaseSalary). Total gaji freelance
-    // tetap diambil dari getFreelanceSheet (freelanceTotalMap), bukan dihitung ulang di sini.
+    // Muncul di Summary Payroll Freelance? getFreelanceSheet berbasis jabatan='freelance',
+    // jadi flag ini menangkap karyawan yang jabatan-nya 'freelance' meski status_kepegawaian
+    // bukan 'freelance'. Slip gaji WAJIB ikut angka summary freelance untuk mereka.
+    const isFreelanceSheet = freelanceTotalMap.has(row.employee_id);
+    const isFreelance = statusKepegawaianNorm === "freelance" || isFreelanceSheet;
+    // Rate per jam freelance (dipakai utk tampilan dailyBaseSalary & fallback per-jam
+    // untuk freelancer lama yang belum terdaftar di Summary Payroll Freelance).
     const freelanceRatePerJam = toNumber(row.raw_gaji_pokok_per_jam);
+    const freelanceMinutes = freelanceMinutesMap.get(row.employee_id) ?? 0;
 
     const payrollType =
       row.raw_payroll_type ??
@@ -886,14 +891,14 @@ export async function getAdminPayrollSummarySheet(period?: {
     // carriedOverride sudah mencakup override periode ini sendiri (filter <=), dipilih by updated_at,
     // sehingga nilai usang di periode ini kalah dari yang baru diedit di periode lain.
     const carriedOverrideGajiPokok = carriedOverrideGajiPokokMap.get(row.employee_id) ?? null;
-    // Freelance (semua tipe): gaji pokok = total dari Summary Payroll Freelance persis.
-    // Ini prioritas di atas semua kalkulasi lain supaya slip gaji & summary konsisten.
-    const freelanceSheetTotal = isFreelance
+    // Kalau muncul di Summary Payroll Freelance -> gaji pokok = total freelance PERSIS
+    // (jam/pengerjaan/harian/custom). Freelancer lama (status='freelance' tapi belum
+    // terdaftar di sheet) tetap pakai perhitungan per-jam dari absensi.
+    const monthlyBaseSalary = isFreelanceSheet
       ? (freelanceTotalMap.get(row.employee_id) ?? 0)
-      : null;
-    const monthlyBaseSalary = freelanceSheetTotal !== null
-      ? freelanceSheetTotal
-      : (carriedOverrideGajiPokok ?? dailyBaseSalary * workDays);
+      : isFreelance
+        ? (freelanceMinutes / 60) * dailyBaseSalary
+        : (carriedOverrideGajiPokok ?? dailyBaseSalary * workDays);
 
     const positionAllowance = isFreelance ? 0 : toNumber(row.tunjangan_jabatan);
     const fixedMealAllowance = isFreelance ? 0 :
@@ -995,6 +1000,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     const isContractWaived =
       statusKepegawaianNorm === "tetap" ||
       statusKepegawaianNorm === "freelance" ||
+      isFreelance ||
       isSalesNasional;
     const rawContractDeduction =
       inputOverrideKontrak ??
