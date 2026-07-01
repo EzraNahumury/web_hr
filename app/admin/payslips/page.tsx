@@ -1,7 +1,7 @@
 import AdminPayslipBuilder from "@/components/AdminPayslipBuilder";
 import AdminShell from "@/components/AdminShell";
 import { requireAdminSession } from "@/lib/auth";
-import { listPayrollPeriods } from "@/lib/payroll-admin";
+import { getActivePayrollPeriod, listPayrollPeriods } from "@/lib/payroll-admin";
 import { getPenjahitSheet, type PenjahitComputedRow } from "@/lib/payroll-penjahit";
 import { mapPenjahitRow } from "@/lib/payslip-row";
 import {
@@ -95,6 +95,14 @@ export default async function AdminPayslipsPage({
       return tryPeriod(requestedMonth, requestedYear);
     }
 
+    // Coba periode aktif saat ini terlebih dahulu
+    const active = getActivePayrollPeriod();
+    const activeMerged = await tryPeriod(active.month, active.year);
+    if (activeMerged && activeMerged.rows.length > 0) {
+      return activeMerged;
+    }
+
+    // Fallback ke periode paling baru yang punya data
     for (const option of periodOptions) {
       const merged = await tryPeriod(option.month, option.year);
       if (merged && merged.rows.length > 0) {

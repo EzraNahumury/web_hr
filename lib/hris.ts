@@ -1172,7 +1172,7 @@ export async function listPendingPayrollsForDistribution(period?: { month: numbe
         p.periode_tahun,
         CONCAT(p.periode_bulan, '/', p.periode_tahun) AS periode_label
       FROM payroll p
-      INNER JOIN karyawan k ON k.id = p.karyawan_id
+      INNER JOIN karyawan k ON k.id = p.karyawan_id AND k.status_data = 'aktif'
       LEFT JOIN slip_gaji sg ON sg.payroll_id = p.id
       WHERE (sg.id IS NULL OR sg.status_distribusi = 'draft')
         ${periodFilter}
