@@ -691,21 +691,28 @@ export async function getAdminPayrollSummarySheet(period?: {
       alfa: 0,
     };
 
-    // Satu sumber kebenaran: hitung setengah hari berbasis jam (konsisten dgn rekap absensi).
-    // Record setengah hari TIDAK dihitung sebagai hadir penuh & TIDAK dihitung telat.
-    // hasShift dihitung SAMA PERSIS dengan rekap absensi (lib/hris.ts): pakai jadwal
-    // terjadwal dulu, baru fallback ke absensi.shift — supaya klasifikasi shift vs non-shift
-    // tidak pernah berbeda antara rekap & payroll (mis. media/JNE shift lebar pagi_full/jne_*).
+    // Setengah hari HARUS konsisten dengan kode yang tampil di rekap absensi (mapAttendanceCode
+    // di lib/hris.ts). Kode absensi eksplisit menang: kalau admin sudah ganti jadi 'O', hari itu
+    // BUKAN setengah hari walau jam masuk/pulang-nya kebetulan masuk window setengah hari
+    // (jam_masuk/jam_pulang tidak ikut ter-reset saat kode diganti manual).
+    // hasShift dihitung SAMA PERSIS dengan rekap absensi: pakai jadwal terjadwal dulu,
+    // baru fallback ke absensi.shift.
     const hasShift =
       !!(row.scheduled_shift && row.scheduled_shift !== "libur") || !!row.shift;
+    const codeUpper = (row.kode_absensi ?? "").trim().toUpperCase();
+    const timeHalf = isHalfDayByTime(
+      row.jam_masuk_str,
+      row.jam_pulang_str,
+      row.setengah_hari,
+      hasShift,
+    );
     const isHalf =
-      row.status_absensi === "setengah_hari" ||
-      isHalfDayByTime(
-        row.jam_masuk_str,
-        row.jam_pulang_str,
-        row.setengah_hari,
-        hasShift,
-      );
+      codeUpper === "H" ||
+      codeUpper === "SH" ||
+      ((codeUpper === "T" || codeUpper === "SX") && timeHalf) ||
+      (codeUpper === "" &&
+        (row.status_absensi === "setengah_hari" ||
+          (row.status_absensi === "hadir" && timeHalf)));
 
     if (isHalf) {
       current.halfDay += 1;
