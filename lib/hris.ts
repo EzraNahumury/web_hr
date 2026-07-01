@@ -1,6 +1,6 @@
 import { RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
-import { isCheckInWithinOnTimeWindow, isEarlyLeaveByTime, isHalfDayByTime } from "@/lib/attendance";
+import { ensureAttendanceShiftSupport, isCheckInWithinOnTimeWindow, isEarlyLeaveByTime, isHalfDayByTime } from "@/lib/attendance";
 import { getEmployeeRemainingLoanTotal } from "@/lib/loans";
 import { getAdminPayrollSummarySheet } from "@/lib/payroll-summary";
 import {
@@ -55,6 +55,7 @@ type AttendanceRow = RowDataPacket & {
   terlambat_menit: number;
   setengah_hari: number;
   keterangan: string | null;
+  absen_dipulihkan: number | null;
   absensi_shift: string | null;
   scheduled_shift: string | null;
 };
@@ -75,6 +76,10 @@ export type AttendanceDayDetail = {
   note: string | null;
   isEarlyLeave: boolean;
   isOnTimeWindow: boolean;
+  // Belum absen pulang (hadir tapi jam pulang kosong) -> memblokir absensi berikutnya.
+  missingCheckout: boolean;
+  // Sudah dipulihkan admin.
+  recovered: boolean;
 };
 
 type AttendanceSheetRow = {
@@ -197,6 +202,7 @@ function buildPeriodDays(year: number, month: number) {
 }
 
 export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
+  await ensureAttendanceShiftSupport();
   const month = options.month ?? 3;
   const year = options.year ?? 2026;
   const view = options.view === "week" ? "week" : "month";
@@ -225,6 +231,7 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         a.terlambat_menit,
         a.setengah_hari,
         a.keterangan,
+        a.absen_dipulihkan,
         a.shift AS absensi_shift,
         j.shift AS scheduled_shift
       FROM karyawan k
@@ -296,6 +303,11 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         note: row.keterangan,
         isEarlyLeave,
         isOnTimeWindow,
+        missingCheckout:
+          !!row.jam_masuk &&
+          !row.jam_pulang &&
+          (row.status_absensi === "hadir" || row.status_absensi === "setengah_hari"),
+        recovered: Number(row.absen_dipulihkan ?? 0) === 1,
       };
     }
   }
@@ -340,6 +352,8 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         note: "Libur terjadwal",
         isEarlyLeave: false,
         isOnTimeWindow: false,
+        missingCheckout: false,
+        recovered: false,
       };
     }
   }

@@ -7,6 +7,7 @@ import {
   ensureAttendanceShiftSupport,
   getJakartaDate,
   getJakartaDateTime,
+  getBlockingMissingCheckout,
   getShiftLateMinutes,
   getShiftRangeLabel,
   isPagiAutoHalfDay,
@@ -140,6 +141,19 @@ export async function POST(request: Request) {
     const attendanceDate = getJakartaDate();
     const attendanceDateTime = getJakartaDateTime();
     const currentTime = attendanceDateTime.split(" ")[1];
+
+    // Blokir: kalau ada hari lampau yang HADIR tapi belum absen pulang & belum dipulihkan admin.
+    const blockingDate = await getBlockingMissingCheckout(employee.id, attendanceDate);
+    if (blockingDate) {
+      return NextResponse.json(
+        {
+          message:
+            "Mohon maaf, kamu diblokir dari absensi hari ini karena belum melakukan presensi pulang di hari sebelumnya. Silakan hubungi admin untuk memulihkan akun Anda.",
+          blocked: true,
+        },
+        { status: 403 },
+      );
+    }
 
     const [existingRows] = await pool.query<AttendanceRow[]>(
       "SELECT id, jam_masuk, status_absensi FROM absensi WHERE karyawan_id = ? AND tanggal = ? LIMIT 1",

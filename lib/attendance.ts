@@ -1,3 +1,5 @@
+import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
+
 import { pool } from "@/lib/db";
 import { saveBufferToUploads } from "@/lib/uploads";
 
@@ -290,9 +292,50 @@ export function ensureAttendanceShiftSupport(): Promise<void> {
       } catch (err) {
         console.error("Failed to widen shift enum", err);
       }
+      // Flag: record hadir yang lupa absen pulang. absen_dipulihkan=1 artinya admin sudah
+      // "Pulihkan" -> tidak lagi memblokir absensi karyawan.
+      try {
+        await pool.query(
+          `ALTER TABLE absensi ADD COLUMN absen_dipulihkan TINYINT(1) NOT NULL DEFAULT 0 AFTER keterangan`,
+        );
+      } catch (err: unknown) {
+        const code = typeof err === "object" && err !== null && "code" in err ? (err as { code: string }).code : "";
+        if (code !== "ER_DUP_FIELDNAME") throw err;
+      }
     })();
   }
   return shiftColumnReady;
+}
+
+// Cari 1 record absensi lampau (sebelum hari ini) yang HADIR tapi belum absen pulang &
+// belum dipulihkan admin. Kalau ada -> karyawan diblokir absen sampai admin "Pulihkan".
+export async function getBlockingMissingCheckout(employeeId: number, todaySql: string) {
+  await ensureAttendanceShiftSupport();
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT DATE_FORMAT(tanggal, '%Y-%m-%d') AS tanggal
+       FROM absensi
+      WHERE karyawan_id = ?
+        AND tanggal < ?
+        AND jam_masuk IS NOT NULL
+        AND jam_pulang IS NULL
+        AND status_absensi IN ('hadir', 'setengah_hari')
+        AND absen_dipulihkan = 0
+      ORDER BY tanggal ASC
+      LIMIT 1`,
+    [employeeId, todaySql],
+  );
+  return rows[0] ? (rows[0] as { tanggal: string }).tanggal : null;
+}
+
+// Admin "Pulihkan": tandai record (karyawan, tanggal) sebagai sudah dipulihkan.
+export async function recoverAttendance(employeeId: number, dateSql: string) {
+  await ensureAttendanceShiftSupport();
+  const [result] = await pool.query<ResultSetHeader>(
+    `UPDATE absensi SET absen_dipulihkan = 1
+      WHERE karyawan_id = ? AND tanggal = ?`,
+    [employeeId, dateSql],
+  );
+  return { updated: result.affectedRows };
 }
 
 export async function saveAttendancePhoto(dataUrl: string, employeeId: number, mode: "in" | "out") {

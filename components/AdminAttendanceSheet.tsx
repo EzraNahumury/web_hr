@@ -65,6 +65,7 @@ function AttendanceDetailModal({
   const [pendingCode, setPendingCode] = useState<string>("");
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isSaving, startSaveTransition] = useTransition();
+  const [isRecovering, startRecoverTransition] = useTransition();
 
   useEffect(() => {
     setPendingCode(selected?.detail.code || "");
@@ -73,6 +74,34 @@ function AttendanceDetailModal({
 
   if (!selected) {
     return null;
+  }
+
+  function handleRecover() {
+    if (!selected) return;
+    setFeedback(null);
+    startRecoverTransition(async () => {
+      try {
+        const response = await fetch("/api/admin/attendance/recover", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            employeeId: selected.employeeId,
+            date: selected.detail.date,
+          }),
+        });
+        const result = (await response.json()) as { message?: string };
+        if (!response.ok) {
+          throw new Error(result.message || "Gagal memulihkan absensi.");
+        }
+        setFeedback({ type: "success", text: result.message || "Absensi dipulihkan." });
+        router.refresh();
+      } catch (error) {
+        setFeedback({
+          type: "error",
+          text: error instanceof Error ? error.message : "Terjadi kesalahan saat memulihkan.",
+        });
+      }
+    });
   }
 
   function handleSave() {
@@ -180,6 +209,33 @@ function AttendanceDetailModal({
                 </span>
               ) : null}
             </div>
+
+            {selected.detail.missingCheckout ? (
+              <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-[#f0c9a6] bg-[#fff7ee] px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-[#8a4b12]">Belum absen pulang</p>
+                  <p className="mt-0.5 text-xs text-[#a06a3a]">
+                    {selected.detail.recovered
+                      ? "Sudah dipulihkan. Karyawan bisa absen seperti biasa."
+                      : "Karyawan diblokir dari absensi sampai dipulihkan. Klik Pulihkan agar bisa absen lagi."}
+                  </p>
+                </div>
+                {selected.detail.recovered ? (
+                  <span className="inline-flex items-center rounded-full bg-[#e7f8ef] px-3 py-1.5 text-xs font-semibold text-[#136c4c]">
+                    Dipulihkan
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleRecover}
+                    disabled={isRecovering}
+                    className="inline-flex h-10 items-center justify-center rounded-xl bg-[#0d7f86] px-4 text-sm font-semibold text-white shadow-[0_2px_8px_rgba(13,127,134,0.22)] transition hover:bg-[#0a6a70] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isRecovering ? "Memulihkan..." : "Pulihkan"}
+                  </button>
+                )}
+              </div>
+            ) : null}
           </div>
           <button
             type="button"
@@ -449,11 +505,14 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                 {days.map((day) => {
                   const detail = row.daily[day];
                   const isClickable = !!detail;
-                  const missingCheckout =
+                  const missingCheckoutRaw =
                     !!detail &&
                     detail.code === "O" &&
                     !!detail.timeIn &&
                     !detail.timeOut;
+                  // Merah = belum pulang & belum dipulihkan (memblokir). Sudah dipulihkan -> netral.
+                  const missingCheckout = missingCheckoutRaw && !detail?.recovered;
+                  const recoveredMissing = missingCheckoutRaw && !!detail?.recovered;
                   const earlyLeave =
                     !!detail &&
                     (detail.code === "PA" ||
@@ -471,7 +530,9 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                     !!detail.isOnTimeWindow;
                   const displayCode = earlyLeave ? "PA" : detail?.code || "-";
                   const cellTitle = missingCheckout
-                    ? "Belum presensi pulang"
+                    ? "Belum presensi pulang (diblokir — klik untuk Pulihkan)"
+                    : recoveredMissing
+                    ? "Belum presensi pulang (sudah dipulihkan)"
                     : earlyLeave
                       ? "Pulang awal (sebelum jadwal selesai)"
                       : lateOver30
@@ -499,6 +560,8 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                           className={
                             missingCheckout
                               ? "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fde2dd] px-2 py-1 text-xs font-bold text-[#c0392b] transition hover:bg-[#fbcec7]"
+                              : recoveredMissing
+                                ? "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#dbeef0] px-2 py-1 text-xs font-bold text-[#0d7f86] transition hover:bg-[#c6e4e8]"
                               : earlyLeave
                                 ? "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fff5d6] px-2 py-1 text-xs font-bold text-[#8d6200] transition hover:bg-[#fde9a4]"
                                 : lateOver30
@@ -538,6 +601,8 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                                 note: null,
                                 isEarlyLeave: false,
                                 isOnTimeWindow: false,
+                                missingCheckout: false,
+                                recovered: false,
                               },
                             });
                           }}
