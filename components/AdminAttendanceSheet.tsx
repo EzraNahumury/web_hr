@@ -154,8 +154,8 @@ function AttendanceDetailModal({
     : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
-      <div className="w-full max-w-3xl rounded-[28px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.22)]">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4">
+      <div className="my-auto max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[28px] bg-white shadow-[0_30px_80px_rgba(15,23,42,0.22)]">
         <div className="flex items-start justify-between gap-4 border-b border-[#e9dfda] px-6 py-5">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#a16f63]">
