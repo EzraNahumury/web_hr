@@ -50,7 +50,7 @@ export type LookupOption = {
   value: string;
 };
 
-export const EMPLOYEE_UNITS = ["AVA Sportivo", "Ayres Apparel", "JNE"] as const;
+export const EMPLOYEE_UNITS = ["AVA Sportivo", "Ayres Apparel", "Ayres Solo", "JNE"] as const;
 export const EMPLOYEE_ROLES = [
   "CEO",
   "Secretary",
