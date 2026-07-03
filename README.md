@@ -706,24 +706,60 @@ Hanya pengajuan yang ditujukan kepada Anda yang muncul. Approve/Reject + catatan
 
 ## 17. Alur Admin
 
-| Modul | Ringkasan |
-|-------|-----------|
+Sidebar admin dikelompokkan menjadi **8 grup** (`components/AdminShell.tsx`). Tabel di bawah mengikuti pengelompokan tersebut secara lengkap.
+
+**Dashboard** — ringkasan panel admin (statistik karyawan, presensi hari ini, payroll & slip tertunda).
+
+**🧑 Manajemen Karyawan**
+| Menu | Ringkasan |
+|------|-----------|
 | **Data Karyawan** | CRUD, nonaktifkan, upload/download KTP, atur bank & rekening |
-| **Absensi** | Rekap semua, filter, modal Detail (foto/peta), ubah kode manual |
-| **Set Jadwal** | Jadwal semua karyawan tanpa batasan |
+| **Set Jadwal** | Jadwal shift semua karyawan tanpa batasan penempatan |
+| **HR Agent** | Tanya-jawab data HR berbasis AI (read-only ke DB) |
+
+**🕐 Absensi & Aktivitas**
+| Menu | Ringkasan |
+|------|-----------|
+| **Absensi** | Rekap semua karyawan, filter, modal Detail (foto/peta), ubah kode manual |
 | **Lembur** | 2 tab (Langsung ke Admin / Via Atasan), modal detail, approve/reject |
-| **Pinjaman** | Buat pinjaman darurat (tanpa batas), approve/reject, pelunasan awal |
+| **Laporan Kunjungan** | Timeline kunjungan Sales Area + ringkasan |
+
+**✅ Approval**
+| Menu | Ringkasan |
+|------|-----------|
+| **Approval Perjalanan Dinas** | Approve/reject dinas luar kota karyawan |
+| **Approval Reimburse** | Approve/reject nota reimburse |
+
+**💰 Payroll**
+| Menu | Ringkasan |
+|------|-----------|
 | **Summary Payroll** | Mesin payroll utama; edit override, input omzet, real-time |
 | **Summary Payroll Solo** | Khusus penempatan Toko Solo (omzet tanpa multiplier) |
-| **Summary Penjahit** | Penjahit mingguan/bulanan |
+| **Payroll Bonus** | Bonus Sales, SPV, Manager, CS, Host Live, Marketplace, Media, Advertiser |
 | **Summary Sales Nasional** | Sales Nasional (komisi & omzet) |
+| **Summary Penjahit** | Penjahit mingguan & bulanan |
 | **Summary Payroll Freelance** | 4 tipe freelance (jam/pengerjaan/harian/custom) |
-| **Slip Gaji / Distribusi** | Render, export PDF, distribusi ke karyawan aktif |
-| **Slip Bonus / Distribusi** | Terpisah dari slip gaji |
-| **Finance** | Rekap keuangan per unit + lembur custom |
-| **Reimburse / Perjalanan Dinas** | Approval |
+
+**🧾 Slip Gaji**
+| Menu | Ringkasan |
+|------|-----------|
+| **Slip Gaji** | Render slip, export PDF |
+| **Distribusi Slip** | Distribusi ke karyawan aktif + log |
+| **Slip Bonus** | Slip bonus (terpisah dari slip gaji) |
+| **Distribusi Slip Bonus** | Distribusi & log slip bonus |
+
+**🏦 Keuangan & Kontrak**
+| Menu | Ringkasan |
+|------|-----------|
+| **Finance** | Rekap keuangan per unit + lembur custom, export XLSX |
+| **Pinjaman** | Buat pinjaman darurat (tanpa batas), approve/reject, pelunasan awal |
+| **Potongan Kontrak** | Potongan kontrak per bulan per karyawan |
+| **Pengembalian Kontrak** | Pengembalian deposit kontrak (5 bulan) |
+
+**⚙️ Pengaturan**
+| Menu | Ringkasan |
+|------|-----------|
 | **Role** | Kelola akun Admin & SPV |
-| **HR Agent** | Tanya-jawab data HR berbasis AI (read-only) |
 
 **Periode payroll:** 26 (M-1) → 25 (M). Contoh: Juni = 26 Mei – 25 Juni. Otomatis pindah periode jika tanggal > 25. Karyawan nonaktif hilang dari periode berikutnya.
 
