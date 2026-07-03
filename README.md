@@ -1,996 +1,828 @@
-# Panduan Penggunaan Sistem Web HR — AvA Group
+# Web HR — AvA Group
 
-> **Versi Dokumen:** 2.0 | **Berlaku untuk:** Seluruh Karyawan, Supervisor, Admin
-> Dokumen ini mencakup seluruh alur penggunaan sistem, aturan yang berlaku, dan panduan lengkap per peran (role).
+> **Sistem Manajemen SDM & Payroll berbasis web** untuk AvA Group (AVA Sportivo, Ayres Apparel, JNE, Toko Solo).
+> Presensi digital (selfie + GPS), penjadwalan shift, lembur berjenjang, pinjaman, dan mesin payroll otomatis lengkap dengan slip gaji.
+
+**Versi Dokumen:** 3.0 · **Zona waktu sistem:** Asia/Jakarta (WIB) · **Bahasa:** Indonesia
+
+Dokumen ini berisi **dua bagian**:
+- **Bagian A — Dokumentasi Teknis**: arsitektur, model data, alur (flow diagram), modul, API, setup & deployment.
+- **Bagian B — Panduan Pengguna**: alur pemakaian per peran (Karyawan, SPV/Manager, Admin) dan aturan sistem.
 
 ---
 
 ## Daftar Isi
 
-1. [Gambaran Umum Sistem](#1-gambaran-umum-sistem)
-2. [Peran & Hak Akses](#2-peran--hak-akses)
-3. [Alur Karyawan (Staff)](#3-alur-karyawan-staff)
-   - [Login](#31-login)
-   - [Presensi Masuk (Check-In)](#32-presensi-masuk-check-in)
-   - [Presensi Pulang (Check-Out)](#33-presensi-pulang-check-out)
-   - [Pengajuan Lembur](#34-pengajuan-lembur)
-   - [Pengajuan Pinjaman](#35-pengajuan-pinjaman)
-   - [Slip Gaji & Slip Bonus](#36-slip-gaji--slip-bonus)
-   - [Reimburse & Perjalanan Dinas](#37-reimburse--perjalanan-dinas)
-   - [Riwayat Absensi](#38-riwayat-absensi)
-   - [Informasi Kontrak](#39-informasi-kontrak)
-4. [Alur Supervisor (SPV) & Manager](#4-alur-supervisor-spv--manager)
-   - [Set Jadwal](#41-set-jadwal)
-   - [Approval Lembur](#42-approval-lembur)
-5. [Alur Admin](#5-alur-admin)
-   - [Manajemen Karyawan](#51-manajemen-karyawan)
-   - [Kelola Absensi](#52-kelola-absensi)
-   - [Set Jadwal (Admin)](#53-set-jadwal-admin)
-   - [Manajemen Lembur](#54-manajemen-lembur)
-   - [Manajemen Pinjaman](#55-manajemen-pinjaman)
-   - [Summary Payroll](#56-summary-payroll)
-   - [Summary Payroll Solo](#57-summary-payroll-solo)
-   - [Payroll Penjahit](#58-payroll-penjahit)
-   - [Payroll Sales Nasional](#59-payroll-sales-nasional)
-   - [Slip Gaji & Distribusi](#510-slip-gaji--distribusi)
-   - [Finance](#511-finance)
-   - [Manajemen Role (Admin & SPV)](#512-manajemen-role-admin--spv)
-6. [Aturan & Ketentuan Sistem](#6-aturan--ketentuan-sistem)
-   - [Aturan Presensi](#61-aturan-presensi)
-   - [Shift & Jam Kerja](#62-shift--jam-kerja)
-   - [Geofence (Batas Lokasi)](#63-geofence-batas-lokasi)
-   - [Aturan Lembur](#64-aturan-lembur)
-   - [Aturan Pinjaman](#65-aturan-pinjaman)
-   - [Aturan Periode Payroll](#66-aturan-periode-payroll)
-7. [Kode Status Presensi](#7-kode-status-presensi)
-8. [Tabel Ringkasan Hak Akses](#8-tabel-ringkasan-hak-akses)
-9. [FAQ & Catatan Penting](#9-faq--catatan-penting)
+**Bagian A — Teknis**
+1. [Gambaran Umum](#1-gambaran-umum)
+2. [Tech Stack](#2-tech-stack)
+3. [Arsitektur Sistem](#3-arsitektur-sistem)
+4. [Struktur Direktori](#4-struktur-direktori)
+5. [Autentikasi & Sesi](#5-autentikasi--sesi)
+6. [Model Data (ERD & Katalog Tabel)](#6-model-data-erd--katalog-tabel)
+7. [Alur Utama / Flow Diagram](#7-alur-utama--flow-diagram)
+   - [7.1 Login & Routing Peran](#71-login--routing-peran)
+   - [7.2 Presensi Masuk / Pulang](#72-presensi-masuk--pulang)
+   - [7.3 Lembur & Approval Berjenjang](#73-lembur--approval-berjenjang)
+   - [7.4 Pinjaman (Lifecycle)](#74-pinjaman-lifecycle)
+   - [7.5 Pipeline Payroll](#75-pipeline-payroll)
+   - [7.6 Payroll Freelance](#76-payroll-freelance)
+   - [7.7 Slip Gaji & Distribusi](#77-slip-gaji--distribusi)
+8. [Modul Bisnis (`lib/`)](#8-modul-bisnis-lib)
+9. [Peta API Endpoint](#9-peta-api-endpoint)
+10. [Setup & Menjalankan](#10-setup--menjalankan)
+11. [Environment Variables](#11-environment-variables)
+12. [Deployment](#12-deployment)
+13. [Catatan Keamanan & Teknis](#13-catatan-keamanan--teknis)
+
+**Bagian B — Panduan Pengguna**
+14. [Peran & Hak Akses](#14-peran--hak-akses)
+15. [Alur Karyawan](#15-alur-karyawan)
+16. [Alur Supervisor & Manager](#16-alur-supervisor--manager)
+17. [Alur Admin](#17-alur-admin)
+18. [Aturan Sistem](#18-aturan-sistem)
+19. [Kode Status Presensi](#19-kode-status-presensi)
+20. [FAQ](#20-faq)
 
 ---
 
-## 1. Gambaran Umum Sistem
+# BAGIAN A — DOKUMENTASI TEKNIS
 
-**Web HR AvA Group** adalah sistem manajemen sumber daya manusia berbasis web yang mencakup:
+## 1. Gambaran Umum
 
-- **Presensi digital** — check-in & check-out berbasis selfie + GPS
-- **Manajemen jadwal shift** — pengaturan jadwal harian oleh SPV/Admin
-- **Pengajuan & approval lembur** — alur 1x atau 2x approve sesuai pengajuan
-- **Pinjaman karyawan** — pengajuan, cicilan otomatis terintegrasi payroll
-- **Payroll & slip gaji** — perhitungan gaji otomatis dari data presensi real-time
-- **Reimburse & perjalanan dinas** — pengajuan penggantian biaya
-- **Laporan kunjungan** — untuk staf sales
+Web HR AvA Group adalah aplikasi **full-stack Next.js (App Router)** yang menyatukan seluruh proses HR ke dalam satu platform:
 
-Sistem ini **menggunakan zona waktu Asia/Jakarta (WIB)** untuk seluruh pencatatan waktu.
-
----
-
-## 2. Peran & Hak Akses
-
-Terdapat **3 jenis akun** dalam sistem:
-
-| Peran | Keterangan | Login Via |
-|-------|------------|-----------|
-| **Karyawan (Staff)** | Presensi, lembur, pinjaman, slip gaji | Halaman utama (login karyawan) |
-| **Supervisor / Manager** | Set jadwal + approval lembur tim | Login SPV (link khusus) atau otomatis muncul di menu karyawan |
-| **Admin** | Akses penuh ke seluruh sistem | Login admin (link khusus) |
-
-> **Catatan:** Supervisor dan Manager yang statusnya karyawan aktif tetap bisa login sebagai karyawan untuk presensi pribadi. Menu Set Jadwal dan Approval Lembur akan muncul otomatis di menu karyawan mereka.
-
----
-
-## 3. Alur Karyawan (Staff)
-
-### 3.1 Login
-
-1. Buka alamat sistem Web HR AvA Group di browser.
-2. Masukkan **email** dan **password** akun karyawan.
-3. Jika berhasil, akan diarahkan ke dashboard karyawan.
-
-> **Lupa password?** Hubungi Admin HR untuk reset password.
-
----
-
-### 3.2 Presensi Masuk (Check-In)
-
-**Menu:** Presensi → Presensi Masuk
-
-#### Langkah-langkah:
-
-1. Buka halaman **Presensi Masuk**.
-2. Pilih **jenis presensi**:
-
-   | Pilihan | Kode | Syarat |
-   |---------|------|--------|
-   | **Masuk (Hadir)** | O | Selfie + Lokasi GPS |
-   | **Izin / Off** | I | Wajib isi keterangan |
-   | **Sakit + Surat** | S | Upload bukti surat sakit |
-   | **Sakit (tanpa surat)** | SX | Wajib isi keterangan alasan sakit |
-   | **Setengah Hari** | H | Selfie + Lokasi GPS |
-
-3. Untuk **Masuk / Setengah Hari**:
-   - Izinkan akses **kamera** dan **lokasi GPS** di browser.
-   - Tunggu sampai lokasi terdeteksi (akurasi muncul).
-   - Ambil **selfie** (bisa pilih filter kamera).
-   - Klik **Kirim Presensi Masuk**.
-
-4. Untuk **Izin / Sakit tanpa surat**:
-   - Isi kolom **keterangan** dengan alasan yang jelas.
-   - Klik **Kirim**.
-
-5. Untuk **Sakit + Surat**:
-   - Upload file surat sakit (JPG, PNG, PDF).
-   - Klik **Kirim**.
-
-#### Aturan Check-In:
-- **Hanya bisa 1x sehari** — tidak bisa mengubah atau mengulang setelah terkirim.
-- Jika sudah presensi sakit/izin, tidak bisa check-in lagi di hari yang sama.
-- Jika karyawan Toko/Gudang/Media/JNE, sistem akan memvalidasi jam check-in sesuai shift terjadwal.
-- Jika jadwal hari itu adalah **libur**, sistem akan menolak presensi masuk.
-
-#### Karyawan Terlambat:
-- Sistem otomatis menghitung keterlambatan (menit) dari jam mulai shift.
-- Keterlambatan tercatat di rekap absensi dan dapat mempengaruhi potongan gaji.
-
----
-
-### 3.3 Presensi Pulang (Check-Out)
-
-**Menu:** Presensi → Presensi Pulang
-
-#### Langkah-langkah:
-
-1. Buka halaman **Presensi Pulang**.
-2. Izinkan akses **kamera** dan **lokasi GPS**.
-3. Ambil **selfie** check-out.
-4. Klik **Kirim Presensi Pulang**.
-
-#### Aturan Check-Out:
-- Harus sudah melakukan check-in terlebih dahulu di hari yang sama.
-- Tidak bisa check-out jika status hari ini adalah sakit atau izin (tidak diperlukan).
-- **Pulang Awal (PA):** Jika pulang sebelum jam checkout shift, sistem **wajib meminta keterangan alasan**. Tanpa keterangan, presensi pulang tidak bisa dikirim.
-- Lokasi saat check-out juga divalidasi dengan geofence (harus dalam radius kantor/penempatan).
-- Untuk karyawan Toko/Gudang/Media/JNE, sistem otomatis mendeteksi dan menyimpan shift berdasarkan jam masuk dan jam pulang.
-
----
-
-### 3.4 Pengajuan Lembur
-
-**Menu:** Data Lembur
-
-#### Field Wajib (untuk Semua Karyawan):
-
-1. **Tanggal Lembur**
-2. **Jam Mulai** dan **Jam Selesai**
-3. **Diajukan Ke** (Atasan Penyetuju)
-4. **Jenis Pekerjaan** (text — contoh: packing order, finishing produk)
-5. **Deadline** (tanggal target penyelesaian)
-6. **Catatan / Alasan Lembur** (opsional)
-7. **Bukti Lembur** (file opsional)
-
-#### Field Tambahan Khusus Divisi Produksi:
-
-Jika karyawan dari divisi **Produksi**, akan muncul section tambahan dengan field wajib:
-
-| Field | Tipe | Keterangan |
-|-------|------|------------|
-| **Nama Order** | Text | Contoh: Order #1234 — Pesanan PT XYZ |
-| **Jumlah QTY** | Angka | Total kuantitas order |
-| **Target Sebelum Lembur** | Angka | Target yang sudah dicapai sebelum lembur |
-| **Target Setelah Lembur** | Angka | Target yang akan dicapai dengan lembur |
-
-> Field produksi hanya muncul untuk karyawan dengan `divisi = Produksi`. Untuk divisi lain, field ini disembunyikan.
-
-#### Dropdown "Diajukan Ke" Berdasarkan Jabatan Pengaju:
-
-| Pengaju | Pilihan Atasan |
-|---------|----------------|
-| **Staff** | Supervisor individu + SPV individu + 1 opsi generic **ADMIN** |
-| **Supervisor** | Manager individu + 1 opsi generic **ADMIN** |
-| **Manager** | Otomatis **ADMIN** (tanpa dropdown) |
-
-> Opsi **ADMIN** generic artinya pengajuan masuk ke pool semua admin — admin manapun bisa approve. Tidak perlu pilih admin spesifik.
-
-#### Status Pengajuan Lembur:
-
-| Status | Keterangan |
+| Domain | Kemampuan |
 |--------|-----------|
-| **Pending** | Menunggu persetujuan atasan/admin |
-| **Approved** | Disetujui — jam lembur masuk ke payroll |
-| **Rejected** | Ditolak |
+| **Presensi** | Check-in / check-out berbasis **selfie + GPS geofence**, deteksi shift & keterlambatan otomatis |
+| **Penjadwalan** | Set jadwal shift per karyawan per hari (SPV/Manager/Admin) |
+| **Lembur** | Pengajuan + approval **1x atau 2x berjenjang** (atasan → admin) |
+| **Pinjaman** | Pengajuan mandiri, cicilan otomatis terpotong payroll, pelunasan awal |
+| **Payroll** | Mesin perhitungan gaji **real-time** dari absensi + lembur + potongan + omzet |
+| **Payroll khusus** | Solo, Penjahit (mingguan/bulanan), Sales Nasional, Freelance (jam/pengerjaan/harian/custom) |
+| **Slip** | Slip gaji & slip bonus (PDF), distribusi ke akun karyawan |
+| **Keuangan** | Rekap finance per unit, kontrak, reimburse, perjalanan dinas |
+| **Lainnya** | Laporan kunjungan sales, HR Agent (AI tanya-jawab data), export Excel/PDF |
 
-#### Alur Approval Berdasarkan Pengajuan:
-
-**1x Approval (Langsung Admin):**
-- Pengaju memilih opsi **ADMIN** sebagai penyetuju
-- Manager submit (otomatis ke admin)
-- Admin approve → langsung selesai
-
-**2x Approval (Via Atasan):**
-- Staff submit ke Supervisor/SPV → Supervisor/SPV approve → kemudian admin approve → selesai
-- Supervisor submit ke Manager → Manager approve → kemudian admin approve → selesai
-
-> Status di riwayat akan menampilkan:
-> - **"Menunggu approval atasan"** — atasan belum putuskan
-> - **"Disetujui atasan, menunggu admin"** — atasan sudah approve, admin belum
-> - **"Approved"** — final, semua approval selesai
-> - **"Rejected"** — ditolak di salah satu tahap
-
-#### Aturan Lembur:
-- Durasi lembur harus **lebih dari 0 jam**.
-- Jenis Pekerjaan dan Deadline **wajib diisi**.
-- 4 field tambahan Produksi **wajib diisi** untuk karyawan divisi Produksi.
-- Setelah diputuskan (approved/rejected), **tidak bisa diubah**.
+Semua pencatatan waktu memakai **Asia/Jakarta (WIB)**. Periode payroll berjalan dari **tanggal 26 bulan sebelumnya s.d. tanggal 25 bulan berjalan**.
 
 ---
 
-### 3.5 Pengajuan Pinjaman
+## 2. Tech Stack
 
-**Menu:** Status Pinjaman
+| Lapisan | Teknologi |
+|---------|-----------|
+| **Framework** | Next.js `16.1.6` (App Router, React Server Components + Route Handlers) |
+| **UI** | React `19.2.3`, Tailwind CSS `v4`, TypeScript `5` |
+| **Database** | MySQL (via `mysql2` connection pool, `namedPlaceholders`) |
+| **Auth** | Cookie sesi HMAC-SHA256 (httpOnly), password SHA2-256, Bearer token untuk mobile |
+| **Export** | `exceljs` (Excel), `jspdf` + `jspdf-autotable` (PDF) |
+| **Visual login** | `three.js` + `postprocessing` (animasi GridScan, desktop only) |
+| **AI (HR Agent)** | Ollama Cloud (`gpt-oss:120b-cloud`) via `OLLAMA_HOST` — tool-calling read-only ke DB |
+| **Runtime** | Node.js |
 
-#### Syarat Pengajuan:
-
-| No | Syarat | Keterangan |
-|----|--------|-----------|
-| 1 | **Masa kerja minimal 6 bulan** | Dihitung dari tanggal masuk pertama |
-| 2 | **Tidak ada pinjaman aktif** | Tidak bisa mengajukan jika masih ada pinjaman berjalan atau pending |
-| 3 | **Cooldown 4 bulan setelah lunas** | Contoh: Pinjaman lunas Januari → bisa ajukan kembali mulai Mei (lewati Feb–Mar–Apr) |
-| 4 | **Maksimal Rp 3.000.000** | Batas pengajuan mandiri karyawan |
-
-> **Butuh pinjaman lebih dari Rp 3.000.000 atau situasi darurat?** Admin dapat langsung memberikan pinjaman tanpa batas nominal untuk kondisi khusus (misalnya kecelakaan, kedaruratan). Hubungi Admin HR.
-
-#### Langkah-langkah:
-
-1. Buka halaman **Status Pinjaman**.
-2. Isi form:
-   - **Jumlah Pinjaman** (maks Rp 3.000.000)
-   - **Jumlah Angsuran** (berapa bulan cicilan)
-   - **Tanggal Pengajuan**
-3. Sistem otomatis menampilkan **Preview Potongan per Bulan**.
-4. Klik **Ajukan Pinjaman**.
-
-#### Alur Setelah Pengajuan:
-
-```
-Pengajuan Karyawan
-       ↓
-   [Pending]  ← Menunggu Admin
-       ↓
-   [Approved] ← Admin setujui, jadwal cicilan dibuat otomatis
-       ↓
-   [Berjalan] ← Cicilan pertama dipotong bulan berikutnya
-       ↓
-   [Lunas]    ← Semua cicilan selesai terbayar
-```
-
-#### Cara Membaca Jadwal Cicilan:
-- Setiap bulan cicilan tampil sebagai badge (hijau = sudah dipotong, abu-abu = belum).
-- Potongan otomatis masuk ke payroll sesuai jadwal.
-- Karyawan bisa memantau sisa pinjaman di halaman Status Pinjaman.
+> Path alias `@/*` → root project (lihat `tsconfig.json`). Tidak ada ORM — query SQL langsung lewat `lib/db.ts` (pool tunggal, cached global saat dev).
 
 ---
 
-### 3.6 Slip Gaji & Slip Bonus
-
-**Menu:** Slip Gaji / Slip Bonus
-
-- Karyawan dapat **melihat dan mengunduh** slip gaji per periode.
-- Slip bonus tersedia terpisah jika ada pembayaran bonus.
-- Slip hanya tersedia setelah Admin mendistribusikannya.
-- Format slip dapat dicetak atau disimpan sebagai PDF.
-- Header slip resmi: **AvA Group**.
-
----
-
-### 3.7 Reimburse & Perjalanan Dinas
-
-**Menu:** Pengajuan Reimburse / Perjalanan Dinas
-
-#### Reimburse:
-1. Buka **Pengajuan Reimburse**.
-2. Isi detail pengeluaran dan upload bukti (struk/nota).
-3. Kirim — menunggu persetujuan Admin.
-
-#### Perjalanan Dinas:
-1. Buka **Perjalanan Dinas**.
-2. Isi tujuan, tanggal, dan keperluan.
-3. Kirim — menunggu persetujuan Admin.
-
----
-
-### 3.8 Riwayat Absensi
-
-**Menu:** Riwayat Absensi
-
-- Karyawan dapat melihat rekap presensi pribadi per periode.
-- Tampil: tanggal, jam masuk, jam pulang, status, kode, keterangan.
-- **PA (Pulang Awal)** ditampilkan beserta keterangan yang diisi karyawan.
-
----
-
-### 3.9 Informasi Kontrak
-
-**Menu:** Informasi Kontrak
-
-- Menampilkan detail kontrak kerja dan potongan kontrak yang berlaku.
-- Data ini diisi oleh Admin dan bersifat read-only bagi karyawan.
-
----
-
-## 4. Alur Supervisor (SPV) & Manager
-
-Supervisor dan Manager memiliki **dua fungsi utama** yang berbeda dari staf biasa:
-
-> Jika login sebagai karyawan, menu **Set Jadwal** dan **Approval Lembur** akan muncul otomatis di menu karyawan untuk Supervisor dan Manager.
-> Jika login sebagai SPV (link login khusus SPV), hanya tersedia 2 menu ini.
-
----
-
-### 4.1 Set Jadwal
-
-**Menu:** Set Jadwal
-
-**Siapa yang bisa set jadwal:**
-- Supervisor (jabatan mengandung kata "supervisor")
-- Manager (jabatan mengandung kata "manager")
-- Admin
-- Karyawan tertentu yang di-whitelist oleh sistem
-
-#### Langkah-langkah:
-
-1. Pilih **bulan dan tahun** periode jadwal.
-2. Jadwal ditampilkan dalam format tabel kalender.
-3. Klik sel pada tabel (baris = karyawan, kolom = tanggal) untuk mengisi shift.
-4. Pilih shift yang sesuai dari dropdown.
-5. Simpan perubahan.
-
-#### Daftar Shift yang Tersedia:
-
-| Kode Shift | Window Check-In | Window Check-Out |
-|-----------|----------------|-----------------|
-| **pagi** | 08:00 – 08:30 | 16:30 – 17:30 |
-| **siang** | 11:45 – 12:00 | 20:00 – 21:00 |
-| **lembur** | 09:45 – 10:00 | 20:00 – 21:00 |
-| **setengah_1** | 10:30 – 13:00 | 16:30 – 17:30 |
-| **setengah_2** | 08:00 – 08:30 | 12:00 – 13:00 |
-| **pagi_full** | 08:00 – 08:30 | 16:30 – 17:30 |
-| **pagi_short** | 08:00 – 08:30 | 14:30 – 15:30 |
-| **siang_sore** | 11:45 – 12:00 | 16:30 – 17:30 |
-| **jne_pagi** | 07:30 – 11:00 | 15:30 – 16:30 |
-| **jne_siang** | 13:30 – 17:00 | 20:30 – 21:30 |
-| **jne_minggu** | 12:30 – 14:00 | 19:30 – 20:30 |
-| **libur** | — | — |
-
-#### Aturan Shift per Penempatan:
-
-| Penempatan | Shift yang Diperbolehkan |
-|-----------|--------------------------|
-| **Toko Solo** | pagi, libur |
-| **JNE** | jne_pagi, jne_siang, jne_minggu, libur |
-| **Media** (sub divisi) | pagi, siang, libur |
-| **Lainnya** | pagi, siang, lembur, setengah_1, setengah_2, libur |
-
----
-
-### 4.2 Approval Lembur
-
-**Menu:** Approval Lembur
-
-#### Langkah-langkah:
-
-1. Buka halaman **Approval Lembur**.
-2. Lihat daftar pengajuan lembur yang ditujukan kepada Anda.
-3. Klik detail pengajuan untuk melihat informasi lengkap.
-4. Pilih **Approve** atau **Reject**.
-5. Isi **catatan atasan** (opsional, tapi disarankan saat menolak).
-6. Konfirmasi keputusan.
-
-#### Sistem 2x Approval untuk SPV / Manager:
-
-Atasan (SPV, Supervisor, Manager) yang menerima pengajuan dari bawahan **adalah tahap pertama approval**. Setelah Anda approve:
-
-- Pengajuan **belum final** — masih masuk ke admin untuk approval kedua
-- Status di sisi atasan: **"Anda sudah approve, menunggu admin"**
-- Setelah admin approve → final, jam lembur masuk ke payroll
-- Setelah admin reject → pengajuan rejected meskipun Anda sudah approve
-
-> Jika atasan **reject**, pengajuan langsung final di status rejected (skip admin).
-
-#### Aturan:
-- Hanya bisa approve/reject pengajuan yang **ditujukan kepada Anda**.
-- Keputusan bersifat **final** untuk tahap atasan — tidak bisa diubah.
-- Sistem mencatat siapa atasan yang approve di stage 1.
-
----
-
-## 5. Alur Admin
-
-Admin memiliki akses penuh ke seluruh modul sistem. Berikut panduan per modul:
-
----
-
-### 5.1 Manajemen Karyawan
-
-**Menu:** Data Karyawan
-
-**Yang bisa dilakukan Admin:**
-- Tambah karyawan baru
-- Edit data karyawan (nama, jabatan, divisi, penempatan, tanggal masuk, dll.)
-- Nonaktifkan karyawan (status: nonaktif)
-- Upload & **download** foto KTP karyawan (tombol Buka Dokumen / Download)
-- Atur bank & nomor rekening untuk transfer gaji
-
-> **Karyawan nonaktif** tidak akan muncul di summary payroll periode berikutnya setelah dinonaktifkan.
-
----
-
-### 5.2 Kelola Absensi
-
-**Menu:** Absensi
-
-**Yang bisa dilakukan Admin:**
-- Melihat rekap absensi seluruh karyawan
-- Filter berdasarkan periode, unit, penempatan, nama
-- Klik sel berisi data → modal **Detail Absensi**: lihat jam masuk/pulang, foto selfie, latitude/longitude, peta lokasi
-- Klik sel kosong (`-`) → modal Detail Absensi dengan mode **Set Kode** untuk input absensi manual
-- **Ubah kode absensi** lewat dropdown di modal (untuk koreksi data)
-- Melihat keterangan **Pulang Awal (PA)** yang diisi karyawan
-
-**Kode di Lembar Absensi:**
-
-| Kode | Arti |
-|------|------|
-| **O** | Hadir tepat waktu |
-| **T** | Terlambat |
-| **I** | Izin / Off |
-| **S** | Sakit (dengan surat) |
-| **SX** | Sakit (tanpa surat) |
-| **H** | Setengah Hari |
-| **PA** | Pulang Awal |
-| **L** | Libur |
-| **A** | Alfa (tidak hadir tanpa keterangan) |
-
----
-
-### 5.3 Set Jadwal (Admin)
-
-**Menu:** Set Jadwal
-
-- Admin dapat mengatur jadwal shift untuk **semua karyawan** tanpa batasan.
-- Prosedur sama dengan SPV (lihat [4.1 Set Jadwal](#41-set-jadwal)).
-- Admin juga dapat menghapus jadwal yang sudah diset.
-
----
-
-### 5.4 Manajemen Lembur
-
-**Menu:** Lembur
-
-#### Tampilan Halaman Admin Overtime:
-
-Admin disediakan **2 tab filter** untuk membedakan jenis pengajuan:
-
-| Tab | Berisi | Catatan |
-|-----|--------|---------|
-| **Langsung ke Admin** | Pengajuan single-approve — admin satu-satunya yang putuskan | Pengajuan dari Manager ATAU pengajuan yang dipilih "ADMIN" generic |
-| **Via Atasan (2x Approve)** | Pengajuan dengan alur 2 tahap — sudah/sedang di atasan | Kolom tambahan: **Approval Atasan** (Disetujui/Ditolak/Menunggu) |
-
-Setiap tab punya **count badge** menampilkan jumlah pengajuan.
-
-#### Action di Setiap Baris Pengajuan:
-
-| Tombol | Fungsi |
-|--------|--------|
-| **Icon Detail (i)** | Buka modal popup berisi seluruh field pengajuan |
-| **Approve** | Setujui pengajuan |
-| **Reject** | Tolak pengajuan |
-
-#### Modal Detail Pengajuan:
-
-Klik tombol **Detail (i)** → modal menampilkan:
-- Tanggal lembur, jam mulai-selesai, total jam
-- **Jenis pekerjaan** & **deadline**
-- **Detail Produksi** (jika ada): Nama Order, Jumlah QTY, Target Sebelum/Setelah Lembur
-- **Stage 1 — Approval Atasan** (jika via atasan): siapa, kapan, status
-- Catatan karyawan & catatan atasan
-
-#### Aturan Approve Admin:
-
-- **Single approve**: Admin bisa langsung approve/reject pengajuan
-- **Via atasan (2x approve)**:
-  - Admin **TIDAK BISA approve** jika atasan belum approve (tombol disabled, tooltip "Atasan belum menyetujui")
-  - Setelah atasan approve, admin baru bisa approve untuk finalisasi
-
-#### Setelah Diputuskan:
-
-- Lembur **Approved** otomatis masuk ke rekap jam lembur karyawan dan payroll
-- Lembur **Rejected** tidak dihitung di payroll
-- Keputusan **final** — tidak bisa diubah
-
----
-
-### 5.5 Manajemen Pinjaman
-
-**Menu:** Pinjaman
-
-#### A. Membuat Pinjaman untuk Karyawan (Tanpa Batas Nominal)
-
-Admin dapat langsung membuat pinjaman untuk kondisi darurat tanpa batas Rp 3 juta:
-
-1. Klik **Tambah Pinjaman**.
-2. Pilih karyawan dari dropdown.
-3. Isi nominal pinjaman, jumlah angsuran, dan tanggal pengajuan.
-4. Klik **Simpan**.
-
-> Pinjaman yang dibuat Admin langsung masuk dalam status **pending** dan perlu di-approve.
-
-#### B. Approve / Reject Pinjaman
-
-1. Klik pinjaman dengan status **Pending**.
-2. Pilih **Approve** → sistem otomatis membuat jadwal cicilan mulai bulan depan.
-3. Pilih **Reject** untuk menolak.
-
-#### C. Pelunasan Awal
-
-1. Klik pinjaman aktif (approved/berjalan).
-2. Pilih **Lunasi Sekarang**.
-3. Pilih bulan target pelunasan.
-4. Sisa pinjaman dikonsolidasi ke bulan tersebut; bulan lain diset 0.
-
-#### D. Melihat Progress Cicilan
-
-- Setiap baris pinjaman menampilkan badge per bulan (hijau = sudah dipotong, abu-abu = belum).
-- Admin dapat memonitor sisa pinjaman dan total yang sudah dibayar.
-
----
-
-### 5.6 Summary Payroll
-
-**Menu:** Summary Payroll
-
-**Periode Payroll:**
-- Dimulai dari tanggal **26 bulan sebelumnya** hingga tanggal **25 bulan berjalan**.
-- Contoh: Periode Juni = 26 Mei – 25 Juni.
-- Sistem otomatis masuk ke periode bulan berikutnya jika tanggal sudah melewati tanggal 25.
-
-#### Karyawan yang Tampil:
-- ✅ Semua karyawan aktif
-- ❌ **Karyawan penempatan Toko Solo** — tampil di [Summary Payroll Solo](#57-summary-payroll-solo) (terpisah)
-- ❌ **Karyawan sub_divisi Penjahit** — tampil di [Summary Penjahit](#58-payroll-penjahit) (terpisah)
-
-#### Pewarnaan Header Tabel:
-
-Header kolom dikelompokkan dengan **warna** agar mudah dibaca:
-
-| Warna | Kelompok | Kolom |
-|-------|----------|-------|
-| 🔴 **Merah** | Penerimaan tetap | Nominal Tetap (Insentif Kehadiran, Tunjangan Jabatan, Uang Makan, Subsidi, Uang Kerajinan, BPJS, Bonus Performa) + Gaji Kontrak |
-| 🟠 **Orange** | Kehadiran | Hari Kerja, Masuk |
-| 🟡 **Kuning** | Absensi/Potongan | Izin, Sakit, Setengah Hari, Telat, Total Potongan |
-| 🌐 **Cyan** | Lainnya | Identitas, Total Gaji Pokok, Lembur, Tambahan, Take Home Pay Sebelum Dipotong, Take Home Pay |
-
-#### Urutan Kolom (Bagian Kanan):
-
-```
-... → Total Gaji → Tambahan → Total Potongan
-    → Gaji Kontrak
-    → Take Home Pay Sebelum Dipotong
-    → Take Home Pay
-    → Aksi
+## 3. Arsitektur Sistem
+
+Aplikasi memakai arsitektur **berlapis** khas Next.js App Router: halaman (Server Components) dan Route Handlers memanggil **lapisan modul bisnis** di `lib/`, yang menjadi satu-satunya jalur ke database.
+
+```mermaid
+flowchart TB
+    subgraph Client["🌐 Client (Browser / Mobile WebView)"]
+        LOGIN["Halaman Login /"]
+        EMP["Area Karyawan /employee/*"]
+        ADM["Area Admin /admin/*"]
+        SPV["Area SPV /spv/*"]
+    end
+
+    subgraph Next["▲ Next.js App Router (server)"]
+        PAGES["Server Components<br/>(app/**/page.tsx)"]
+        API["Route Handlers<br/>(app/api/**/route.ts)"]
+        GUARD["Guard Sesi<br/>requireAdmin/Employee/SpvSession"]
+    end
+
+    subgraph Domain["🧠 Lapisan Bisnis (lib/)"]
+        AUTH["auth.ts"]
+        HRIS["hris.ts / attendance.ts"]
+        PAY["payroll-*.ts"]
+        LOAN["loans.ts"]
+        OT["overtime*.ts"]
+        MISC["employees / jadwal / finance / ..."]
+    end
+
+    subgraph Data["💾 Penyimpanan"]
+        DB[("MySQL<br/>hris_payroll_app_v2")]
+        FS["File Upload<br/>public/uploads/*"]
+    end
+
+    AI["🤖 Ollama Cloud<br/>gpt-oss:120b"]
+
+    LOGIN & EMP & ADM & SPV --> PAGES
+    LOGIN & EMP & ADM & SPV -->|fetch JSON| API
+    PAGES --> GUARD
+    API --> GUARD
+    GUARD --> AUTH
+    PAGES --> Domain
+    API --> Domain
+    Domain --> DB
+    Domain --> FS
+    HRIS -.HR Agent.-> AI
+    AI -.read-only tool calls.-> DB
 ```
 
-#### Penamaan Kolom (Versi Baru):
+**Prinsip kunci:**
 
-| Lama | Baru |
-|------|------|
-| Gaji Pokok | **Gaji Kontrak** |
-| Gaji Pokok Perhari / Perjam | **Insentif Kehadiran** |
-| Penerimaan Bersih | **Take Home Pay** |
-| Total Gaji Sebelum Potongan | **Take Home Pay Sebelum Dipotong** |
-| Potongan Uang Kerajinan | **Potongan Absensi** |
-
-#### Fitur Halaman:
-
-##### A. Melihat & Mengedit Data Payroll
-- Lihat summary gaji seluruh karyawan per periode.
-- Filter berdasarkan nama, unit, jabatan, status.
-- Data **real-time** — otomatis update setiap karyawan presensi atau lembur diapprove.
-
-##### B. Input Manual / Override
-Admin dapat mengisi atau mengoverride nilai berikut per karyawan:
-
-| Field Override | Keterangan |
-|---------------|-----------|
-| Jumlah masuk | Koreksi hari hadir |
-| Jam lembur | Koreksi jam lembur |
-| Setengah hari | Koreksi setengah hari |
-| Gaji pokok | Koreksi nominal gaji |
-
-##### C. Konfigurasi Gaji per Karyawan
-
-Admin mengatur komponen gaji masing-masing karyawan:
-
-| Komponen | Keterangan |
-|----------|-----------|
-| Gaji pokok per hari | Dasar perhitungan gaji harian |
-| Uang makan per hari | Tunjangan makan harian |
-| Uang kerajinan | Bonus kerajinan bulanan |
-| BPJS | Potongan BPJS |
-| Bonus performa | Bonus kinerja |
-| Insentif | Insentif bulanan |
-| Kendaraan | Tunjangan kendaraan |
-
-##### D. Komponen Otomatis (Dihitung Sistem)
-
-| Komponen | Sumber Data |
-|----------|------------|
-| Jumlah masuk | Data absensi real-time |
-| Terlambat | Rekap menit telat dari absensi |
-| Potongan keterlambatan | Tarif × menit telat |
-| Jam lembur | Dari lembur yang diapprove |
-| Upah lembur | Dihitung dari jam lembur |
-| Potongan pinjaman | Dari jadwal cicilan bulan ini |
-| Total potongan | Penjumlahan semua potongan |
-| Take Home Pay | Total pendapatan – total potongan |
-
-##### E. Hari Kerja
-
-- Dihitung otomatis dari range tanggal periode (Senin–Sabtu, tidak termasuk Minggu).
-- Nilai konsisten untuk semua karyawan dalam satu periode.
-
-##### F. Input Omzet Bulanan
-
-- Admin input omzet bulanan untuk unit **AVA+Ayres** (× 0.7% otomatis untuk bonus) dan **JNE** (manual / custom bonus).
-- Bonus omzet didistribusikan ke karyawan sales sesuai aturan unit.
+- **Tanpa middleware global** — proteksi dilakukan per-halaman/route lewat `requireAdminSession()`, `requireEmployeeSession()`, `requireSpvSession()` yang `redirect("/")` bila sesi tidak valid.
+- **Migrasi lazy & idempotent** — setiap modul punya `ensureXxxSchemaSupport()` (singleton promise) yang menjalankan `CREATE TABLE IF NOT EXISTS` / `ALTER` saat pertama diakses, dibungkus `safeMigrate` yang menelan error "sudah ada" (`ER_TABLE_EXISTS_ERROR`, `ER_DUP_FIELDNAME`, dll). Schema bisa berevolusi tanpa migrasi manual.
+- **Upload** — file (selfie, KTP, bukti) disimpan di `public/uploads/` dan disajikan via rewrite `/uploads/:path*` → `/api/uploads/[...path]`.
+- **Real-time payroll** — tidak ada job batch; summary payroll dihitung on-the-fly dari data absensi/lembur terbaru setiap halaman dibuka.
 
 ---
 
-### 5.7 Summary Payroll Solo
+## 4. Struktur Direktori
 
-**Menu:** Summary Payroll Solo
-
-Halaman ini **mirror** dari Summary Payroll utama, tapi:
-
-| Aspek | Bedanya |
-|-------|---------|
-| **Karyawan yang tampil** | Hanya yang `penempatan = Toko Solo` |
-| **Karyawan di Summary utama** | Karyawan Toko Solo **TIDAK** tampil di Summary Payroll utama |
-| **Pewarnaan header & layout** | Identik dengan Summary Payroll utama |
-| **Input Omzet Bulanan** | Hanya 1 unit: **Toko Solo** — input manual, **tidak pakai rumus persentase** (nominal yang di-input = bonus langsung) |
-| **Form input gaji per karyawan** | Sama persis dengan Summary Payroll utama |
-
-#### Cara Pakai:
-
-1. Buka menu **Summary Payroll Solo** di sidebar admin.
-2. Pilih periode (default: periode aktif).
-3. Tabel menampilkan karyawan Toko Solo dengan komponen gaji lengkap.
-4. Input **Total Omzet Toko Solo** di section omzet — nominal langsung dipakai sebagai bonus (tanpa multiplier).
-5. Edit komponen gaji per karyawan jika perlu.
-6. Simpan perubahan.
-
-> Semua aturan lain (override, real-time attendance, perhitungan gaji) **sama persis** dengan Summary Payroll utama.
-
----
-
-### 5.8 Payroll Penjahit
-
-**Menu:** Summary Penjahit
-
-- Khusus untuk karyawan dengan jabatan **penjahit**.
-- Tersedia dua tipe:
-  - **Mingguan** — dibayar per minggu
-  - **Bulanan** — dibayar per bulan
-- Komponen gaji sama dengan payroll umum, disesuaikan tipe penjahit.
+```
+web_hr/
+├── app/                          # Next.js App Router
+│   ├── page.tsx                  # Halaman login/signup (entry)
+│   ├── layout.tsx, error.tsx     # Root layout & error boundary
+│   ├── employee/                 # 14 halaman area karyawan
+│   │   ├── check-in / check-out  # Presensi
+│   │   ├── overtime / loans      # Lembur & pinjaman
+│   │   ├── payslips / bonus-slips# Slip
+│   │   └── ...                   # jadwal, contract, profile, visit-report, dll
+│   ├── admin/                    # 20+ halaman area admin (lihat sidebar)
+│   │   ├── employees, attendance, jadwal, overtime, loans
+│   │   ├── payroll-summary/{solo,penjahit,sales-nasional}
+│   │   ├── payroll-bonus, payroll-freelance
+│   │   ├── payslips, payslip-distribution, bonus-slips, ...
+│   │   └── finance, contract-*, reimbursements, roles, hr-agent
+│   ├── spv/                      # Area SPV (jadwal + approval lembur)
+│   └── api/                      # Route Handlers (REST-ish)
+│       ├── login, logout, signup, mobile/login
+│       ├── employee/*            # Endpoint karyawan
+│       ├── admin/*               # Endpoint admin
+│       ├── spv/*                 # Endpoint SPV
+│       └── uploads/[...path]     # Serve file upload
+├── components/                   # 42 komponen React (Admin*, Employee*, Spv*, Shell, dll)
+├── lib/                          # 35 modul bisnis (business logic + akses DB)
+├── database/ , db/               # Skrip SQL (schema & seed)
+│   └── db/hris_payroll_app_v2.sql# Schema kanonik (nama DB default)
+├── scripts/seed-admins.mjs       # Seeder akun admin
+├── public/                       # Aset statis + uploads/
+├── next.config.ts                # Rewrite /uploads
+└── package.json
+```
 
 ---
 
-### 5.9 Payroll Sales Nasional
+## 5. Autentikasi & Sesi
 
-**Menu:** Summary Sales Nasional
+### Mekanisme
 
-- Khusus untuk karyawan dengan jabatan **Sales Nasional**.
-- Perhitungan melibatkan komponen komisi dan omzet.
-- Terpisah dari summary payroll umum.
+- **Password** disimpan sebagai hash **SHA2-256** (dihitung di MySQL via `SHA2(?, 256)`). Login membandingkan hash input dengan kolom `users.password`.
+- **Sesi** = token `base64url(payload).HMAC-SHA256(payload)` ditandatangani dengan `APP_SESSION_SECRET`. Disimpan di **cookie httpOnly** (`sameSite=lax`, `secure` di production, `maxAge` 8 jam).
+- **Tiga cookie sesi terpisah**: `web_hr_admin_session`, `web_hr_employee_session`, `web_hr_spv_session`.
+- **Mobile**: token sama dikirim via header `Authorization: Bearer <token>` (dengan klaim `exp`). Cookie web tidak memakai `exp` (masa berlaku diatur `maxAge`).
+- **Verifikasi tanda tangan** memakai `timingSafeEqual` (anti timing-attack).
 
----
+### Hak akses berbutir (fine-grained)
 
-### 5.10 Slip Gaji & Distribusi
+Selain peran, ada **whitelist email** di `lib/auth.ts` untuk aksi sensitif:
 
-**Menu:** Slip Gaji / Distribusi Slip
+| Fungsi | Arti |
+|--------|------|
+| `isPayrollEditor(email)` | Hanya email tertentu boleh **edit/simpan** Summary Payroll; admin lain read-only |
+| `isOvertimeApprover(email)` | Hanya email tertentu boleh **approve/reject** lembur; admin lain read-only |
 
-#### Proses Distribusi Slip:
-1. Admin buka **Slip Gaji** dan pilih periode.
-2. Verifikasi data payroll sudah benar.
-3. Distribusikan slip → karyawan bisa melihat slip di akun masing-masing.
-4. **Log Distribusi** mencatat waktu pengiriman per karyawan.
-
-#### Slip Bonus:
-- Terpisah dari slip gaji.
-- Dikelola dari menu **Slip Bonus** dan **Distribusi Slip Bonus**.
-
-#### Branding Slip:
-Header slip gaji & slip bonus menampilkan brand **AvA Group** (sebelumnya "Ayres").
+> ⚠️ **Catatan keamanan**: jika `APP_SESSION_SECRET` tidak di-set di production, sistem memakai default tidak aman (hanya memicu `console.warn`, tidak throw). **Wajib set env var ini di server.**
 
 ---
 
-### 5.11 Finance
+## 6. Model Data (ERD & Katalog Tabel)
 
-**Menu:** Finance
+### ERD inti
 
-- Rekap keuangan per unit (AVA Sportivo, Ayres Apparel, JNE).
-- Menampilkan total beban gaji, kontrak, hutang perusahaan per unit.
-- Tersedia ringkasan total gabungan seluruh unit.
+```mermaid
+erDiagram
+    users ||--o| karyawan : "1:1 (user_id)"
+    karyawan ||--o{ absensi : "presensi harian"
+    karyawan ||--o{ jadwal_karyawan : "shift terjadwal"
+    karyawan ||--o{ lembur : "pengajuan lembur"
+    karyawan ||--o{ pinjaman : "pinjaman"
+    pinjaman ||--o{ pinjaman_cicilan : "jadwal cicilan"
+    karyawan ||--o{ payroll : "baris payroll/periode"
+    payroll ||--o| payroll_employee_input : "override & konfigurasi"
+    payroll ||--o| slip_gaji : "slip"
+    slip_gaji ||--o{ log_distribusi_slip : "log kirim"
+    karyawan ||--o{ potongan_kontrak : "potongan"
+    karyawan ||--o{ pengembalian_kontrak : "deposit balik"
+    karyawan ||--o{ reimbursements : "reimburse"
+    karyawan ||--o{ perjalanan_dinas : "dinas"
+    karyawan ||--o{ laporan_kunjungan : "kunjungan sales"
+    omzet_bulanan }o--|| karyawan : "bonus omzet (per unit)"
+
+    users {
+        int id PK
+        string nama
+        string email UK
+        string password "SHA2-256"
+        enum role "admin|karyawan|spv"
+        tinyint status_aktif
+    }
+    karyawan {
+        int id PK
+        int user_id FK
+        string nama
+        string jabatan
+        string divisi
+        string sub_divisi
+        string unit
+        string penempatan
+        string status_kepegawaian
+        string tipe_freelance
+        enum status_data "aktif|nonaktif"
+        string bank
+        string no_rekening
+        date tanggal_masuk_pertama
+    }
+    absensi {
+        int id PK
+        int karyawan_id FK
+        date tanggal
+        datetime jam_masuk
+        datetime jam_pulang
+        string status_absensi
+        string kode_absensi "O|T|H|S|SX|I|A|L|PA"
+        string shift
+        int terlambat_menit
+        tinyint setengah_hari
+    }
+    payroll {
+        int id PK
+        int karyawan_id FK
+        int periode_bulan
+        int periode_tahun
+        int hari_kerja
+        decimal gaji_pokok
+    }
+```
+
+### Katalog tabel
+
+Skema kanonik ada di **`db/hris_payroll_app_v2.sql`**; sebagian tabel juga dibuat lazy via `ensureXxxSchemaSupport()` di `lib/`.
+
+| Kelompok | Tabel |
+|----------|-------|
+| **Akun & karyawan** | `users`, `karyawan`, `otp_codes` |
+| **Presensi & jadwal** | `absensi`, `jadwal_karyawan`, `libur_nasional` |
+| **Lembur** | `lembur` |
+| **Payroll inti** | `payroll`, `payroll_employee_input`, `payroll_period_config`, `omzet_bulanan`, `payroll_bonus` |
+| **Freelance** | `freelance_jam`, `freelance_pengerjaan`, `freelance_harian`, `freelance_custom_item`, `freelance_custom_pengerjaan` |
+| **Pinjaman** | `pinjaman`, `pinjaman_cicilan` |
+| **Kontrak** | `potongan_kontrak`, `pengembalian_kontrak` |
+| **Slip** | `slip_gaji`, `slip_bonus`, `log_distribusi_slip`, `log_distribusi_slip_bonus` |
+| **Keuangan lain** | `finance_lembur_tambahan`, `reimbursements`, `perjalanan_dinas` |
+| **Sales** | `laporan_kunjungan` |
+| **Sistem** | `app_migrations`, `hris_migration_log` |
+
+**Kolom penting `karyawan`** yang mengendalikan banyak logika:
+- `jabatan` → menentukan sales/penjahit/freelance/CEO (mis. `getFreelanceSheet` menyaring `jabatan='freelance'`).
+- `status_kepegawaian` → `tetap`/`freelance`/dll (memengaruhi tunjangan & waive kontrak).
+- `penempatan` → geofence & pemisahan halaman (Toko Solo terpisah).
+- `sub_divisi` → penjahit/media/dll (shift & kelas payroll).
+- `unit` → kelompok omzet (AVA/Ayres/JNE).
+- `status_data` → `aktif`/`nonaktif` (nonaktif hilang dari payroll periode berikutnya).
 
 ---
 
-### 5.12 Manajemen Role (Admin & SPV)
+## 7. Alur Utama / Flow Diagram
 
-**Menu:** Role
+### 7.1 Login & Routing Peran
 
-**Yang bisa dilakukan Admin:**
-- Membuat akun **Admin** baru.
-- Membuat akun **SPV** baru untuk supervisor yang perlu akses terpisah.
-- Menonaktifkan akun admin/SPV.
+Satu endpoint `/api/login` memvalidasi kredensial lalu mengarahkan sesuai `users.role`.
 
-> SPV yang jabatannya Supervisor/Manager tidak perlu akun SPV terpisah — menu SPV muncul otomatis saat login karyawan.
+```mermaid
+sequenceDiagram
+    participant U as Pengguna
+    participant P as Halaman / (page.tsx)
+    participant API as POST /api/login
+    participant DB as MySQL
+    participant C as Cookie Sesi
+
+    U->>P: Isi email + password
+    P->>API: fetch JSON {email, password}
+    API->>DB: SELECT users JOIN karyawan
+    alt Akun tidak aktif / nonaktif
+        API-->>P: 401 / 403 (pesan jelas)
+    else Kredensial valid
+        API->>DB: SHA2(password,256) == users.password ?
+        API->>C: Set cookie sesi (admin | spv | employee)
+        alt role = admin
+            API-->>P: redirectTo /admin
+        else role = spv
+            API-->>P: redirectTo /spv/jadwal
+        else role = karyawan
+            API-->>P: redirectTo /employee/check-in<br/>(+ minta izin lokasi)
+        end
+    end
+    P->>U: router.push(redirectTo)
+```
+
+> Karyawan juga diminta **izin lokasi GPS** saat login (disimpan sementara di `sessionStorage`) agar presensi lancar. Pada tanggal 1 (payday) muncul salam payroll.
+
+### 7.2 Presensi Masuk / Pulang
+
+```mermaid
+flowchart TD
+    START([Buka Presensi Masuk]) --> PILIH{Jenis presensi}
+    PILIH -->|Izin / Sakit| KET[Isi keterangan / upload surat]
+    KET --> SIMPAN
+    PILIH -->|Hadir / Setengah Hari| GEO{Dalam radius<br/>geofence?}
+    GEO -->|Tidak| TOLAK1[❌ Ditolak: di luar lokasi]
+    GEO -->|Ya| SHIFT{Punya shift terjadwal?<br/>Toko/Gudang/Media/JNE}
+    SHIFT -->|Ya| WINDOW{Dalam window<br/>jam shift?}
+    WINDOW -->|Tidak| TOLAK2[❌ Ditolak: di luar jam shift]
+    WINDOW -->|Ya| LATE[Hitung keterlambatan<br/>+ set kode O/T/H]
+    SHIFT -->|Tidak| LATE
+    LATE --> SIMPAN[(INSERT absensi<br/>selfie + lat/long)]
+    SIMPAN --> DONE([✅ Masuk tercatat])
+
+    OUT([Buka Presensi Pulang]) --> CHECK{Sudah check-in<br/>hari ini?}
+    CHECK -->|Belum| TOLAK3[❌ Belum ada presensi masuk]
+    CHECK -->|Ya| GEO2{Dalam radius?}
+    GEO2 -->|Tidak| TOLAK4[❌ Di luar lokasi]
+    GEO2 -->|Ya| EARLY{Pulang lebih awal?<br/>bukan penjahit/freelance}
+    EARLY -->|Ya, tanpa keterangan| TOLAK5[❌ Wajib isi keterangan PA]
+    EARLY -->|Ya + keterangan / Tidak| UPD[(UPDATE absensi<br/>jam_pulang + shift final)]
+    UPD --> DONE2([✅ Pulang tercatat])
+```
+
+**Aturan penting:**
+- **Geofence** divalidasi di check-in **dan** check-out (radius per lokasi, lihat §18).
+- **Penjahit & Freelance** dibebaskan dari aturan "pulang awal" — boleh check-out kapan pun (freelance dibayar per jam/pcs, jam dihitung dari masuk–pulang).
+- **1 presensi per hari**, tidak bisa diubah karyawan; hanya Admin yang bisa koreksi kode.
+
+### 7.3 Lembur & Approval Berjenjang
+
+Alur approval bergantung pada siapa penyetuju yang dipilih pengaju.
+
+```mermaid
+flowchart TD
+    A[Karyawan ajukan lembur] --> B{Diajukan ke siapa?}
+    B -->|ADMIN generic / pengaju Manager| C[Pending → pool Admin]
+    B -->|SPV / Supervisor / Manager spesifik| D[Pending → atasan]
+
+    C --> E{Admin putuskan}
+    E -->|Approve| F([✅ Approved → masuk payroll])
+    E -->|Reject| G([❌ Rejected])
+
+    D --> H{Atasan putuskan<br/>Stage 1}
+    H -->|Reject| G
+    H -->|Approve| I[Menunggu Admin<br/>Stage 2]
+    I --> J{Admin putuskan}
+    J -->|Approve| F
+    J -->|Reject| G
+
+    style F fill:#1b5e20,color:#fff
+    style G fill:#7f1d1d,color:#fff
+```
+
+- **1x approval**: pengaju pilih **ADMIN** generic, atau pengaju berjabatan Manager (auto ke admin).
+- **2x approval**: pengaju pilih atasan spesifik → atasan approve → **baru** admin bisa approve (admin tidak bisa approve sebelum atasan approve).
+- Divisi **Produksi** wajib mengisi field tambahan (Nama Order, QTY, Target Sebelum/Setelah).
+- Lembur **approved** otomatis menambah jam lembur di payroll periode tersebut.
+
+### 7.4 Pinjaman (Lifecycle)
+
+```mermaid
+stateDiagram-v2
+    [*] --> Pending: Karyawan ajukan (≤ Rp3jt)<br/>atau Admin buat (tanpa batas)
+    Pending --> Approved: Admin approve<br/>(jadwal cicilan dibuat)
+    Pending --> Rejected: Admin reject
+    Approved --> Berjalan: Cicilan pertama<br/>dipotong bulan depan
+    Berjalan --> Lunas: Semua cicilan terbayar
+    Approved --> Lunas: Pelunasan awal (Admin)
+    Berjalan --> Lunas: Pelunasan awal (Admin)
+    Rejected --> [*]
+    Lunas --> [*]
+```
+
+**Syarat pengajuan mandiri karyawan:** masa kerja ≥ 6 bulan, tidak ada pinjaman aktif, cooldown 4 bulan setelah lunas, maksimal Rp 3.000.000. Admin dapat membuat pinjaman darurat **tanpa batas**. Cicilan (`pinjaman_cicilan`) otomatis menjadi **potongan pinjaman** di payroll bulan bersangkutan.
+
+### 7.5 Pipeline Payroll
+
+Mesin payroll (`lib/payroll-summary.ts`) menggabungkan banyak sumber data **secara real-time** menjadi Take Home Pay per karyawan.
+
+```mermaid
+flowchart LR
+    subgraph SRC["Sumber Data (real-time)"]
+        A1[absensi<br/>hadir/telat/½hari]
+        A2[lembur approved]
+        A3[jadwal_karyawan<br/>hari kerja terjadwal]
+        A4[pinjaman_cicilan<br/>potongan bulan ini]
+        A5[potongan_kontrak]
+        A6[pengembalian_kontrak]
+        A7[reimbursements]
+        A8[omzet_bulanan<br/>bonus per unit]
+        A9[payroll_employee_input<br/>konfigurasi & override]
+        A10[getFreelanceSheet<br/>total freelance]
+    end
+
+    ENGINE{{getAdminPayrollSummarySheet<br/>per periode 26→25}}
+
+    A1 & A2 & A3 & A4 & A5 & A6 & A7 & A8 & A9 & A10 --> ENGINE
+
+    ENGINE --> O1[Gaji pokok / kontrak]
+    ENGINE --> O2[Tunjangan & bonus<br/>omzet, kerajinan, BPJS, dll]
+    ENGINE --> O3[Potongan<br/>telat, ½hari, kontrak, pinjaman]
+    O1 & O2 & O3 --> THP[[Take Home Pay]]
+    THP --> SLIP[Slip Gaji PDF]
+    THP --> FIN[Finance Export XLSX]
+    THP --> SUM[Summary Payroll / Solo / Penjahit / Sales Nasional]
+```
+
+**Aturan turunan absensi (penting & konsisten dengan rekap):**
+- **Telat** dihitung dari `kode_absensi = 'T'` (bukan recompute `terlambat_menit`).
+- **Setengah hari** mengikuti resolusi kode absensi (`mapAttendanceCode`): `H`/`SH` = ya; `T`/`SX` + jam ½hari = ya; kode `O`/`PA` = **bukan** ½hari. Ini mencegah potongan palsu setelah admin mengganti kode manual.
+- Periode: `getActivePayrollPeriod()` otomatis pindah ke bulan berikutnya bila tanggal > 25.
+
+### 7.6 Payroll Freelance
+
+Karyawan `jabatan = 'freelance'` dibagi 4 tipe (`tipe_freelance`), masing-masing punya cara hitung berbeda; totalnya menjadi **satu sumber kebenaran** yang juga dipakai slip gaji.
+
+```mermaid
+flowchart TD
+    F[Karyawan Freelance] --> T{tipe_freelance}
+    T -->|jam| J[Rate/jam × jam kerja<br/>dari jam masuk–pulang absensi<br/>dibulatkan per 30 mnt]
+    T -->|pengerjaan| P[Harga/pcs × jumlah pcs]
+    T -->|harian| H[Harga/hari × hari hadir]
+    T -->|custom_pengerjaan| C[Σ harga/pcs × qty<br/>per jenis item]
+    J & P & H & C --> TOTAL[[Total Gaji Freelance]]
+    TOTAL --> SLIPF[Slip Gaji = total ini persis]
+    TOTAL --> SUMF[Summary Payroll Freelance]
+```
+
+> Karena `getFreelanceSheet` menyaring berdasarkan **jabatan** `'freelance'`, mesin payroll mengenali freelancer lewat kehadirannya di sheet ini (bukan hanya `status_kepegawaian`) agar slip gaji **selalu sama** dengan Summary Payroll Freelance.
+
+### 7.7 Slip Gaji & Distribusi
+
+```mermaid
+sequenceDiagram
+    participant AD as Admin
+    participant PS as Slip Gaji (page)
+    participant DIST as Distribusi Slip
+    participant DB as slip_gaji / log_distribusi_slip
+    participant EMP as Karyawan
+
+    AD->>PS: Pilih periode & karyawan
+    PS->>PS: Render slip (data payroll real-time)
+    AD->>PS: Export PDF (opsional)
+    AD->>DIST: Pilih karyawan aktif → Distribusi
+    DIST->>DB: Catat slip + log distribusi
+    EMP->>DB: Buka menu Slip Gaji
+    DB-->>EMP: Slip periode tersedia (read-only, unduh PDF)
+```
+
+> Distribusi hanya menampilkan **karyawan aktif** (`status_data='aktif'`). Slip bonus dikelola terpisah (`bonus-slips`, `bonus-slip-distribution`).
 
 ---
 
-## 6. Aturan & Ketentuan Sistem
+## 8. Modul Bisnis (`lib/`)
 
-### 6.1 Aturan Presensi
-
-| Aturan | Detail |
-|--------|--------|
-| **Satu presensi per hari** | Tidak bisa check-in dua kali di hari yang sama |
-| **Tidak bisa diubah setelah submit** | Presensi yang sudah dikirim tidak dapat diedit karyawan |
-| **Admin bisa koreksi** | Admin dapat ubah kode absensi atau input absensi manual di sel kosong |
-| **Selfie wajib untuk hadir** | Status hadir dan setengah hari memerlukan foto selfie |
-| **Lokasi wajib untuk hadir** | GPS harus aktif dan dalam radius lokasi penempatan |
-| **Keterangan wajib untuk izin/sakit** | Status izin dan sakit tanpa surat wajib isi keterangan |
-| **Surat wajib untuk sakit resmi** | Status sakit dengan surat wajib upload dokumen |
-| **Pulang awal wajib keterangan** | Jika pulang sebelum jam checkout shift, wajib isi alasan |
-
----
-
-### 6.2 Shift & Jam Kerja
-
-Shift presensi ditentukan oleh **jam check-in**. Sistem otomatis mendeteksi shift berdasarkan jam masuk:
-
-| Shift | Window Check-In | Window Check-Out | Pulang Awal Jika Sebelum |
-|-------|----------------|-----------------|--------------------------|
-| pagi | 08:00 – 08:30 | 16:30 – 17:30 | 16:30 |
-| siang | 11:45 – 12:00 | 20:00 – 21:00 | 20:00 |
-| lembur | 09:45 – 10:00 | 20:00 – 21:00 | 20:00 |
-| setengah_1 | 10:30 – 13:00 | 16:30 – 17:30 | 16:30 |
-| setengah_2 | 08:00 – 08:30 | 12:00 – 13:00 | 12:00 |
-| pagi_full | 08:00 – 08:30 | 16:30 – 17:30 | 16:30 |
-| pagi_short | 08:00 – 08:30 | 14:30 – 15:30 | 14:30 |
-| siang_sore | 11:45 – 12:00 | 16:30 – 17:30 | 16:30 |
-| jne_pagi | 07:30 – 11:00 | 15:30 – 16:30 | 15:30 |
-| jne_siang | 13:30 – 17:00 | 20:30 – 21:30 | 20:30 |
-| jne_minggu | 12:30 – 14:00 | 19:30 – 20:30 | 19:30 |
-
-**Toleransi keterlambatan:**
-- JNE: 10 menit toleransi sebelum dihitung terlambat
-- Shift lain: tidak ada toleransi
+| Modul | Tanggung jawab |
+|-------|----------------|
+| `db.ts` | Pool MySQL tunggal (cached global saat dev), `namedPlaceholders` |
+| `auth.ts` | Sesi HMAC, guard peran, whitelist editor payroll & approver lembur |
+| `employees.ts` | CRUD karyawan, signup, migrasi kolom karyawan |
+| `attendance.ts` | Aturan shift, window jam, deteksi telat/½hari, geofence-time, foto |
+| `attendance-recompute.ts` | Recompute kode absensi & migrasi `app_migrations` |
+| `hris.ts` | Rekap absensi (spreadsheet), `mapAttendanceCode`, set kode manual, dashboard |
+| `jadwal-karyawan.ts` | Set jadwal shift, hari efektif |
+| `geofence.ts` | Titik & radius lokasi, validasi jarak (haversine) |
+| `overtime.ts`, `overtime-approval.ts` | Lembur, approval berjenjang, approver |
+| `loans.ts` | Pinjaman, cicilan otomatis, pelunasan awal |
+| `payroll-admin.ts` | Periode payroll, clone periode, omzet & grup unit |
+| `payroll-summary.ts` | **Mesin payroll utama** (summary, THP, override) |
+| `payroll-penjahit.ts` | Payroll penjahit mingguan/bulanan |
+| `payroll-freelance.ts` | 4 tipe freelance + upsert rate/qty |
+| `payroll-bonus.ts` | Payroll bonus sales/SPV/dll |
+| `payslip-row.ts`, `bonus-slip.ts` | Map baris slip, slip bonus & distribusi |
+| `contract-deductions.ts`, `contract-returns.ts`, `contract-timeline.ts` | Kontrak & deposit |
+| `reimbursements.ts`, `business-trips.ts` | Reimburse & perjalanan dinas |
+| `visit-reports.ts` | Laporan kunjungan sales |
+| `holidays.ts` | Libur nasional |
+| `hr-agent.ts` | HR Agent (Ollama, tool-calling read-only, tabel di-whitelist) |
+| `*-roles.ts`, `payroll-constants.ts` | Konstanta peran & tarif (mis. omzet 0.7%) |
+| `uploads.ts`, `api-json.ts` | Util upload & respons JSON |
 
 ---
 
-### 6.3 Geofence (Batas Lokasi)
+## 9. Peta API Endpoint
 
-Presensi selfie hanya bisa dilakukan dalam radius lokasi yang ditentukan:
+Endpoint dikelompokkan per audiens. Semua memvalidasi sesi peran terkait.
+
+**Auth (publik):** `POST /api/login`, `POST /api/signup`, `POST /api/logout`, `POST /api/mobile/login`
+
+**Karyawan** (`/api/employee/*`): `attendance/check-in`, `attendance/check-out`, `attendance/today`, `attendance/history`, `overtime`, `overtime-approvals/[id]`, `loans`, `payslips`, `bonus-slips`, `reimbursements`, `business-trips`, `contract`, `profile`, `visit-report`, `overview`
+
+**Admin** (`/api/admin/*`): `employees/*` (+ `export`), `attendance/{update,holiday,recover}`, `overtime/[id]`, `loans/[id]/payoff`, `payroll-summary/*` (+ `finance-export`), `payroll-bonus/[id]`, `payroll-freelance`, `freelance/{jam,harian,pengerjaan,custom-items,custom-pengerjaan}`, `payslip-distribution`, `bonus-slip-distribution`, `contract-deductions/[id]`, `contract-returns`, `reimbursements/[id]`, `business-trips/[id]`, `visit-reports/summary`, `finance/lembur`, `roles/[id]`, `hr-agent`, `login`, `logout`
+
+**SPV** (`/api/spv/*`): `jadwal`, `overtime-approvals/[id]`, `logout`
+
+**Berkas:** `GET /api/uploads/[...path]` (via rewrite `/uploads/*`)
+
+---
+
+## 10. Setup & Menjalankan
+
+```bash
+# 1) Install dependensi
+npm install
+
+# 2) Siapkan database MySQL
+#    Buat database lalu import schema kanonik:
+mysql -u root hris_payroll_app_v2 < db/hris_payroll_app_v2.sql
+
+# 3) Buat file .env.local (lihat §11)
+
+# 4) Seed akun admin (opsional)
+node scripts/seed-admins.mjs
+
+# 5) Jalankan dev server
+npm run dev        # http://localhost:3000
+
+# Build & production
+npm run build
+npm run start
+npm run lint       # ESLint (eslint-config-next)
+```
+
+> Tabel yang belum ada akan dibuat otomatis saat modul terkait pertama diakses (migrasi lazy), sehingga import schema dasar + jalan aplikasi sudah cukup untuk lingkungan baru.
+
+---
+
+## 11. Environment Variables
+
+| Variabel | Wajib | Default | Keterangan |
+|----------|:-----:|---------|-----------|
+| `DB_HOST` | ✔ | `127.0.0.1` | Host MySQL |
+| `DB_PORT` | ✔ | `3306` | Port MySQL |
+| `DB_USER` | ✔ | `root` | User MySQL |
+| `DB_PASSWORD` |  | `` | Password MySQL |
+| `DB_NAME` | ✔ | `hris_payroll_app_v2` | Nama database |
+| `APP_SESSION_SECRET` | ✔ (prod) | *dev fallback* | **Kunci tanda tangan sesi** — wajib di production |
+| `OLLAMA_HOST` |  | `https://ollama.com` | Endpoint HR Agent |
+| `OLLAMA_KEY` |  | `` | API key Ollama Cloud |
+| `OLLAMA_MODEL` |  | `gpt-oss:120b-cloud` | Model HR Agent |
+| `SMTP_HOST/PORT/USER/PASS/FROM` |  | — | Kirim email (OTP/notifikasi) |
+
+Contoh `.env.local`:
+
+```env
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=hris_payroll_app_v2
+APP_SESSION_SECRET=ganti-dengan-string-acak-panjang
+```
+
+---
+
+## 12. Deployment
+
+- **Build**: `npm run build` menghasilkan output Next.js standar; jalankan `npm run start` di belakang reverse proxy (Nginx/hcdn).
+- **Cache**: route login memakai header `no-store` + `dynamic = "force-dynamic"` agar CDN/WAF tidak menyimpan respons autentikasi.
+- **Berkas upload** disimpan di filesystem (`public/uploads`) — pastikan volume persisten di production.
+- **Wajib** set `APP_SESSION_SECRET` dan kredensial DB via environment. Terdapat `.env.railway` untuk konfigurasi Railway.
+- Jalankan dengan Node.js (bukan edge runtime) karena memakai `mysql2` dan `node:crypto`.
+
+---
+
+## 13. Catatan Keamanan & Teknis
+
+- **Password hashing SHA2-256 tanpa salt** — cukup untuk konteks internal, namun idealnya di-upgrade ke bcrypt/argon2 bila memungkinkan.
+- **`APP_SESSION_SECRET`** menentukan integritas seluruh sesi; jangan pakai default di production.
+- **HR Agent** hanya boleh membaca daftar tabel yang di-whitelist (mengecualikan `users.password` & `otp_codes`).
+- **Geofence** memakai perhitungan jarak haversine; akurasi bergantung sinyal GPS klien.
+- **Migrasi lazy** memudahkan evolusi schema, tetapi urutan kolom pada beberapa tabel bergantung pada `ALTER` idempotent — hindari mengandalkan posisi kolom.
+- **Timezone** selalu Asia/Jakarta; hindari `new Date()` polos untuk logika tanggal payroll — gunakan helper periode.
+
+---
+
+# BAGIAN B — PANDUAN PENGGUNA
+
+## 14. Peran & Hak Akses
+
+Terdapat **3 jenis akun**:
+
+| Peran | Akses | Login |
+|-------|-------|-------|
+| **Karyawan (Staff)** | Presensi, lembur, pinjaman, slip, reimburse | Halaman utama |
+| **Supervisor / Manager** | Set jadwal + approval lembur tim | Otomatis di menu karyawan, atau login SPV khusus |
+| **Admin** | Akses penuh seluruh sistem | Login admin |
+
+> Supervisor/Manager yang berstatus karyawan aktif tetap bisa presensi pribadi; menu **Set Jadwal** & **Approval Lembur** muncul otomatis di area karyawan mereka.
+
+### Ringkasan hak akses
+
+| Fitur | Karyawan | SPV/Manager | Admin |
+|-------|:--------:|:-----------:|:-----:|
+| Check-in / Check-out | ✅ | ✅ | — |
+| Lihat absensi sendiri | ✅ | ✅ | ✅ |
+| Lihat/edit absensi semua | — | — | ✅ |
+| Ajukan lembur | ✅ | ✅ | — |
+| Approve lembur (atasan / final) | — | ✅ (stage 1) | ✅ (final) |
+| Set jadwal shift | — | ✅ | ✅ |
+| Ajukan pinjaman (≤ Rp3jt) | ✅ | ✅ | — |
+| Buat/approve pinjaman | — | — | ✅ |
+| Lihat slip sendiri | ✅ | ✅ | ✅ |
+| Kelola payroll & distribusi slip | — | — | ✅ |
+| Kelola karyawan / role | — | — | ✅ |
+| Approval reimburse & dinas | — | — | ✅ |
+
+---
+
+## 15. Alur Karyawan
+
+### 15.1 Login
+Masukkan email & password → diarahkan ke dashboard karyawan (mulai dari Presensi Masuk). Lupa password → hubungi Admin HR.
+
+### 15.2 Presensi Masuk (Check-In)
+Pilih jenis presensi, lalu:
+
+| Pilihan | Kode | Syarat |
+|---------|------|--------|
+| Masuk (Hadir) | O | Selfie + GPS |
+| Izin / Off | I | Wajib keterangan |
+| Sakit + Surat | S | Upload surat |
+| Sakit tanpa surat | SX | Wajib keterangan |
+| Setengah Hari | H | Selfie + GPS |
+
+Aturan: **1x sehari**, tidak bisa diubah; untuk Toko/Gudang/Media/JNE divalidasi jam shift; jadwal **libur** menolak presensi; keterlambatan dihitung otomatis.
+
+### 15.3 Presensi Pulang (Check-Out)
+Selfie + GPS. Harus sudah check-in. **Pulang Awal (PA)** wajib keterangan (kecuali penjahit & freelance yang dibebaskan). Shift final disimpan otomatis.
+
+### 15.4 Pengajuan Lembur
+Isi tanggal, jam mulai–selesai, penyetuju, jenis pekerjaan, deadline. **Divisi Produksi** wajib mengisi Nama Order, QTY, Target Sebelum/Setelah. Dropdown penyetuju bergantung jabatan pengaju (Staff→SPV/atasan/ADMIN; Supervisor→Manager/ADMIN; Manager→ADMIN otomatis). Lihat alur approval di [§7.3](#73-lembur--approval-berjenjang).
+
+### 15.5 Pengajuan Pinjaman
+Syarat: masa kerja ≥ 6 bulan, tidak ada pinjaman aktif, cooldown 4 bulan setelah lunas, maks Rp 3.000.000. Sistem menampilkan preview potongan/bulan. Lihat lifecycle di [§7.4](#74-pinjaman-lifecycle).
+
+### 15.6 Slip Gaji & Bonus
+Lihat & unduh slip per periode (tersedia setelah Admin distribusi). Header **AvA Group**.
+
+### 15.7 Reimburse & Perjalanan Dinas
+Ajukan dengan bukti/detail → menunggu persetujuan Admin.
+
+### 15.8 Riwayat Absensi & Kontrak
+Rekap presensi pribadi (jam, status, kode, keterangan PA) dan info kontrak (read-only).
+
+---
+
+## 16. Alur Supervisor & Manager
+
+### 16.1 Set Jadwal
+Bisa dilakukan SPV/Manager/Admin (dan karyawan yang di-whitelist scheduler). Pilih bulan → klik sel (karyawan × tanggal) → pilih shift → simpan.
+
+**Shift & window jam** — lihat [§18.2](#182-shift--jam-kerja). **Aturan shift per penempatan:**
+
+| Penempatan | Shift diperbolehkan |
+|-----------|--------------------|
+| Toko Solo | pagi, libur |
+| JNE | jne_pagi, jne_siang, jne_minggu, libur |
+| Media (sub divisi) | pagi, siang, libur |
+| Lainnya | pagi, siang, lembur, setengah_1, setengah_2, libur |
+
+### 16.2 Approval Lembur
+Hanya pengajuan yang ditujukan kepada Anda yang muncul. Approve/Reject + catatan. Setelah Anda approve → masuk ke Admin (stage 2). Jika Anda reject → langsung final rejected.
+
+---
+
+## 17. Alur Admin
+
+| Modul | Ringkasan |
+|-------|-----------|
+| **Data Karyawan** | CRUD, nonaktifkan, upload/download KTP, atur bank & rekening |
+| **Absensi** | Rekap semua, filter, modal Detail (foto/peta), ubah kode manual |
+| **Set Jadwal** | Jadwal semua karyawan tanpa batasan |
+| **Lembur** | 2 tab (Langsung ke Admin / Via Atasan), modal detail, approve/reject |
+| **Pinjaman** | Buat pinjaman darurat (tanpa batas), approve/reject, pelunasan awal |
+| **Summary Payroll** | Mesin payroll utama; edit override, input omzet, real-time |
+| **Summary Payroll Solo** | Khusus penempatan Toko Solo (omzet tanpa multiplier) |
+| **Summary Penjahit** | Penjahit mingguan/bulanan |
+| **Summary Sales Nasional** | Sales Nasional (komisi & omzet) |
+| **Summary Payroll Freelance** | 4 tipe freelance (jam/pengerjaan/harian/custom) |
+| **Slip Gaji / Distribusi** | Render, export PDF, distribusi ke karyawan aktif |
+| **Slip Bonus / Distribusi** | Terpisah dari slip gaji |
+| **Finance** | Rekap keuangan per unit + lembur custom |
+| **Reimburse / Perjalanan Dinas** | Approval |
+| **Role** | Kelola akun Admin & SPV |
+| **HR Agent** | Tanya-jawab data HR berbasis AI (read-only) |
+
+**Periode payroll:** 26 (M-1) → 25 (M). Contoh: Juni = 26 Mei – 25 Juni. Otomatis pindah periode jika tanggal > 25. Karyawan nonaktif hilang dari periode berikutnya.
+
+**Pemisahan halaman payroll:** karyawan **Toko Solo** dan **Penjahit** tidak muncul di Summary Payroll utama — masing-masing punya halaman sendiri.
+
+---
+
+## 18. Aturan Sistem
+
+### 18.1 Aturan Presensi
+1 presensi/hari · tidak bisa diubah karyawan · Admin bisa koreksi · selfie & GPS wajib untuk hadir · keterangan wajib untuk izin/sakit tanpa surat · surat wajib untuk sakit resmi · PA wajib keterangan (kecuali penjahit/freelance).
+
+### 18.2 Shift & Jam Kerja
+
+| Shift | Check-In | Check-Out |
+|-------|----------|-----------|
+| pagi | 08:00–08:30 | 16:30–17:30 |
+| siang | 11:45–12:00 | 20:00–21:00 |
+| lembur | 09:45–10:00 | 20:00–21:00 |
+| setengah_1 | 10:30–13:00 | 16:30–17:30 |
+| setengah_2 | 08:00–08:30 | 12:00–13:00 |
+| pagi_full | 08:00–08:30 | 16:30–17:30 |
+| pagi_short | 08:00–08:30 | 14:30–15:30 |
+| siang_sore | 11:45–12:00 | 16:30–17:30 |
+| jne_pagi | 07:30–11:00 | 15:30–16:30 |
+| jne_siang | 13:30–17:00 | 20:30–21:30 |
+| jne_minggu | 12:30–14:00 | 19:30–20:30 |
+| libur | — | — |
+
+**Toleransi telat:** JNE 10 menit; shift lain 5 menit.
+
+### 18.3 Geofence (radius lokasi)
 
 | Lokasi | Radius |
 |--------|--------|
-| Kantor (Jl. Wonocatur) | 50 meter |
-| Toko (AVA Sport Store) | 50 meter |
-| Toko Solo | 50 meter |
-| Ayres Apparel | 50 meter |
-| JNE Ambarrukmo | 50 meter |
-| Bank BCA | 100 meter |
-| Gudang | 25 meter |
+| Office (Jl. Wonocatur) | 50 m |
+| Toko (AVA Sport Store) | 50 m |
+| Toko Solo (Kartasura) | 50 m |
+| Ayres Apparel | 50 m |
+| JNE Ambarrukmo | 50 m |
+| Bank BCA KC Adisucipto | 100 m |
+| Gudang Avasportivo | 25 m |
 
-**Jika presensi ditolak karena lokasi:**
-1. Pastikan GPS aktif dan izin lokasi sudah diberikan ke browser.
-2. Tunggu beberapa detik agar GPS mendapat sinyal yang akurat.
-3. Gunakan tombol **Refresh** lokasi untuk memperbarui GPS.
-4. Jika masih ditolak, hubungi Admin HR.
+> **WFA (Work From Anywhere)** tidak terkena validasi geofence.
 
-> **WFA (Work From Anywhere):** Karyawan dengan penempatan WFA tidak terkena validasi geofence.
+### 18.4 Aturan Periode Payroll
+Rentang 26 (M-1) – 25 (M) · hari kerja Senin–Sabtu (tanpa Minggu) · real-time dari absensi · karyawan nonaktif hilang periode berikutnya.
 
----
-
-### 6.4 Aturan Lembur
-
-#### Field Wajib:
-
-| Field | Berlaku Untuk |
-|-------|---------------|
-| Tanggal, Jam Mulai, Jam Selesai | Semua karyawan |
-| Atasan Penyetuju | Semua karyawan (Manager auto ke Admin) |
-| **Jenis Pekerjaan** | Semua karyawan |
-| **Deadline** | Semua karyawan |
-| **Nama Order** | Hanya divisi **Produksi** |
-| **Jumlah QTY** | Hanya divisi **Produksi** |
-| **Target Sebelum Lembur** | Hanya divisi **Produksi** |
-| **Target Setelah Lembur** | Hanya divisi **Produksi** |
-
-#### Alur Approval:
-
-| Jenis Pengajuan | Alur |
-|-----------------|------|
-| Pengajuan ke **ADMIN** (generic) | **1x approve** oleh admin |
-| Pengajuan Manager | **1x approve** oleh admin (otomatis routing) |
-| Pengajuan ke **SPV/Supervisor/Manager** spesifik | **2x approve**: atasan dulu → kemudian admin |
-
-#### Aturan Tambahan:
-- Durasi lembur harus **lebih dari 0 jam**.
-- Approver yang dipilih **harus berstatus aktif**.
-- Setelah diputuskan **approved/rejected** → final, tidak bisa diubah.
-- Lembur **approved** otomatis masuk ke payroll periode tersebut.
-- Admin **tidak bisa approve** pengajuan via atasan jika atasan belum approve.
+### 18.5 Omzet & Bonus
+- Grup **AVA + Ayres** → bonus = total omzet × **0,7%**, dibagi ke karyawan eligible × role factor.
+- **JNE** → `is_custom_bonus`, nominal input dipakai langsung.
+- **Toko Solo** → input manual tanpa multiplier.
+- CEO & Freelance **tidak** dapat bonus omzet (factor 0).
 
 ---
 
-### 6.5 Aturan Pinjaman
-
-| Aturan | Detail |
-|--------|--------|
-| **Masa kerja minimal** | 6 bulan dari tanggal masuk pertama |
-| **Batas maksimal (karyawan)** | Rp 3.000.000 per pengajuan mandiri |
-| **Batas admin** | Tidak ada batas (untuk kondisi darurat) |
-| **Satu pinjaman aktif** | Tidak bisa mengajukan jika masih ada pinjaman pending/approved/berjalan |
-| **Cooldown setelah lunas** | 4 bulan setelah pinjaman selesai baru bisa ajukan lagi (jeda lewati 3 bulan penuh) |
-| **Contoh cooldown** | Lunas Januari → Bisa ajukan kembali mulai 1 Mei (lewati Feb, Mar, Apr) |
-| **Cicilan otomatis** | Dipotong dari gaji setiap bulan sesuai jadwal |
-| **Pelunasan awal** | Hanya bisa dilakukan oleh Admin |
-
----
-
-### 6.6 Aturan Periode Payroll
-
-| Aturan | Detail |
-|--------|--------|
-| **Rentang periode** | Tanggal 26 bulan sebelumnya s.d. tanggal 25 bulan berjalan |
-| **Contoh** | Periode Juni = 26 Mei – 25 Juni |
-| **Default tampil** | Jika tanggal sudah > 25, otomatis masuk ke periode bulan berikutnya |
-| **Hari kerja** | Dihitung otomatis (Senin–Sabtu), tidak termasuk Minggu |
-| **Hari kerja konsisten** | Semua karyawan dalam satu periode dapat nilai hari kerja yang sama |
-| **Real-time** | Summary payroll selalu update dari data absensi terbaru |
-| **Karyawan nonaktif** | Tidak muncul di periode berikutnya setelah tanggal nonaktif |
-| **Pemisahan halaman** | Karyawan Toko Solo di Summary Payroll Solo (terpisah dari utama) |
-
----
-
-## 7. Kode Status Presensi
+## 19. Kode Status Presensi
 
 | Kode | Nama | Keterangan |
 |------|------|-----------|
 | **O** | Hadir | Masuk tepat waktu |
-| **T** | Terlambat | Masuk setelah jam shift |
-| **I** | Izin | Izin / Off (dengan keterangan) |
-| **S** | Sakit | Sakit dengan surat dokter |
-| **SX** | Sakit Tanpa Surat | Sakit tanpa dokumen pendukung |
-| **H** | Setengah Hari | Hadir setengah hari |
-| **PA** | Pulang Awal | Pulang sebelum jam checkout shift — wajib keterangan. Di UI tampil PA, di DB tersimpan hadir + keterangan |
-| **L** | Libur | Hari libur terjadwal |
+| **T** | Terlambat | Masuk setelah jam shift (+toleransi) |
+| **I** | Izin | Izin/Off (dengan keterangan) |
+| **S** | Sakit | Dengan surat |
+| **SX** | Sakit tanpa surat | Tanpa dokumen |
+| **H** | Setengah Hari | Hadir ½ hari |
+| **PA** | Pulang Awal | Pulang sebelum jam checkout + keterangan (di DB: hadir + keterangan) |
+| **L** | Libur | Libur terjadwal |
 | **A** | Alfa | Tidak hadir tanpa keterangan |
 | **C** | Cuti | Cuti resmi |
 
 ---
 
-## 8. Tabel Ringkasan Hak Akses
+## 20. FAQ
 
-| Fitur | Karyawan | Supervisor / Manager | Admin |
-|-------|:--------:|:--------------------:|:-----:|
-| Check-in / Check-out | ✅ | ✅ | — |
-| Lihat absensi sendiri | ✅ | ✅ | ✅ |
-| Lihat absensi semua karyawan | — | — | ✅ |
-| Edit / input absensi manual | — | — | ✅ |
-| Ajukan lembur (+ field produksi jika Produksi) | ✅ | ✅ | — |
-| Approve lembur (stage 1 — atasan) | — | ✅ (jika ditunjuk) | — |
-| Approve lembur (stage 2 — admin / final) | — | — | ✅ |
-| Lihat detail pengajuan lembur (modal) | — | ✅ | ✅ |
-| Set jadwal shift | — (kecuali SPV/Manager) | ✅ | ✅ |
-| Ajukan pinjaman mandiri (maks Rp 3 jt) | ✅ | ✅ | — |
-| Buat pinjaman tanpa batas (darurat) | — | — | ✅ |
-| Approve / reject pinjaman | — | — | ✅ |
-| Lihat slip gaji sendiri | ✅ | ✅ | ✅ |
-| Lihat & distribusi slip gaji semua | — | — | ✅ |
-| Kelola & edit Summary Payroll | — | — | ✅ |
-| Kelola Summary Payroll Solo (Toko Solo) | — | — | ✅ |
-| Kelola data karyawan | — | — | ✅ |
-| Download foto KTP karyawan | — | — | ✅ |
-| Approval reimburse & perjalanan dinas | — | — | ✅ |
-| Manajemen akun admin / SPV | — | — | ✅ |
-| Laporan kunjungan (sales) | ✅ (khusus sales) | — | ✅ |
+**GPS tidak akurat?** Pastikan GPS aktif & izin diberikan, tunggu sinyal, pakai tombol Refresh, pindah ke area terbuka.
+
+**Lupa check-out kemarin?** Hubungi Admin — karyawan tidak bisa mengisi check-out hari lampau.
+
+**Salah status check-in?** Tidak bisa diubah sendiri; Admin dapat mengoreksi kode via modal detail absensi.
+
+**Lembur sudah di-approve atasan tapi masih "menunggu admin"?** Karena Anda memakai alur **2x approval** (via atasan). Setelah atasan approve, admin masih perlu finalisasi. Pilih **ADMIN** generic saat submit bila ingin 1x approve.
+
+**Baru kerja 4 bulan, kapan bisa pinjam?** Setelah masa kerja **6 bulan**.
+
+**Cicilan belum terpotong?** Cicilan tercermin saat payroll periode terkait dihitung.
+
+**PA vs Izin?** PA = sudah check-in hadir lalu pulang sebelum jam checkout (tetap hadir + keterangan). Izin = tidak masuk sejak awal.
+
+**Karyawan Toko Solo tidak muncul di Summary utama?** Sengaja dipisah ke **Summary Payroll Solo**. Slip gaji Anda tetap normal.
+
+**Slip belum muncul?** Slip tersedia setelah Admin mendistribusikannya.
+
+**Freelance dihitung bagaimana?** Sesuai `tipe_freelance` (jam/pengerjaan/harian/custom) — lihat [§7.6](#76-payroll-freelance). Slip gaji mengikuti total di Summary Payroll Freelance persis.
+
+**Bisa check-in di luar jam shift?** Untuk karyawan bershift (Toko/Gudang/Media/JNE), check-in di luar window ditolak. Karyawan lain diterima namun telat tetap dicatat.
 
 ---
 
-## 9. FAQ & Catatan Penting
-
-**Q: GPS saya tidak akurat, apa yang harus dilakukan?**
-Tutup aplikasi browser lain, pastikan koneksi internet stabil, dan buka pengaturan lokasi ponsel untuk memastikan GPS aktif. Gunakan tombol **Refresh** di halaman presensi. Jika akurasi masih di atas 50 meter, coba pindah ke area terbuka tanpa penghalang atap atau gedung.
-
----
-
-**Q: Saya lupa check-out kemarin, bagaimana?**
-Hubungi Admin HR untuk mencatat check-out secara manual. Karyawan tidak bisa mengisi check-out hari sebelumnya sendiri.
-
----
-
-**Q: Saya sudah check-in tapi salah status. Bisa diubah?**
-Tidak bisa diubah sendiri. Hubungi Admin HR untuk koreksi data absensi — admin punya akses untuk mengubah kode absensi via modal detail.
-
----
-
-**Q: Saya divisi Produksi, kenapa form lembur saya beda dari teman lain?**
-Field tambahan (Nama Order, Jumlah QTY, Target Sebelum/Setelah Lembur) memang khusus muncul untuk karyawan divisi Produksi. Ini untuk memudahkan admin tracking target produksi dari lembur yang diajukan.
-
----
-
-**Q: Kenapa atasan saya sudah approve lembur tapi statusnya masih "menunggu admin"?**
-Karena Anda mengajukan lembur ke atasan (bukan langsung admin), sistem menerapkan **2x approval**. Setelah atasan approve, masih perlu admin approve untuk finalisasi. Tunggu admin proses, atau hubungi admin jika urgent.
-
----
-
-**Q: Kalau saya mau lembur cepat selesai approve-nya, bagaimana?**
-Pilih opsi **ADMIN** generic di dropdown atasan saat submit. Pengajuan akan langsung 1x approve oleh admin (tidak perlu lewat atasan). Tapi pastikan urgensi memang membutuhkan ini — alur normal lewat atasan tetap direkomendasikan untuk hierarki yang baik.
-
----
-
-**Q: Saya baru kerja 4 bulan, kapan bisa mengajukan pinjaman?**
-Pengajuan baru bisa dilakukan setelah masa kerja mencapai **6 bulan** dari tanggal pertama masuk.
-
----
-
-**Q: Cicilan pinjaman tidak dipotong bulan ini, kenapa?**
-Cicilan dipotong otomatis saat Admin memproses payroll. Jika payroll bulan ini belum diproses, cicilan belum terpotong. Hubungi Admin untuk konfirmasi.
-
----
-
-**Q: Pulang Awal (PA) itu apa bedanya dengan Izin?**
-PA adalah kondisi di mana karyawan **sudah check-in hadir** tapi **pulang sebelum jam checkout** shift-nya. Statusnya tetap tercatat hadir, namun ditandai PA dan wajib ada keterangan alasan. Berbeda dengan Izin yang artinya tidak masuk sama sekali sejak awal hari.
-
----
-
-**Q: Saya karyawan Toko Solo, kenapa saya tidak muncul di Summary Payroll utama?**
-Karyawan dengan penempatan **Toko Solo** sengaja dipisah ke halaman **Summary Payroll Solo** agar tidak campur dengan unit lain. Admin akan melihat data Anda di menu Summary Payroll Solo. Slip gaji Anda tetap normal tampil di akun Anda.
-
----
-
-**Q: Siapa yang bisa melihat keterangan PA saya?**
-Hanya Admin yang bisa melihat keterangan PA di detail rekap absensi.
-
----
-
-**Q: Slip gaji saya tidak muncul. Kenapa?**
-Slip baru tersedia setelah Admin mendistribusikannya. Jika periode sudah selesai tapi slip belum muncul, hubungi Admin HR.
-
----
-
-**Q: Apa itu status Freelance di payroll?**
-Karyawan dengan status kepegawaian Freelance memiliki perhitungan gaji berbeda (per hari atau per jam, tanpa tunjangan tetap dan BPJS). Diatur oleh Admin di konfigurasi payroll masing-masing karyawan.
-
----
-
-**Q: Saya Supervisor, bagaimana cara approve lembur tim saya?**
-Login dengan akun karyawan Anda, lalu pilih menu **Approval Lembur** di sidebar. Hanya pengajuan yang ditujukan kepada Anda yang akan muncul. Setelah Anda approve, pengajuan masuk ke admin untuk approval kedua (2x approve).
-
----
-
-**Q: Bisa tidak check-in di luar jam shift?**
-Untuk karyawan dengan jadwal shift (Toko/Gudang/Media/JNE), check-in di luar window jam shift akan ditolak sistem. Untuk karyawan lain, sistem menerima check-in namun keterlambatan tetap dicatat.
-
----
-
-**Q: Saya lihat tampilan login rusak (teks polos tanpa style). Bug?**
-Bukan bug — ini biasanya karena CSS gagal di-load di browser. Coba **hard refresh** (Ctrl+Shift+R), buka di **incognito**, atau hubungi tim IT jika masalah persisten.
-
----
-
-> **Untuk pertanyaan atau kendala teknis lainnya, hubungi Admin HR AvA Group.**
-
----
-
-*Dokumen ini diterbitkan oleh HR AvA Group. Berlaku untuk seluruh karyawan yang menggunakan sistem Web HR.*
+> **Kendala teknis atau pertanyaan lain → hubungi Admin HR AvA Group.**
+>
+> *Dokumentasi ini mencakup arsitektur teknis dan panduan pengguna sistem Web HR AvA Group.*
