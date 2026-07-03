@@ -17,12 +17,13 @@ Dokumen ini berisi **dua bagian**:
 1. [Gambaran Umum](#1-gambaran-umum)
 2. [Tech Stack](#2-tech-stack)
 3. [Arsitektur Sistem](#3-arsitektur-sistem)
-4. [Struktur Direktori](#4-struktur-direktori)
+4. [Struktur Direktori](#4-struktur-direktori) · [4.1 Sitemap Lengkap](#41-peta-halaman-sitemap-lengkap)
 5. [Autentikasi & Sesi](#5-autentikasi--sesi)
 6. [Model Data (ERD & Katalog Tabel)](#6-model-data-erd--katalog-tabel)
 7. [Alur Utama / Flow Diagram](#7-alur-utama--flow-diagram)
    - [7.1 Login & Routing Peran](#71-login--routing-peran)
-   - [7.2 Presensi Masuk / Pulang](#72-presensi-masuk--pulang)
+   - [7.1a Registrasi & Lengkapi Data Diri](#71a-registrasi--lengkapi-data-diri)
+   - [7.2 Presensi Masuk / Pulang (+ Blokir/Pulihkan)](#72-presensi-masuk--pulang)
    - [7.3 Lembur & Approval Berjenjang](#73-lembur--approval-berjenjang)
    - [7.4 Pinjaman (Lifecycle)](#74-pinjaman-lifecycle)
    - [7.5 Pipeline Payroll](#75-pipeline-payroll)
@@ -176,6 +177,67 @@ web_hr/
 ├── next.config.ts                # Rewrite /uploads
 └── package.json
 ```
+
+### 4.1 Peta Halaman (Sitemap Lengkap)
+
+**Publik**
+| Route | Fungsi |
+|-------|--------|
+| `/` | Login + Sign Up (entry, animasi GridScan) |
+
+**Karyawan** (`/employee/*`)
+| Route | Fungsi |
+|-------|--------|
+| `/employee` | Dashboard karyawan (ringkasan absensi, lembur, pinjaman, slip) |
+| `/employee/check-in` | Presensi masuk (selfie + GPS) |
+| `/employee/check-out` | Presensi pulang |
+| `/employee/attendance-history` | Riwayat absensi pribadi |
+| `/employee/overtime` | Ajukan & riwayat lembur |
+| `/employee/overtime-approvals` | Approval lembur (untuk SPV/Manager yang login sbagai karyawan) |
+| `/employee/jadwal` | Setup jadwal (untuk SPV/Manager/scheduler whitelist) |
+| `/employee/loans` | Ajukan & pantau pinjaman |
+| `/employee/payslips` | Slip gaji |
+| `/employee/bonus-slips` | Slip bonus |
+| `/employee/reimbursements` | Ajukan reimburse |
+| `/employee/business-trips` | Ajukan perjalanan dinas |
+| `/employee/contract` | Informasi kontrak & riwayat potongan |
+| `/employee/visit-report` | Laporan kunjungan (sales) |
+| `/employee/profile` | Lengkapi/edit data diri (NIK, KTP, bank, dll) |
+
+**SPV** (`/spv/*`)
+| Route | Fungsi |
+|-------|--------|
+| `/spv` | Redirect → `/spv/jadwal` |
+| `/spv/jadwal` | Set jadwal shift tim |
+| `/spv/overtime-approvals` | Approval lembur tim |
+
+**Admin** (`/admin/*`)
+| Route | Fungsi |
+|-------|--------|
+| `/admin` | Dashboard admin (statistik karyawan/presensi/payroll/slip) |
+| `/admin/employees` | Data karyawan |
+| `/admin/attendance` | Rekap absensi + koreksi kode + libur nasional + pulihkan |
+| `/admin/jadwal` | Set jadwal semua karyawan |
+| `/admin/overtime` | Approval lembur |
+| `/admin/visit-reports` | Laporan kunjungan sales |
+| `/admin/business-trips` | Approval perjalanan dinas |
+| `/admin/reimbursements` | Approval reimburse |
+| `/admin/payroll-summary` | Summary payroll utama |
+| `/admin/payroll-summary/solo` | Payroll Toko Solo |
+| `/admin/payroll-summary/penjahit` | Payroll penjahit |
+| `/admin/payroll-summary/sales-nasional` | Payroll Sales Nasional |
+| `/admin/payroll-bonus` | Payroll bonus |
+| `/admin/payroll-freelance` | Payroll freelance (4 tipe) |
+| `/admin/payslips` | Slip gaji |
+| `/admin/payslip-distribution` | Distribusi slip gaji |
+| `/admin/bonus-slips` | Slip bonus |
+| `/admin/bonus-slip-distribution` | Distribusi slip bonus |
+| `/admin/finance` | Rekap keuangan per unit |
+| `/admin/loans` | Manajemen pinjaman |
+| `/admin/contract-deductions` | Potongan kontrak |
+| `/admin/contract-returns` | Pengembalian kontrak |
+| `/admin/roles` | Kelola akun Admin & SPV |
+| `/admin/hr-agent` | HR Agent (AI) |
 
 ---
 
@@ -333,6 +395,25 @@ sequenceDiagram
 ```
 
 > Karyawan juga diminta **izin lokasi GPS** saat login (disimpan sementara di `sessionStorage`) agar presensi lancar. Pada tanggal 1 (payday) muncul salam payroll.
+>
+> **Mobile**: `POST /api/mobile/login` mengembalikan **Bearer token** (signed-session identik cookie web, dengan klaim `exp`) khusus role `karyawan` untuk dipakai aplikasi mobile via header `Authorization`.
+
+### 7.1a Registrasi & Lengkapi Data Diri
+
+Karyawan baru mendaftar sendiri, lalu melengkapi profil (NIK, KTP, bank, dll) sebelum data dipakai payroll.
+
+```mermaid
+flowchart LR
+    A[Sign Up<br/>email + password] --> B[(users: role=karyawan<br/>password SHA2-256)]
+    B --> C[Login pertama]
+    C --> D[Menu Profile<br/>Lengkapi Data Diri]
+    D --> E[Isi: nama, gender, tempat/tgl lahir,<br/>NIK, agama, no HP, alamat KTP & domisili,<br/>foto KTP, bank, no rekening]
+    E --> F[(UPDATE karyawan)]
+    F --> G[Admin lengkapi data kepegawaian:<br/>jabatan, divisi, unit, penempatan,<br/>status, gaji pokok, dll]
+    G --> H([Siap dipakai payroll])
+```
+
+> NIK unik (duplikat ditolak). Foto KTP diunggah ke `public/uploads/ktp/`. Field kepegawaian (jabatan/divisi/gaji) hanya bisa diisi Admin di menu Data Karyawan.
 
 ### 7.2 Presensi Masuk / Pulang
 
@@ -365,6 +446,24 @@ flowchart TD
 - **Geofence** divalidasi di check-in **dan** check-out (radius per lokasi, lihat §18).
 - **Penjahit & Freelance** dibebaskan dari aturan "pulang awal" — boleh check-out kapan pun (freelance dibayar per jam/pcs, jam dihitung dari masuk–pulang).
 - **1 presensi per hari**, tidak bisa diubah karyawan; hanya Admin yang bisa koreksi kode.
+
+#### Blokir & Pulihkan Absensi (lupa check-out)
+
+Untuk mencegah data absensi menggantung, sistem **memblokir** karyawan yang **kemarin** hadir tapi lupa check-out.
+
+```mermaid
+flowchart TD
+    A[Karyawan buka Presensi Masuk hari ini] --> B{Kemarin HADIR tapi<br/>belum absen pulang?}
+    B -->|Tidak| OK[✅ Boleh absen]
+    B -->|Ya| C{Sudah dipulihkan admin?<br/>absen_dipulihkan=1}
+    C -->|Ya| OK
+    C -->|Belum| BLOCK[🚫 Diblokir 403<br/>Hubungi admin untuk pulihkan]
+    BLOCK --> D[Admin klik Pulihkan<br/>di menu Absensi]
+    D --> E[(UPDATE absensi<br/>absen_dipulihkan=1)]
+    E --> OK
+```
+
+> Cek hanya **hari kemarin** (bukan semua hari lampau). Admin memulihkan lewat `POST /api/admin/attendance/recover`.
 
 ### 7.3 Lembur & Approval Berjenjang
 
@@ -497,8 +596,10 @@ sequenceDiagram
 |-------|----------------|
 | `db.ts` | Pool MySQL tunggal (cached global saat dev), `namedPlaceholders` |
 | `auth.ts` | Sesi HMAC, guard peran, whitelist editor payroll & approver lembur |
-| `employees.ts` | CRUD karyawan, signup, migrasi kolom karyawan |
-| `attendance.ts` | Aturan shift, window jam, deteksi telat/½hari, geofence-time, foto |
+| `admins.ts` | CRUD akun Admin & SPV (menu Role), schema role users |
+| `employees.ts` | CRUD karyawan, signup, update profil, migrasi kolom karyawan |
+| `attendance.ts` | Aturan shift, window jam, deteksi telat/½hari, foto, blokir & pulihkan absensi |
+| `holidays.ts` | Libur nasional (tandai kode L massal) |
 | `attendance-recompute.ts` | Recompute kode absensi & migrasi `app_migrations` |
 | `hris.ts` | Rekap absensi (spreadsheet), `mapAttendanceCode`, set kode manual, dashboard |
 | `jadwal-karyawan.ts` | Set jadwal shift, hari efektif |
@@ -514,7 +615,6 @@ sequenceDiagram
 | `contract-deductions.ts`, `contract-returns.ts`, `contract-timeline.ts` | Kontrak & deposit |
 | `reimbursements.ts`, `business-trips.ts` | Reimburse & perjalanan dinas |
 | `visit-reports.ts` | Laporan kunjungan sales |
-| `holidays.ts` | Libur nasional |
 | `hr-agent.ts` | HR Agent (Ollama, tool-calling read-only, tabel di-whitelist) |
 | `*-roles.ts`, `payroll-constants.ts` | Konstanta peran & tarif (mis. omzet 0.7%) |
 | `uploads.ts`, `api-json.ts` | Util upload & respons JSON |
@@ -523,17 +623,73 @@ sequenceDiagram
 
 ## 9. Peta API Endpoint
 
-Endpoint dikelompokkan per audiens. Semua memvalidasi sesi peran terkait.
+Semua endpoint memvalidasi sesi peran terkait. Metode HTTP ditunjukkan per route.
 
-**Auth (publik):** `POST /api/login`, `POST /api/signup`, `POST /api/logout`, `POST /api/mobile/login`
+### Auth (publik)
+| Endpoint | Metode | Fungsi |
+|----------|--------|--------|
+| `/api/login` | POST | Login terpadu (routing per role) |
+| `/api/signup` | POST | Registrasi akun karyawan |
+| `/api/logout` | POST | Logout (hapus cookie) |
+| `/api/mobile/login` | POST | Login mobile → Bearer token (khusus karyawan) |
 
-**Karyawan** (`/api/employee/*`): `attendance/check-in`, `attendance/check-out`, `attendance/today`, `attendance/history`, `overtime`, `overtime-approvals/[id]`, `loans`, `payslips`, `bonus-slips`, `reimbursements`, `business-trips`, `contract`, `profile`, `visit-report`, `overview`
+### Karyawan (`/api/employee/*`)
+| Endpoint | Metode | Fungsi |
+|----------|--------|--------|
+| `attendance/check-in` | POST | Presensi masuk (selfie+GPS) |
+| `attendance/check-out` | POST | Presensi pulang |
+| `attendance/today` | GET | Status presensi hari ini |
+| `attendance/history` | GET | Riwayat absensi |
+| `overtime` | GET/POST | Lihat & ajukan lembur |
+| `overtime-approvals` `[id]` | GET/PATCH | Approval lembur (SPV-as-karyawan) |
+| `loans` | GET/POST | Pinjaman |
+| `payslips` | GET | Slip gaji |
+| `bonus-slips` | GET | Slip bonus |
+| `reimbursements` | GET/POST | Reimburse |
+| `business-trips` | GET/POST | Perjalanan dinas |
+| `contract` | GET | Info kontrak |
+| `profile` | GET/PUT | Lihat & update data diri |
+| `visit-report` | GET/POST | Laporan kunjungan |
+| `overview` | GET | Ringkasan dashboard |
 
-**Admin** (`/api/admin/*`): `employees/*` (+ `export`), `attendance/{update,holiday,recover}`, `overtime/[id]`, `loans/[id]/payoff`, `payroll-summary/*` (+ `finance-export`), `payroll-bonus/[id]`, `payroll-freelance`, `freelance/{jam,harian,pengerjaan,custom-items,custom-pengerjaan}`, `payslip-distribution`, `bonus-slip-distribution`, `contract-deductions/[id]`, `contract-returns`, `reimbursements/[id]`, `business-trips/[id]`, `visit-reports/summary`, `finance/lembur`, `roles/[id]`, `hr-agent`, `login`, `logout`
+### Admin (`/api/admin/*`)
+| Endpoint | Metode | Fungsi |
+|----------|--------|--------|
+| `employees` `[id]` | GET/POST/PUT/DELETE | CRUD karyawan |
+| `employees/export` | GET | Export Excel data karyawan |
+| `attendance/update` | POST | Ubah/koreksi kode absensi |
+| `attendance/holiday` | POST/DELETE | Set/batal libur nasional (tandai L) |
+| `attendance/recover` | POST | Pulihkan absensi yang terblokir |
+| `overtime` `[id]` | GET/PATCH | Approve/reject lembur |
+| `loans` `[id]` `[id]/payoff` | GET/POST/PATCH | Pinjaman + pelunasan awal |
+| `payroll-summary` `[id]` | GET/POST/PATCH | Summary payroll + override |
+| `payroll-summary/finance-export` | GET | Export finance (THP) XLSX |
+| `payroll-bonus` `[id]` | GET/POST/PATCH | Payroll bonus |
+| `payroll-freelance` | GET/POST | Payroll freelance |
+| `freelance/{jam,harian,pengerjaan,custom-items,custom-pengerjaan}` | GET/POST/DELETE | Data 4 tipe freelance |
+| `payslip-distribution` | POST/DELETE | Distribusi & batal slip gaji |
+| `bonus-slip-distribution` | POST/DELETE | Distribusi slip bonus |
+| `contract-deductions` `[id]` | GET/POST/PUT/DELETE | Potongan kontrak |
+| `contract-returns` | GET/POST | Pengembalian kontrak |
+| `reimbursements` `[id]` | GET/PATCH | Approve/reject reimburse |
+| `business-trips` `[id]` | GET/PATCH | Approve/reject dinas |
+| `visit-reports` `summary` | GET | Laporan kunjungan + ringkasan |
+| `finance/lembur` | POST/DELETE | Lembur custom finance per unit |
+| `roles` `[id]` | GET/POST/PATCH/DELETE | Kelola akun Admin & SPV |
+| `hr-agent` | POST | Chat HR Agent (AI) |
+| `login`, `logout` | POST | Sesi admin |
 
-**SPV** (`/api/spv/*`): `jadwal`, `overtime-approvals/[id]`, `logout`
+### SPV (`/api/spv/*`)
+| Endpoint | Metode | Fungsi |
+|----------|--------|--------|
+| `jadwal` | GET/POST | Set jadwal shift |
+| `overtime-approvals` `[id]` | GET/PATCH | Approval lembur tim |
+| `logout` | POST | Sesi SPV |
 
-**Berkas:** `GET /api/uploads/[...path]` (via rewrite `/uploads/*`)
+### Berkas
+| Endpoint | Metode | Fungsi |
+|----------|--------|--------|
+| `/api/uploads/[...path]` | GET | Serve file upload (via rewrite `/uploads/*`) |
 
 ---
 
@@ -649,10 +805,15 @@ Terdapat **3 jenis akun**:
 
 ## 15. Alur Karyawan
 
-### 15.1 Login
-Masukkan email & password → diarahkan ke dashboard karyawan (mulai dari Presensi Masuk). Lupa password → hubungi Admin HR.
+### 15.1 Registrasi & Login
+- **Daftar** (Sign Up) dengan email + password (min 6 karakter) di halaman utama.
+- **Login** → diarahkan ke area karyawan. Lupa password → hubungi Admin HR.
+- **Dashboard Karyawan** (`/employee`): ringkasan pribadi (absensi, lembur, pinjaman, slip) langsung dari database.
 
-### 15.2 Presensi Masuk (Check-In)
+### 15.2 Lengkapi Data Diri (Profile)
+Menu **Profile** — lengkapi/edit: nama, jenis kelamin, tempat & tanggal lahir, **NIK** (unik), agama, no HP, alamat KTP & domisili, **foto KTP**, bank, no rekening. Data kepegawaian (jabatan, divisi, gaji) diisi oleh Admin.
+
+### 15.3 Presensi Masuk (Check-In)
 Pilih jenis presensi, lalu:
 
 | Pilihan | Kode | Syarat |
@@ -663,25 +824,31 @@ Pilih jenis presensi, lalu:
 | Sakit tanpa surat | SX | Wajib keterangan |
 | Setengah Hari | H | Selfie + GPS |
 
-Aturan: **1x sehari**, tidak bisa diubah; untuk Toko/Gudang/Media/JNE divalidasi jam shift; jadwal **libur** menolak presensi; keterlambatan dihitung otomatis.
+Aturan: **1x sehari**, tidak bisa diubah; untuk Toko/Gudang/Media/JNE divalidasi jam shift; jadwal **libur** menolak presensi; keterlambatan dihitung otomatis. **Jika kemarin lupa check-out**, presensi hari ini diblokir sampai Admin memulihkan (lihat [§7.2](#blokir--pulihkan-absensi-lupa-check-out)).
 
-### 15.3 Presensi Pulang (Check-Out)
+### 15.4 Presensi Pulang (Check-Out)
 Selfie + GPS. Harus sudah check-in. **Pulang Awal (PA)** wajib keterangan (kecuali penjahit & freelance yang dibebaskan). Shift final disimpan otomatis.
 
-### 15.4 Pengajuan Lembur
+### 15.5 Pengajuan Lembur
 Isi tanggal, jam mulai–selesai, penyetuju, jenis pekerjaan, deadline. **Divisi Produksi** wajib mengisi Nama Order, QTY, Target Sebelum/Setelah. Dropdown penyetuju bergantung jabatan pengaju (Staff→SPV/atasan/ADMIN; Supervisor→Manager/ADMIN; Manager→ADMIN otomatis). Lihat alur approval di [§7.3](#73-lembur--approval-berjenjang).
 
-### 15.5 Pengajuan Pinjaman
+### 15.6 Pengajuan Pinjaman
 Syarat: masa kerja ≥ 6 bulan, tidak ada pinjaman aktif, cooldown 4 bulan setelah lunas, maks Rp 3.000.000. Sistem menampilkan preview potongan/bulan. Lihat lifecycle di [§7.4](#74-pinjaman-lifecycle).
 
-### 15.6 Slip Gaji & Bonus
+### 15.7 Slip Gaji & Bonus
 Lihat & unduh slip per periode (tersedia setelah Admin distribusi). Header **AvA Group**.
 
-### 15.7 Reimburse & Perjalanan Dinas
+### 15.8 Reimburse & Perjalanan Dinas
 Ajukan dengan bukti/detail → menunggu persetujuan Admin.
 
-### 15.8 Riwayat Absensi & Kontrak
-Rekap presensi pribadi (jam, status, kode, keterangan PA) dan info kontrak (read-only).
+### 15.9 Riwayat Absensi & Kontrak
+Rekap presensi pribadi (jam, status, kode, keterangan PA) dan info kontrak + riwayat potongan (read-only).
+
+### 15.10 Laporan Kunjungan (Sales)
+Karyawan sales area mengirim laporan kunjungan (dengan lokasi) beberapa kali per hari via menu Laporan Kunjungan.
+
+### 15.11 Set Jadwal (SPV/Manager/Scheduler)
+Karyawan berhak (Supervisor, Manager, atau di-whitelist) mendapat menu **Setup Jadwal** & **Approval Lembur** di area karyawan — lihat [§16](#16-alur-supervisor--manager).
 
 ---
 
@@ -720,7 +887,7 @@ Sidebar admin dikelompokkan menjadi **8 grup** (`components/AdminShell.tsx`). Ta
 **🕐 Absensi & Aktivitas**
 | Menu | Ringkasan |
 |------|-----------|
-| **Absensi** | Rekap semua karyawan, filter, modal Detail (foto/peta), ubah kode manual |
+| **Absensi** | Rekap semua karyawan, filter, modal Detail (foto/peta), ubah kode manual, **set libur nasional** (tandai L massal), **Pulihkan** absensi terblokir |
 | **Lembur** | 2 tab (Langsung ke Admin / Via Atasan), modal detail, approve/reject |
 | **Laporan Kunjungan** | Timeline kunjungan Sales Area + ringkasan |
 
@@ -770,7 +937,7 @@ Sidebar admin dikelompokkan menjadi **8 grup** (`components/AdminShell.tsx`). Ta
 ## 18. Aturan Sistem
 
 ### 18.1 Aturan Presensi
-1 presensi/hari · tidak bisa diubah karyawan · Admin bisa koreksi · selfie & GPS wajib untuk hadir · keterangan wajib untuk izin/sakit tanpa surat · surat wajib untuk sakit resmi · PA wajib keterangan (kecuali penjahit/freelance).
+1 presensi/hari · tidak bisa diubah karyawan · Admin bisa koreksi · selfie & GPS wajib untuk hadir · keterangan wajib untuk izin/sakit tanpa surat · surat wajib untuk sakit resmi · PA wajib keterangan (kecuali penjahit/freelance) · **lupa check-out kemarin → diblokir sampai Admin "Pulihkan"** · **libur nasional** ditandai kode L massal oleh Admin.
 
 ### 18.2 Shift & Jam Kerja
 
@@ -838,6 +1005,12 @@ Rentang 26 (M-1) – 25 (M) · hari kerja Senin–Sabtu (tanpa Minggu) · real-t
 **GPS tidak akurat?** Pastikan GPS aktif & izin diberikan, tunggu sinyal, pakai tombol Refresh, pindah ke area terbuka.
 
 **Lupa check-out kemarin?** Hubungi Admin — karyawan tidak bisa mengisi check-out hari lampau.
+
+**Saya diblokir tidak bisa absen masuk hari ini?** Ini terjadi bila **kemarin Anda hadir tapi lupa check-out**. Hubungi Admin untuk klik **Pulihkan** di menu Absensi, lalu Anda bisa absen lagi.
+
+**Bagaimana libur nasional dicatat?** Admin menandai tanggal libur nasional; seluruh karyawan otomatis diberi kode **L** untuk tanggal tersebut.
+
+**Apakah ada aplikasi mobile?** Ada endpoint `POST /api/mobile/login` yang mengembalikan token untuk aplikasi mobile karyawan (memakai skema sesi yang sama dengan web).
 
 **Salah status check-in?** Tidak bisa diubah sendiri; Admin dapat mengoreksi kode via modal detail absensi.
 
