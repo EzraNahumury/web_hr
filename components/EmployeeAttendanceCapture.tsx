@@ -729,6 +729,15 @@ export default function EmployeeAttendanceCapture({
 
             {/* Camera / photo preview */}
             <div className="mx-auto w-full max-w-[360px]">
+              {needsSelfie ? (
+                <div className="mb-2 flex items-start gap-2 rounded-xl border border-[#f0d8b8] bg-[#fff7ec] px-3 py-2 text-[12px] leading-5 text-[#8a5a1a]">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 h-4 w-4 flex-none" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 16v-4M12 8h.01" strokeLinecap="round" />
+                  </svg>
+                  <span>Arahkan kamera separuh badan sampai terlihat bajunya.</span>
+                </div>
+              ) : null}
               <div className="overflow-hidden rounded-2xl border border-[#ead7ce] bg-[#111] shadow-[0_4px_20px_rgba(0,0,0,0.08)]">
                 {isCheckIn && !needsSelfie ? (
                   <div className="flex aspect-[4/5] items-center justify-center bg-[#fff8f4] px-5 text-center text-[13px] leading-6 text-[#7a6059]">
