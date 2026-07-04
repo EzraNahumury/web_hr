@@ -453,6 +453,17 @@ export async function ensurePayrollSupportTables(connection?: QueryExecutor) {
   try {
     await executor.query(`
       ALTER TABLE payroll_employee_input
+      ADD COLUMN override_denda DECIMAL(14,2) NULL DEFAULT NULL
+    `);
+  } catch (err: unknown) {
+    if (getMysqlErrorCode(err) !== 'ER_DUP_FIELDNAME') {
+      console.error("Migration warning for override_denda:", err);
+    }
+  }
+
+  try {
+    await executor.query(`
+      ALTER TABLE payroll_employee_input
       ADD COLUMN kendaraan DECIMAL(14,2) NOT NULL DEFAULT 0.00 AFTER uang_transport,
       ADD COLUMN perjalanan_dinas_reimburse DECIMAL(14,2) NOT NULL DEFAULT 0.00 AFTER kendaraan
     `);
@@ -1200,6 +1211,35 @@ export async function setPotonganAbsensiOverride(
       INSERT INTO payroll_employee_input (payroll_id, karyawan_id, override_potongan_absensi)
       VALUES (?, ?, ?)
       ON DUPLICATE KEY UPDATE override_potongan_absensi = VALUES(override_potongan_absensi)
+    `,
+    [payrollId, employeeId, value],
+  );
+
+  return { payrollId, employeeId, periodMonth: period.month, periodYear: period.year };
+}
+
+// Override Denda (penjahit) hanya untuk SATU periode. value = null -> otomatis dari sistem.
+export async function setDendaPenjahitOverride(
+  employeeId: number,
+  period: { month: number; year: number },
+  value: number | null,
+) {
+  await ensurePayrollSupportTables();
+
+  const [payrollRows] = await pool.query<(RowDataPacket & { id: number })[]>(
+    `SELECT id FROM payroll WHERE karyawan_id = ? AND periode_bulan = ? AND periode_tahun = ? LIMIT 1`,
+    [employeeId, period.month, period.year],
+  );
+  const payrollId = payrollRows[0]?.id;
+  if (!payrollId) {
+    throw new Error("Data payroll periode ini belum ada untuk karyawan tersebut.");
+  }
+
+  await pool.query(
+    `
+      INSERT INTO payroll_employee_input (payroll_id, karyawan_id, override_denda)
+      VALUES (?, ?, ?)
+      ON DUPLICATE KEY UPDATE override_denda = VALUES(override_denda)
     `,
     [payrollId, employeeId, value],
   );

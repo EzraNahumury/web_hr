@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getCurrentAdminSession, isPayrollEditor } from "@/lib/auth";
 import {
+  setDendaPenjahitOverride,
   setPotonganAbsensiOverride,
   upsertPayrollPeriodOmzet,
   upsertPayrollFromForm,
@@ -178,7 +179,9 @@ export async function POST(request: Request) {
         ? "save_omzet"
         : body.action === "save_potongan_absensi"
           ? "save_potongan_absensi"
-          : "save_payroll";
+          : body.action === "save_denda_penjahit"
+            ? "save_denda_penjahit"
+            : "save_payroll";
 
     if (action === "save_potongan_absensi") {
       const employeeId = Number(body.employeeId);
@@ -193,6 +196,22 @@ export async function POST(request: Request) {
           value === null
             ? `Potongan absensi periode ${saved.periodMonth}/${saved.periodYear} dikembalikan ke otomatis.`
             : `Potongan absensi periode ${saved.periodMonth}/${saved.periodYear} berhasil diubah.`,
+        saved,
+      });
+    }
+
+    if (action === "save_denda_penjahit") {
+      const employeeId = Number(body.employeeId);
+      if (!Number.isInteger(employeeId) || employeeId <= 0) {
+        return NextResponse.json({ message: "Karyawan tidak valid." }, { status: 400 });
+      }
+      const value = parseOverride(body.denda);
+      const saved = await setDendaPenjahitOverride(employeeId, periodResult.period, value);
+      return NextResponse.json({
+        message:
+          value === null
+            ? `Denda periode ${saved.periodMonth}/${saved.periodYear} dikembalikan ke otomatis.`
+            : `Denda periode ${saved.periodMonth}/${saved.periodYear} berhasil diubah.`,
         saved,
       });
     }

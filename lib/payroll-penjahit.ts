@@ -61,6 +61,7 @@ type PenjahitPayrollRow = RowDataPacket & {
   raw_override_pinjaman: string | null;
   raw_override_pinjaman_pribadi: string | null;
   raw_override_gaji_pokok: string | null;
+  raw_override_denda: string | null;
   potongan_kontrak: string;
   potongan_pinjaman: string;
 };
@@ -164,6 +165,7 @@ export type PenjahitComputedRow = {
   inputOverrideKontrak: number | null;
   inputOverridePinjaman: number | null;
   inputPotonganLainLain: number | null;
+  inputOverrideDenda: number | null;
 };
 
 export type PenjahitPayrollSummarySheet = {
@@ -227,7 +229,8 @@ export async function getPenjahitSheet(period?: {
         pei.override_kontrak AS raw_override_kontrak,
         pei.override_pinjaman AS raw_override_pinjaman,
         pei.override_pinjaman_pribadi AS raw_override_pinjaman_pribadi,
-        pei.override_gaji_pokok AS raw_override_gaji_pokok
+        pei.override_gaji_pokok AS raw_override_gaji_pokok,
+        pei.override_denda AS raw_override_denda
       FROM payroll p
       INNER JOIN karyawan k ON k.id = p.karyawan_id
       LEFT JOIN payroll_employee_input pei ON pei.payroll_id = p.id
@@ -428,8 +431,11 @@ export async function getPenjahitSheet(period?: {
     const potonganTelat = telat * 20000;
 
     const totalGajiSebelumPotongan = totalGajiPokok + tunjanganJabatan + uangAbsensiTotal + bonusPerforma + uangKerajinanNominal + bpjs + bonusLembur;
-    const totalGaji = totalGajiSebelumPotongan - potonganSetengahHari - potonganTelat - (uangKerajinanNominal - kerajinanEarned);
-    const potonganDenda = potonganSetengahHari + potonganTelat + (uangKerajinanNominal - kerajinanEarned);
+    // Denda = potongan 1/2 hari + telat + kerajinan hangus. Bisa di-override manual per-periode.
+    const autoDenda = potonganSetengahHari + potonganTelat + (uangKerajinanNominal - kerajinanEarned);
+    const inputOverrideDenda = row.raw_override_denda !== null ? toNum(row.raw_override_denda) : null;
+    const potonganDenda = inputOverrideDenda ?? autoDenda;
+    const totalGaji = totalGajiSebelumPotongan - potonganDenda;
 
     const statusKepegawaianNorm = (row.status_kepegawaian ?? "").trim().toLowerCase();
     const isContractWaived =
@@ -521,6 +527,7 @@ export async function getPenjahitSheet(period?: {
       inputOverrideKontrak: row.raw_override_kontrak !== null ? toNum(row.raw_override_kontrak) : null,
       inputOverridePinjaman: row.raw_override_pinjaman !== null ? toNum(row.raw_override_pinjaman) : null,
       inputPotonganLainLain: row.raw_override_pinjaman_pribadi !== null ? toNum(row.raw_override_pinjaman_pribadi) : null,
+      inputOverrideDenda,
     };
   });
 
