@@ -4,6 +4,8 @@ import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
+type ApproverOption = { userId: number; name: string; role: string };
+
 type Props = {
   mode: "check-in" | "check-out";
   employeeName: string;
@@ -17,6 +19,7 @@ type Props = {
   scheduledShift?: string | null;
   skipEarlyLeaveCheck?: boolean;
   allowHalfDay?: boolean;
+  approvers?: ApproverOption[];
 };
 
 type CheckInStatus = "hadir" | "izin" | "sakit" | "sakit_tanpa_surat" | "setengah_hari";
@@ -73,6 +76,7 @@ export default function EmployeeAttendanceCapture({
   scheduledShift = null,
   skipEarlyLeaveCheck = false,
   allowHalfDay = false,
+  approvers = [],
 }: Props) {
   const checkInOptions = allowHalfDay
     ? [
@@ -118,6 +122,10 @@ export default function EmployeeAttendanceCapture({
   const [sickNote, setSickNote] = useState("");
   const [geofencePopup, setGeofencePopup] = useState<GeofencePopup | null>(null);
   const [blockedPopup, setBlockedPopup] = useState<string | null>(null);
+  // Approval telat/pulang-awal: keterangan + atasan tujuan (muncul saat perlu).
+  const [showApprovalFields, setShowApprovalFields] = useState(false);
+  const [approvalNote, setApprovalNote] = useState("");
+  const [assignedApprover, setAssignedApprover] = useState("");
   const [selectedFilter, setSelectedFilter] = useState<CameraFilter>(CAMERA_FILTERS[0]);
   const needsSelfie = !isCheckIn || checkInStatus === "hadir" || checkInStatus === "setengah_hari";
   const needsSickProof = isCheckIn && checkInStatus === "sakit";
@@ -413,7 +421,14 @@ export default function EmployeeAttendanceCapture({
           ? await (async () => {
               const formData = new FormData();
               formData.append("status", checkInStatus);
-              formData.append("keterangan", sickNote);
+              // Untuk hadir: keterangan = alasan approval (bila terlambat). Selain itu pakai sickNote.
+              formData.append(
+                "keterangan",
+                checkInStatus === "hadir" && showApprovalFields ? approvalNote : sickNote,
+              );
+              if (assignedApprover) {
+                formData.append("assignedApproverUserId", assignedApprover);
+              }
 
               if (checkInStatus === "hadir" || checkInStatus === "setengah_hari") {
                 formData.append("photoDataUrl", photoDataUrl ?? "");
@@ -438,12 +453,14 @@ export default function EmployeeAttendanceCapture({
                 latitude: location?.latitude,
                 longitude: location?.longitude,
                 keterangan: earlyLeaveNote.trim() || undefined,
+                assignedApproverUserId: assignedApprover || undefined,
               }),
             });
 
       const result = (await response.json()) as {
         message?: string;
         blocked?: boolean;
+        needApproval?: boolean;
         geofence?: {
           reason: string | null;
           distanceMeters: number | null;
@@ -454,7 +471,14 @@ export default function EmployeeAttendanceCapture({
       };
 
       if (!response.ok) {
-        if (response.status === 403 && result.blocked) {
+        if (result.needApproval) {
+          // Perlu keterangan + atasan tujuan (telat / pulang awal). Tampilkan field-nya.
+          setShowApprovalFields(true);
+          setErrorMessage(
+            result.message ||
+              "Kamu terlambat / pulang lebih awal. Isi keterangan dan pilih atasan tujuan approval, lalu submit lagi.",
+          );
+        } else if (response.status === 403 && result.blocked) {
           setBlockedPopup(
             result.message ||
               "Mohon maaf, kamu diblokir dari absensi hari ini. Silakan hubungi admin untuk memulihkan akun Anda.",
@@ -475,23 +499,26 @@ export default function EmployeeAttendanceCapture({
       }
 
       setSuccessMessage(
-        mode === "check-in"
-          ? checkInStatus === "sakit"
-            ? "Laporan sakit dengan surat berhasil dikirim."
-            : checkInStatus === "sakit_tanpa_surat"
-              ? "Laporan sakit tanpa surat berhasil dikirim."
-              : checkInStatus === "izin"
-                ? "Status izin/off berhasil disimpan."
-                : checkInStatus === "setengah_hari"
-                  ? "Presensi setengah hari berhasil disimpan."
+        result.needApproval && result.message
+          ? result.message
+          : mode === "check-in"
+            ? checkInStatus === "sakit"
+              ? "Laporan sakit dengan surat berhasil dikirim."
+              : checkInStatus === "sakit_tanpa_surat"
+                ? "Laporan sakit tanpa surat berhasil dikirim."
+                : checkInStatus === "izin"
+                  ? "Status izin/off berhasil disimpan."
                   : "Presensi masuk berhasil disimpan."
-          : "Presensi pulang berhasil disimpan.",
+            : "Presensi pulang berhasil disimpan.",
       );
       if (mode === "check-in") {
         setCheckInStatus("hadir");
         setSickFile(null);
         setSickNote("");
         setPhotoDataUrl(null);
+        setShowApprovalFields(false);
+        setApprovalNote("");
+        setAssignedApprover("");
       }
       router.refresh();
     });
@@ -884,6 +911,66 @@ export default function EmployeeAttendanceCapture({
                     placeholder="Contoh: keperluan mendesak, ijin pulang lebih awal."
                     className="mt-2.5 w-full rounded-xl border border-amber-200 bg-white px-3.5 py-2.5 text-sm text-[#241716] outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10"
                   />
+                </div>
+                {approvers.length > 0 ? (
+                  <div>
+                    <p className="text-sm font-semibold text-[#2f1f1d]">Atasan Tujuan Approval</p>
+                    <select
+                      value={assignedApprover}
+                      onChange={(e) => setAssignedApprover(e.target.value)}
+                      className="mt-2.5 h-11 w-full rounded-xl border border-amber-200 bg-white px-3 text-sm text-[#241716] outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10"
+                    >
+                      <option value="">Pilih atasan tujuan…</option>
+                      {approvers.map((a) => (
+                        <option key={a.userId} value={String(a.userId)}>
+                          {a.name} — {a.role}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-[11px] text-amber-700">
+                      Pulang awal wajib approval atasan. Kehadiran dihitung setelah disetujui.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {/* Late approval box (check-in only, muncul saat server minta approval telat) */}
+            {isCheckIn && showApprovalFields ? (
+              <div className="mt-5 space-y-4 rounded-2xl border border-violet-200 bg-violet-50 p-4 sm:p-5">
+                <div className="flex items-start gap-2 text-[13px] leading-5 text-violet-700">
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="mt-0.5 h-4 w-4 flex-none opacity-80" aria-hidden="true">
+                    <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                  </svg>
+                  <span>Kamu datang terlambat. Isi keterangan dan pilih atasan tujuan untuk approval.</span>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[#2f1f1d]">Keterangan Keterlambatan</p>
+                  <textarea
+                    value={approvalNote}
+                    onChange={(e) => setApprovalNote(e.target.value)}
+                    rows={3}
+                    placeholder="Contoh: macet, ada keperluan mendesak."
+                    className="mt-2.5 w-full rounded-xl border border-violet-200 bg-white px-3.5 py-2.5 text-sm text-[#241716] outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/10"
+                  />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[#2f1f1d]">Atasan Tujuan Approval</p>
+                  <select
+                    value={assignedApprover}
+                    onChange={(e) => setAssignedApprover(e.target.value)}
+                    className="mt-2.5 h-11 w-full rounded-xl border border-violet-200 bg-white px-3 text-sm text-[#241716] outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/10"
+                  >
+                    <option value="">Pilih atasan tujuan…</option>
+                    {approvers.map((a) => (
+                      <option key={a.userId} value={String(a.userId)}>
+                        {a.name} — {a.role}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-[11px] text-violet-700">
+                    Kehadiran dihitung setelah disetujui atasan.
+                  </p>
                 </div>
               </div>
             ) : null}

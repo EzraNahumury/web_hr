@@ -43,6 +43,7 @@ const menuGroups: MenuGroup[] = [
     group: "Absensi & Aktivitas",
     items: [
       { label: "Absensi", href: "/admin/attendance", description: "Presensi dan keterlambatan" },
+  { label: "Approval Absensi", href: "/admin/attendance-approvals", description: "Approve telat & pulang awal + history" },
       { label: "Lembur", href: "/admin/overtime", description: "Approval dan rekap lembur" },
       { label: "Laporan Kunjungan", href: "/admin/visit-reports", description: "Timeline kunjungan Sales Area" },
     ],

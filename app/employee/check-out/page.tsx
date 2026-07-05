@@ -4,6 +4,7 @@ import { requireEmployeeSession } from "@/lib/auth";
 import { getJakartaDate } from "@/lib/attendance";
 import { getEmployeeByUserId, getEmployeeTodayAttendance } from "@/lib/hris";
 import { getScheduledShiftForDate } from "@/lib/jadwal-karyawan";
+import { listEligibleApprovers } from "@/lib/overtime";
 
 export default async function EmployeeCheckOutPage() {
   const session = await requireEmployeeSession();
@@ -19,6 +20,12 @@ export default async function EmployeeCheckOutPage() {
   // Freelance (jam/pengerjaan/harian/custom) dibayar per jam atau per pcs, jadi boleh pulang
   // kapan pun tanpa terkena aturan pulang awal.
   const isFreelance = (employee.jabatan ?? "").trim().toLowerCase() === "freelance";
+  // Approval pulang awal: daftar atasan tujuan (alur sama seperti lembur).
+  const approvers = (await listEligibleApprovers(employee.jabatan)).map((a) => ({
+    userId: a.userId,
+    name: a.name,
+    role: a.role,
+  }));
 
   return (
     <EmployeeShell
@@ -36,6 +43,7 @@ export default async function EmployeeCheckOutPage() {
         todayAttendance={todayAttendance}
         scheduledShift={scheduledShift && scheduledShift !== "libur" ? scheduledShift : null}
         skipEarlyLeaveCheck={isPenjahit || isFreelance}
+        approvers={approvers}
       />
     </EmployeeShell>
   );

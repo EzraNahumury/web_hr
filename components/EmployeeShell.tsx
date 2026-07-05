@@ -69,6 +69,12 @@ const overtimeApprovalsMenu: MenuItem = {
   description: "Approve/reject pengajuan lembur tim",
 };
 
+const attendanceApprovalsMenu: MenuItem = {
+  label: "Approval Absensi",
+  href: "/employee/attendance-approvals",
+  description: "Approve/reject telat & pulang awal tim",
+};
+
 const JADWAL_NAME_WHITELIST = ["Fara Ais Umainah"];
 
 function isJadwalWhitelistedByName(name: string) {
@@ -93,7 +99,7 @@ function buildMenuItems(role: string | null | undefined, employeeName?: string):
   }
 
   if (canSetSchedule(role)) {
-    result = [...result, setJadwalMenu, overtimeApprovalsMenu];
+    result = [...result, setJadwalMenu, overtimeApprovalsMenu, attendanceApprovalsMenu];
   } else if (employeeName && isJadwalWhitelistedByName(employeeName)) {
     result = [...result, setJadwalMenu];
   }

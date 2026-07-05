@@ -14,6 +14,7 @@ type Props = {
 const navItems = [
   { label: "Set Jadwal", href: "/spv/jadwal" },
   { label: "Approval Lembur", href: "/spv/overtime-approvals" },
+  { label: "Approval Absensi", href: "/spv/attendance-approvals" },
 ];
 
 export default function SpvShell({
