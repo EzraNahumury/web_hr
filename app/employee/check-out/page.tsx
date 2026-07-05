@@ -41,8 +41,14 @@ export default async function EmployeeCheckOutPage() {
         employeeName={employee.nama}
         employeeMeta={`${employee.no_karyawan} • ${employee.jabatan}`}
         todayAttendance={todayAttendance}
-        scheduledShift={scheduledShift && scheduledShift !== "libur" ? scheduledShift : null}
-        skipEarlyLeaveCheck={isPenjahit || isFreelance}
+        scheduledShift={
+          scheduledShift && scheduledShift !== "libur"
+            ? scheduledShift
+            : isPenjahit
+              ? "pagi"
+              : null
+        }
+        skipEarlyLeaveCheck={isFreelance}
         approvers={approvers}
       />
     </EmployeeShell>

@@ -1,7 +1,7 @@
 import { RowDataPacket } from "mysql2";
 
 import { pool } from "@/lib/db";
-import { isHalfDayByTime, isHalfDayRuleActive } from "@/lib/attendance";
+import { isAttendanceApprovalRuleActive, isHalfDayByTime, isHalfDayRuleActive } from "@/lib/attendance";
 
 function countPeriodWorkDays(start: Date, end: Date) {
   const cursor = new Date(start);
@@ -77,6 +77,8 @@ type AttendanceRawRow = RowDataPacket & {
   jam_pulang_str: string | null;
   shift: string | null;
   scheduled_shift: string | null;
+  butuh_approval: number | null;
+  approval_status: string | null;
 };
 
 type AttendanceCounts = {
@@ -272,7 +274,9 @@ export async function getPenjahitSheet(period?: {
         DATE_FORMAT(a.jam_masuk, '%H:%i') AS jam_masuk_str,
         DATE_FORMAT(a.jam_pulang, '%H:%i') AS jam_pulang_str,
         a.shift,
-        j.shift AS scheduled_shift
+        j.shift AS scheduled_shift,
+        a.butuh_approval,
+        a.approval_status
        FROM absensi a
        LEFT JOIN jadwal_karyawan j
          ON j.karyawan_id = a.karyawan_id
@@ -351,13 +355,20 @@ export async function getPenjahitSheet(period?: {
     // shift vs non-shift konsisten antara rekap & payroll.
     const hasShift =
       !!(r.scheduled_shift && r.scheduled_shift !== "libur") || !!r.shift;
+    // Telat/pulang-awal belum di-approve (per 5 Juli 2026) -> dianggap tidak bekerja (alfa).
+    const unapproved =
+      isAttendanceApprovalRuleActive(r.tanggal_iso) &&
+      r.butuh_approval === 1 &&
+      r.approval_status !== "approved";
     // Setengah hari hanya berlaku untuk tanggal sebelum aturan baru (5 Juli 2026).
     const isHalf =
       isHalfDayRuleActive(r.tanggal_iso) &&
       (r.status_absensi === "setengah_hari" ||
         isHalfDayByTime(r.jam_masuk_str, r.jam_pulang_str, r.setengah_hari, hasShift));
 
-    if (isHalf) {
+    if (unapproved) {
+      cur.alfa_count += 1;
+    } else if (isHalf) {
       cur.half_day_count += 1;
     } else if (r.status_absensi === "hadir") {
       cur.present_count += 1;

@@ -187,6 +187,7 @@ export async function POST(request: Request) {
     const isMedia = subDivLower === "media";
     const isHostlive = subDivLower === "hostlive";
     const isAdvertiser = subDivLower === "advertiser";
+    const isPenjahit = subDivLower === "penjahit";
     const isJne = detectedPlacement === "JNE";
     const isShiftEligible =
       requiresSelfie && (isTokoGudangPlacement(detectedPlacement) || isMedia || isHostlive || isAdvertiser || isJne);
@@ -231,10 +232,13 @@ export async function POST(request: Request) {
     const effectiveRequestStatus: AttendanceRequestStatus =
       attendanceRequestStatus === "setengah_hari" ? "hadir" : attendanceRequestStatus;
 
-    // Keterlambatan hanya berlaku untuk karyawan ber-jadwal (punya shift pasti).
+    // Keterlambatan: karyawan ber-jadwal pakai shift-nya. Penjahit (tanpa Set Jadwal)
+    // pakai jam kerja standar "pagi" (masuk 08:30) sebagai acuan telat.
+    const lateShift: AttendanceShift | null =
+      detectedShift ?? (isPenjahit ? "pagi" : null);
     const lateMinutes =
-      requiresSelfie && detectedShift && effectiveRequestStatus === "hadir"
-        ? getShiftLateMinutes(currentTime, detectedShift)
+      requiresSelfie && lateShift && effectiveRequestStatus === "hadir"
+        ? getShiftLateMinutes(currentTime, lateShift)
         : 0;
     const attendanceStatus =
       effectiveRequestStatus === "izin"

@@ -153,13 +153,17 @@ export async function POST(request: Request) {
     const scheduledShift = isShiftEligible
       ? await getScheduledShiftForDate(employee.id, attendanceDate)
       : null;
+    // Penjahit (tanpa Set Jadwal) pakai jam kerja standar "pagi" sebagai acuan pulang awal.
     const effectiveScheduledShift =
-      scheduledShift && scheduledShift !== "libur" ? scheduledShift : null;
+      scheduledShift && scheduledShift !== "libur"
+        ? scheduledShift
+        : isPenjahit
+          ? "pagi"
+          : null;
 
-    // Penjahit & freelance fleksibel → tidak terikat jam pulang, lewati cek pulang awal.
+    // Freelance fleksibel → tidak terikat jam pulang. Penjahit kini terikat jam pagi.
     const isHalfDay = attendance.status_absensi === "setengah_hari";
     const earlyLeaveFlagged =
-      !isPenjahit &&
       !isFreelance &&
       !isHalfDay &&
       isEarlyLeaveByTime(attendance.jam_masuk_str, checkOutTime, effectiveScheduledShift);
