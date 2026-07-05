@@ -187,8 +187,11 @@ export async function POST(request: Request) {
     const isMedia = subDivLower === "media";
     const isHostlive = subDivLower === "hostlive";
     const isAdvertiser = subDivLower === "advertiser";
-    const isPenjahit = subDivLower === "penjahit";
     const isJne = detectedPlacement === "JNE";
+    const isFreelance =
+      [employee.status_kepegawaian, employee.jabatan].some(
+        (v) => (v ?? "").trim().toLowerCase() === "freelance",
+      );
     const isShiftEligible =
       requiresSelfie && (isTokoGudangPlacement(detectedPlacement) || isMedia || isHostlive || isAdvertiser || isJne);
     const scheduledShift = isShiftEligible
@@ -232,10 +235,10 @@ export async function POST(request: Request) {
     const effectiveRequestStatus: AttendanceRequestStatus =
       attendanceRequestStatus === "setengah_hari" ? "hadir" : attendanceRequestStatus;
 
-    // Keterlambatan: karyawan ber-jadwal pakai shift-nya. Penjahit (tanpa Set Jadwal)
-    // pakai jam kerja standar "pagi" (masuk 08:30) sebagai acuan telat.
+    // Keterlambatan: karyawan ber-jadwal pakai shift-nya. Non-shift (office, penjahit)
+    // pakai jam kerja standar "pagi" (masuk 08:30). Freelance dikecualikan.
     const lateShift: AttendanceShift | null =
-      detectedShift ?? (isPenjahit ? "pagi" : null);
+      detectedShift ?? (!isFreelance ? "pagi" : null);
     const lateMinutes =
       requiresSelfie && lateShift && effectiveRequestStatus === "hadir"
         ? getShiftLateMinutes(currentTime, lateShift)
@@ -264,7 +267,6 @@ export async function POST(request: Request) {
     // Kalau karyawan (non-freelance) datang TELAT pada tanggal >= aturan baru, maka
     // WAJIB isi keterangan (alasan) + pilih atasan tujuan. Record tersimpan pending;
     // sebelum di-approve dianggap tidak bekerja (alfa) di rekap & payroll.
-    const isFreelance = (employee.status_kepegawaian ?? "").trim().toLowerCase() === "freelance";
     const needsLateApproval =
       isAttendanceApprovalRuleActive(attendanceDate) &&
       effectiveRequestStatus === "hadir" &&

@@ -142,7 +142,6 @@ export async function POST(request: Request) {
     const isMedia = subDivLower === "media";
     const isHostlive = subDivLower === "hostlive";
     const isAdvertiser = subDivLower === "advertiser";
-    const isPenjahit = subDivLower === "penjahit";
     const isFreelance = [employee.status_kepegawaian, employee.jabatan].some(
       (v) => (v ?? "").trim().toLowerCase() === "freelance",
     );
@@ -153,15 +152,16 @@ export async function POST(request: Request) {
     const scheduledShift = isShiftEligible
       ? await getScheduledShiftForDate(employee.id, attendanceDate)
       : null;
-    // Penjahit (tanpa Set Jadwal) pakai jam kerja standar "pagi" sebagai acuan pulang awal.
+    // Non-shift (office, penjahit) pakai jam kerja standar "pagi" (pulang 16:30) sebagai
+    // acuan pulang awal. Freelance dikecualikan.
     const effectiveScheduledShift =
       scheduledShift && scheduledShift !== "libur"
         ? scheduledShift
-        : isPenjahit
+        : !isFreelance
           ? "pagi"
           : null;
 
-    // Freelance fleksibel → tidak terikat jam pulang. Penjahit kini terikat jam pagi.
+    // Hanya freelance yang fleksibel (tidak terikat jam pulang).
     const isHalfDay = attendance.status_absensi === "setengah_hari";
     const earlyLeaveFlagged =
       !isFreelance &&

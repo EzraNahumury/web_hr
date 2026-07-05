@@ -16,9 +16,8 @@ export default async function EmployeeCheckOutPage() {
 
   const todayAttendance = await getEmployeeTodayAttendance(employee.id);
   const scheduledShift = await getScheduledShiftForDate(employee.id, getJakartaDate());
-  const isPenjahit = (employee.sub_divisi ?? "").trim().toLowerCase() === "penjahit";
-  // Freelance (jam/pengerjaan/harian/custom) dibayar per jam atau per pcs, jadi boleh pulang
-  // kapan pun tanpa terkena aturan pulang awal.
+  // Hanya freelance yang fleksibel (boleh pulang kapan pun tanpa aturan pulang awal).
+  // Non-shift lain (office/penjahit) pakai jam kerja standar "pagi".
   const isFreelance = (employee.jabatan ?? "").trim().toLowerCase() === "freelance";
   // Approval pulang awal: daftar atasan tujuan (alur sama seperti lembur).
   const approvers = (await listEligibleApprovers(employee.jabatan)).map((a) => ({
@@ -44,7 +43,7 @@ export default async function EmployeeCheckOutPage() {
         scheduledShift={
           scheduledShift && scheduledShift !== "libur"
             ? scheduledShift
-            : isPenjahit
+            : !isFreelance
               ? "pagi"
               : null
         }
