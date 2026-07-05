@@ -3,6 +3,23 @@ import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { pool } from "@/lib/db";
 import { saveBufferToUploads } from "@/lib/uploads";
 
+// Tanggal mulai berlakunya aturan baru absensi (per 5 Juli 2026):
+// - Setengah hari DIHAPUS (tidak lagi diberlakukan). Tanggal sebelum ini dibiarkan apa adanya.
+// - Telat / pulang awal WAJIB approval atasan. Belum di-approve -> dihitung tidak bekerja (alfa).
+export const ATTENDANCE_RULE_CHANGE_DATE = "2026-07-05";
+
+// Aturan approval telat/pulang-awal aktif untuk tanggal >= ATTENDANCE_RULE_CHANGE_DATE.
+export function isAttendanceApprovalRuleActive(dateSql: string | null | undefined): boolean {
+  if (!dateSql) return false;
+  return dateSql >= ATTENDANCE_RULE_CHANGE_DATE;
+}
+
+// Setengah hari HANYA berlaku untuk tanggal sebelum aturan baru (tanggal lama dibiarkan).
+export function isHalfDayRuleActive(dateSql: string | null | undefined): boolean {
+  if (!dateSql) return true; // tanpa tanggal -> anggap lama (aman untuk record legacy)
+  return dateSql < ATTENDANCE_RULE_CHANGE_DATE;
+}
+
 function getJakartaParts() {
   const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Jakarta",
@@ -301,6 +318,38 @@ export function ensureAttendanceShiftSupport(): Promise<void> {
       } catch (err: unknown) {
         const code = typeof err === "object" && err !== null && "code" in err ? (err as { code: string }).code : "";
         if (code !== "ER_DUP_FIELDNAME") throw err;
+      }
+      // Approval telat/pulang-awal (aturan baru per 5 Juli 2026).
+      // butuh_approval=1 -> hari ini menyimpang (telat/pulang awal) & wajib approval atasan.
+      // approval_status: pending/approved/rejected. Belum approved -> dianggap tidak bekerja (alfa).
+      const approvalCols: Array<{ name: string; def: string }> = [
+        { name: "butuh_approval", def: "TINYINT(1) NOT NULL DEFAULT 0 AFTER absen_dipulihkan" },
+        { name: "approval_status", def: "VARCHAR(10) NULL AFTER butuh_approval" },
+        { name: "approval_jenis", def: "VARCHAR(20) NULL AFTER approval_status" },
+        { name: "assigned_approver_user_id", def: "BIGINT UNSIGNED NULL AFTER approval_jenis" },
+        { name: "approver_user_id", def: "BIGINT UNSIGNED NULL AFTER assigned_approver_user_id" },
+        { name: "approved_at", def: "DATETIME NULL AFTER approver_user_id" },
+        { name: "catatan_atasan", def: "TEXT NULL AFTER approved_at" },
+      ];
+      for (const col of approvalCols) {
+        try {
+          await pool.query(`ALTER TABLE absensi ADD COLUMN ${col.name} ${col.def}`);
+        } catch (err: unknown) {
+          const code = typeof err === "object" && err !== null && "code" in err ? (err as { code: string }).code : "";
+          if (code !== "ER_DUP_FIELDNAME") {
+            console.error(`Migration warning absensi.${col.name}:`, err);
+          }
+        }
+      }
+      try {
+        await pool.query(
+          `ALTER TABLE absensi ADD KEY idx_absensi_assigned_approver (assigned_approver_user_id)`,
+        );
+      } catch (err: unknown) {
+        const code = typeof err === "object" && err !== null && "code" in err ? (err as { code: string }).code : "";
+        if (code !== "ER_DUP_KEYNAME") {
+          console.error("Migration warning absensi idx_absensi_assigned_approver:", err);
+        }
       }
     })();
   }

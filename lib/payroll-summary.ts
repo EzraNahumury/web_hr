@@ -16,7 +16,7 @@ import {
   ensureLoanSupportTables,
   getLoanDeductionRowsForPeriod,
 } from "@/lib/loans";
-import { isHalfDayByTime } from "@/lib/attendance";
+import { isAttendanceApprovalRuleActive, isHalfDayByTime, isHalfDayRuleActive } from "@/lib/attendance";
 import {
   ensurePayrollPeriodCloned,
   ensurePayrollSupportTables,
@@ -112,6 +112,7 @@ type EmployeeUnitCountRow = RowDataPacket & {
 
 type PeriodAttendanceRow = RowDataPacket & {
   employee_id: number;
+  tanggal_iso: string;
   status_absensi: string;
   kode_absensi: string | null;
   setengah_hari: number;
@@ -120,6 +121,8 @@ type PeriodAttendanceRow = RowDataPacket & {
   jam_pulang_str: string | null;
   shift: string | null;
   scheduled_shift: string | null;
+  butuh_approval: number | null;
+  approval_status: string | null;
 };
 
 type PeriodOvertimeRow = RowDataPacket & {
@@ -464,6 +467,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       `
         SELECT
           a.karyawan_id AS employee_id,
+          DATE_FORMAT(a.tanggal, '%Y-%m-%d') AS tanggal_iso,
           a.status_absensi,
           a.kode_absensi,
           a.setengah_hari,
@@ -471,7 +475,9 @@ export async function getAdminPayrollSummarySheet(period?: {
           DATE_FORMAT(a.jam_masuk, '%H:%i') AS jam_masuk_str,
           DATE_FORMAT(a.jam_pulang, '%H:%i') AS jam_pulang_str,
           a.shift,
-          j.shift AS scheduled_shift
+          j.shift AS scheduled_shift,
+          a.butuh_approval,
+          a.approval_status
         FROM absensi a
         LEFT JOIN jadwal_karyawan j
           ON j.karyawan_id = a.karyawan_id
@@ -700,6 +706,13 @@ export async function getAdminPayrollSummarySheet(period?: {
     const hasShift =
       !!(row.scheduled_shift && row.scheduled_shift !== "libur") || !!row.shift;
     const codeUpper = (row.kode_absensi ?? "").trim().toUpperCase();
+    // Aturan baru per 5 Juli 2026: telat/pulang-awal belum di-approve -> dianggap tidak bekerja (alfa).
+    const unapproved =
+      isAttendanceApprovalRuleActive(row.tanggal_iso) &&
+      row.butuh_approval === 1 &&
+      row.approval_status !== "approved";
+    // Setengah hari hanya berlaku untuk tanggal SEBELUM aturan baru (tanggal lama dibiarkan).
+    const halfDayAllowed = isHalfDayRuleActive(row.tanggal_iso);
     const timeHalf = isHalfDayByTime(
       row.jam_masuk_str,
       row.jam_pulang_str,
@@ -707,14 +720,18 @@ export async function getAdminPayrollSummarySheet(period?: {
       hasShift,
     );
     const isHalf =
-      codeUpper === "H" ||
-      codeUpper === "SH" ||
-      ((codeUpper === "T" || codeUpper === "SX") && timeHalf) ||
-      (codeUpper === "" &&
-        (row.status_absensi === "setengah_hari" ||
-          (row.status_absensi === "hadir" && timeHalf)));
+      halfDayAllowed &&
+      (codeUpper === "H" ||
+        codeUpper === "SH" ||
+        ((codeUpper === "T" || codeUpper === "SX") && timeHalf) ||
+        (codeUpper === "" &&
+          (row.status_absensi === "setengah_hari" ||
+            (row.status_absensi === "hadir" && timeHalf))));
 
-    if (isHalf) {
+    if (unapproved) {
+      // Telat/pulang-awal tanpa approval → tidak dihitung hadir, dianggap alfa.
+      current.alfa += 1;
+    } else if (isHalf) {
       current.halfDay += 1;
     } else if (row.status_absensi === "hadir") {
       current.present += 1;

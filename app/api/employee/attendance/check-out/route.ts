@@ -7,10 +7,12 @@ import {
   ensureAttendanceShiftSupport,
   getJakartaDate,
   getJakartaDateTime,
+  isAttendanceApprovalRuleActive,
   isEarlyLeaveByTime,
   isTokoGudangPlacement,
   saveAttendancePhoto,
 } from "@/lib/attendance";
+import { resolveAssignedApprover } from "@/lib/attendance-approver";
 import { checkGeofence, MAX_GEOFENCE_RADIUS_METERS } from "@/lib/geofence";
 import { getScheduledShiftForDate } from "@/lib/jadwal-karyawan";
 
@@ -19,6 +21,7 @@ type EmployeeRow = RowDataPacket & {
   penempatan: string | null;
   sub_divisi: string | null;
   jabatan: string | null;
+  status_kepegawaian: string | null;
 };
 
 type AttendanceRow = RowDataPacket & {
@@ -27,6 +30,9 @@ type AttendanceRow = RowDataPacket & {
   jam_masuk_str: string | null;
   jam_pulang: Date | null;
   status_absensi: string | null;
+  butuh_approval: number | null;
+  approval_status: string | null;
+  assigned_approver_user_id: number | null;
 };
 
 export async function POST(request: Request) {
@@ -44,6 +50,7 @@ export async function POST(request: Request) {
       latitude?: number;
       longitude?: number;
       keterangan?: string;
+      assignedApproverUserId?: string;
     };
 
     if (!body.photoDataUrl || typeof body.latitude !== "number" || typeof body.longitude !== "number") {
@@ -54,7 +61,7 @@ export async function POST(request: Request) {
     }
 
     const [employeeRows] = await pool.query<EmployeeRow[]>(
-      "SELECT id, penempatan, sub_divisi, jabatan FROM karyawan WHERE user_id = ? LIMIT 1",
+      "SELECT id, penempatan, sub_divisi, jabatan, status_kepegawaian FROM karyawan WHERE user_id = ? LIMIT 1",
       [session.userId],
     );
 
@@ -89,7 +96,8 @@ export async function POST(request: Request) {
     const [attendanceRows] = await pool.query<AttendanceRow[]>(
       `
         SELECT id, jam_masuk, jam_pulang, status_absensi,
-               DATE_FORMAT(jam_masuk, '%H:%i') AS jam_masuk_str
+               DATE_FORMAT(jam_masuk, '%H:%i') AS jam_masuk_str,
+               butuh_approval, approval_status, assigned_approver_user_id
         FROM absensi
         WHERE karyawan_id = ? AND tanggal = ?
         LIMIT 1
@@ -135,7 +143,9 @@ export async function POST(request: Request) {
     const isHostlive = subDivLower === "hostlive";
     const isAdvertiser = subDivLower === "advertiser";
     const isPenjahit = subDivLower === "penjahit";
-    const isFreelance = (employee.jabatan ?? "").trim().toLowerCase() === "freelance";
+    const isFreelance = [employee.status_kepegawaian, employee.jabatan].some(
+      (v) => (v ?? "").trim().toLowerCase() === "freelance",
+    );
     const isJne = employee.penempatan === "JNE";
     const isShiftEligible =
       isTokoGudangPlacement(employee.penempatan) || isMedia || isHostlive || isAdvertiser || isJne;
@@ -146,21 +156,52 @@ export async function POST(request: Request) {
     const effectiveScheduledShift =
       scheduledShift && scheduledShift !== "libur" ? scheduledShift : null;
 
-    // Penjahit & freelance fleksibel, dan hari setengah memang pulang lebih awal → lewati cek
-    // pulang awal. Freelance dibayar per jam (jam dihitung dari masuk–pulang) atau per pcs/jenis
-    // yang tidak terikat jam absensi, jadi boleh pulang kapan pun tanpa keterangan.
-    // Untuk lainnya, pakai shift terjadwal bila ada; jika tidak, fallback deteksi dari jam.
+    // Penjahit & freelance fleksibel → tidak terikat jam pulang, lewati cek pulang awal.
     const isHalfDay = attendance.status_absensi === "setengah_hari";
     const earlyLeaveFlagged =
       !isPenjahit &&
       !isFreelance &&
       !isHalfDay &&
       isEarlyLeaveByTime(attendance.jam_masuk_str, checkOutTime, effectiveScheduledShift);
+
+    // ── Approval pulang awal (aturan baru per 5 Juli 2026) ──
+    // Pulang awal (non-freelance) wajib approval atasan. Kalau sudah ada approval telat yang
+    // pending, cukup gabung (telat_pulang_awal); kalau belum ada, minta atasan tujuan baru.
+    const ruleActive = isAttendanceApprovalRuleActive(attendanceDate);
+    const existingPending = attendance.butuh_approval === 1 && attendance.approval_status === "pending";
+    const existingFinal =
+      attendance.butuh_approval === 1 &&
+      (attendance.approval_status === "approved" || attendance.approval_status === "rejected");
+    const needsEarlyApproval = earlyLeaveFlagged && ruleActive && !isFreelance && !existingFinal;
+
+    // Parameter approval baru yang perlu ditulis (null = tidak diubah).
+    let earlyButuhApproval: number | null = null;
+    let earlyApprovalStatus: string | null = null;
+    let earlyApprovalJenis: string | null = null;
+    let earlyAssignedApprover: number | null = null;
+
     if (earlyLeaveFlagged && !keterangan) {
       return NextResponse.json(
-        { message: "Kamu pulang lebih awal dari jadwal. Wajib mengisi keterangan sebelum submit." },
+        { message: "Kamu pulang lebih awal dari jadwal. Wajib mengisi keterangan (alasan) sebelum submit.", needApproval: needsEarlyApproval },
         { status: 400 },
       );
+    }
+
+    if (needsEarlyApproval) {
+      if (existingPending) {
+        // Sudah ada approval telat pending → gabung jadi telat + pulang awal, approver tetap.
+        earlyApprovalJenis = "telat_pulang_awal";
+      } else {
+        // Belum ada approval (tadi masuk tepat waktu) → minta atasan tujuan.
+        const approver = await resolveAssignedApprover(body.assignedApproverUserId ?? null);
+        if (!approver.ok) {
+          return NextResponse.json({ message: approver.error, needApproval: true }, { status: 400 });
+        }
+        earlyButuhApproval = 1;
+        earlyApprovalStatus = "pending";
+        earlyApprovalJenis = "pulang_awal";
+        earlyAssignedApprover = approver.assignedApproverUserId;
+      }
     }
 
     const photoPath = await saveAttendancePhoto(body.photoDataUrl, employee.id, "out");
@@ -206,6 +247,30 @@ export async function POST(request: Request) {
         `,
         [attendanceDateTime, photoPath, body.latitude, body.longitude, keterangan, attendance.id],
       );
+    }
+
+    // Tulis/gabung approval pulang awal bila perlu.
+    if (needsEarlyApproval) {
+      if (earlyButuhApproval !== null) {
+        // Belum ada approval sebelumnya → set baru (pulang awal).
+        await pool.query(
+          `UPDATE absensi
+             SET butuh_approval = ?, approval_status = ?, approval_jenis = ?, assigned_approver_user_id = ?
+           WHERE id = ?`,
+          [earlyButuhApproval, earlyApprovalStatus, earlyApprovalJenis, earlyAssignedApprover, attendance.id],
+        );
+      } else if (earlyApprovalJenis) {
+        // Sudah ada approval telat pending → gabung jenis jadi telat_pulang_awal.
+        await pool.query(`UPDATE absensi SET approval_jenis = ? WHERE id = ?`, [
+          earlyApprovalJenis,
+          attendance.id,
+        ]);
+      }
+      return NextResponse.json({
+        message:
+          "Presensi pulang tercatat, tapi karena pulang lebih awal perlu approval atasan. Kehadiran dihitung setelah di-approve.",
+        needApproval: true,
+      });
     }
 
     return NextResponse.json({ message: "Presensi pulang berhasil disimpan." });

@@ -1,7 +1,7 @@
 import { RowDataPacket } from "mysql2";
 
 import { pool } from "@/lib/db";
-import { isHalfDayByTime } from "@/lib/attendance";
+import { isHalfDayByTime, isHalfDayRuleActive } from "@/lib/attendance";
 
 function countPeriodWorkDays(start: Date, end: Date) {
   const cursor = new Date(start);
@@ -68,6 +68,7 @@ type PenjahitPayrollRow = RowDataPacket & {
 
 type AttendanceRawRow = RowDataPacket & {
   employee_id: number;
+  tanggal_iso: string;
   status_absensi: string;
   kode_absensi: string | null;
   setengah_hari: number;
@@ -263,6 +264,7 @@ export async function getPenjahitSheet(period?: {
   const [[attendanceRows], [overtimeRows], [jadwalLemburRows], loanRows, [remainingLoanRows], [contractReturnRows]] = await Promise.all([
     pool.query<AttendanceRawRow[]>(
       `SELECT a.karyawan_id AS employee_id,
+        DATE_FORMAT(a.tanggal, '%Y-%m-%d') AS tanggal_iso,
         a.status_absensi,
         a.kode_absensi,
         a.setengah_hari,
@@ -349,9 +351,11 @@ export async function getPenjahitSheet(period?: {
     // shift vs non-shift konsisten antara rekap & payroll.
     const hasShift =
       !!(r.scheduled_shift && r.scheduled_shift !== "libur") || !!r.shift;
+    // Setengah hari hanya berlaku untuk tanggal sebelum aturan baru (5 Juli 2026).
     const isHalf =
-      r.status_absensi === "setengah_hari" ||
-      isHalfDayByTime(r.jam_masuk_str, r.jam_pulang_str, r.setengah_hari, hasShift);
+      isHalfDayRuleActive(r.tanggal_iso) &&
+      (r.status_absensi === "setengah_hari" ||
+        isHalfDayByTime(r.jam_masuk_str, r.jam_pulang_str, r.setengah_hari, hasShift));
 
     if (isHalf) {
       cur.half_day_count += 1;

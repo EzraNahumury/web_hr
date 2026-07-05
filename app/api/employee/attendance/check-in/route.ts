@@ -10,12 +10,13 @@ import {
   getBlockingMissingCheckout,
   getShiftLateMinutes,
   getShiftRangeLabel,
-  isPagiAutoHalfDay,
+  isAttendanceApprovalRuleActive,
   isTokoGudangPlacement,
   isWithinScheduledShiftRange,
   saveAttendancePhoto,
   type AttendanceShift,
 } from "@/lib/attendance";
+import { resolveAssignedApprover } from "@/lib/attendance-approver";
 import { saveUploadedFile } from "@/lib/uploads";
 import { checkGeofence, MAX_GEOFENCE_RADIUS_METERS } from "@/lib/geofence";
 import { getScheduledShiftForDate } from "@/lib/jadwal-karyawan";
@@ -25,6 +26,8 @@ type EmployeeRow = RowDataPacket & {
   penempatan: string | null;
   penempatan_extra: string | null;
   sub_divisi: string | null;
+  jabatan: string | null;
+  status_kepegawaian: string | null;
 };
 
 type AttendanceRow = RowDataPacket & {
@@ -102,7 +105,7 @@ export async function POST(request: Request) {
     }
 
     const [employeeRows] = await pool.query<EmployeeRow[]>(
-      "SELECT id, penempatan, penempatan_extra, sub_divisi FROM karyawan WHERE user_id = ? LIMIT 1",
+      "SELECT id, penempatan, penempatan_extra, sub_divisi, jabatan, status_kepegawaian FROM karyawan WHERE user_id = ? LIMIT 1",
       [session.userId],
     );
 
@@ -223,18 +226,12 @@ export async function POST(request: Request) {
         ? (scheduledShift as AttendanceShift)
         : detectTokoGudangShift(currentTime)
       : null;
-    // Shift pagi: kalau masuk sudah lewat 11:30, otomatis dihitung SETENGAH HARI
-    // (bukan telat), walaupun di Set Jadwal shift-nya pagi.
-    const autoHalfDay =
-      requiresSelfie &&
-      attendanceRequestStatus === "hadir" &&
-      isPagiAutoHalfDay(detectedShift, currentTime);
-    const effectiveRequestStatus: AttendanceRequestStatus = autoHalfDay
-      ? "setengah_hari"
-      : attendanceRequestStatus;
+    // Aturan baru per 5 Juli 2026: setengah hari DIHAPUS. Kalau request "setengah_hari"
+    // datang (mis. dari app lama), perlakukan sebagai "hadir".
+    const effectiveRequestStatus: AttendanceRequestStatus =
+      attendanceRequestStatus === "setengah_hari" ? "hadir" : attendanceRequestStatus;
 
     // Keterlambatan hanya berlaku untuk karyawan ber-jadwal (punya shift pasti).
-    // Karyawan fleksibel (penjahit/office) & setengah hari tidak dihitung telat.
     const lateMinutes =
       requiresSelfie && detectedShift && effectiveRequestStatus === "hadir"
         ? getShiftLateMinutes(currentTime, detectedShift)
@@ -242,11 +239,9 @@ export async function POST(request: Request) {
     const attendanceStatus =
       effectiveRequestStatus === "izin"
         ? "izin"
-        : effectiveRequestStatus === "setengah_hari"
-          ? "setengah_hari"
-          : effectiveRequestStatus === "sakit" || effectiveRequestStatus === "sakit_tanpa_surat"
-            ? "sakit"
-            : "hadir";
+        : effectiveRequestStatus === "sakit" || effectiveRequestStatus === "sakit_tanpa_surat"
+          ? "sakit"
+          : "hadir";
     const attendanceCode =
       effectiveRequestStatus === "izin"
         ? "I"
@@ -254,15 +249,49 @@ export async function POST(request: Request) {
           ? "S"
           : effectiveRequestStatus === "sakit_tanpa_surat"
             ? "SX"
-            : effectiveRequestStatus === "setengah_hari"
-              ? "H"
-              : lateMinutes > 0
-                ? "T"
-                : "O";
+            : lateMinutes > 0
+              ? "T"
+              : "O";
     const attendanceTime = requiresSelfie ? attendanceDateTime : null;
     const attendanceLatitude = requiresSelfie ? latitude : null;
     const attendanceLongitude = requiresSelfie ? longitude : null;
-    const halfDayFlag = effectiveRequestStatus === "setengah_hari" ? 1 : 0;
+
+    // ── Approval telat (aturan baru per 5 Juli 2026) ──
+    // Kalau karyawan (non-freelance) datang TELAT pada tanggal >= aturan baru, maka
+    // WAJIB isi keterangan (alasan) + pilih atasan tujuan. Record tersimpan pending;
+    // sebelum di-approve dianggap tidak bekerja (alfa) di rekap & payroll.
+    const isFreelance = (employee.status_kepegawaian ?? "").trim().toLowerCase() === "freelance";
+    const needsLateApproval =
+      isAttendanceApprovalRuleActive(attendanceDate) &&
+      effectiveRequestStatus === "hadir" &&
+      lateMinutes > 0 &&
+      !isFreelance;
+
+    let butuhApproval = 0;
+    let approvalStatus: string | null = null;
+    let approvalJenis: string | null = null;
+    let assignedApproverUserId: number | null = null;
+
+    if (needsLateApproval) {
+      if (!keterangan?.trim()) {
+        return NextResponse.json(
+          { message: "Kamu datang terlambat. Wajib mengisi keterangan (alasan) sebelum submit.", needApproval: true },
+          { status: 400 },
+        );
+      }
+      const approver = await resolveAssignedApprover(
+        typeof formData.get("assignedApproverUserId") === "string"
+          ? String(formData.get("assignedApproverUserId"))
+          : null,
+      );
+      if (!approver.ok) {
+        return NextResponse.json({ message: approver.error, needApproval: true }, { status: 400 });
+      }
+      butuhApproval = 1;
+      approvalStatus = "pending";
+      approvalJenis = "telat";
+      assignedApproverUserId = approver.assignedApproverUserId;
+    }
 
     await pool.query(
       `
@@ -279,8 +308,12 @@ export async function POST(request: Request) {
           terlambat_menit,
           setengah_hari,
           lembur_jam,
-          keterangan
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+          keterangan,
+          butuh_approval,
+          approval_status,
+          approval_jenis,
+          assigned_approver_user_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?)
       `,
       [
         employee.id,
@@ -293,10 +326,21 @@ export async function POST(request: Request) {
         attendanceLatitude,
         attendanceLongitude,
         lateMinutes,
-        halfDayFlag,
         keterangan,
+        butuhApproval,
+        approvalStatus,
+        approvalJenis,
+        assignedApproverUserId,
       ],
     );
+
+    if (needsLateApproval) {
+      return NextResponse.json({
+        message:
+          "Presensi masuk tercatat, tapi karena terlambat perlu approval atasan. Kehadiran dihitung setelah di-approve.",
+        needApproval: true,
+      });
+    }
 
     return NextResponse.json({
       message:

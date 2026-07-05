@@ -1,6 +1,6 @@
 import { RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
-import { ensureAttendanceShiftSupport, isCheckInWithinOnTimeWindow, isEarlyLeaveByTime, isHalfDayByTime } from "@/lib/attendance";
+import { ensureAttendanceShiftSupport, isAttendanceApprovalRuleActive, isCheckInWithinOnTimeWindow, isEarlyLeaveByTime, isHalfDayByTime, isHalfDayRuleActive } from "@/lib/attendance";
 import { getEmployeeRemainingLoanTotal } from "@/lib/loans";
 import { getAdminPayrollSummarySheet } from "@/lib/payroll-summary";
 import {
@@ -56,6 +56,9 @@ type AttendanceRow = RowDataPacket & {
   setengah_hari: number;
   keterangan: string | null;
   absen_dipulihkan: number | null;
+  butuh_approval: number | null;
+  approval_status: string | null;
+  approval_jenis: string | null;
   absensi_shift: string | null;
   scheduled_shift: string | null;
 };
@@ -80,6 +83,10 @@ export type AttendanceDayDetail = {
   missingCheckout: boolean;
   // Sudah dipulihkan admin.
   recovered: boolean;
+  // Approval telat/pulang-awal (aturan baru per 5 Juli 2026).
+  needsApproval: boolean; // butuh approval & belum di-approve (dihitung tidak bekerja)
+  approvalStatus: string | null; // pending | approved | rejected | null
+  approvalJenis: string | null; // telat | pulang_awal | telat_pulang_awal | null
 };
 
 type AttendanceSheetRow = {
@@ -113,6 +120,7 @@ function mapAttendanceCode(
     | "setengah_hari"
     | "absensi_shift"
     | "scheduled_shift"
+    | "attendance_date"
   >,
 ) {
   const {
@@ -125,9 +133,12 @@ function mapAttendanceCode(
   } = row;
   const hasShift =
     !!(row.scheduled_shift && row.scheduled_shift !== "libur") || !!row.absensi_shift;
+  // Setengah hari hanya berlaku untuk tanggal SEBELUM aturan baru (5 Juli 2026).
+  const halfDayAllowed = isHalfDayRuleActive(row.attendance_date);
   const isHalfDay =
-    status === "setengah_hari" ||
-    isHalfDayByTime(timeIn, timeOut, halfDayFlag, hasShift);
+    halfDayAllowed &&
+    (status === "setengah_hari" ||
+      isHalfDayByTime(timeIn, timeOut, halfDayFlag, hasShift));
   const isSickWithoutProof = status === "sakit" && !photoIn;
 
   if (code) {
@@ -232,6 +243,9 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         a.setengah_hari,
         a.keterangan,
         a.absen_dipulihkan,
+        a.butuh_approval,
+        a.approval_status,
+        a.approval_jenis,
         a.shift AS absensi_shift,
         j.shift AS scheduled_shift
       FROM karyawan k
@@ -308,6 +322,12 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
           !row.jam_pulang &&
           (row.status_absensi === "hadir" || row.status_absensi === "setengah_hari"),
         recovered: Number(row.absen_dipulihkan ?? 0) === 1,
+        needsApproval:
+          isAttendanceApprovalRuleActive(row.attendance_date) &&
+          Number(row.butuh_approval ?? 0) === 1 &&
+          row.approval_status !== "approved",
+        approvalStatus: row.approval_status ?? null,
+        approvalJenis: row.approval_jenis ?? null,
       };
     }
   }
@@ -354,6 +374,9 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         isOnTimeWindow: false,
         missingCheckout: false,
         recovered: false,
+        needsApproval: false,
+        approvalStatus: null,
+        approvalJenis: null,
       };
     }
   }

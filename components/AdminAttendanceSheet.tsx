@@ -210,6 +210,27 @@ function AttendanceDetailModal({
               ) : null}
             </div>
 
+            {selected.detail.approvalStatus ? (
+              <div className="mt-4 rounded-2xl border border-[#ddd6fe] bg-[#f5f3ff] px-4 py-3">
+                <p className="text-sm font-semibold text-[#5b21b6]">
+                  Approval {selected.detail.approvalJenis === "pulang_awal" ? "Pulang Awal" : selected.detail.approvalJenis === "telat_pulang_awal" ? "Telat & Pulang Awal" : "Telat"}
+                </p>
+                <p className="mt-0.5 text-xs text-[#6d28d9]">
+                  Status:{" "}
+                  <span className="font-semibold">
+                    {selected.detail.approvalStatus === "approved"
+                      ? "Disetujui"
+                      : selected.detail.approvalStatus === "rejected"
+                        ? "Ditolak"
+                        : "Menunggu approval atasan"}
+                  </span>
+                  {selected.detail.approvalStatus !== "approved"
+                    ? " — hari ini dihitung tidak bekerja sampai disetujui."
+                    : null}
+                </p>
+              </div>
+            ) : null}
+
             {selected.detail.missingCheckout ? (
               <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-[#f0c9a6] bg-[#fff7ee] px-4 py-3">
                 <div className="min-w-0 flex-1">
@@ -521,6 +542,7 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                         !!detail.timeOut &&
                         detail.isEarlyLeave));
                   const lateOver30 = !!detail && detail.code === "T";
+                  const needsApproval = !!detail?.needsApproval;
                   const onTimeOk =
                     !!detail &&
                     detail.code === "O" &&
@@ -528,8 +550,14 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                     !!detail.timeOut &&
                     !detail.isEarlyLeave &&
                     !!detail.isOnTimeWindow;
-                  const displayCode = earlyLeave ? "PA" : detail?.code || "-";
-                  const cellTitle = missingCheckout
+                  const displayCode = needsApproval
+                    ? "!"
+                    : earlyLeave
+                      ? "PA"
+                      : detail?.code || "-";
+                  const cellTitle = needsApproval
+                    ? `Belum di-approve atasan (${detail?.approvalStatus === "rejected" ? "ditolak" : "menunggu"}) — dihitung tidak bekerja`
+                    : missingCheckout
                     ? "Belum presensi pulang (diblokir — klik untuk Pulihkan)"
                     : recoveredMissing
                     ? "Belum presensi pulang (sudah dipulihkan)"
@@ -558,7 +586,9 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                               : undefined
                           }
                           className={
-                            missingCheckout
+                            needsApproval
+                              ? "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#ede9fe] px-2 py-1 text-xs font-bold text-[#6d28d9] transition hover:bg-[#ddd6fe]"
+                              : missingCheckout
                               ? "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#fde2dd] px-2 py-1 text-xs font-bold text-[#c0392b] transition hover:bg-[#fbcec7]"
                               : recoveredMissing
                                 ? "inline-flex min-w-8 items-center justify-center rounded-lg bg-[#dbeef0] px-2 py-1 text-xs font-bold text-[#0d7f86] transition hover:bg-[#c6e4e8]"
@@ -603,6 +633,9 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                                 isOnTimeWindow: false,
                                 missingCheckout: false,
                                 recovered: false,
+                                needsApproval: false,
+                                approvalStatus: null,
+                                approvalJenis: null,
                               },
                             });
                           }}
