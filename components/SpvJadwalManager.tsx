@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 
 import {
   type JadwalKaryawanItem,
+  type JadwalMasterItem,
   type JadwalShift,
   type TokoGudangKaryawan,
 } from "@/lib/jadwal-karyawan";
@@ -15,6 +16,7 @@ type Props = {
   initialMonth: number;
   karyawanList: TokoGudangKaryawan[];
   initialJadwal: JadwalKaryawanItem[];
+  initialMaster?: JadwalMasterItem[];
 };
 
 type ShiftOption = JadwalShift | "";
@@ -171,6 +173,7 @@ export default function SpvJadwalManager({
   initialMonth,
   karyawanList,
   initialJadwal,
+  initialMaster = [],
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -207,6 +210,48 @@ export default function SpvJadwalManager({
   }, [initialJadwal]);
 
   const periodDays = useMemo(() => buildPeriodDays(year, month), [year, month]);
+
+  // Master jadwal mingguan (key: `${karyawanId}|${hariISO}` , hari 1=Sen..7=Min).
+  const masterMap = useMemo(() => {
+    const m = new Map<string, JadwalShift>();
+    for (const r of initialMaster) m.set(`${r.karyawanId}|${r.hari}`, r.shift);
+    return m;
+  }, [initialMaster]);
+  const hasMaster = masterMap.size > 0;
+
+  async function applyFromMaster() {
+    if (!hasMaster) {
+      setToast({ type: "error", message: "Master jadwal masih kosong. Isi di menu Master Set Jadwal dulu." });
+      return;
+    }
+    const ok = await confirm({
+      title: "Terapkan dari Master?",
+      description:
+        "Semua tanggal pada periode ini akan diisi ulang mengikuti pola mingguan Master (per hari). Perubahan manual yang belum disimpan bisa tertimpa. Setelah itu kamu masih bisa edit manual, lalu klik Simpan.",
+      confirmLabel: "Terapkan",
+      cancelLabel: "Batal",
+      tone: "warning",
+    });
+    if (!ok) return;
+    setJadwalMap((prev) => {
+      const next = new Map(prev);
+      for (const k of karyawanList) {
+        for (const pd of periodDays) {
+          const dow = new Date(pd.year, pd.month - 1, pd.day).getDay(); // 0=Min..6=Sab
+          const hariIso = dow === 0 ? 7 : dow;
+          const shift = masterMap.get(`${k.id}|${hariIso}`);
+          const key = `${k.id}|${pd.date}`;
+          if (shift) next.set(key, shift);
+        }
+      }
+      return next;
+    });
+    setDirty(true);
+    setToast({
+      type: "success",
+      message: "Master diterapkan ke seluruh periode. Cek/edit bila perlu, lalu klik Simpan Jadwal.",
+    });
+  }
 
   useEffect(() => {
     const tableEl = tableScrollRef.current;
@@ -460,6 +505,14 @@ export default function SpvJadwalManager({
                 </>
               ) : null}
             </div>
+            <button
+              type="button"
+              onClick={applyFromMaster}
+              title={hasMaster ? "Isi periode ini dari pola mingguan Master" : "Master jadwal masih kosong"}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[#0d7f86] px-5 text-sm font-semibold text-[#0d7f86] transition hover:bg-[#effbfb] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Terapkan dari Master
+            </button>
             <button
               type="button"
               disabled={isSubmitting || !dirty}

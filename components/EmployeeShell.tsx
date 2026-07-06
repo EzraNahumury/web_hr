@@ -59,8 +59,11 @@ const visitReportMenu: MenuItem = {
 
 const setJadwalMenu: MenuItem = {
   label: "Set Jadwal",
-  href: "/employee/jadwal",
   description: "Atur shift Toko & Gudang",
+  children: [
+    { label: "Bagan Set Jadwal", href: "/employee/jadwal", description: "Jadwal 1 bulan (26–25)" },
+    { label: "Master Set Jadwal", href: "/employee/jadwal/master", description: "Pola mingguan Sen–Min" },
+  ],
 };
 
 const overtimeApprovalsMenu: MenuItem = {

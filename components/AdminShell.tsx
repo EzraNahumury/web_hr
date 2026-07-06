@@ -35,7 +35,8 @@ const menuGroups: MenuGroup[] = [
     group: "Manajemen Karyawan",
     items: [
       { label: "Data Karyawan", href: "/admin/employees", description: "Kelola master karyawan" },
-      { label: "Set Jadwal", href: "/admin/jadwal", description: "Atur shift Toko, Gudang, Media" },
+      { label: "Bagan Set Jadwal", href: "/admin/jadwal", description: "Jadwal 1 bulan (26–25)" },
+      { label: "Master Set Jadwal", href: "/admin/jadwal/master", description: "Pola mingguan Sen–Min" },
       { label: "HR Agent", href: "/admin/hr-agent", description: "Asisten AI tanya-jawab data HR" },
     ],
   },

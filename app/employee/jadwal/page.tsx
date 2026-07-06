@@ -6,6 +6,7 @@ import { requireEmployeeSession } from "@/lib/auth";
 import { getEmployeeByUserId } from "@/lib/hris";
 import {
   getJadwalForRange,
+  getJadwalMasterAll,
   listTokoGudangKaryawan,
 } from "@/lib/jadwal-karyawan";
 import { getPayrollDateRange } from "@/lib/payroll-admin";
@@ -43,9 +44,10 @@ export default async function EmployeeJadwalPage({
   const month = Number.isInteger(monthRaw) && monthRaw >= 1 && monthRaw <= 12 ? monthRaw : def.month;
 
   const range = getPayrollDateRange(month, year);
-  const [karyawanList, jadwalList] = await Promise.all([
+  const [karyawanList, jadwalList, master] = await Promise.all([
     listTokoGudangKaryawan(),
     getJadwalForRange(range.startSql, range.endSql),
+    getJadwalMasterAll(),
   ]);
 
   return (
@@ -62,6 +64,7 @@ export default async function EmployeeJadwalPage({
         initialMonth={month}
         karyawanList={karyawanList}
         initialJadwal={jadwalList}
+        initialMaster={master}
       />
     </EmployeeShell>
   );

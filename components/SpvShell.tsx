@@ -12,7 +12,8 @@ type Props = {
 };
 
 const navItems = [
-  { label: "Set Jadwal", href: "/spv/jadwal" },
+  { label: "Bagan Set Jadwal", href: "/spv/jadwal" },
+  { label: "Master Set Jadwal", href: "/spv/jadwal/master" },
   { label: "Approval Lembur", href: "/spv/overtime-approvals" },
   { label: "Approval Absensi", href: "/spv/attendance-approvals" },
 ];

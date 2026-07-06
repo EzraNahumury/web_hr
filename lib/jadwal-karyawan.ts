@@ -234,6 +234,90 @@ export async function listTokoGudangKaryawan(): Promise<TokoGudangKaryawan[]> {
   }));
 }
 
+// ── MASTER JADWAL (template mingguan Senin–Minggu per karyawan) ──
+// hari: 1=Senin, 2=Selasa, ... 7=Minggu (ISO). Distribusikan ke jadwal_karyawan by day-of-week.
+
+let jadwalMasterSchemaReady: Promise<void> | null = null;
+
+export function ensureJadwalMasterSchema(): Promise<void> {
+  if (!jadwalMasterSchemaReady) {
+    jadwalMasterSchemaReady = (async () => {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS jadwal_master (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          karyawan_id INT NOT NULL,
+          hari TINYINT NOT NULL,
+          shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','libur','pagi_full','pagi_short','siang_sore','jne_pagi','jne_siang','jne_minggu') NOT NULL,
+          created_by INT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY uk_karyawan_hari (karyawan_id, hari)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+    })();
+  }
+  return jadwalMasterSchemaReady;
+}
+
+export type JadwalMasterItem = {
+  karyawanId: number;
+  hari: number; // 1=Senin..7=Minggu
+  shift: JadwalShift;
+};
+
+type JadwalMasterRow = RowDataPacket & {
+  karyawan_id: number;
+  hari: number;
+  shift: JadwalShift;
+};
+
+export async function getJadwalMasterAll(): Promise<JadwalMasterItem[]> {
+  await ensureJadwalMasterSchema();
+  const [rows] = await pool.query<JadwalMasterRow[]>(
+    `SELECT karyawan_id, hari, shift FROM jadwal_master ORDER BY karyawan_id, hari`,
+  );
+  return rows.map((r) => ({ karyawanId: r.karyawan_id, hari: r.hari, shift: r.shift }));
+}
+
+export async function upsertJadwalMasterBulk(
+  entries: { karyawanId: number; hari: number; shift: JadwalShift }[],
+  createdBy: number,
+) {
+  if (entries.length === 0) return;
+  await ensureJadwalMasterSchema();
+  const placeholders = entries.map(() => "(?, ?, ?, ?)").join(", ");
+  const values: (number | string)[] = [];
+  for (const e of entries) {
+    values.push(e.karyawanId, e.hari, e.shift, createdBy);
+  }
+  await pool.query(
+    `
+      INSERT INTO jadwal_master (karyawan_id, hari, shift, created_by)
+      VALUES ${placeholders}
+      ON DUPLICATE KEY UPDATE
+        shift = VALUES(shift),
+        created_by = VALUES(created_by),
+        updated_at = CURRENT_TIMESTAMP
+    `,
+    values,
+  );
+}
+
+export async function deleteJadwalMasterEntries(
+  pairs: { karyawanId: number; hari: number }[],
+) {
+  if (pairs.length === 0) return 0;
+  await ensureJadwalMasterSchema();
+  const placeholders = pairs.map(() => "(?, ?)").join(", ");
+  const values: number[] = [];
+  for (const p of pairs) values.push(p.karyawanId, p.hari);
+  const [result] = await pool.query<ResultSetHeader>(
+    `DELETE FROM jadwal_master WHERE (karyawan_id, hari) IN (${placeholders})`,
+    values,
+  );
+  return result.affectedRows;
+}
+
 export async function getJadwalForKaryawanOnDate(
   karyawanId: number,
   tanggal: string,
