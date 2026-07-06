@@ -194,7 +194,11 @@ export async function POST(request: Request) {
       );
     const isShiftEligible =
       requiresSelfie && (isTokoGudangPlacement(detectedPlacement) || isMedia || isHostlive || isAdvertiser || isJne);
-    const scheduledShift = isShiftEligible
+    // Jadwal SELALU dicek berdasar karyawan (bukan placement hasil geofence). Ini menutup
+    // celah: geofence bisa "kepleset" memilih placement non-shift terdekat (mis. Office)
+    // padahal karyawan dijadwalkan shift -> dulu enforcement hilang. Sekarang: kalau ada
+    // jadwal shift hari ini, range shift SELALU ditegakkan.
+    const scheduledShift = requiresSelfie
       ? await getScheduledShiftForDate(employee.id, attendanceDate)
       : null;
 
@@ -209,7 +213,6 @@ export async function POST(request: Request) {
     }
 
     if (
-      isShiftEligible &&
       scheduledShift &&
       requiresSelfie &&
       attendanceRequestStatus === "hadir"
@@ -225,11 +228,13 @@ export async function POST(request: Request) {
       }
     }
 
-    const detectedShift: AttendanceShift | null = isShiftEligible
-      ? scheduledShift
-        ? (scheduledShift as AttendanceShift)
-        : detectTokoGudangShift(currentTime)
-      : null;
+    // detectedShift: pakai jadwal kalau ada; kalau tidak & placement shift-eligible,
+    // fallback deteksi dari jam masuk. Non-shift tanpa jadwal -> null.
+    const detectedShift: AttendanceShift | null = scheduledShift
+      ? (scheduledShift as AttendanceShift)
+      : isShiftEligible
+        ? detectTokoGudangShift(currentTime)
+        : null;
     // Aturan baru per 5 Juli 2026: setengah hari DIHAPUS. Kalau request "setengah_hari"
     // datang (mis. dari app lama), perlakukan sebagai "hadir".
     const effectiveRequestStatus: AttendanceRequestStatus =

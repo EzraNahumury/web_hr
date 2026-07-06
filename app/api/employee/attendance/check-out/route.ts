@@ -149,7 +149,8 @@ export async function POST(request: Request) {
     const isShiftEligible =
       isTokoGudangPlacement(employee.penempatan) || isMedia || isHostlive || isAdvertiser || isJne;
 
-    const scheduledShift = isShiftEligible
+    // Jadwal dicek berdasar karyawan (bukan placement) supaya konsisten dengan check-in.
+    const scheduledShift = !isFreelance
       ? await getScheduledShiftForDate(employee.id, attendanceDate)
       : null;
     // Non-shift (office, penjahit) pakai jam kerja standar "pagi" (pulang 16:30) sebagai
