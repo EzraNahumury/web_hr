@@ -303,6 +303,60 @@ export async function upsertJadwalMasterBulk(
   );
 }
 
+// Distribusikan master mingguan ke jadwal_karyawan untuk 1 periode payroll (start–end, YYYY-MM-DD).
+// FILL-ONLY: pakai INSERT IGNORE supaya jadwal yang sudah ada (edit manual/tukar shift) TIDAK tertimpa.
+export async function distributeMasterToPeriod(
+  startSql: string,
+  endSql: string,
+  createdBy: number,
+) {
+  await Promise.all([ensureJadwalKaryawanSchema(), ensureJadwalMasterSchema()]);
+  const master = await getJadwalMasterAll();
+  if (master.length === 0) return { inserted: 0 };
+
+  // Map: karyawanId -> (hariISO -> shift)
+  const byKaryawan = new Map<number, Map<number, JadwalShift>>();
+  for (const m of master) {
+    let inner = byKaryawan.get(m.karyawanId);
+    if (!inner) {
+      inner = new Map();
+      byKaryawan.set(m.karyawanId, inner);
+    }
+    inner.set(m.hari, m.shift);
+  }
+
+  const rows: (number | string)[] = [];
+  let count = 0;
+  const [sy, sm, sd] = startSql.split("-").map(Number);
+  const [ey, em, ed] = endSql.split("-").map(Number);
+  const cur = new Date(sy, sm - 1, sd);
+  const end = new Date(ey, em - 1, ed);
+  while (cur <= end) {
+    const y = cur.getFullYear();
+    const mo = cur.getMonth() + 1;
+    const d = cur.getDate();
+    const dateStr = `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const dow = cur.getDay(); // 0=Min..6=Sab
+    const hariIso = dow === 0 ? 7 : dow;
+    for (const [karyawanId, inner] of byKaryawan) {
+      const shift = inner.get(hariIso);
+      if (shift) {
+        rows.push(karyawanId, dateStr, shift, createdBy);
+        count += 1;
+      }
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+  if (count === 0) return { inserted: 0 };
+
+  const placeholders = Array.from({ length: count }, () => "(?, ?, ?, ?)").join(", ");
+  const [result] = await pool.query<ResultSetHeader>(
+    `INSERT IGNORE INTO jadwal_karyawan (karyawan_id, tanggal, shift, created_by) VALUES ${placeholders}`,
+    rows,
+  );
+  return { inserted: result.affectedRows };
+}
+
 export async function deleteJadwalMasterEntries(
   pairs: { karyawanId: number; hari: number }[],
 ) {

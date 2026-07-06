@@ -101,12 +101,17 @@ export default function JadwalMasterManager({ karyawanList, initialMaster }: Pro
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ entries, removeKeys }),
       });
-      const data = (await res.json()) as { message?: string };
+      const data = (await res.json()) as { message?: string; distributed?: number };
       if (!res.ok) {
         setToast({ type: "error", message: data.message || "Gagal menyimpan master jadwal." });
         return;
       }
-      setToast({ type: "success", message: "Master jadwal tersimpan. Buka Bagan Set Jadwal lalu klik 'Terapkan dari Master'." });
+      setToast({
+        type: "success",
+        message: `Master tersimpan & otomatis diterapkan ke Bagan periode berjalan${
+          typeof data.distributed === "number" ? ` (${data.distributed} sel terisi)` : ""
+        }. Cek Bagan Set Jadwal untuk edit/tukar shift bila perlu.`,
+      });
       setDirty(false);
       router.refresh();
     } catch {

@@ -10,10 +10,12 @@ import {
 import { getEmployeeByUserId } from "@/lib/hris";
 import {
   deleteJadwalMasterEntries,
+  distributeMasterToPeriod,
   getJadwalMasterAll,
   upsertJadwalMasterBulk,
   type JadwalShift,
 } from "@/lib/jadwal-karyawan";
+import { getActivePayrollPeriod, getPayrollDateRange } from "@/lib/payroll-admin";
 import { canSetSchedule, isJadwalWhitelisted } from "@/lib/scheduler-roles";
 
 export const runtime = "nodejs";
@@ -136,7 +138,18 @@ export async function POST(request: Request) {
     if (entries.length > 0) await upsertJadwalMasterBulk(entries, session.id);
     if (removeKeys.length > 0) await deleteJadwalMasterEntries(removeKeys);
 
-    return NextResponse.json({ message: "Master jadwal tersimpan.", saved: entries.length, removed: removeKeys.length });
+    // Otomatis distribusikan master ke Bagan periode payroll BERJALAN (fill-only, tidak
+    // menimpa jadwal yang sudah ada / hasil tukar shift manual).
+    const active = getActivePayrollPeriod();
+    const range = getPayrollDateRange(active.month, active.year);
+    const dist = await distributeMasterToPeriod(range.startSql, range.endSql, session.id);
+
+    return NextResponse.json({
+      message: "Master jadwal tersimpan & diterapkan ke Bagan periode berjalan.",
+      saved: entries.length,
+      removed: removeKeys.length,
+      distributed: dist.inserted,
+    });
   } catch (error) {
     console.error("jadwal-master POST error", error);
     return NextResponse.json({ message: "Gagal menyimpan master jadwal." }, { status: 500 });

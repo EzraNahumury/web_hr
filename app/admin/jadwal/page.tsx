@@ -3,7 +3,6 @@ import SpvJadwalManager from "@/components/SpvJadwalManager";
 import { requireAdminSession } from "@/lib/auth";
 import {
   getJadwalForRange,
-  getJadwalMasterAll,
   listTokoGudangKaryawan,
 } from "@/lib/jadwal-karyawan";
 import { getPayrollDateRange } from "@/lib/payroll-admin";
@@ -31,10 +30,9 @@ export default async function AdminJadwalPage({
   const month = Number.isInteger(monthRaw) && monthRaw >= 1 && monthRaw <= 12 ? monthRaw : def.month;
 
   const range = getPayrollDateRange(month, year);
-  const [karyawanList, jadwalList, master] = await Promise.all([
+  const [karyawanList, jadwalList] = await Promise.all([
     listTokoGudangKaryawan(),
     getJadwalForRange(range.startSql, range.endSql),
-    getJadwalMasterAll(),
   ]);
 
   return (
@@ -50,7 +48,6 @@ export default async function AdminJadwalPage({
         initialMonth={month}
         karyawanList={karyawanList}
         initialJadwal={jadwalList}
-        initialMaster={master}
       />
     </AdminShell>
   );
