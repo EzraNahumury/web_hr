@@ -8,9 +8,14 @@ import type { KaryawanAksesOption } from "@/lib/jadwal-karyawan";
 type Props = {
   allKaryawan: KaryawanAksesOption[];
   initialGranted: KaryawanAksesOption[];
+  endpoint?: string;
 };
 
-export default function JadwalAksesManager({ allKaryawan, initialGranted }: Props) {
+export default function JadwalAksesManager({
+  allKaryawan,
+  initialGranted,
+  endpoint = "/api/spv/jadwal-akses",
+}: Props) {
   const router = useRouter();
   const [selected, setSelected] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -26,7 +31,7 @@ export default function JadwalAksesManager({ allKaryawan, initialGranted }: Prop
     setBusyId(karyawanId);
     setFeedback(null);
     try {
-      const res = await fetch("/api/spv/jadwal-akses", {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ karyawanId, granted }),

@@ -28,7 +28,7 @@ export default async function AdminJadwalPerizinanPage() {
         </Link>
         <span className="inline-flex items-center rounded-full bg-[#8f1d22] px-4 py-2 text-sm font-semibold text-white">Perizinan Akses</span>
       </div>
-      <JadwalAksesManager allKaryawan={allKaryawan} initialGranted={granted} />
+      <JadwalAksesManager allKaryawan={allKaryawan} initialGranted={granted} endpoint="/api/admin/jadwal-akses" />
     </AdminShell>
   );
 }
