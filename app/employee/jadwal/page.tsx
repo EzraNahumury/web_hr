@@ -6,6 +6,7 @@ import { requireEmployeeSession } from "@/lib/auth";
 import { getEmployeeByUserId } from "@/lib/hris";
 import {
   getJadwalForRange,
+  isUserJadwalEditor,
   listTokoGudangKaryawan,
 } from "@/lib/jadwal-karyawan";
 import { getPayrollDateRange } from "@/lib/payroll-admin";
@@ -31,7 +32,11 @@ export default async function EmployeeJadwalPage({
     return <main className="p-10">Data karyawan tidak ditemukan.</main>;
   }
 
-  if (!canSetSchedule(employee.jabatan) && !isJadwalWhitelisted(employee.nama)) {
+  if (
+    !canSetSchedule(employee.jabatan) &&
+    !isJadwalWhitelisted(employee.nama) &&
+    !(await isUserJadwalEditor(session.userId))
+  ) {
     redirect("/employee");
   }
 

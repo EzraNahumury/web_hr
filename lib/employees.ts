@@ -41,6 +41,7 @@ export type EmployeeListItem = {
   userActive: boolean;
   penjahitPayrollType: "mingguan" | "bulanan" | null;
   freelanceTipePayroll: "jam" | "pengerjaan" | "custom_pengerjaan" | "harian" | null;
+  isShift: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -207,6 +208,7 @@ export type EmployeePayload = {
   userActive: boolean;
   penjahitPayrollType: "mingguan" | "bulanan" | null;
   freelanceTipePayroll: "jam" | "pengerjaan" | "custom_pengerjaan" | "harian" | null;
+  isShift: boolean;
 };
 
 type EmployeeRow = RowDataPacket & {
@@ -244,6 +246,7 @@ type EmployeeRow = RowDataPacket & {
   tipe_payroll_penjahit: "mingguan" | "bulanan" | null;
   tipe_freelance: "jam" | "pengerjaan" | "custom_pengerjaan" | "harian" | null;
   penempatan_extra: string | null;
+  is_shift: number;
   status_aktif: number;
   created_at: string;
   updated_at: string;
@@ -293,6 +296,7 @@ function mapEmployee(row: EmployeeRow): EmployeeListItem {
     userActive: row.status_aktif === 1,
     penjahitPayrollType: row.tipe_payroll_penjahit ?? null,
     freelanceTipePayroll: row.tipe_freelance ?? null,
+    isShift: row.is_shift === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -312,6 +316,7 @@ const employeeSelectQuery = `
     k.sub_divisi,
     k.penempatan,
     k.penempatan_extra,
+    k.is_shift,
     k.pembagian_rekapan,
     k.pembebanan,
     k.bank,
@@ -343,7 +348,7 @@ const employeeSelectQuery = `
 
 let employeeSchemaReady: Promise<void> | null = null;
 
-async function ensureEmployeeSchemaSupport() {
+export async function ensureEmployeeSchemaSupport() {
   if (!employeeSchemaReady) {
     employeeSchemaReady = (async () => {
       const safeMigrate = async (sql: string) => {
@@ -385,6 +390,31 @@ async function ensureEmployeeSchemaSupport() {
       );
       await safeMigrate(
         `ALTER TABLE karyawan ADD COLUMN penempatan_extra VARCHAR(500) NULL AFTER penempatan`,
+      );
+      // Flag "Shift": karyawan yang ikut Set Jadwal (Bagan + Master). Backfill HANYA saat kolom
+      // baru dibuat (deploy pertama) supaya uncheck manual admin tidak tertimpa di restart berikut.
+      {
+        let isShiftJustAdded = false;
+        try {
+          await pool.query(
+            `ALTER TABLE karyawan ADD COLUMN is_shift TINYINT(1) NOT NULL DEFAULT 0 AFTER penempatan_extra`,
+          );
+          isShiftJustAdded = true;
+        } catch (error: unknown) {
+          const code = typeof error === "object" && error !== null && "code" in error ? (error as { code: string }).code : "";
+          if (code !== "ER_DUP_FIELDNAME") throw error;
+        }
+        if (isShiftJustAdded) {
+          await pool.query(
+            `UPDATE karyawan SET is_shift = 1
+              WHERE penempatan IN ('Toko','Gudang','JNE')
+                 OR LOWER(COALESCE(sub_divisi,'')) IN ('media','hostlive','advertiser')`,
+          );
+        }
+      }
+      // Flag "Editor Jadwal": karyawan yang diberi izin akses Set Jadwal (Perizinan Akses).
+      await safeMigrate(
+        `ALTER TABLE karyawan ADD COLUMN jadwal_editor TINYINT(1) NOT NULL DEFAULT 0 AFTER is_shift`,
       );
       // Tanggal karyawan di-nonaktifkan (resign). Dipakai filter Summary Payroll:
       // karyawan nonaktif tetap muncul di periode SEBELUM resign, hilang dari periode resign & seterusnya.
@@ -696,8 +726,9 @@ export async function insertEmployee(payload: EmployeePayload) {
           tanggal_selesai_kontrak,
           kenaikan_tiap_tahun,
           tipe_payroll_penjahit,
-          tipe_freelance
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 'nonaktif' THEN CURDATE() ELSE NULL END, ?, ?, ?, ?, ?, ?)
+          tipe_freelance,
+          is_shift
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 'nonaktif' THEN CURDATE() ELSE NULL END, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         userId,
@@ -733,6 +764,7 @@ export async function insertEmployee(payload: EmployeePayload) {
         payload.annualRaise,
         payload.penjahitPayrollType ?? null,
         payload.freelanceTipePayroll ?? null,
+        payload.isShift ? 1 : 0,
       ],
     );
 
@@ -876,7 +908,8 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
           tanggal_selesai_kontrak = ?,
           kenaikan_tiap_tahun = ?,
           tipe_payroll_penjahit = ?,
-          tipe_freelance = ?
+          tipe_freelance = ?,
+          is_shift = ?
         WHERE id = ?
       `,
       [
@@ -912,6 +945,7 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
         payload.annualRaise,
         payload.penjahitPayrollType ?? null,
         payload.freelanceTipePayroll ?? null,
+        payload.isShift ? 1 : 0,
         id,
       ],
     );

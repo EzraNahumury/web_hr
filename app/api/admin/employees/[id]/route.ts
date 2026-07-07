@@ -151,6 +151,7 @@ function validatePayload(body: Record<string, unknown>) {
       )
         ? (body.freelanceTipePayroll as "jam" | "pengerjaan" | "custom_pengerjaan" | "harian")
         : null,
+      isShift: body.isShift === true,
     },
   };
 }
@@ -217,6 +218,7 @@ export async function PUT(
       addressCurrent: keepIfAbsent("addressCurrent", current.addressCurrent),
       phoneNumber: keepIfAbsent("phoneNumber", current.phoneNumber),
       ktpPhoto: keepIfAbsent("ktpPhoto", current.ktpPhoto) ?? current.ktpPhoto,
+      isShift: keepIfAbsent("isShift", current.isShift),
     });
 
     return NextResponse.json({

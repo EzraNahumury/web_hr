@@ -14,6 +14,7 @@ type Props = {
 const navItems = [
   { label: "Bagan Set Jadwal", href: "/spv/jadwal" },
   { label: "Master Set Jadwal", href: "/spv/jadwal/master" },
+  { label: "Perizinan Akses", href: "/spv/jadwal/perizinan" },
   { label: "Approval Lembur", href: "/spv/overtime-approvals" },
   { label: "Approval Absensi", href: "/spv/attendance-approvals" },
 ];

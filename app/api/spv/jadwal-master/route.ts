@@ -12,10 +12,16 @@ import {
   deleteJadwalMasterEntries,
   distributeMasterToPeriod,
   getJadwalMasterAll,
+  isUserJadwalEditor,
   upsertJadwalMasterBulk,
   type JadwalShift,
 } from "@/lib/jadwal-karyawan";
 import { getActivePayrollPeriod, getPayrollDateRange } from "@/lib/payroll-admin";
+import {
+  isEkspedisiPlacement,
+  JNE_SHIFT_VALUES,
+  STANDARD_SHIFT_VALUES,
+} from "@/lib/jadwal-shift-options";
 import { canSetSchedule, isJadwalWhitelisted } from "@/lib/scheduler-roles";
 
 export const runtime = "nodejs";
@@ -29,20 +35,19 @@ async function getSchedulerSession() {
   const employee = await getCurrentEmployeeSession();
   if (!employee) return null;
   const profile = await getEmployeeByUserId(employee.userId);
-  if (!profile || (!canSetSchedule(profile.jabatan) && !isJadwalWhitelisted(profile.nama))) return null;
+  if (
+    !profile ||
+    (!canSetSchedule(profile.jabatan) &&
+      !isJadwalWhitelisted(profile.nama) &&
+      !(await isUserJadwalEditor(employee.userId)))
+  ) {
+    return null;
+  }
   return { id: employee.id };
 }
 
-const VALID_SHIFTS = new Set<JadwalShift>([
-  "pagi", "lembur", "siang", "setengah_1", "setengah_2", "libur",
-  "pagi_full", "pagi_short", "siang_sore", "jne_pagi", "jne_siang", "jne_minggu",
-]);
-
-const IMEL_NIP = "MR.MM.2025.0002";
-const IMEL_VALID = new Set<JadwalShift>(["pagi_full", "pagi", "pagi_short", "setengah_2", "siang_sore", "siang", "libur"]);
-const IMEL_ONLY = new Set<JadwalShift>(["pagi_full", "pagi_short", "siang_sore"]);
-const JNE_VALID = new Set<JadwalShift>(["jne_pagi", "jne_siang", "jne_minggu", "libur"]);
-const JNE_ONLY = new Set<JadwalShift>(["jne_pagi", "jne_siang", "jne_minggu"]);
+const standardSet = new Set<string>(STANDARD_SHIFT_VALUES);
+const jneSet = new Set<string>(JNE_SHIFT_VALUES);
 
 function parsePositiveInt(v: unknown) {
   const n = Number(v);
@@ -65,26 +70,15 @@ export async function POST(request: Request) {
     const entriesRaw = Array.isArray(body.entries) ? body.entries : [];
     const removeRaw = Array.isArray(body.removeKeys) ? body.removeKeys : [];
 
-    // Set constraint per karyawan (aturan sama seperti bagan Set Jadwal).
+    // Karyawan valid = is_shift = 1. Ekspedisi (JNE) pakai set shift JNE, selain itu set standar.
     const validIds = new Set<number>();
-    const tokoSoloIds = new Set<number>();
-    const mediaIds = new Set<number>();
     const jneIds = new Set<number>();
-    const imelIds = new Set<number>();
-    const [rows] = await pool.query<
-      (RowDataPacket & { id: number; penempatan: string; sub_divisi: string | null; no_karyawan: string | null })[]
-    >(
-      `SELECT id, penempatan, sub_divisi, no_karyawan FROM karyawan
-        WHERE status_data = 'aktif'
-          AND (penempatan IN ('Toko','Gudang','JNE')
-            OR LOWER(COALESCE(sub_divisi,'')) IN ('media','hostlive','advertiser'))`,
+    const [rows] = await pool.query<(RowDataPacket & { id: number; penempatan: string })[]>(
+      `SELECT id, penempatan FROM karyawan WHERE status_data = 'aktif' AND is_shift = 1`,
     );
     for (const r of rows) {
       validIds.add(r.id);
-      if (r.penempatan === "Toko Solo") tokoSoloIds.add(r.id);
-      if (r.penempatan === "JNE") jneIds.add(r.id);
-      if ((r.sub_divisi ?? "").trim().toLowerCase() === "media") mediaIds.add(r.id);
-      if (r.no_karyawan === IMEL_NIP) imelIds.add(r.id);
+      if (isEkspedisiPlacement(r.penempatan)) jneIds.add(r.id);
     }
 
     const entries: { karyawanId: number; hari: number; shift: JadwalShift }[] = [];
@@ -95,32 +89,21 @@ export async function POST(request: Request) {
       const hari = parsePositiveInt(rec.hari);
       const shift = rec.shift as JadwalShift;
       if (!karyawanId || !validIds.has(karyawanId)) {
-        return NextResponse.json({ message: "Karyawan tidak valid atau bukan Toko/Gudang/JNE/Media aktif." }, { status: 400 });
+        return NextResponse.json({ message: "Karyawan tidak valid atau tidak diaktifkan Shift." }, { status: 400 });
       }
       if (!hari || hari < 1 || hari > 7) {
         return NextResponse.json({ message: `Hari tidak valid: ${String(rec.hari)}` }, { status: 400 });
       }
-      if (!VALID_SHIFTS.has(shift)) {
-        return NextResponse.json({ message: `Shift tidak valid: ${String(shift)}` }, { status: 400 });
-      }
-      // Constraint per tipe (samakan dengan bagan).
-      if (tokoSoloIds.has(karyawanId) && shift !== "pagi" && shift !== "libur") {
-        return NextResponse.json({ message: "Toko Solo hanya boleh shift Pagi atau Libur." }, { status: 400 });
-      }
-      if (imelIds.has(karyawanId)) {
-        if (!IMEL_VALID.has(shift)) {
-          return NextResponse.json({ message: "Shift tidak sesuai jadwal Imel." }, { status: 400 });
-        }
-      } else if (IMEL_ONLY.has(shift)) {
-        return NextResponse.json({ message: "Shift ini khusus Imel." }, { status: 400 });
-      } else if (jneIds.has(karyawanId)) {
-        if (!JNE_VALID.has(shift)) {
-          return NextResponse.json({ message: "Karyawan JNE hanya boleh shift JNE Pagi/Siang/Minggu atau Libur." }, { status: 400 });
-        }
-      } else if (JNE_ONLY.has(shift)) {
-        return NextResponse.json({ message: "Shift ini khusus karyawan JNE." }, { status: 400 });
-      } else if (mediaIds.has(karyawanId) && shift !== "pagi" && shift !== "siang" && shift !== "libur") {
-        return NextResponse.json({ message: "Media hanya boleh shift Pagi, Siang, atau Libur." }, { status: 400 });
+      const allowed = jneIds.has(karyawanId) ? jneSet : standardSet;
+      if (!allowed.has(shift)) {
+        return NextResponse.json(
+          {
+            message: jneIds.has(karyawanId)
+              ? "Karyawan Ekspedisi (JNE) hanya boleh shift Pagi/Siang/Minggu atau Libur."
+              : "Shift hanya boleh Pagi, Lembur, Siang, atau Libur.",
+          },
+          { status: 400 },
+        );
       }
       entries.push({ karyawanId, hari, shift });
     }

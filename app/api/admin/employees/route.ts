@@ -147,6 +147,7 @@ function validatePayload(body: Record<string, unknown>) {
     )
       ? (body.freelanceTipePayroll as "jam" | "pengerjaan" | "custom_pengerjaan" | "harian")
       : null,
+    isShift: body.isShift === true,
   };
 
   return { payload };

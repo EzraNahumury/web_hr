@@ -191,7 +191,7 @@ export default function JadwalMasterManager({ karyawanList, initialMaster }: Pro
                 </tr>
               ) : (
                 filtered.map((k) => {
-                  const options = getShiftOptionsFor(k.penempatan, k.subDivisi, k.noKaryawan);
+                  const options = getShiftOptionsFor(k.penempatan);
                   return (
                     <tr key={k.id} className="border-b border-[#f4ebe6]">
                       <td className="sticky left-0 z-10 bg-white px-4 py-2">

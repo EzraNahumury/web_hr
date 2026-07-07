@@ -1,5 +1,6 @@
 import { ResultSetHeader, RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
+import { ensureEmployeeSchemaSupport } from "@/lib/employees";
 
 export type JadwalShift =
   | "pagi"
@@ -212,15 +213,13 @@ type TokoGudangRow = RowDataPacket & {
 };
 
 export async function listTokoGudangKaryawan(): Promise<TokoGudangKaryawan[]> {
+  await ensureEmployeeSchemaSupport();
+  // Karyawan ikut Set Jadwal kalau flag is_shift = 1 (dicentang di form Data Karyawan).
   const [rows] = await pool.query<TokoGudangRow[]>(
     `
       SELECT id, nama, no_karyawan, penempatan, sub_divisi, jabatan
       FROM karyawan
-      WHERE status_data = 'aktif'
-        AND (
-          penempatan IN ('Toko', 'Gudang', 'JNE')
-          OR LOWER(COALESCE(sub_divisi, '')) IN ('media', 'hostlive', 'advertiser')
-        )
+      WHERE status_data = 'aktif' AND is_shift = 1
       ORDER BY penempatan ASC, nama ASC
     `,
   );
@@ -370,6 +369,68 @@ export async function deleteJadwalMasterEntries(
     values,
   );
   return result.affectedRows;
+}
+
+// ── PERIZINAN AKSES SET JADWAL (jadwal_editor) ──
+// Karyawan yang diberi izin -> di akunnya muncul Bagan + Master Set Jadwal.
+
+export type KaryawanAksesOption = {
+  id: number;
+  nama: string;
+  noKaryawan: string | null;
+  penempatan: string | null;
+  jabatan: string | null;
+};
+
+export async function listKaryawanForAccess(): Promise<KaryawanAksesOption[]> {
+  const [rows] = await pool.query<
+    (RowDataPacket & { id: number; nama: string; no_karyawan: string | null; penempatan: string | null; jabatan: string | null })[]
+  >(
+    `SELECT id, nama, no_karyawan, penempatan, jabatan
+       FROM karyawan WHERE status_data = 'aktif' ORDER BY nama ASC`,
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    nama: r.nama,
+    noKaryawan: r.no_karyawan,
+    penempatan: r.penempatan,
+    jabatan: r.jabatan,
+  }));
+}
+
+export async function listJadwalEditors(): Promise<KaryawanAksesOption[]> {
+  await ensureEmployeeSchemaSupport();
+  const [rows] = await pool.query<
+    (RowDataPacket & { id: number; nama: string; no_karyawan: string | null; penempatan: string | null; jabatan: string | null })[]
+  >(
+    `SELECT id, nama, no_karyawan, penempatan, jabatan
+       FROM karyawan WHERE status_data = 'aktif' AND jadwal_editor = 1 ORDER BY nama ASC`,
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    nama: r.nama,
+    noKaryawan: r.no_karyawan,
+    penempatan: r.penempatan,
+    jabatan: r.jabatan,
+  }));
+}
+
+export async function setJadwalEditor(karyawanId: number, granted: boolean) {
+  await ensureEmployeeSchemaSupport();
+  const [result] = await pool.query<ResultSetHeader>(
+    `UPDATE karyawan SET jadwal_editor = ? WHERE id = ?`,
+    [granted ? 1 : 0, karyawanId],
+  );
+  return result.affectedRows;
+}
+
+export async function isUserJadwalEditor(userId: number): Promise<boolean> {
+  await ensureEmployeeSchemaSupport();
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT 1 FROM karyawan WHERE user_id = ? AND jadwal_editor = 1 AND status_data = 'aktif' LIMIT 1`,
+    [userId],
+  );
+  return rows.length > 0;
 }
 
 export async function getJadwalForKaryawanOnDate(

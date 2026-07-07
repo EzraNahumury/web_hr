@@ -48,6 +48,7 @@ type FormState = {
   contractEndDate: string;
   annualRaise: string;
   userActive: boolean;
+  isShift: boolean;
   penjahitPayrollType: "mingguan" | "bulanan" | "";
   freelanceTipePayroll: "jam" | "pengerjaan" | "custom_pengerjaan" | "harian" | "";
 };
@@ -69,6 +70,7 @@ const emptyForm: FormState = {
   contractEndDate: "",
   annualRaise: "0",
   userActive: true,
+  isShift: false,
   penjahitPayrollType: "",
   freelanceTipePayroll: "",
 };
@@ -200,6 +202,7 @@ function toFormState(employee: EmployeeListItem): FormState {
     contractEndDate: employee.contractEndDate ?? "",
     annualRaise: formatRupiahInput(String(Math.trunc(Number(employee.annualRaise) || 0))),
     userActive: employee.userActive,
+    isShift: employee.isShift,
     penjahitPayrollType: employee.penjahitPayrollType ?? "",
     freelanceTipePayroll: employee.freelanceTipePayroll ?? "",
   };
@@ -415,6 +418,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
         contractEndDate: form.contractEndDate,
         annualRaise: Number(sanitizeCurrencyInput(form.annualRaise) || 0),
         userActive: form.userActive,
+        isShift: form.isShift,
         penjahitPayrollType: form.penjahitPayrollType || null,
         freelanceTipePayroll: form.freelanceTipePayroll || null,
       };
@@ -688,6 +692,17 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                 <Field label="Status Kepegawaian"><select value={form.employmentStatus} onChange={(event) => updateField("employmentStatus", event.target.value as FormState["employmentStatus"])} className={selectClassName}>{lookups.workStatuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
                 <Field label="Status Data"><select value={form.dataStatus} onChange={(event) => updateField("dataStatus", event.target.value as FormState["dataStatus"])} className={selectClassName}>{lookups.dataStatuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
                 <Field label="Kenaikan Tiap Tahun"><input value={form.annualRaise} onChange={(event) => updateField("annualRaise", formatRupiahInput(event.target.value))} className={inputClassName} inputMode="numeric" /></Field>
+                <Field label="Shift">
+                  <label className="flex h-11 items-center gap-2.5 rounded-xl border border-[#e8d5cc] bg-white px-3.5 text-sm text-[#3c2824]">
+                    <input
+                      type="checkbox"
+                      checked={form.isShift}
+                      onChange={(event) => updateField("isShift", event.target.checked)}
+                      className="h-4 w-4 rounded border-[#c8716d] text-[#8f1d22] focus:ring-[#c8716d]"
+                    />
+                    <span>Ikut Set Jadwal (Bagan &amp; Master)</span>
+                  </label>
+                </Field>
               </div>
 
               <div className={`grid gap-4 md:grid-cols-2 ${isTetap ? "" : "xl:grid-cols-3"}`}>

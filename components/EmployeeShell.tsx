@@ -6,6 +6,7 @@ import LogoutButton from "@/components/LogoutButton";
 import PayrollGreetingModal from "@/components/PayrollGreetingModal";
 import { isSalesFieldRole } from "@/lib/sales-roles";
 import { canSetSchedule } from "@/lib/scheduler-roles";
+import { useEmployeeJadwalAccess } from "@/components/EmployeeJadwalAccessContext";
 
 type Props = {
   title: string;
@@ -86,7 +87,11 @@ function isJadwalWhitelistedByName(name: string) {
   );
 }
 
-function buildMenuItems(role: string | null | undefined, employeeName?: string): MenuItem[] {
+function buildMenuItems(
+  role: string | null | undefined,
+  employeeName: string | undefined,
+  canEditJadwal: boolean,
+): MenuItem[] {
   let result: MenuItem[] = baseMenuItems;
 
   if (isSalesFieldRole(role)) {
@@ -101,11 +106,16 @@ function buildMenuItems(role: string | null | undefined, employeeName?: string):
     result = next;
   }
 
-  if (canSetSchedule(role)) {
-    result = [...result, setJadwalMenu, overtimeApprovalsMenu, attendanceApprovalsMenu];
-  } else if (employeeName && isJadwalWhitelistedByName(employeeName)) {
-    result = [...result, setJadwalMenu];
+  const extras: MenuItem[] = [];
+  // Set Jadwal (Bagan + Master) untuk yang punya akses: manager/spv, whitelist, atau diberi izin.
+  if (canEditJadwal || (employeeName && isJadwalWhitelistedByName(employeeName))) {
+    extras.push(setJadwalMenu);
   }
+  // Approval hanya untuk atasan (supervisor/manager).
+  if (canSetSchedule(role)) {
+    extras.push(overtimeApprovalsMenu, attendanceApprovalsMenu);
+  }
+  if (extras.length > 0) result = [...result, ...extras];
 
   return result;
 }
@@ -197,7 +207,8 @@ export default function EmployeeShell({
   employeeRole,
   children,
 }: Props) {
-  const menuItems = buildMenuItems(employeeRole, employeeName);
+  const canEditJadwal = useEmployeeJadwalAccess();
+  const menuItems = buildMenuItems(employeeRole, employeeName, canEditJadwal);
   const initiallyOpen = menuItems.reduce<Record<string, boolean>>((acc, item) => {
     if (item.children) {
       acc[item.label] = item.children.some((sub) => sub.href === currentPath);

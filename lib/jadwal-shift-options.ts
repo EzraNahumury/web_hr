@@ -2,38 +2,16 @@ import type { JadwalShift } from "@/lib/jadwal-karyawan";
 
 export type ShiftOption = JadwalShift | "";
 
+// Dropdown standar (disamakan untuk semua non-ekspedisi): Pagi, Lembur, Siang, Libur.
 export const SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
   { value: "", label: "—" },
   { value: "pagi", label: "Pagi" },
   { value: "lembur", label: "Lembur" },
   { value: "siang", label: "Siang" },
-  { value: "setengah_1", label: "Setengah 1" },
-  { value: "setengah_2", label: "Setengah 2" },
   { value: "libur", label: "Libur" },
 ];
 
-export const TOKO_SOLO_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
-  { value: "", label: "—" },
-  { value: "pagi", label: "Pagi" },
-  { value: "setengah_1", label: "Setengah 1" },
-  { value: "setengah_2", label: "Setengah 2" },
-  { value: "libur", label: "Libur" },
-];
-
-export const MEDIA_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
-  { value: "", label: "—" },
-  { value: "pagi", label: "Pagi" },
-  { value: "siang", label: "Siang" },
-  { value: "libur", label: "Libur" },
-];
-
-export const HOSTLIVE_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
-  { value: "", label: "—" },
-  { value: "pagi", label: "Pagi" },
-  { value: "siang", label: "Siang" },
-  { value: "libur", label: "Libur" },
-];
-
+// Ekspedisi (JNE) tetap pakai dropdown khusus.
 export const JNE_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
   { value: "", label: "—" },
   { value: "jne_pagi", label: "Pagi (08:00 - 16:00)" },
@@ -42,29 +20,16 @@ export const JNE_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
   { value: "libur", label: "Libur" },
 ];
 
-export const IMEL_NIP = "MR.MM.2025.0002";
-export const IMEL_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
-  { value: "", label: "—" },
-  { value: "pagi_full", label: "08:30 - 17:00" },
-  { value: "pagi", label: "08:30 - 16:30" },
-  { value: "pagi_short", label: "08:30 - 15:00" },
-  { value: "setengah_2", label: "08:30 - 12:00" },
-  { value: "siang_sore", label: "12:00 - 17:00" },
-  { value: "siang", label: "Siang (12:00 - 21:00)" },
-  { value: "libur", label: "Libur" },
-];
+// Nilai shift yang valid per dropdown (untuk validasi server).
+export const STANDARD_SHIFT_VALUES = ["pagi", "lembur", "siang", "libur"] as const;
+export const JNE_SHIFT_VALUES = ["jne_pagi", "jne_siang", "jne_minggu", "libur"] as const;
 
-export function getShiftOptionsFor(
-  penempatan: string,
-  subDivisi: string | null,
-  noKaryawan: string | null,
-) {
-  if (noKaryawan === IMEL_NIP) return IMEL_SHIFT_OPTIONS;
-  if (penempatan === "JNE") return JNE_SHIFT_OPTIONS;
-  if (penempatan.trim().toLowerCase() === "toko solo") return TOKO_SOLO_SHIFT_OPTIONS;
-  const subDiv = (subDivisi ?? "").trim().toLowerCase();
-  if (subDiv === "media") return MEDIA_SHIFT_OPTIONS;
-  if (subDiv === "hostlive") return HOSTLIVE_SHIFT_OPTIONS;
+export function isEkspedisiPlacement(penempatan: string | null | undefined): boolean {
+  return (penempatan ?? "").trim() === "JNE";
+}
+
+export function getShiftOptionsFor(penempatan: string) {
+  if (isEkspedisiPlacement(penempatan)) return JNE_SHIFT_OPTIONS;
   return SHIFT_OPTIONS;
 }
 

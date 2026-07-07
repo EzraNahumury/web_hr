@@ -4,7 +4,7 @@ import EmployeeShell from "@/components/EmployeeShell";
 import JadwalMasterManager from "@/components/JadwalMasterManager";
 import { requireEmployeeSession } from "@/lib/auth";
 import { getEmployeeByUserId } from "@/lib/hris";
-import { getJadwalMasterAll, listTokoGudangKaryawan } from "@/lib/jadwal-karyawan";
+import { getJadwalMasterAll, isUserJadwalEditor, listTokoGudangKaryawan } from "@/lib/jadwal-karyawan";
 import { canSetSchedule, isJadwalWhitelisted } from "@/lib/scheduler-roles";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +15,11 @@ export default async function EmployeeJadwalMasterPage() {
   if (!employee) {
     return <main className="p-10">Data karyawan tidak ditemukan.</main>;
   }
-  if (!canSetSchedule(employee.jabatan) && !isJadwalWhitelisted(employee.nama)) {
+  if (
+    !canSetSchedule(employee.jabatan) &&
+    !isJadwalWhitelisted(employee.nama) &&
+    !(await isUserJadwalEditor(session.userId))
+  ) {
     redirect("/employee");
   }
 
