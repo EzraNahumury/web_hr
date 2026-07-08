@@ -348,9 +348,13 @@ export async function distributeMasterToPeriod(
   }
   if (count === 0) return { inserted: 0 };
 
+  // Timpa bagan agar sinkron dengan master (konsisten dengan simpan bagan manual yang juga
+  // ON DUPLICATE KEY UPDATE). Hanya menyentuh tanggal dalam range periode yang diminta, jadi
+  // periode lampau di luar range tidak tersentuh. Master yang diedit -> bagan ikut ter-update.
   const placeholders = Array.from({ length: count }, () => "(?, ?, ?, ?)").join(", ");
   const [result] = await pool.query<ResultSetHeader>(
-    `INSERT IGNORE INTO jadwal_karyawan (karyawan_id, tanggal, shift, created_by) VALUES ${placeholders}`,
+    `INSERT INTO jadwal_karyawan (karyawan_id, tanggal, shift, created_by) VALUES ${placeholders}
+     ON DUPLICATE KEY UPDATE shift = VALUES(shift), created_by = VALUES(created_by)`,
     rows,
   );
   return { inserted: result.affectedRows };
