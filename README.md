@@ -194,7 +194,9 @@ web_hr/
 | `/employee/attendance-history` | Riwayat absensi pribadi |
 | `/employee/overtime` | Ajukan & riwayat lembur |
 | `/employee/overtime-approvals` | Approval lembur (untuk SPV/Manager yang login sbagai karyawan) |
-| `/employee/jadwal` | Setup jadwal (untuk SPV/Manager/scheduler whitelist) |
+| `/employee/attendance-approvals` | Approval absensi telat/pulang awal (untuk atasan) |
+| `/employee/jadwal` | Setup jadwal Bagan (untuk SPV/Manager/scheduler whitelist) |
+| `/employee/jadwal/master` | Master Set Jadwal (pola mingguan) |
 | `/employee/loans` | Ajukan & pantau pinjaman |
 | `/employee/payslips` | Slip gaji |
 | `/employee/bonus-slips` | Slip bonus |
@@ -208,8 +210,11 @@ web_hr/
 | Route | Fungsi |
 |-------|--------|
 | `/spv` | Redirect → `/spv/jadwal` |
-| `/spv/jadwal` | Set jadwal shift tim |
+| `/spv/jadwal` | Set jadwal shift tim (Bagan bulanan) |
+| `/spv/jadwal/master` | Master Set Jadwal (pola mingguan Sen–Min) |
+| `/spv/jadwal/perizinan` | Perizinan akses set jadwal |
 | `/spv/overtime-approvals` | Approval lembur tim |
+| `/spv/attendance-approvals` | Approval absensi telat/pulang awal tim |
 
 **Admin** (`/admin/*`)
 | Route | Fungsi |
@@ -217,7 +222,10 @@ web_hr/
 | `/admin` | Dashboard admin (statistik karyawan/presensi/payroll/slip) |
 | `/admin/employees` | Data karyawan |
 | `/admin/attendance` | Rekap absensi + koreksi kode + libur nasional + pulihkan |
-| `/admin/jadwal` | Set jadwal semua karyawan |
+| `/admin/attendance-approvals` | Approval absensi telat/pulang awal (ke admin) |
+| `/admin/jadwal` | Set jadwal semua karyawan (Bagan bulanan) |
+| `/admin/jadwal/master` | Master Set Jadwal (pola mingguan → distribusi ke Bagan) |
+| `/admin/jadwal/perizinan` | Perizinan akses set jadwal + flag Shift per karyawan |
 | `/admin/overtime` | Approval lembur |
 | `/admin/visit-reports` | Laporan kunjungan sales |
 | `/admin/business-trips` | Approval perjalanan dinas |
@@ -340,7 +348,7 @@ Skema kanonik ada di **`db/hris_payroll_app_v2.sql`**; sebagian tabel juga dibua
 | Kelompok | Tabel |
 |----------|-------|
 | **Akun & karyawan** | `users`, `karyawan`, `otp_codes` |
-| **Presensi & jadwal** | `absensi`, `jadwal_karyawan`, `libur_nasional` |
+| **Presensi & jadwal** | `absensi` (+ kolom approval telat/pulang awal), `jadwal_karyawan`, `jadwal_master`, `libur_nasional` |
 | **Lembur** | `lembur` |
 | **Payroll inti** | `payroll`, `payroll_employee_input`, `payroll_period_config`, `omzet_bulanan`, `payroll_bonus` |
 | **Freelance** | `freelance_jam`, `freelance_pengerjaan`, `freelance_harian`, `freelance_custom_item`, `freelance_custom_pengerjaan` |
@@ -358,6 +366,8 @@ Skema kanonik ada di **`db/hris_payroll_app_v2.sql`**; sebagian tabel juga dibua
 - `sub_divisi` → penjahit/media/dll (shift & kelas payroll).
 - `unit` → kelompok omzet (AVA/Ayres/JNE).
 - `status_data` → `aktif`/`nonaktif` (nonaktif hilang dari payroll periode berikutnya).
+- `is_shift` → karyawan masuk penjadwalan (Bagan/Master); `jadwal_editor` → boleh set jadwal.
+- `kenaikan_tiap_tahun` → nominal kenaikan Insentif Kehadiran per tahun kerja (lihat [§7.5](#kenaikan-gaji-per-tahun-insentif-kehadiran)).
 
 ---
 
@@ -464,6 +474,45 @@ flowchart TD
 ```
 
 > Cek hanya **hari kemarin** (bukan semua hari lampau). Admin memulihkan lewat `POST /api/admin/attendance/recover`.
+
+#### Approval Absensi (Telat / Pulang Awal)
+
+Aturan baru (aktif per 5 Juli 2026, `isAttendanceApprovalRuleActive`): karyawan **non-freelance** yang **telat** (saat check-in) atau **pulang awal** (saat check-out) **wajib mengisi keterangan + memilih atasan tujuan**. Record disimpan **pending** dan **dianggap alfa** di rekap & payroll **sampai disetujui**.
+
+```mermaid
+flowchart TD
+    IN[Check-in TELAT / Check-out PULANG AWAL] --> Q{Aturan aktif &<br/>non-freelance?}
+    Q -->|Tidak| NORM[Tercatat normal]
+    Q -->|Ya| KET{Isi keterangan +<br/>pilih atasan tujuan?}
+    KET -->|Tidak| REJ[❌ Ditolak submit]
+    KET -->|Ya| PEND[(absensi.butuh_approval=1<br/>approval_status=pending<br/>approval_jenis=telat/pulang_awal<br/>assigned_approver_user_id)]
+    PEND -.dianggap ALFA di payroll.-> PAY[Payroll]
+    PEND --> REV{Approver review<br/>SPV/Manager atau Admin}
+    REV -->|Approve| OK[(approval_status=approved<br/>+ catatan_atasan)]
+    REV -->|Reject| NO[(approval_status=rejected)]
+    OK -.dihitung hadir/telat normal.-> PAY
+```
+
+- **Approver** = atasan yang dipilih (SPV/Supervisor/Manager via akun karyawan mereka) **atau** Admin (broadcast bila `assigned_approver_user_id` NULL). Ditangani `lib/attendance-approver.ts` (`resolveAssignedApprover`) & `lib/attendance-approval.ts`.
+- Halaman **Approval Absensi**: `/employee/attendance-approvals` (atasan), `/spv/attendance-approvals`, `/admin/attendance-approvals`.
+- Kolom terkait di `absensi`: `butuh_approval`, `approval_status`, `approval_jenis`, `assigned_approver_user_id`, `approver_user_id`, `approved_at`, `catatan_atasan`.
+
+### 7.2b Jadwal: Master → Bagan
+
+Penjadwalan punya 3 lapis: **Perizinan Akses** (siapa boleh mengatur), **Master** (pola mingguan Sen–Min), dan **Bagan** (grid harian 1 bulan). Hanya karyawan `is_shift = 1` yang dijadwalkan.
+
+```mermaid
+flowchart LR
+    P[Perizinan Akses<br/>grant editor + flag is_shift] --> M
+    M[Master Set Jadwal<br/>pola mingguan Sen–Min per karyawan] -->|Simpan Master| D{{distributeMasterToPeriod<br/>periode aktif}}
+    D -->|ON DUPLICATE KEY UPDATE<br/>menimpa bagan| B[(jadwal_karyawan<br/>Bagan harian)]
+    B2[Edit manual Bagan<br/>tukar shift per hari] -->|upsert| B
+    B --> PAY[Payroll: hari kerja terjadwal & shift]
+```
+
+- **Master → Bagan menimpa** (overwrite) hari yang cocok di periode aktif saat "Simpan Master" — jadi perubahan pola langsung tercermin di Bagan. Hanya menyentuh range periode aktif; periode lampau tidak tersentuh.
+- Distribusi hanya berjalan saat **Simpan Master** (bukan saat load bagan), jadi edit manual Bagan tetap aman sampai master di-save ulang.
+- **Perizinan Akses**: Admin/SPV memberi karyawan tertentu hak mengisi Bagan/Master dari akunnya + menyalakan flag **Shift** (`is_shift`) agar karyawan masuk penjadwalan.
 
 ### 7.3 Lembur & Approval Berjenjang
 
@@ -614,10 +663,14 @@ sequenceDiagram
 | `admins.ts` | CRUD akun Admin & SPV (menu Role), schema role users |
 | `employees.ts` | CRUD karyawan, signup, update profil, migrasi kolom karyawan |
 | `attendance.ts` | Aturan shift, window jam, deteksi telat/½hari, foto, blokir & pulihkan absensi |
+| `attendance-approval.ts` | Approval absensi telat/pulang awal (list & proses approve/reject) |
+| `attendance-approver.ts` | `resolveAssignedApprover` — pilih atasan tujuan approval |
 | `holidays.ts` | Libur nasional (tandai kode L massal) |
 | `attendance-recompute.ts` | Recompute kode absensi & migrasi `app_migrations` |
 | `hris.ts` | Rekap absensi (spreadsheet), `mapAttendanceCode`, set kode manual, dashboard |
-| `jadwal-karyawan.ts` | Set jadwal shift, hari efektif |
+| `jadwal-karyawan.ts` | Bagan & Master jadwal, distribusi (timpa) ke Bagan, hari efektif |
+| `jadwal-shift-options.ts` | Konstanta opsi shift (standar vs Ekspedisi/JNE) |
+| `scheduler-roles.ts` | Hak set jadwal (jabatan/whitelist), editor jadwal |
 | `geofence.ts` | Titik & radius lokasi, validasi jarak (haversine) |
 | `overtime.ts`, `overtime-approval.ts` | Lembur, approval berjenjang, approver |
 | `loans.ts` | Pinjaman, cicilan otomatis, pelunasan awal |
@@ -631,8 +684,8 @@ sequenceDiagram
 | `reimbursements.ts`, `business-trips.ts` | Reimburse & perjalanan dinas |
 | `visit-reports.ts` | Laporan kunjungan sales |
 | `hr-agent.ts` | HR Agent (Ollama, tool-calling read-only, tabel di-whitelist) |
-| `*-roles.ts`, `payroll-constants.ts` | Konstanta peran & tarif (mis. omzet 0.7%) |
-| `uploads.ts`, `api-json.ts` | Util upload & respons JSON |
+| `sales-roles.ts`, `penjahit-roles.ts`, `freelance-roles.ts`, `payroll-constants.ts` | Konstanta peran & tarif (mis. omzet 0.7%) |
+| `uploads.ts`, `api-json.ts`, `ui-mock-data.ts` | Util upload, respons JSON, data nav/mock |
 
 ---
 
@@ -657,6 +710,7 @@ Semua endpoint memvalidasi sesi peran terkait. Metode HTTP ditunjukkan per route
 | `attendance/history` | GET | Riwayat absensi |
 | `overtime` | GET/POST | Lihat & ajukan lembur |
 | `overtime-approvals` `[id]` | GET/PATCH | Approval lembur (SPV-as-karyawan) |
+| `attendance-approvals` `[id]` | GET/PATCH | Approval absensi telat/pulang awal (atasan) |
 | `loans` | GET/POST | Pinjaman |
 | `payslips` | GET | Slip gaji |
 | `bonus-slips` | GET | Slip bonus |
@@ -675,6 +729,7 @@ Semua endpoint memvalidasi sesi peran terkait. Metode HTTP ditunjukkan per route
 | `attendance/update` | POST | Ubah/koreksi kode absensi |
 | `attendance/holiday` | POST/DELETE | Set/batal libur nasional (tandai L) |
 | `attendance/recover` | POST | Pulihkan absensi yang terblokir |
+| `attendance-approvals` `[id]` | GET/PATCH | Approve/reject absensi telat/pulang awal |
 | `overtime` `[id]` | GET/PATCH | Approve/reject lembur |
 | `loans` `[id]` `[id]/payoff` | GET/POST/PATCH | Pinjaman + pelunasan awal |
 | `payroll-summary` `[id]` | GET/POST/PATCH | Summary payroll + override |
@@ -690,15 +745,21 @@ Semua endpoint memvalidasi sesi peran terkait. Metode HTTP ditunjukkan per route
 | `business-trips` `[id]` | GET/PATCH | Approve/reject dinas |
 | `visit-reports` `summary` | GET | Laporan kunjungan + ringkasan |
 | `finance/lembur` | POST/DELETE | Lembur custom finance per unit |
+| `jadwal-akses` | GET/POST | Perizinan akses set jadwal + flag Shift |
 | `roles` `[id]` | GET/POST/PATCH/DELETE | Kelola akun Admin & SPV |
 | `hr-agent` | POST | Chat HR Agent (AI) |
 | `login`, `logout` | POST | Sesi admin |
 
 ### SPV (`/api/spv/*`)
+> Endpoint jadwal dipakai bersama oleh Admin/SPV/karyawan-scheduler (guard `getSchedulerSession`).
+
 | Endpoint | Metode | Fungsi |
 |----------|--------|--------|
-| `jadwal` | GET/POST | Set jadwal shift |
+| `jadwal` | GET/POST | Set jadwal Bagan (upsert per hari) |
+| `jadwal-master` | GET/POST | Simpan pola Master + distribusi (timpa) ke Bagan |
+| `jadwal-akses` | GET/POST | Perizinan akses set jadwal |
 | `overtime-approvals` `[id]` | GET/PATCH | Approval lembur tim |
+| `attendance-approvals` `[id]` | GET/PATCH | Approval absensi telat/pulang awal tim |
 | `logout` | POST | Sesi SPV |
 
 ### Berkas
@@ -841,8 +902,10 @@ Pilih jenis presensi, lalu:
 
 Aturan: **1x sehari**, tidak bisa diubah; untuk Toko/Gudang/Media/JNE divalidasi jam shift; jadwal **libur** menolak presensi; keterlambatan dihitung otomatis. **Jika kemarin lupa check-out**, presensi hari ini diblokir sampai Admin memulihkan (lihat [§7.2](#blokir--pulihkan-absensi-lupa-check-out)).
 
+> **Telat wajib approval**: karyawan non-freelance yang datang telat **wajib mengisi keterangan + memilih atasan tujuan**. Hari itu **pending** dan dianggap alfa di payroll sampai atasan/admin menyetujui (lihat [§7.2](#approval-absensi-telat--pulang-awal)).
+
 ### 15.4 Presensi Pulang (Check-Out)
-Selfie + GPS. Harus sudah check-in. **Pulang Awal (PA)** wajib keterangan (kecuali penjahit & freelance yang dibebaskan). Shift final disimpan otomatis.
+Selfie + GPS. Harus sudah check-in. **Pulang Awal (PA)** wajib keterangan + pilih atasan (kecuali penjahit & freelance yang dibebaskan) — statusnya **pending approval** seperti telat. Shift final disimpan otomatis.
 
 ### 15.5 Pengajuan Lembur
 Isi tanggal, jam mulai–selesai, penyetuju, jenis pekerjaan, deadline. **Divisi Produksi** wajib mengisi Nama Order, QTY, Target Sebelum/Setelah. Dropdown penyetuju bergantung jabatan pengaju (Staff→SPV/atasan/ADMIN; Supervisor→Manager/ADMIN; Manager→ADMIN otomatis). Lihat alur approval di [§7.3](#73-lembur--approval-berjenjang).
@@ -881,8 +944,13 @@ Bisa dilakukan SPV/Manager/Admin (dan karyawan yang di-whitelist scheduler). Pil
 | Media (sub divisi) | pagi, siang, libur |
 | Lainnya | pagi, siang, lembur, setengah_1, setengah_2, libur |
 
+**Master Set Jadwal** (`/…/jadwal/master`): atur **pola mingguan** (Sen–Min) sekali per karyawan; klik **Simpan Master** → otomatis **distribusi & menimpa Bagan** periode berjalan (lihat [§7.2b](#72b-jadwal-master--bagan)). **Perizinan Akses** (`/…/jadwal/perizinan`): beri karyawan tertentu hak set jadwal + nyalakan flag Shift (`is_shift`).
+
 ### 16.2 Approval Lembur
 Hanya pengajuan yang ditujukan kepada Anda yang muncul. Approve/Reject + catatan. Setelah Anda approve → masuk ke Admin (stage 2). Jika Anda reject → langsung final rejected.
+
+### 16.3 Approval Absensi
+Menu **Approval Absensi**: review pengajuan **telat / pulang awal** dari tim yang ditujukan ke Anda, lalu approve/reject + catatan. Sebelum disetujui, hari itu dianggap alfa di payroll bawahan (lihat [§7.2](#approval-absensi-telat--pulang-awal)).
 
 ---
 
@@ -895,14 +963,15 @@ Sidebar admin dikelompokkan menjadi **8 grup** (`components/AdminShell.tsx`). Ta
 **🧑 Manajemen Karyawan**
 | Menu | Ringkasan |
 |------|-----------|
-| **Data Karyawan** | CRUD, nonaktifkan, upload/download KTP, atur bank & rekening |
-| **Set Jadwal** | Jadwal shift semua karyawan tanpa batasan penempatan |
+| **Data Karyawan** | CRUD, nonaktifkan, upload/download KTP, atur bank & rekening, kenaikan/tahun |
+| **Set Jadwal** | Bagan bulanan + **Master** (pola mingguan → timpa Bagan) + **Perizinan Akses** (grant editor & flag Shift) |
 | **HR Agent** | Tanya-jawab data HR berbasis AI (read-only ke DB) |
 
 **🕐 Absensi & Aktivitas**
 | Menu | Ringkasan |
 |------|-----------|
 | **Absensi** | Rekap semua karyawan, filter, modal Detail (foto/peta), ubah kode manual, **set libur nasional** (tandai L massal), **Pulihkan** absensi terblokir |
+| **Approval Absensi** | Approve/reject pengajuan telat & pulang awal yang ditujukan ke Admin |
 | **Lembur** | 2 tab (Langsung ke Admin / Via Atasan), modal detail, approve/reject |
 | **Laporan Kunjungan** | Timeline kunjungan Sales Area + ringkasan |
 
