@@ -549,6 +549,21 @@ flowchart LR
 - **Setengah hari** mengikuti resolusi kode absensi (`mapAttendanceCode`): `H`/`SH` = ya; `T`/`SX` + jam ½hari = ya; kode `O`/`PA` = **bukan** ½hari. Ini mencegah potongan palsu setelah admin mengganti kode manual.
 - Periode: `getActivePayrollPeriod()` otomatis pindah ke bulan berikutnya bila tanggal > 25.
 
+#### Kenaikan Gaji per Tahun (Insentif Kehadiran)
+
+Karyawan **non-freelance yang punya Insentif Kehadiran** (gaji pokok per hari > 0) mendapat kenaikan otomatis tiap ulang tahun kerja:
+
+```
+tambahan per hari = (tahun kerja genap × kenaikan_tiap_tahun) ÷ 25
+Insentif Kehadiran = insentif dasar + tambahan
+```
+
+- **Tahun kerja genap** dihitung dari `tanggal_masuk_pertama` sampai **tanggal MULAI periode payroll** (tgl 26). Anniversary yang belum tercapai belum dihitung.
+- Bersifat **kumulatif** (tahun ke-2 = 2× tambahan) dan langsung tercermin di kolom Insentif Kehadiran, gaji pokok, dan slip.
+- `kenaikan_tiap_tahun` diinput Admin per karyawan (kolom "Kenaikan/Tahun"); nilai dasar per hari tidak berubah (edit form tetap menampilkan angka dasar).
+
+> **Contoh:** Ilyas masuk 20 Jun 2025, kenaikan Rp 100.000. Pada periode **Juli 2026** (mulai 26 Jun 2026) genap 1 tahun → +100.000/25 = **+Rp 4.000/hari** → Insentif Kehadiran **26.000 → 30.000**. Pada periode Juni belum berlaku (anniversary 20 Jun jatuh setelah tgl mulai 26 Mei).
+
 ### 7.6 Payroll Freelance
 
 Karyawan `jabatan = 'freelance'` dibagi 4 tipe (`tipe_freelance`), masing-masing punya cara hitung berbeda; totalnya menjadi **satu sumber kebenaran** yang juga dipakai slip gaji.

@@ -11,6 +11,21 @@ function countPeriodWorkDays(start: Date, end: Date) {
   }
   return total;
 }
+
+// Jumlah tahun kerja yang SUDAH GENAP dihitung dari tanggal masuk pertama sampai tanggal acuan
+// (dipakai: tanggal MULAI periode payroll / tgl 26). Anniversary yang belum tercapai tidak dihitung.
+// Contoh: masuk 2025-06-20 → acuan 2026-05-26 = 0 tahun; acuan 2026-06-26 = 1 tahun.
+function countCompletedYears(joinDateSql: string | null | undefined, refDateSql: string): number {
+  if (!joinDateSql) return 0;
+  const j = joinDateSql.split("-").map(Number);
+  const r = refDateSql.split("-").map(Number);
+  if (j.length !== 3 || r.length !== 3 || j.some(Number.isNaN) || r.some(Number.isNaN)) return 0;
+  let years = r[0] - j[0];
+  if (r[1] < j[1] || (r[1] === j[1] && r[2] < j[2])) {
+    years -= 1;
+  }
+  return Math.max(0, years);
+}
 import {
   autoAttachLoanInstallmentsForPeriod,
   ensureLoanSupportTables,
@@ -97,6 +112,7 @@ type PayrollSheetBaseRow = RowDataPacket & {
   total_omzet_global: string | null;
   status_kepegawaian: string | null;
   tanggal_masuk_pertama: string | null;
+  kenaikan_tiap_tahun: string | null;
 };
 
 type OmzetUnitRow = RowDataPacket & {
@@ -415,6 +431,7 @@ export async function getAdminPayrollSummarySheet(period?: {
         pei.gaji_pokok_per_jam AS raw_gaji_pokok_per_jam,
         NULL AS total_omzet_global,
         k.status_kepegawaian,
+        k.kenaikan_tiap_tahun,
         DATE_FORMAT(k.tanggal_masuk_pertama, '%Y-%m-%d') AS tanggal_masuk_pertama
       FROM payroll p
       INNER JOIN karyawan k ON k.id = p.karyawan_id
@@ -906,9 +923,22 @@ export async function getAdminPayrollSummarySheet(period?: {
 
     // For freelance: Insentif Kehadiran adalah rate per jam. Tampilkan rate yang admin input
     // (entah dia saved di kolom per_jam atau per_hari — keduanya artinya sama: rate per jam).
-    const dailyBaseSalary = isFreelance
+    const dailyBaseSalaryBase = isFreelance
       ? (freelanceRatePerJam || toNumber(row.raw_gaji_pokok_per_hari))
       : (toNumber(row.raw_gaji_pokok_per_hari) || (workDays > 0 ? toNumber(row.gaji_pokok) / workDays : 0));
+    // Kenaikan gaji per tahun → menambah INSENTIF KEHADIRAN (gaji pokok per hari).
+    // Berlaku hanya untuk karyawan NON-freelance yang PUNYA insentif kehadiran (>0).
+    // Tambahan/hari = (tahun kerja genap × kenaikan_tiap_tahun) / 25, dihitung dari tanggal masuk
+    // pertama per tanggal MULAI periode payroll (tgl 26). Contoh: Ilyas masuk 20 Jun 2025,
+    // kenaikan 100.000 → periode Juli (mulai 26 Jun 2026) genap 1 tahun → +100.000/25 = +4.000/hari
+    // sehingga insentif kehadiran 26.000 menjadi 30.000.
+    const annualRaisePerYear = toNumber(row.kenaikan_tiap_tahun);
+    const completedYears = countCompletedYears(row.tanggal_masuk_pertama, range.startSql);
+    const attendanceIncentiveRaise =
+      !isFreelance && dailyBaseSalaryBase > 0 && annualRaisePerYear > 0
+        ? (completedYears * annualRaisePerYear) / 25
+        : 0;
+    const dailyBaseSalary = dailyBaseSalaryBase + attendanceIncentiveRaise;
     // Take Home Pay freelance = total jam dari absensi (dibulatkan per 30 menit) × rate per jam
     // Tidak pakai inputOverrideGajiPokok karena bisa = 0 dari clone period -> nullish coalescing tidak fallback.
     // Gaji Kontrak: override terakhir yang diketik admin (<= periode ini) -> auto (gaji/hari × hari kerja).
