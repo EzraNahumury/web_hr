@@ -725,6 +725,7 @@ Semua endpoint memvalidasi sesi peran terkait. Metode HTTP ditunjukkan per route
 | Endpoint | Metode | Fungsi |
 |----------|--------|--------|
 | `employees` `[id]` | GET/POST/PUT/DELETE | CRUD karyawan |
+| `employees/[id]/password` | POST | Reset password login karyawan (min 6 char) |
 | `employees/export` | GET | Export Excel data karyawan |
 | `attendance/update` | POST | Ubah/koreksi kode absensi |
 | `attendance/holiday` | POST/DELETE | Set/batal libur nasional (tandai L) |
@@ -963,7 +964,7 @@ Sidebar admin dikelompokkan menjadi **8 grup** (`components/AdminShell.tsx`). Ta
 **🧑 Manajemen Karyawan**
 | Menu | Ringkasan |
 |------|-----------|
-| **Data Karyawan** | CRUD, nonaktifkan, upload/download KTP, atur bank & rekening, kenaikan/tahun |
+| **Data Karyawan** | CRUD, nonaktifkan, upload/download KTP, atur bank & rekening, kenaikan/tahun, **reset password login** karyawan (modal Detail → Akun & Keamanan) |
 | **Set Jadwal** | Bagan bulanan + **Master** (pola mingguan → timpa Bagan) + **Perizinan Akses** (grant editor & flag Shift) |
 | **HR Agent** | Tanya-jawab data HR berbasis AI (read-only ke DB) |
 
@@ -1095,6 +1096,8 @@ Rentang 26 (M-1) – 25 (M) · hari kerja Senin–Sabtu (tanpa Minggu) · real-t
 **Bagaimana libur nasional dicatat?** Admin menandai tanggal libur nasional; seluruh karyawan otomatis diberi kode **L** untuk tanggal tersebut.
 
 **Apakah ada aplikasi mobile?** Ada endpoint `POST /api/mobile/login` yang mengembalikan token untuk aplikasi mobile karyawan (memakai skema sesi yang sama dengan web).
+
+**Lupa password login?** Password login Web HR **bukan** password Gmail (email hanya dipakai sebagai username; password disimpan terpisah, hash SHA2-256). Admin bisa **reset langsung** dari **Data Karyawan → (ikon mata) Detail → Akun & Keamanan → Password Baru → Update Password**.
 
 **Salah status check-in?** Tidak bisa diubah sendiri; Admin dapat mengoreksi kode via modal detail absensi.
 

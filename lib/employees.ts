@@ -1076,6 +1076,21 @@ export async function getEmployeeProfileByUserId(userId: number) {
   return rows[0] ? mapEmployee(rows[0]) : null;
 }
 
+// Reset password login Web HR karyawan (bukan password Gmail). Hash SHA2-256 sama seperti
+// alur signup/login. Mengembalikan false bila karyawan tidak ada / belum punya akun users.
+// Cek keberadaan akun dulu supaya set password yang sama (affectedRows=0) tidak salah dianggap gagal.
+export async function updateEmployeePassword(employeeId: number, password: string) {
+  const [rows] = await pool.query<(RowDataPacket & { user_id: number | null })[]>(
+    "SELECT user_id FROM karyawan WHERE id = ? LIMIT 1",
+    [employeeId],
+  );
+  const userId = rows[0]?.user_id;
+  if (!userId) return false;
+
+  await pool.query("UPDATE users SET password = SHA2(?, 256) WHERE id = ?", [password, userId]);
+  return true;
+}
+
 export async function deleteEmployee(id: number) {
   const connection = await pool.getConnection();
 

@@ -215,6 +215,9 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewingEmployee, setViewingEmployee] = useState<EmployeeListItem | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"aktif" | "nonaktif" | "semua">("aktif");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -235,6 +238,12 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
     const timeout = window.setTimeout(() => setToast(null), 3000);
     return () => window.clearTimeout(timeout);
   }, [toast]);
+
+  // Kosongkan field password tiap kali modal detail dibuka/ditutup/ganti karyawan.
+  useEffect(() => {
+    setNewPassword("");
+    setShowNewPassword(false);
+  }, [viewingEmployee]);
 
   useEffect(() => {
     const tableEl = tableScrollRef.current;
@@ -539,6 +548,46 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
       });
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  async function handleUpdatePassword() {
+    if (!viewingEmployee) return;
+    const password = newPassword.trim();
+    if (password.length < 6) {
+      setToast({
+        type: "error",
+        title: "Password terlalu pendek",
+        description: "Password baru minimal 6 karakter.",
+      });
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      const response = await fetch(`/api/admin/employees/${viewingEmployee.id}/password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const result = (await response.json()) as { message?: string };
+      if (!response.ok) {
+        throw new Error(result.message || "Gagal memperbarui password.");
+      }
+      setNewPassword("");
+      setShowNewPassword(false);
+      setToast({
+        type: "success",
+        title: "Password diperbarui",
+        description: result.message || "Password karyawan berhasil diganti.",
+      });
+    } catch (error) {
+      setToast({
+        type: "error",
+        title: "Gagal update password",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan saat memperbarui password.",
+      });
+    } finally {
+      setSavingPassword(false);
     }
   }
 
@@ -1126,6 +1175,45 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                       ) : (
                         <p className="mt-2 text-sm text-[#8a6f68]">Belum ada file KTP tersimpan.</p>
                       )}
+                    </div>
+                  </section>
+
+                  <section className="rounded-[30px] border border-[#ead7ce] bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#a16f63]">
+                      Akun &amp; Keamanan
+                    </p>
+                    <p className="mt-2 text-sm text-[#8a6f68]">
+                      Reset password login Web HR karyawan. Ini <span className="font-semibold">bukan</span> password akun Gmail — hanya untuk masuk aplikasi.
+                    </p>
+                    <label className="mt-4 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a16f63]">
+                      Password Baru
+                    </label>
+                    <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                      <div className="relative flex-1">
+                        <input
+                          type={showNewPassword ? "text" : "password"}
+                          value={newPassword}
+                          onChange={(event) => setNewPassword(event.target.value)}
+                          placeholder="Minimal 6 karakter"
+                          autoComplete="new-password"
+                          className="h-11 w-full rounded-2xl border border-[#e2cfc7] bg-[#fffdfa] px-4 pr-12 text-sm text-[#241716] outline-none focus:border-[#c97f5b] focus:shadow-[0_0_0_4px_rgba(201,127,91,0.14)]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword((value) => !value)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#a16f63] hover:text-[#8f1d22]"
+                        >
+                          {showNewPassword ? "Sembunyi" : "Lihat"}
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleUpdatePassword}
+                        disabled={savingPassword || newPassword.trim().length < 6}
+                        className="inline-flex h-11 items-center justify-center rounded-2xl bg-[#8f1d22] px-5 text-sm font-semibold text-white shadow-[0_14px_35px_rgba(143,29,34,0.22)] transition hover:bg-[#7a181d] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {savingPassword ? "Menyimpan..." : "Update Password"}
+                      </button>
                     </div>
                   </section>
                 </div>
