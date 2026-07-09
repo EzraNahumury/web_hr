@@ -35,7 +35,6 @@ type PayslipPdfExportButtonProps = {
 };
 
 const OWNER_NAME = "Arya Rahadyan";
-const HR_COORDINATOR_NAME = "Elnida Rahma Dian";
 const assetCache = new Map<string, Promise<string>>();
 
 function formatCurrency(value: number) {
@@ -144,17 +143,14 @@ async function buildPayslipPdf(fileName: string, pdfData: PayslipPdfPayload) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", compress: true });
 
-  const [logoResult, ownerSignatureResult, hrSignatureResult] = await Promise.allSettled([
+  const [logoResult, ownerSignatureResult] = await Promise.allSettled([
     loadAssetDataUrl("/logo/slip-logo.png"),
     loadAssetDataUrl("/ttd/image-removebg-preview.png"),
-    loadAssetDataUrl("/ttd/hr-ttd-removebg-preview.png"),
   ]);
 
   const logoDataUrl = logoResult.status === "fulfilled" ? logoResult.value : null;
   const ownerSignatureDataUrl =
     ownerSignatureResult.status === "fulfilled" ? ownerSignatureResult.value : null;
-  const hrSignatureDataUrl =
-    hrSignatureResult.status === "fulfilled" ? hrSignatureResult.value : null;
 
   doc.setProperties({ title: fileName, subject: "Slip Gaji", author: "web_hr" });
   doc.setDrawColor(17, 17, 17);
@@ -252,8 +248,7 @@ async function buildPayslipPdf(fileName: string, pdfData: PayslipPdfPayload) {
     });
   }
 
-  drawSignatureBlock(doc, 61, 195, "Owner", OWNER_NAME, ownerSignatureDataUrl);
-  drawSignatureBlock(doc, 149, 195, "HR Coordinator", HR_COORDINATOR_NAME, hrSignatureDataUrl);
+  drawSignatureBlock(doc, 105, 195, "Owner", OWNER_NAME, ownerSignatureDataUrl);
 
   doc.save(createSafeFileName(fileName));
 }

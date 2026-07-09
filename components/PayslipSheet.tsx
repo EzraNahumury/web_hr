@@ -31,9 +31,7 @@ type PrintLineItemProps = {
 };
 
 const OWNER_NAME = "Arya Rahadyan";
-const HR_COORDINATOR_NAME = "Elnida Rahma Dian";
 const OWNER_SIGNATURE_IMAGE = "/ttd/image-removebg-preview.png";
-const HR_SIGNATURE_IMAGE = "/ttd/hr-ttd-removebg-preview.png";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -362,9 +360,8 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
               </div>
             ) : null}
 
-            <div className="mt-10 grid gap-8 border-t border-dashed border-[#d8c9bf] pt-8 text-center sm:grid-cols-2 sm:gap-14">
+            <div className="mx-auto mt-10 flex max-w-xs justify-center border-t border-dashed border-[#d8c9bf] pt-8 text-center">
               <SignatureBlock title="Owner" name={OWNER_NAME} image={OWNER_SIGNATURE_IMAGE} />
-              <SignatureBlock title="HR Coordinator" name={HR_COORDINATOR_NAME} image={HR_SIGNATURE_IMAGE} />
             </div>
           </div>
         </article>
@@ -452,7 +449,6 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
 
         <div className="payslip-pdf-signatures">
           <PrintSignatureBlock title="Owner" name={OWNER_NAME} image={OWNER_SIGNATURE_IMAGE} />
-          <PrintSignatureBlock title="HR Coordinator" name={HR_COORDINATOR_NAME} image={HR_SIGNATURE_IMAGE} />
         </div>
       </article>
     </section>

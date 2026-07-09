@@ -365,8 +365,8 @@ input {
   }
 
   .payslip-pdf-signatures {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    display: flex !important;
+    justify-content: center;
     gap: 14mm;
     margin-top: 14mm;
     padding-top: 5mm;
