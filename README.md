@@ -1055,7 +1055,9 @@ Sidebar admin dikelompokkan menjadi **8 grup** (`components/AdminShell.tsx`). Ta
 | Bank BCA KC Adisucipto | 100 m |
 | Gudang Avasportivo | 25 m |
 
-> **WFA (Work From Anywhere)** tidak terkena validasi geofence.
+> **WFA (Work From Anywhere)** tidak terkena validasi geofence — cukup salah satu penempatan bernilai `WFA` (utama atau tambahan) untuk membebaskan lokasi.
+>
+> **Penempatan ganda**: karyawan bisa punya penempatan utama (`penempatan`) + tambahan (`penempatan_extra`, dipisah koma). Geofence memeriksa **semua** penempatan (dan semua titik lokasi per penempatan, mis. Gudang punya 2 titik) — valid bila masuk radius **salah satu**. Berlaku sama di **check-in dan check-out**.
 
 ### 18.4 Aturan Periode Payroll
 Rentang 26 (M-1) – 25 (M) · hari kerja Senin–Sabtu (tanpa Minggu) · real-time dari absensi · karyawan nonaktif hilang periode berikutnya.

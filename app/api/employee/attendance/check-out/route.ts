@@ -19,6 +19,7 @@ import { getScheduledShiftForDate } from "@/lib/jadwal-karyawan";
 type EmployeeRow = RowDataPacket & {
   id: number;
   penempatan: string | null;
+  penempatan_extra: string | null;
   sub_divisi: string | null;
   jabatan: string | null;
   status_kepegawaian: string | null;
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
     }
 
     const [employeeRows] = await pool.query<EmployeeRow[]>(
-      "SELECT id, penempatan, sub_divisi, jabatan, status_kepegawaian FROM karyawan WHERE user_id = ? LIMIT 1",
+      "SELECT id, penempatan, penempatan_extra, sub_divisi, jabatan, status_kepegawaian FROM karyawan WHERE user_id = ? LIMIT 1",
       [session.userId],
     );
 
@@ -71,7 +72,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Data karyawan tidak ditemukan." }, { status: 404 });
     }
 
-    const geofence = checkGeofence(employee.penempatan, body.latitude, body.longitude);
+    // Baca SEMUA penempatan (utama + tambahan) supaya karyawan bisa check-out dari lokasi
+    // ke-2/ke-3 yang sudah di-set, dan WFA (di mana pun) tetap dibebaskan. Konsisten dgn check-in.
+    const allPlacements = [
+      employee.penempatan,
+      ...(employee.penempatan_extra ? employee.penempatan_extra.split(",").map((s) => s.trim()) : []),
+    ].filter(Boolean) as string[];
+
+    const geofence = checkGeofence(allPlacements, body.latitude, body.longitude);
     if (!geofence.valid) {
       return NextResponse.json(
         {
@@ -138,6 +146,9 @@ export async function POST(request: Request) {
     const checkOutTime = attendanceDateTime.split(" ")[1];
     const keterangan = body.keterangan?.trim() || null;
 
+    // Placement yang benar-benar dipakai = hasil geofence (lokasi tempat karyawan berada),
+    // bukan sekadar penempatan utama. Supaya deteksi shift Toko/Gudang/JNE ikut lokasi aktual.
+    const detectedPlacement = geofence.placement ?? employee.penempatan;
     const subDivLower = (employee.sub_divisi ?? "").trim().toLowerCase();
     const isMedia = subDivLower === "media";
     const isHostlive = subDivLower === "hostlive";
@@ -145,9 +156,9 @@ export async function POST(request: Request) {
     const isFreelance = [employee.status_kepegawaian, employee.jabatan].some(
       (v) => (v ?? "").trim().toLowerCase() === "freelance",
     );
-    const isJne = employee.penempatan === "JNE";
+    const isJne = detectedPlacement === "JNE";
     const isShiftEligible =
-      isTokoGudangPlacement(employee.penempatan) || isMedia || isHostlive || isAdvertiser || isJne;
+      isTokoGudangPlacement(detectedPlacement) || isMedia || isHostlive || isAdvertiser || isJne;
 
     // Jadwal dicek berdasar karyawan (bukan placement) supaya konsisten dengan check-in.
     const scheduledShift = !isFreelance
