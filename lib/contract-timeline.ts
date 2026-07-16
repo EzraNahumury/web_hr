@@ -101,8 +101,29 @@ export function calculateContractEndDate(contractDate: string) {
   return addMonthsToIsoDate(contractDate, CONTRACT_DURATION_MONTHS);
 }
 
+// Tanggal mulai kontrak SELALU dikunci ke tanggal ini (mengikuti akhir periode payroll,
+// yang berakhir tgl 25), berapa pun tanggal masuk karyawan.
+export const CONTRACT_START_DAY_OF_MONTH = 25;
+
+function withDayOfMonth(isoDate: string, day: number) {
+  const parsed = parseIsoDate(isoDate);
+  if (!parsed) {
+    return null;
+  }
+  const targetDay = Math.min(day, getDaysInMonth(parsed.year, parsed.month - 1));
+  return formatIsoDate(new Date(Date.UTC(parsed.year, parsed.month - 1, targetDay)));
+}
+
 export function calculateEmploymentTimeline(firstJoinDate: string) {
-  const contractDate = addMonthsToIsoDate(firstJoinDate, TRAINING_DURATION_MONTHS);
+  const rawContractDate = addMonthsToIsoDate(firstJoinDate, TRAINING_DURATION_MONTHS);
+
+  if (!rawContractDate) {
+    return null;
+  }
+
+  // Kunci tanggal mulai kontrak ke tgl 25. Contoh: masuk 1 Agustus -> +3 bulan = 1 Nov
+  // -> jadi 25 Nov. Selesai kontrak = +12 bulan (tetap tgl 25).
+  const contractDate = withDayOfMonth(rawContractDate, CONTRACT_START_DAY_OF_MONTH);
 
   if (!contractDate) {
     return null;
