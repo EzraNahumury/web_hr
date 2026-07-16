@@ -65,11 +65,13 @@ export const WORK_LOCATIONS: Record<string, WorkLocation[]> = {
       label: "Gudang Avasportivo 1",
       latitude: -7.8020204,
       longitude: 110.4090615,
+      radiusMeters: 100,
     },
     {
       label: "Gudang Avasportivo 2",
       latitude: -7.8056449,
       longitude: 110.4037354,
+      radiusMeters: 100,
     },
   ],
 };

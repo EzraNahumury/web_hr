@@ -1053,7 +1053,7 @@ Sidebar admin dikelompokkan menjadi **8 grup** (`components/AdminShell.tsx`). Ta
 | Ayres Apparel | 50 m |
 | JNE Ambarrukmo | 50 m |
 | Bank BCA KC Adisucipto | 100 m |
-| Gudang Avasportivo | 25 m |
+| Gudang Avasportivo (2 titik) | 100 m |
 
 > **WFA (Work From Anywhere)** tidak terkena validasi geofence — cukup salah satu penempatan bernilai `WFA` (utama atau tambahan) untuk membebaskan lokasi.
 >
