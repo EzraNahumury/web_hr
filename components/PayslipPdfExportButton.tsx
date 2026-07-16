@@ -18,7 +18,6 @@ export type PayslipPdfPayload = {
   presentDays: number;
   overtimeHours: number;
   lateCount: number;
-  halfDayCount: number;
   earnings: PayslipPdfLineItem[];
   deductions: PayslipPdfLineItem[];
   remainingLoan: number;
@@ -191,7 +190,6 @@ async function buildPayslipPdf(fileName: string, pdfData: PayslipPdfPayload) {
     { label: "Total Hari Kerja", value: String(pdfData.presentDays) },
     { label: "Lembur", value: String(pdfData.overtimeHours) },
     { label: "Terlambat", value: String(pdfData.lateCount) },
-    { label: "Setengah Hari", value: String(pdfData.halfDayCount) },
   ]);
 
   doc.setFont("helvetica", "bold");
@@ -249,6 +247,17 @@ async function buildPayslipPdf(fileName: string, pdfData: PayslipPdfPayload) {
   }
 
   drawSignatureBlock(doc, 105, 195, "Owner", OWNER_NAME, ownerSignatureDataUrl);
+
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(8);
+  doc.setTextColor(109, 82, 74);
+  doc.text(
+    "Slip gaji ini bersifat pribadi dan hanya diberikan kepada karyawan yang bersangkutan.",
+    105,
+    236,
+    { align: "center", maxWidth: 172 },
+  );
+  doc.setTextColor(17, 17, 17);
 
   doc.save(createSafeFileName(fileName));
 }

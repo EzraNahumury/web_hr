@@ -32,6 +32,8 @@ type PrintLineItemProps = {
 
 const OWNER_NAME = "Arya Rahadyan";
 const OWNER_SIGNATURE_IMAGE = "/ttd/image-removebg-preview.png";
+const PRIVACY_NOTE =
+  "Slip gaji ini bersifat pribadi dan hanya diberikan kepada karyawan yang bersangkutan.";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -163,7 +165,6 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
 
   const deductionItems = [
     { label: "Keterlambatan", value: row.lateDeduction },
-    { label: "Setengah Hari", value: row.halfDayDeduction },
     { label: "Uang Kerajinan", value: row.diligenceCut },
     { label: "Pinjaman", value: totalPinjaman },
     { label: "Kontrak", value: row.contractDeduction },
@@ -179,7 +180,6 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
     presentDays: row.presentDays,
     overtimeHours: row.overtimeHours,
     lateCount: row.lateCount,
-    halfDayCount: row.halfDayCount,
     earnings: earningItems,
     deductions: deductionItems,
     remainingLoan: row.remainingLoanBalance,
@@ -260,7 +260,7 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
 
               <div className="rounded-[22px] border border-[#e5dfd4] bg-[linear-gradient(180deg,#fffefa_0%,#f8f4ef_100%)] px-4 py-4 shadow-[0_12px_30px_rgba(102,64,44,0.06)] sm:px-5">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[#9a7f6e]">Ringkasan Kehadiran</p>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   <div className="rounded-2xl border border-[#efe5de] bg-white/80 px-4 py-3">
                     <p className="text-[11px] uppercase tracking-[0.18em] text-[#9b7f71]">Hari Kerja</p>
                     <p className="mt-2 text-2xl font-semibold text-[#1c1410]">{row.presentDays}</p>
@@ -272,10 +272,6 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
                   <div className="rounded-2xl border border-[#efe5de] bg-white/80 px-4 py-3">
                     <p className="text-[11px] uppercase tracking-[0.18em] text-[#9b7f71]">Terlambat</p>
                     <p className="mt-2 text-2xl font-semibold text-[#1c1410]">{row.lateCount}</p>
-                  </div>
-                  <div className="rounded-2xl border border-[#efe5de] bg-white/80 px-4 py-3">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-[#9b7f71]">Setengah Hari</p>
-                    <p className="mt-2 text-2xl font-semibold text-[#1c1410]">{row.halfDayCount}</p>
                   </div>
                 </div>
               </div>
@@ -363,6 +359,10 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
             <div className="mx-auto mt-10 flex max-w-xs justify-center border-t border-dashed border-[#d8c9bf] pt-8 text-center">
               <SignatureBlock title="Owner" name={OWNER_NAME} image={OWNER_SIGNATURE_IMAGE} />
             </div>
+
+            <p className="mt-8 text-center text-[11px] italic leading-relaxed text-[#8a6f68]">
+              {PRIVACY_NOTE}
+            </p>
           </div>
         </article>
       </div>
@@ -398,7 +398,6 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
             <PrintPairItem label="Total Hari Kerja" value={String(row.presentDays)} />
             <PrintPairItem label="Lembur" value={String(row.overtimeHours)} />
             <PrintPairItem label="Terlambat" value={String(row.lateCount)} />
-            <PrintPairItem label="Setengah Hari" value={String(row.halfDayCount)} />
           </section>
         </div>
 
@@ -450,6 +449,8 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
         <div className="payslip-pdf-signatures">
           <PrintSignatureBlock title="Owner" name={OWNER_NAME} image={OWNER_SIGNATURE_IMAGE} />
         </div>
+
+        <p className="payslip-pdf-privacy-note">{PRIVACY_NOTE}</p>
       </article>
     </section>
   );

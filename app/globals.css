@@ -409,4 +409,12 @@ input {
     font-size: 9pt;
     font-weight: 600;
   }
+
+  .payslip-pdf-privacy-note {
+    margin-top: 8mm;
+    text-align: center;
+    font-size: 8pt;
+    font-style: italic;
+    color: #6d524a;
+  }
 }
