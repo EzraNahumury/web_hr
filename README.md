@@ -610,11 +610,14 @@ tambahan per hari = (tahun kerja genap × kenaikan_tiap_tahun) ÷ 25
 Insentif Kehadiran = insentif dasar + tambahan
 ```
 
-- **Tahun kerja genap** dihitung dari `tanggal_masuk_pertama` sampai **tanggal MULAI periode payroll** (tgl 26). Anniversary yang belum tercapai belum dihitung.
-- Bersifat **kumulatif** (tahun ke-2 = 2× tambahan) dan langsung tercermin di kolom Insentif Kehadiran, gaji pokok, dan slip.
+- **BERTAHAP, tidak retroaktif:** tahun kerja untuk kenaikan dihitung dari **MAX(`tanggal_masuk_pertama`, `INSENTIF_RAISE_EFFECTIVE_FROM`)** sampai **tanggal MULAI periode payroll** (tgl 26). Jadi insentif tersimpan dianggap **baseline "nilai sekarang"**, lalu naik +1 tahun sejak aturan berlaku — karyawan lama **tidak** dapat kenaikan retroaktif untuk tahun-tahun lampau.
+- `INSENTIF_RAISE_EFFECTIVE_FROM` (`lib/payroll-constants.ts`) = tanggal mulai berlakunya aturan (default `2025-06-26`, ~1 tahun sebelum periode berjalan agar tahun pertama sudah berlaku).
+- Bertambah bertahap tiap tahun (tahun ke-2 = 2× tambahan) dan langsung tercermin di kolom Insentif Kehadiran, gaji pokok, dan slip.
 - `kenaikan_tiap_tahun` diinput Admin per karyawan (kolom "Kenaikan/Tahun"); nilai dasar per hari tidak berubah (edit form tetap menampilkan angka dasar).
 
-> **Contoh:** Ilyas masuk 20 Jun 2025, kenaikan Rp 100.000. Pada periode **Juli 2026** (mulai 26 Jun 2026) genap 1 tahun → +100.000/25 = **+Rp 4.000/hari** → Insentif Kehadiran **26.000 → 30.000**. Pada periode Juni belum berlaku (anniversary 20 Jun jatuh setelah tgl mulai 26 Mei).
+> **Contoh:**
+> - **Warisah** masuk 2021 (lama), kenaikan Rp 100.000, insentif 50.000. Periode **Juli 2026** → hanya +1 tahun (sejak aturan) = +4.000 → **54.000** (BUKAN retroaktif 5 tahun = 70.000). Periode Juli 2027 → +8.000 → **58.000**.
+> - **Ilyas** masuk 20 Jun 2025, kenaikan Rp 100.000, insentif 26.000. Periode Juli 2026 → +4.000 → **30.000**.
 
 ### 7.6 Payroll Freelance
 
