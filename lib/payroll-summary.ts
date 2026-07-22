@@ -774,9 +774,11 @@ export async function getAdminPayrollSummarySheet(period?: {
       current.sick += 1;
     }
 
+    // Hanya libur BERBAYAR yang dihitung (masuk ke gaji pokok, TANPA uang makan):
+    // LN (Libur Nasional), LP (Libur Perusahaan), C (Cuti).
+    // Libur BIASA (kode 'L' / status 'libur' — termasuk hari Minggu & libur terjadwal)
+    // TIDAK dibayar: tidak dapat gaji pokok maupun uang makan (hari libur normal).
     if (
-      row.status_absensi === "libur" ||
-      row.kode_absensi === "L" ||
       row.kode_absensi === "LN" ||
       row.kode_absensi === "LP" ||
       row.kode_absensi === "C"
