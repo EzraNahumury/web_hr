@@ -15,6 +15,7 @@ const ATTENDANCE_CODE_OPTIONS: { code: string; label: string }[] = [
   { code: "I", label: "Izin (I)" },
   { code: "A", label: "Alfa (A)" },
   { code: "L", label: "Libur (L)" },
+  { code: "LN", label: "Libur Nasional (LN)" },
   { code: "LP", label: "Libur Perusahaan (LP)" },
   { code: "C", label: "Cuti (C)" },
   { code: "-", label: "Tidak Absen (-)" },
@@ -708,7 +709,7 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
         const isExistingHoliday = Boolean(holidayMap[holidayTarget.date]);
         const existingType = holidayTypeMap[holidayTarget.date] === "perusahaan" ? "perusahaan" : "nasional";
         const existingLabel = existingType === "perusahaan" ? "Libur Perusahaan" : "Libur Nasional";
-        const existingKode = existingType === "perusahaan" ? "LP" : "L";
+        const existingKode = existingType === "perusahaan" ? "LP" : "LN";
 
         return (
           <div
@@ -825,7 +826,7 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                       onClick={() => submitHoliday("nasional")}
                       className="inline-flex h-11 items-center justify-center rounded-full bg-[#c0392b] px-5 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(192,57,43,0.28)] transition hover:bg-[#a82d20] disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {isSavingHoliday ? "Memproses..." : "Libur Nasional (L)"}
+                      {isSavingHoliday ? "Memproses..." : "Libur Nasional (LN)"}
                     </button>
                     <button
                       type="button"

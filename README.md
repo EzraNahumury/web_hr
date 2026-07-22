@@ -731,7 +731,7 @@ Semua endpoint memvalidasi sesi peran terkait. Metode HTTP ditunjukkan per route
 | `item-loans` `[id]` | GET/POST/DELETE | Peminjaman barang (list/by-employee, catat, hapus) |
 | `employees/export` | GET | Export Excel data karyawan |
 | `attendance/update` | POST | Ubah/koreksi kode absensi |
-| `attendance/holiday` | POST/DELETE | Set/batal libur massal — Nasional (kode L) atau Perusahaan (kode LP) via `tipe` |
+| `attendance/holiday` | POST/DELETE | Set/batal libur massal — Nasional (kode LN) atau Perusahaan (kode LP) via `tipe` |
 | `attendance/recover` | POST | Pulihkan absensi yang terblokir |
 | `attendance-approvals` `[id]` | GET/PATCH | Approve/reject absensi telat/pulang awal |
 | `overtime` `[id]` | GET/PATCH | Approve/reject lembur |
@@ -975,7 +975,7 @@ Sidebar admin dikelompokkan menjadi **8 grup** (`components/AdminShell.tsx`). Ta
 **🕐 Absensi & Aktivitas**
 | Menu | Ringkasan |
 |------|-----------|
-| **Absensi** | Rekap semua karyawan, filter, modal Detail (foto/peta), ubah kode manual, **set libur massal** (Libur Nasional → kode L, atau Libur Perusahaan → kode LP), **Pulihkan** absensi terblokir |
+| **Absensi** | Rekap semua karyawan, filter, modal Detail (foto/peta), ubah kode manual, **set libur massal** (Libur Nasional → kode LN, atau Libur Perusahaan → kode LP), **Pulihkan** absensi terblokir |
 | **Approval Absensi** | Approve/reject pengajuan telat & pulang awal yang ditujukan ke Admin |
 | **Lembur** | 2 tab (Langsung ke Admin / Via Atasan), modal detail, approve/reject |
 | **Laporan Kunjungan** | Timeline kunjungan Sales Area + ringkasan |
@@ -1085,8 +1085,9 @@ Rentang 26 (M-1) – 25 (M) · hari kerja Senin–Sabtu (tanpa Minggu) · real-t
 | **SX** | Sakit tanpa surat | Tanpa dokumen |
 | **H** | Setengah Hari | Hadir ½ hari |
 | **PA** | Pulang Awal | Pulang sebelum jam checkout + keterangan (di DB: hadir + keterangan). Payroll: **dapat gaji pokok**, **tidak** dapat uang makan |
-| **L** | Libur | Libur terjadwal. Payroll: **dapat gaji pokok**, **tidak** dapat uang makan |
-| **LP** | Libur Perusahaan | Libur perusahaan (sama seperti L). Payroll: **dapat gaji pokok**, **tidak** dapat uang makan |
+| **L** | Libur | Libur terjadwal **atau hari Minggu otomatis** (untuk karyawan tanpa jadwal di hari itu — display di rekap). Payroll: **dapat gaji pokok**, **tidak** dapat uang makan |
+| **LN** | Libur Nasional | Libur nasional massal (dari modal Set Libur). Payroll: **dapat gaji pokok**, **tidak** dapat uang makan |
+| **LP** | Libur Perusahaan | Libur perusahaan massal. Payroll: **dapat gaji pokok**, **tidak** dapat uang makan |
 | **A** | Alfa | Tidak hadir tanpa keterangan |
 | **C** | Cuti | Cuti resmi |
 | **-** | Tidak Absen | Staff tidak melakukan presensi / tanpa record. Admin bisa menandai (menghapus record → sel kembali kosong). Payroll: tidak dihitung apa-apa |
@@ -1101,7 +1102,7 @@ Rentang 26 (M-1) – 25 (M) · hari kerja Senin–Sabtu (tanpa Minggu) · real-t
 
 **Saya diblokir tidak bisa absen masuk hari ini?** Ini terjadi bila **kemarin Anda hadir tapi lupa check-out**. Hubungi Admin untuk klik **Pulihkan** di menu Absensi, lalu Anda bisa absen lagi.
 
-**Bagaimana libur massal dicatat?** Admin menandai tanggal, pilih **Libur Nasional** (kode **L**) atau **Libur Perusahaan** (kode **LP**); seluruh karyawan aktif otomatis diberi kode tersebut. Keduanya sama di payroll: dapat gaji pokok, tidak dapat uang makan.
+**Bagaimana libur massal dicatat?** Admin menandai tanggal, pilih **Libur Nasional** (kode **LN**) atau **Libur Perusahaan** (kode **LP**); seluruh karyawan aktif otomatis diberi kode tersebut. Keduanya sama di payroll: dapat gaji pokok, tidak dapat uang makan.
 
 **Apakah ada aplikasi mobile?** Ada endpoint `POST /api/mobile/login` yang mengembalikan token untuk aplikasi mobile karyawan (memakai skema sesi yang sama dengan web).
 

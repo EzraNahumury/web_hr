@@ -777,6 +777,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     if (
       row.status_absensi === "libur" ||
       row.kode_absensi === "L" ||
+      row.kode_absensi === "LN" ||
       row.kode_absensi === "LP" ||
       row.kode_absensi === "C"
     ) {

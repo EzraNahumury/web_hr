@@ -332,6 +332,9 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
     }
   }
 
+  // Kumpulan (karyawan:hari) yang PUNYA jadwal di hari itu — dipakai agar hari Minggu
+  // hanya auto-libur untuk karyawan yang TIDAK dijadwalkan (mis. JNE bisa kerja Minggu).
+  const scheduledDays = new Set<string>();
   if (endDate >= JADWAL_EFFECTIVE_FROM) {
     await ensureJadwalKaryawanSchema();
     const [jadwalRows] = await pool.query<
@@ -346,7 +349,6 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         FROM jadwal_karyawan
         WHERE tanggal BETWEEN ? AND ?
           AND tanggal >= ?
-          AND shift = 'libur'
       `,
       [startDate, endDate, JADWAL_EFFECTIVE_FROM],
     );
@@ -355,29 +357,70 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
       const row = byEmployee.get(j.karyawan_id);
       if (!row) continue;
       const day = Number(j.tanggal.split("-")[2]);
-      if (row.daily[day]) continue;
-      row.daily[day] = {
-        code: "L",
-        date: j.tanggal,
-        status: "libur",
-        timeIn: null,
-        timeOut: null,
-        photoIn: null,
-        photoOut: null,
-        latitudeIn: null,
-        longitudeIn: null,
-        latitudeOut: null,
-        longitudeOut: null,
-        lateMinutes: 0,
-        note: "Libur terjadwal",
-        isEarlyLeave: false,
-        isOnTimeWindow: false,
-        missingCheckout: false,
-        recovered: false,
-        needsApproval: false,
-        approvalStatus: null,
-        approvalJenis: null,
-      };
+      scheduledDays.add(`${j.karyawan_id}:${day}`);
+      if (j.shift === "libur" && !row.daily[day]) {
+        row.daily[day] = {
+          code: "L",
+          date: j.tanggal,
+          status: "libur",
+          timeIn: null,
+          timeOut: null,
+          photoIn: null,
+          photoOut: null,
+          latitudeIn: null,
+          longitudeIn: null,
+          latitudeOut: null,
+          longitudeOut: null,
+          lateMinutes: 0,
+          note: "Libur terjadwal",
+          isEarlyLeave: false,
+          isOnTimeWindow: false,
+          missingCheckout: false,
+          recovered: false,
+          needsApproval: false,
+          approvalStatus: null,
+          approvalJenis: null,
+        };
+      }
+    }
+  }
+
+  // Hari MINGGU otomatis Libur (kode L) untuk karyawan yang TIDAK punya jadwal di hari itu
+  // dan belum ada absensi. Hanya tampilan di rekap (tidak membuat record absensi), sehingga
+  // TIDAK memengaruhi perhitungan payroll (Minggu memang di luar hari kerja).
+  {
+    const periodDays = buildPeriodDays(year, month);
+    const { prevMonth: pMonth, prevYear: pYear } = getPayrollPeriodRange(year, month);
+    for (const row of byEmployee.values()) {
+      for (const d of periodDays) {
+        if (row.daily[d]) continue;
+        if (scheduledDays.has(`${row.employeeId}:${d}`)) continue;
+        const dt = d >= 26 ? new Date(pYear, pMonth - 1, d) : new Date(year, month - 1, d);
+        if (dt.getDay() !== 0) continue; // hanya hari Minggu
+        const iso = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+        row.daily[d] = {
+          code: "L",
+          date: iso,
+          status: "libur",
+          timeIn: null,
+          timeOut: null,
+          photoIn: null,
+          photoOut: null,
+          latitudeIn: null,
+          longitudeIn: null,
+          latitudeOut: null,
+          longitudeOut: null,
+          lateMinutes: 0,
+          note: "Libur (Minggu)",
+          isEarlyLeave: false,
+          isOnTimeWindow: false,
+          missingCheckout: false,
+          recovered: false,
+          needsApproval: false,
+          approvalStatus: null,
+          approvalJenis: null,
+        };
+      }
     }
   }
 
@@ -401,6 +444,7 @@ const ATTENDANCE_CODE_TO_STATUS: Record<string, string> = {
   I: "izin",
   A: "alfa",
   L: "libur",
+  LN: "libur", // Libur Nasional
   LP: "libur", // Libur Perusahaan — sama seperti L (dapat gaji pokok, tidak uang makan)
   C: "libur",
   X: "alfa",
@@ -417,6 +461,7 @@ export const ADMIN_ATTENDANCE_CODE_OPTIONS = [
   { code: "I", label: "Izin (I)" },
   { code: "A", label: "Alfa (A)" },
   { code: "L", label: "Libur (L)" },
+  { code: "LN", label: "Libur Nasional (LN)" },
   { code: "LP", label: "Libur Perusahaan (LP)" },
   { code: "C", label: "Cuti (C)" },
   { code: "-", label: "Tidak Absen (-)" },

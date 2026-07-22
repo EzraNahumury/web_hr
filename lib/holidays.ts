@@ -37,12 +37,13 @@ export async function ensureHolidayTable() {
   await holidayTableReady;
 }
 
-// Libur Nasional -> kode L; Libur Perusahaan -> kode LP. Keduanya sama di payroll
-// (dapat gaji pokok, tidak uang makan), hanya beda label/kode.
+// Libur Nasional -> kode LN; Libur Perusahaan -> kode LP. Keduanya sama di payroll
+// (dapat gaji pokok, tidak uang makan), hanya beda label/kode. (Kode L dipakai untuk
+// libur biasa/terjadwal & Minggu.)
 export type HolidayType = "nasional" | "perusahaan";
 
 function holidayKode(tipe: HolidayType) {
-  return tipe === "perusahaan" ? "LP" : "L";
+  return tipe === "perusahaan" ? "LP" : "LN";
 }
 
 export type NationalHolidayResult = {
@@ -83,7 +84,7 @@ export async function setNationalHoliday(
   // libur murni (tanpa jam masuk) — tidak menyentuh absensi karyawan yang benar-benar hadir.
   await pool.query<ResultSetHeader>(
     `DELETE FROM absensi
-     WHERE tanggal = ? AND status_absensi = 'libur' AND kode_absensi IN ('L','LP') AND jam_masuk IS NULL`,
+     WHERE tanggal = ? AND status_absensi = 'libur' AND kode_absensi IN ('L','LN','LP') AND jam_masuk IS NULL`,
     [dateIso],
   );
 
@@ -137,7 +138,7 @@ export async function cancelNationalHoliday(dateIso: string) {
 
   const [deleteAbsensi] = await pool.query<ResultSetHeader>(
     `DELETE FROM absensi
-     WHERE tanggal = ? AND status_absensi = 'libur' AND kode_absensi IN ('L','LP') AND jam_masuk IS NULL`,
+     WHERE tanggal = ? AND status_absensi = 'libur' AND kode_absensi IN ('L','LN','LP') AND jam_masuk IS NULL`,
     [dateIso],
   );
 

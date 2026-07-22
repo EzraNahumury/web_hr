@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   try {
     const result = await setNationalHoliday(date, description, admin.id, tipe);
     const label = result.type === "perusahaan" ? "Libur Perusahaan" : "Libur Nasional";
-    const kode = result.type === "perusahaan" ? "LP" : "L";
+    const kode = result.type === "perusahaan" ? "LP" : "LN";
     return NextResponse.json({
       message: `${label} disimpan. ${result.affectedEmployees} karyawan ditandai libur (kode ${kode}).`,
       ...result,
