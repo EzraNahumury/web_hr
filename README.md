@@ -1082,8 +1082,10 @@ Rentang 26 (M-1) – 25 (M) · hari kerja Senin–Sabtu (tanpa Minggu) · real-t
 | **H** | Setengah Hari | Hadir ½ hari |
 | **PA** | Pulang Awal | Pulang sebelum jam checkout + keterangan (di DB: hadir + keterangan). Payroll: **dapat gaji pokok**, **tidak** dapat uang makan |
 | **L** | Libur | Libur terjadwal. Payroll: **dapat gaji pokok**, **tidak** dapat uang makan |
+| **LP** | Libur Perusahaan | Libur perusahaan (sama seperti L). Payroll: **dapat gaji pokok**, **tidak** dapat uang makan |
 | **A** | Alfa | Tidak hadir tanpa keterangan |
 | **C** | Cuti | Cuti resmi |
+| **-** | Tidak Absen | Staff tidak melakukan presensi / tanpa record. Admin bisa menandai (menghapus record → sel kembali kosong). Payroll: tidak dihitung apa-apa |
 
 ---
 

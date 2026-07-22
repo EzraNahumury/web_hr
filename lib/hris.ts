@@ -401,6 +401,7 @@ const ATTENDANCE_CODE_TO_STATUS: Record<string, string> = {
   I: "izin",
   A: "alfa",
   L: "libur",
+  LP: "libur", // Libur Perusahaan — sama seperti L (dapat gaji pokok, tidak uang makan)
   C: "libur",
   X: "alfa",
   PA: "hadir", // Pulang Awal — tetap dihitung hadir untuk payroll
@@ -416,7 +417,9 @@ export const ADMIN_ATTENDANCE_CODE_OPTIONS = [
   { code: "I", label: "Izin (I)" },
   { code: "A", label: "Alfa (A)" },
   { code: "L", label: "Libur (L)" },
+  { code: "LP", label: "Libur Perusahaan (LP)" },
   { code: "C", label: "Cuti (C)" },
+  { code: "-", label: "Tidak Absen (-)" },
 ] as const;
 
 export async function setAttendanceCodeForDate(
@@ -430,6 +433,16 @@ export async function setAttendanceCodeForDate(
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateIso)) {
     throw new Error("Tanggal absensi tidak valid.");
   }
+
+  // "-" = tidak absen: hapus record absensi hari itu -> kembali ke kondisi kosong ("-").
+  if (code === "-") {
+    await pool.query(
+      "DELETE FROM absensi WHERE karyawan_id = ? AND tanggal = ?",
+      [employeeId, dateIso],
+    );
+    return { employeeId, date: dateIso, code: "-", status: null };
+  }
+
   const status = ATTENDANCE_CODE_TO_STATUS[code];
   if (!status) {
     throw new Error("Kode absensi tidak valid.");

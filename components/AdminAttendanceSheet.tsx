@@ -15,7 +15,9 @@ const ATTENDANCE_CODE_OPTIONS: { code: string; label: string }[] = [
   { code: "I", label: "Izin (I)" },
   { code: "A", label: "Alfa (A)" },
   { code: "L", label: "Libur (L)" },
+  { code: "LP", label: "Libur Perusahaan (LP)" },
   { code: "C", label: "Cuti (C)" },
+  { code: "-", label: "Tidak Absen (-)" },
 ];
 
 type Row = {
