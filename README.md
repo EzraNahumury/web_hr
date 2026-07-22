@@ -1080,8 +1080,8 @@ Rentang 26 (M-1) – 25 (M) · hari kerja Senin–Sabtu (tanpa Minggu) · real-t
 | **S** | Sakit | Dengan surat |
 | **SX** | Sakit tanpa surat | Tanpa dokumen |
 | **H** | Setengah Hari | Hadir ½ hari |
-| **PA** | Pulang Awal | Pulang sebelum jam checkout + keterangan (di DB: hadir + keterangan) |
-| **L** | Libur | Libur terjadwal |
+| **PA** | Pulang Awal | Pulang sebelum jam checkout + keterangan (di DB: hadir + keterangan). Payroll: **dapat gaji pokok**, **tidak** dapat uang makan |
+| **L** | Libur | Libur terjadwal. Payroll: **dapat gaji pokok**, **tidak** dapat uang makan |
 | **A** | Alfa | Tidak hadir tanpa keterangan |
 | **C** | Cuti | Cuti resmi |
 

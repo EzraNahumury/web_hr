@@ -692,6 +692,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     number,
     {
       present: number;
+      pa: number;
       leave: number;
       sick: number;
       sickWithoutNote: number;
@@ -705,6 +706,7 @@ export async function getAdminPayrollSummarySheet(period?: {
   for (const row of attendanceResult[0]) {
     const current = attendanceMap.get(row.employee_id) ?? {
       present: 0,
+      pa: 0,
       leave: 0,
       sick: 0,
       sickWithoutNote: 0,
@@ -754,6 +756,11 @@ export async function getAdminPayrollSummarySheet(period?: {
       current.present += 1;
       if (row.kode_absensi === "T") {
         current.late += 1;
+      }
+      // PA (Pulang Awal): tetap dihitung hadir (dapat gaji pokok), tapi hari PA TIDAK
+      // dapat uang makan. Dihitung terpisah lalu dikurangi dari basis uang makan.
+      if (codeUpper === "PA") {
+        current.pa += 1;
       }
     }
 
@@ -858,6 +865,7 @@ export async function getAdminPayrollSummarySheet(period?: {
   const mappedRows = rows.map<AdminPayrollSummarySheetRow>((row, index) => {
     const attendance = attendanceMap.get(row.employee_id) ?? {
       present: 0,
+      pa: 0,
       leave: 0,
       sick: 0,
       sickWithoutNote: 0,
@@ -1001,7 +1009,12 @@ export async function getAdminPayrollSummarySheet(period?: {
           ? groupOmzet.bonusPool
           : (groupOmzet.bonusPool / groupEligibleCount) * roleFactor
         : 0;
-    const mealAllowance = isFreelance ? 0 : fixedMealAllowance * presentDays;
+    // Uang makan hanya untuk hari hadir yang bekerja penuh — hari PA (Pulang Awal) TIDAK dapat
+    // uang makan (tetap dapat gaji pokok via presentDays di totalBaseSalary).
+    const paDays = attendance.pa;
+    const mealAllowance = isFreelance
+      ? 0
+      : fixedMealAllowance * Math.max(presentDays - paDays, 0);
 
     const leaveCount = isFreelance ? 0 : (inputOverrideIzin ?? attendance.leave);
     const sickCount = isFreelance ? 0 : (inputOverrideSakit ?? attendance.sick);
