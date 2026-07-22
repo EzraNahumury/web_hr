@@ -238,9 +238,12 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
           : "Semua periode";
       doc.text(periodeText, 14, 26);
       doc.text(`Total data: ${filteredRows.length}`, 14, 33);
+      doc.setFont("helvetica", "bold");
+      doc.text(`Total Nominal Lembur (Approved): Rp${totalNominalApproved.toLocaleString("id-ID")}`, 14, 40);
+      doc.setFont("helvetica", "normal");
 
       autoTable(doc, {
-        startY: 38,
+        startY: 45,
         head: [["Nama", "Tanggal", "Jam", "Total", "Nominal", "Pekerjaan", "Deadline", "Order/QTY/Target", "Status", "Catatan"]],
         body: filteredRows.map((row) => [
           (row.nama || "").toUpperCase(),
@@ -282,6 +285,10 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
   const totalApproved = filteredRows.filter((r) => r.status_approval === "approved").length;
   const totalPending = filteredRows.filter((r) => r.status_approval === "pending").length;
   const totalRejected = filteredRows.filter((r) => r.status_approval === "rejected").length;
+  // Total nominal lembur yang APPROVED (payable) sesuai filter tab + range tanggal.
+  const totalNominalApproved = filteredRows
+    .filter((r) => r.status_approval === "approved")
+    .reduce((sum, r) => sum + (Number(r.total_jam) || 0) * OVERTIME_RATE_PER_HOUR, 0);
 
   return (
     <div className="space-y-6">
@@ -367,6 +374,10 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
               <p className="mt-1 text-sm text-[#66748f]">
                 Admin hanya perlu review data dan klik approve atau reject.
               </p>
+              <div className="mt-3 inline-flex items-center gap-2 rounded-2xl border border-[#e3d5a8] bg-[#fffaf0] px-4 py-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#a07c00]">Total Nominal Lembur (Approved)</span>
+                <span className="text-base font-bold tabular-nums text-[#7c5b00]">Rp{totalNominalApproved.toLocaleString("id-ID")}</span>
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
