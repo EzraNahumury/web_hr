@@ -479,13 +479,27 @@ export async function setAttendanceCodeForDate(
     throw new Error("Tanggal absensi tidak valid.");
   }
 
-  // "-" = tidak absen: hapus record absensi hari itu -> kembali ke kondisi kosong ("-").
+  // "-" = tidak absen: simpan penanda EKSPLISIT (kode '-') supaya menekan default auto-Libur
+  // (mis. hari Minggu / libur terjadwal). Bukan hadir/alfa/libur-berbayar → di payroll tidak
+  // dihitung apa-apa (holiday hanya LN/LP/C). Jam & foto dikosongkan (memang tidak absen).
   if (code === "-") {
     await pool.query(
-      "DELETE FROM absensi WHERE karyawan_id = ? AND tanggal = ?",
+      `
+        INSERT INTO absensi (karyawan_id, tanggal, status_absensi, kode_absensi, setengah_hari, terlambat_menit)
+        VALUES (?, ?, 'libur', '-', 0, 0)
+        ON DUPLICATE KEY UPDATE
+          status_absensi = 'libur',
+          kode_absensi = '-',
+          setengah_hari = 0,
+          terlambat_menit = 0,
+          jam_masuk = NULL,
+          jam_pulang = NULL,
+          foto_masuk = NULL,
+          foto_pulang = NULL
+      `,
       [employeeId, dateIso],
     );
-    return { employeeId, date: dateIso, code: "-", status: null };
+    return { employeeId, date: dateIso, code: "-", status: "libur" };
   }
 
   const status = ATTENDANCE_CODE_TO_STATUS[code];

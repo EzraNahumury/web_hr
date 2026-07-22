@@ -1094,7 +1094,7 @@ Rentang 26 (M-1) – 25 (M) · hari kerja Senin–Sabtu (tanpa Minggu) · real-t
 | **LP** | Libur Perusahaan | Libur perusahaan massal. Payroll: **dapat gaji pokok**, **tidak** dapat uang makan |
 | **A** | Alfa | Tidak hadir tanpa keterangan |
 | **C** | Cuti | Cuti resmi |
-| **-** | Tidak Absen | Staff tidak melakukan presensi / tanpa record. Admin bisa menandai (menghapus record → sel kembali kosong). Payroll: tidak dihitung apa-apa |
+| **-** | Tidak Absen | Staff tidak melakukan presensi. Admin bisa menandai → disimpan penanda eksplisit (`kode='-'`) yang **menekan** default auto-Libur (mis. hari Minggu), jam/foto dikosongkan. Payroll: tidak dihitung apa-apa |
 
 ---
 
