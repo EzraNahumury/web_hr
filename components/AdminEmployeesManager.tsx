@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { addMonthsToIsoDate, calculateEmploymentTimeline } from "@/lib/contract-timeline";
 import { useConfirm } from "@/components/ConfirmDialog";
 import type { EmployeeListItem, LookupOption } from "@/lib/employees";
+import type { ItemLoanRecord } from "@/lib/item-loans";
 
 type Lookups = {
   units: LookupOption[];
@@ -218,6 +219,8 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
   const [newPassword, setNewPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [employeeLoans, setEmployeeLoans] = useState<ItemLoanRecord[]>([]);
+  const [loadingLoans, setLoadingLoans] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"aktif" | "nonaktif" | "semua">("aktif");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -243,6 +246,30 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
   useEffect(() => {
     setNewPassword("");
     setShowNewPassword(false);
+  }, [viewingEmployee]);
+
+  // Ambil catatan peminjaman barang milik karyawan saat modal detail dibuka.
+  useEffect(() => {
+    if (!viewingEmployee) {
+      setEmployeeLoans([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingLoans(true);
+    fetch(`/api/admin/item-loans?employeeId=${viewingEmployee.id}`)
+      .then((res) => (res.ok ? res.json() : { rows: [] }))
+      .then((data: { rows?: ItemLoanRecord[] }) => {
+        if (!cancelled) setEmployeeLoans(data.rows ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setEmployeeLoans([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingLoans(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [viewingEmployee]);
 
   useEffect(() => {
@@ -1176,6 +1203,37 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                         <p className="mt-2 text-sm text-[#8a6f68]">Belum ada file KTP tersimpan.</p>
                       )}
                     </div>
+                  </section>
+
+                  <section className="rounded-[30px] border border-[#ead7ce] bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#a16f63]">
+                      Peminjaman Barang
+                    </p>
+                    {loadingLoans ? (
+                      <p className="mt-3 text-sm text-[#8a6f68]">Memuat...</p>
+                    ) : employeeLoans.length === 0 ? (
+                      <p className="mt-3 text-sm text-[#8a6f68]">Belum ada catatan peminjaman barang.</p>
+                    ) : (
+                      <div className="mt-4 space-y-3">
+                        {employeeLoans.map((loan) => (
+                          <div key={loan.id} className="rounded-[22px] bg-[linear-gradient(135deg,#fff5ef_0%,#fffdfa_100%)] p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="text-sm font-semibold text-[#241716]">{loan.loanDate || "-"}</span>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {loan.items.map((it, idx) => (
+                                <span key={idx} className="inline-flex rounded-full bg-[#f0f7ff] px-2.5 py-1 text-xs font-medium text-[#2f5d8a] ring-1 ring-[#c8e0f7]">
+                                  {it}
+                                </span>
+                              ))}
+                            </div>
+                            {loan.note ? (
+                              <p className="mt-2 text-xs text-[#7a6059]">{loan.note}</p>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </section>
 
                   <section className="rounded-[30px] border border-[#ead7ce] bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">

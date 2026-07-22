@@ -38,6 +38,7 @@ const menuGroups: MenuGroup[] = [
       { label: "Bagan Set Jadwal", href: "/admin/jadwal", description: "Jadwal 1 bulan (26–25)" },
       { label: "Master Set Jadwal", href: "/admin/jadwal/master", description: "Pola mingguan Sen–Min" },
       { label: "Perizinan Akses Jadwal", href: "/admin/jadwal/perizinan", description: "Beri akses Set Jadwal ke karyawan" },
+      { label: "Peminjaman Barang", href: "/admin/item-loans", description: "Catat peminjaman barang/aset oleh karyawan" },
       { label: "HR Agent", href: "/admin/hr-agent", description: "Asisten AI tanya-jawab data HR" },
     ],
   },

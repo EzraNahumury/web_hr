@@ -245,6 +245,7 @@ web_hr/
 | `/admin/contract-deductions` | Potongan kontrak |
 | `/admin/contract-returns` | Pengembalian kontrak |
 | `/admin/roles` | Kelola akun Admin & SPV |
+| `/admin/item-loans` | Pencatatan peminjaman barang/aset oleh karyawan |
 | `/admin/hr-agent` | HR Agent (AI) |
 
 ---
@@ -356,6 +357,7 @@ Skema kanonik ada di **`db/hris_payroll_app_v2.sql`**; sebagian tabel juga dibua
 | **Kontrak** | `potongan_kontrak`, `pengembalian_kontrak` |
 | **Slip** | `slip_gaji`, `slip_bonus`, `log_distribusi_slip`, `log_distribusi_slip_bonus` |
 | **Keuangan lain** | `finance_lembur_tambahan`, `reimbursements`, `perjalanan_dinas` |
+| **Aset** | `peminjaman_barang` (peminjaman barang/aset oleh karyawan) |
 | **Sales** | `laporan_kunjungan` |
 | **Sistem** | `app_migrations`, `hris_migration_log` |
 
@@ -726,6 +728,7 @@ Semua endpoint memvalidasi sesi peran terkait. Metode HTTP ditunjukkan per route
 |----------|--------|--------|
 | `employees` `[id]` | GET/POST/PUT/DELETE | CRUD karyawan |
 | `employees/[id]/password` | POST | Reset password login karyawan (min 6 char) |
+| `item-loans` `[id]` | GET/POST/DELETE | Peminjaman barang (list/by-employee, catat, hapus) |
 | `employees/export` | GET | Export Excel data karyawan |
 | `attendance/update` | POST | Ubah/koreksi kode absensi |
 | `attendance/holiday` | POST/DELETE | Set/batal libur massal — Nasional (kode L) atau Perusahaan (kode LP) via `tipe` |
@@ -966,6 +969,7 @@ Sidebar admin dikelompokkan menjadi **8 grup** (`components/AdminShell.tsx`). Ta
 |------|-----------|
 | **Data Karyawan** | CRUD, nonaktifkan, upload/download KTP, atur bank & rekening, kenaikan/tahun, **reset password login** karyawan (modal Detail → Akun & Keamanan) |
 | **Set Jadwal** | Bagan bulanan + **Master** (pola mingguan → timpa Bagan) + **Perizinan Akses** (grant editor & flag Shift) |
+| **Peminjaman Barang** | Catat peminjaman barang/aset oleh karyawan (form + tabel); juga tampil di modal Detail Karyawan |
 | **HR Agent** | Tanya-jawab data HR berbasis AI (read-only ke DB) |
 
 **🕐 Absensi & Aktivitas**
