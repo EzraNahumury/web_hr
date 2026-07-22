@@ -4,6 +4,14 @@ import Image from "next/image";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
+// Tarif lembur Rp 20.000 / jam (konsisten dengan overtimeBonus di lib/payroll-summary.ts).
+const OVERTIME_RATE_PER_HOUR = 20000;
+
+function formatOvertimeNominal(totalJam: string | number) {
+  const jam = Number(totalJam) || 0;
+  return `Rp${Math.round(jam * OVERTIME_RATE_PER_HOUR).toLocaleString("id-ID")}`;
+}
+
 type OvertimeRow = {
   id: number;
   nama: string;
@@ -233,12 +241,13 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
 
       autoTable(doc, {
         startY: 38,
-        head: [["Nama", "Tanggal", "Jam", "Total", "Pekerjaan", "Deadline", "Order/QTY/Target", "Status", "Catatan"]],
+        head: [["Nama", "Tanggal", "Jam", "Total", "Nominal", "Pekerjaan", "Deadline", "Order/QTY/Target", "Status", "Catatan"]],
         body: filteredRows.map((row) => [
           (row.nama || "").toUpperCase(),
           row.tanggal,
           `${row.jam_mulai} - ${row.jam_selesai}`,
           `${row.total_jam} jam`,
+          formatOvertimeNominal(row.total_jam),
           (row.jenis_pekerjaan || "-").toUpperCase(),
           row.deadline || "-",
           row.nama_order
@@ -436,6 +445,7 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
                 <th className="px-6 py-4">Tanggal</th>
                 <th className="px-6 py-4">Jam</th>
                 <th className="px-6 py-4">Total</th>
+                <th className="px-6 py-4">Nominal</th>
                 <th className="px-6 py-4">Diajukan Ke</th>
                 {flowTab === "double" ? <th className="px-6 py-4">Approval Atasan</th> : null}
                 <th className="px-6 py-4">Bukti</th>
@@ -447,7 +457,7 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
             <tbody>
               {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={flowTab === "double" ? 10 : 9} className="px-6 py-10 text-center text-sm text-[#7a879f]">
+                  <td colSpan={flowTab === "double" ? 11 : 10} className="px-6 py-10 text-center text-sm text-[#7a879f]">
                     Tidak ada data lembur untuk rentang tanggal yang dipilih.
                   </td>
                 </tr>
@@ -467,6 +477,7 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
                         {row.jam_mulai} - {row.jam_selesai}
                       </td>
                       <td className="px-6 py-4">{row.total_jam} jam</td>
+                      <td className="px-6 py-4 font-semibold tabular-nums text-[#172033]">{formatOvertimeNominal(row.total_jam)}</td>
                       <td className="px-6 py-4">
                         {row.assigned_approver_name ? (
                           <span className="inline-flex rounded-full bg-[#fff3e0] px-3 py-1 text-xs font-semibold text-[#9c4d00]">
