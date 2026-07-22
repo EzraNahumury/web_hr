@@ -728,7 +728,7 @@ Semua endpoint memvalidasi sesi peran terkait. Metode HTTP ditunjukkan per route
 | `employees/[id]/password` | POST | Reset password login karyawan (min 6 char) |
 | `employees/export` | GET | Export Excel data karyawan |
 | `attendance/update` | POST | Ubah/koreksi kode absensi |
-| `attendance/holiday` | POST/DELETE | Set/batal libur nasional (tandai L) |
+| `attendance/holiday` | POST/DELETE | Set/batal libur massal — Nasional (kode L) atau Perusahaan (kode LP) via `tipe` |
 | `attendance/recover` | POST | Pulihkan absensi yang terblokir |
 | `attendance-approvals` `[id]` | GET/PATCH | Approve/reject absensi telat/pulang awal |
 | `overtime` `[id]` | GET/PATCH | Approve/reject lembur |
@@ -971,7 +971,7 @@ Sidebar admin dikelompokkan menjadi **8 grup** (`components/AdminShell.tsx`). Ta
 **🕐 Absensi & Aktivitas**
 | Menu | Ringkasan |
 |------|-----------|
-| **Absensi** | Rekap semua karyawan, filter, modal Detail (foto/peta), ubah kode manual, **set libur nasional** (tandai L massal), **Pulihkan** absensi terblokir |
+| **Absensi** | Rekap semua karyawan, filter, modal Detail (foto/peta), ubah kode manual, **set libur massal** (Libur Nasional → kode L, atau Libur Perusahaan → kode LP), **Pulihkan** absensi terblokir |
 | **Approval Absensi** | Approve/reject pengajuan telat & pulang awal yang ditujukan ke Admin |
 | **Lembur** | 2 tab (Langsung ke Admin / Via Atasan), modal detail, approve/reject |
 | **Laporan Kunjungan** | Timeline kunjungan Sales Area + ringkasan |
@@ -1097,7 +1097,7 @@ Rentang 26 (M-1) – 25 (M) · hari kerja Senin–Sabtu (tanpa Minggu) · real-t
 
 **Saya diblokir tidak bisa absen masuk hari ini?** Ini terjadi bila **kemarin Anda hadir tapi lupa check-out**. Hubungi Admin untuk klik **Pulihkan** di menu Absensi, lalu Anda bisa absen lagi.
 
-**Bagaimana libur nasional dicatat?** Admin menandai tanggal libur nasional; seluruh karyawan otomatis diberi kode **L** untuk tanggal tersebut.
+**Bagaimana libur massal dicatat?** Admin menandai tanggal, pilih **Libur Nasional** (kode **L**) atau **Libur Perusahaan** (kode **LP**); seluruh karyawan aktif otomatis diberi kode tersebut. Keduanya sama di payroll: dapat gaji pokok, tidak dapat uang makan.
 
 **Apakah ada aplikasi mobile?** Ada endpoint `POST /api/mobile/login` yang mengembalikan token untuk aplikasi mobile karyawan (memakai skema sesi yang sama dengan web).
 

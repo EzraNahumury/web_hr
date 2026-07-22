@@ -78,6 +78,7 @@ export default async function AdminAttendancePage({
   const periodEndDate = `${sheet.year}-${String(sheet.month).padStart(2, "0")}-25`;
   const holidays = await listNationalHolidaysInRange(periodStartDate, periodEndDate);
   const holidayMap = Object.fromEntries(holidays.map((h) => [h.date, h.description]));
+  const holidayTypeMap = Object.fromEntries(holidays.map((h) => [h.date, h.type]));
   const previousMonth = sheet.month === 1 ? 12 : sheet.month - 1;
   const previousYear = sheet.month === 1 ? sheet.year - 1 : sheet.year;
   const nextMonth = sheet.month === 12 ? 1 : sheet.month + 1;
@@ -177,7 +178,7 @@ export default async function AdminAttendancePage({
             </div>
           </div>
         </div>
-        <AdminAttendanceSheet days={sheet.days} rows={sheet.rows} month={sheet.month} year={sheet.year} holidayMap={holidayMap} />
+        <AdminAttendanceSheet days={sheet.days} rows={sheet.rows} month={sheet.month} year={sheet.year} holidayMap={holidayMap} holidayTypeMap={holidayTypeMap} />
       </div>
     </AdminShell>
   );

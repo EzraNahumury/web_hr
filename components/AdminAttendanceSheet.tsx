@@ -38,6 +38,7 @@ type Props = {
   month: number;
   year: number;
   holidayMap: Record<string, string>;
+  holidayTypeMap?: Record<string, string>;
 };
 
 function buildDateIso(day: number, month: number, year: number) {
@@ -366,7 +367,7 @@ function AttendanceDetailModal({
   );
 }
 
-export default function AdminAttendanceSheet({ days, rows, month, year, holidayMap }: Props) {
+export default function AdminAttendanceSheet({ days, rows, month, year, holidayMap, holidayTypeMap = {} }: Props) {
   const router = useRouter();
   const [selected, setSelected] = useState<SelectedAttendance>(null);
   const [search, setSearch] = useState("");
@@ -374,6 +375,38 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
   const [holidayDescription, setHolidayDescription] = useState("");
   const [holidayFeedback, setHolidayFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isSavingHoliday, startHolidayTransition] = useTransition();
+
+  function submitHoliday(tipe: "nasional" | "perusahaan") {
+    if (!holidayTarget) return;
+    const desc = holidayDescription.trim();
+    if (!desc) {
+      setHolidayFeedback({ type: "error", text: "Keterangan libur wajib diisi." });
+      return;
+    }
+    setHolidayFeedback(null);
+    startHolidayTransition(async () => {
+      try {
+        const response = await fetch("/api/admin/attendance/holiday", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ date: holidayTarget.date, description: desc, tipe }),
+        });
+        const result = (await response.json()) as { message?: string };
+        if (!response.ok) {
+          throw new Error(result.message || "Gagal menyimpan libur.");
+        }
+        setHolidayFeedback({ type: "success", text: result.message || "Libur tersimpan." });
+        router.refresh();
+        setTimeout(() => setHolidayTarget(null), 700);
+      } catch (error) {
+        setHolidayFeedback({
+          type: "error",
+          text: error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan.",
+        });
+      }
+    });
+  }
+
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
   const ghostScrollRef = useRef<HTMLDivElement | null>(null);
   const [tableScrollWidth, setTableScrollWidth] = useState(0);
@@ -673,6 +706,9 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
 
       {holidayTarget ? (() => {
         const isExistingHoliday = Boolean(holidayMap[holidayTarget.date]);
+        const existingType = holidayTypeMap[holidayTarget.date] === "perusahaan" ? "perusahaan" : "nasional";
+        const existingLabel = existingType === "perusahaan" ? "Libur Perusahaan" : "Libur Nasional";
+        const existingKode = existingType === "perusahaan" ? "LP" : "L";
 
         return (
           <div
@@ -703,13 +739,13 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                   </div>
                   <div className="min-w-0 flex-1">
                     <h2 id="holiday-dialog-title" className="text-lg font-semibold text-[#241716]">
-                      {isExistingHoliday ? "Batalkan Libur Nasional" : "Set Libur Nasional"}
+                      {isExistingHoliday ? `Batalkan ${existingLabel}` : "Set Libur (Semua Karyawan)"}
                     </h2>
                     <p className="mt-2 text-sm leading-relaxed text-[#6e574f]">
                       Tanggal: <span className="font-semibold text-[#241716]">{holidayTarget.date}</span>.{" "}
                       {isExistingHoliday
-                        ? "Tanggal ini sudah ditandai libur nasional. Klik tombol di bawah untuk membatalkan dan menghapus absensi kode L yang dibuat otomatis."
-                        : "Semua karyawan aktif akan ditandai libur (kode L) untuk tanggal ini. Karyawan yang sudah punya absensi di tanggal ini tidak akan tertimpa."}
+                        ? `Tanggal ini sudah ditandai ${existingLabel.toLowerCase()}. Klik tombol di bawah untuk membatalkan dan menghapus absensi kode ${existingKode} yang dibuat otomatis.`
+                        : "Pilih jenis libur di bawah. Semua karyawan aktif akan ditandai libur untuk tanggal ini — Libur Nasional (kode L) atau Libur Perusahaan (kode LP). Karyawan yang sudah punya absensi tidak akan tertimpa."}
                     </p>
                   </div>
                 </div>
@@ -764,9 +800,9 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                           );
                           const result = (await response.json()) as { message?: string };
                           if (!response.ok) {
-                            throw new Error(result.message || "Gagal membatalkan libur nasional.");
+                            throw new Error(result.message || "Gagal membatalkan libur.");
                           }
-                          setHolidayFeedback({ type: "success", text: result.message || "Libur nasional dibatalkan." });
+                          setHolidayFeedback({ type: "success", text: result.message || "Libur dibatalkan." });
                           router.refresh();
                           setTimeout(() => setHolidayTarget(null), 600);
                         } catch (error) {
@@ -779,46 +815,27 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                     }}
                     className="inline-flex h-11 items-center justify-center rounded-full bg-[#8d6200] px-5 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(141,98,0,0.28)] transition hover:bg-[#7c5b00] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {isSavingHoliday ? "Memproses..." : "Batalkan Libur Nasional"}
+                    {isSavingHoliday ? "Memproses..." : `Batalkan ${existingLabel}`}
                   </button>
                 ) : (
-                  <button
-                    type="button"
-                    disabled={isSavingHoliday || !holidayDescription.trim()}
-                    onClick={() => {
-                      if (!holidayTarget) return;
-                      const desc = holidayDescription.trim();
-                      if (!desc) {
-                        setHolidayFeedback({ type: "error", text: "Keterangan libur wajib diisi." });
-                        return;
-                      }
-                      setHolidayFeedback(null);
-                      startHolidayTransition(async () => {
-                        try {
-                          const response = await fetch("/api/admin/attendance/holiday", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ date: holidayTarget.date, description: desc }),
-                          });
-                          const result = (await response.json()) as { message?: string };
-                          if (!response.ok) {
-                            throw new Error(result.message || "Gagal menyimpan libur nasional.");
-                          }
-                          setHolidayFeedback({ type: "success", text: result.message || "Libur nasional tersimpan." });
-                          router.refresh();
-                          setTimeout(() => setHolidayTarget(null), 600);
-                        } catch (error) {
-                          setHolidayFeedback({
-                            type: "error",
-                            text: error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan.",
-                          });
-                        }
-                      });
-                    }}
-                    className="inline-flex h-11 items-center justify-center rounded-full bg-[#c0392b] px-5 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(192,57,43,0.28)] transition hover:bg-[#a82d20] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isSavingHoliday ? "Memproses..." : "Set Libur Nasional"}
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      disabled={isSavingHoliday || !holidayDescription.trim()}
+                      onClick={() => submitHoliday("nasional")}
+                      className="inline-flex h-11 items-center justify-center rounded-full bg-[#c0392b] px-5 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(192,57,43,0.28)] transition hover:bg-[#a82d20] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isSavingHoliday ? "Memproses..." : "Libur Nasional (L)"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isSavingHoliday || !holidayDescription.trim()}
+                      onClick={() => submitHoliday("perusahaan")}
+                      className="inline-flex h-11 items-center justify-center rounded-full bg-[#8d6200] px-5 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(141,98,0,0.28)] transition hover:bg-[#7c5b00] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isSavingHoliday ? "Memproses..." : "Libur Perusahaan (LP)"}
+                    </button>
+                  </>
                 )}
               </div>
             </div>

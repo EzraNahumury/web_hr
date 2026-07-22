@@ -10,11 +10,12 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => null)) as
-    | { date?: unknown; description?: unknown }
+    | { date?: unknown; description?: unknown; tipe?: unknown }
     | null;
 
   const date = typeof body?.date === "string" ? body.date : "";
   const description = typeof body?.description === "string" ? body.description : "";
+  const tipe: "nasional" | "perusahaan" = body?.tipe === "perusahaan" ? "perusahaan" : "nasional";
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return NextResponse.json({ message: "Tanggal libur tidak valid." }, { status: 400 });
@@ -24,9 +25,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await setNationalHoliday(date, description, admin.id);
+    const result = await setNationalHoliday(date, description, admin.id, tipe);
+    const label = result.type === "perusahaan" ? "Libur Perusahaan" : "Libur Nasional";
+    const kode = result.type === "perusahaan" ? "LP" : "L";
     return NextResponse.json({
-      message: `Libur nasional disimpan. ${result.affectedEmployees} karyawan ditandai libur (kode L).`,
+      message: `${label} disimpan. ${result.affectedEmployees} karyawan ditandai libur (kode ${kode}).`,
       ...result,
     });
   } catch (error) {
@@ -52,7 +55,7 @@ export async function DELETE(request: Request) {
   try {
     const result = await cancelNationalHoliday(date);
     return NextResponse.json({
-      message: `Libur nasional dibatalkan. ${result.affectedEmployees} absensi (kode L) dihapus.`,
+      message: `Libur dibatalkan. ${result.affectedEmployees} absensi libur (kode L/LP) dihapus.`,
       ...result,
     });
   } catch (error) {
