@@ -732,7 +732,7 @@ Semua endpoint memvalidasi sesi peran terkait. Metode HTTP ditunjukkan per route
 |----------|--------|--------|
 | `employees` `[id]` | GET/POST/PUT/DELETE | CRUD karyawan |
 | `employees/[id]/password` | POST | Reset password login karyawan (min 6 char) |
-| `item-loans` `[id]` | GET/POST/DELETE | Peminjaman barang (list/by-employee, catat, hapus) |
+| `item-loans` `[id]` | GET/POST/PUT/DELETE | Peminjaman barang (list/by-employee, catat, update, hapus); 1 catatan bisa banyak karyawan & barang |
 | `employees/export` | GET | Export Excel data karyawan |
 | `attendance/update` | POST | Ubah/koreksi kode absensi |
 | `attendance/holiday` | POST/DELETE | Set/batal libur massal — Nasional (kode LN) atau Perusahaan (kode LP) via `tipe` |

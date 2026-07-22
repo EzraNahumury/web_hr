@@ -39,13 +39,18 @@ export async function POST(request: Request) {
 
   try {
     const body = (await request.json().catch(() => ({}))) as {
+      employeeIds?: unknown;
       employeeId?: unknown;
       items?: unknown;
       loanDate?: unknown;
       note?: unknown;
     };
 
-    const employeeId = Number(body.employeeId);
+    const employeeIds = Array.isArray(body.employeeIds)
+      ? body.employeeIds.map((v) => Number(v)).filter((n) => Number.isInteger(n) && n > 0)
+      : Number.isInteger(Number(body.employeeId)) && Number(body.employeeId) > 0
+        ? [Number(body.employeeId)]
+        : [];
     const items = Array.isArray(body.items)
       ? body.items.map((v) => String(v))
       : typeof body.items === "string"
@@ -54,7 +59,7 @@ export async function POST(request: Request) {
     const loanDate = typeof body.loanDate === "string" ? body.loanDate : null;
     const note = typeof body.note === "string" ? body.note : null;
 
-    const id = await createItemLoan({ employeeId, items, loanDate, note, adminId: admin.id });
+    const id = await createItemLoan({ employeeIds, items, loanDate, note, adminId: admin.id });
     return NextResponse.json({ message: "Peminjaman barang tersimpan.", id });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Gagal menyimpan peminjaman barang.";
