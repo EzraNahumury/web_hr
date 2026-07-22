@@ -244,3 +244,16 @@ export function isOvertimeApprover(email: string | null | undefined): boolean {
   const normalized = email.trim().toLowerCase();
   return OVERTIME_APPROVER_EMAILS.includes(normalized);
 }
+
+// Data karyawan DEPARTEMEN HRD hanya boleh diubah (approve/reject, pulihkan, edit kode
+// absensi, dll) oleh admin di whitelist ini. Admin lain — termasuk karyawan HRD yang punya
+// akun admin — hanya READ-ONLY atas data HRD (tidak bisa mengedit datanya sendiri).
+const HRD_SUPER_EDITOR_EMAILS: ReadonlyArray<string> = [
+  "avafamily17@gmail.com",
+  "aryaceo@gmail.com",
+];
+
+export function isHrdSuperEditor(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return HRD_SUPER_EDITOR_EMAILS.includes(email.trim().toLowerCase());
+}

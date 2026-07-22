@@ -511,6 +511,28 @@ export async function ensureEmployeeSchemaSupport() {
 }
 
 
+// Cek apakah karyawan berada di departemen HRD (untuk aturan read-only data HRD).
+export async function isEmployeeInHrd(employeeId: number): Promise<boolean> {
+  if (!Number.isInteger(employeeId) || employeeId <= 0) return false;
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT 1 FROM karyawan WHERE id = ? AND LOWER(TRIM(COALESCE(departemen, ''))) = 'hrd' LIMIT 1`,
+    [employeeId],
+  );
+  return rows.length > 0;
+}
+
+// Cek apakah pemilik record absensi (by id) berada di departemen HRD.
+export async function isAttendanceOwnerHrd(absensiId: number): Promise<boolean> {
+  if (!Number.isInteger(absensiId) || absensiId <= 0) return false;
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT 1 FROM absensi a
+       INNER JOIN karyawan k ON k.id = a.karyawan_id
+     WHERE a.id = ? AND LOWER(TRIM(COALESCE(k.departemen, ''))) = 'hrd' LIMIT 1`,
+    [absensiId],
+  );
+  return rows.length > 0;
+}
+
 export async function listEmployees() {
   await ensureEmployeeSchemaSupport();
   const [rows] = await pool.query<EmployeeRow[]>(

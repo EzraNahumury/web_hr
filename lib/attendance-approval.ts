@@ -10,6 +10,7 @@ export type AttendanceApprovalItem = {
   nip: string | null;
   jabatan: string | null;
   divisi: string | null;
+  department: string | null;
   tanggal: string; // 'DD Mon YYYY'
   tanggalIso: string;
   jamMasuk: string | null;
@@ -33,6 +34,7 @@ type ApprovalRow = RowDataPacket & {
   nip: string | null;
   jabatan: string | null;
   divisi: string | null;
+  departemen: string | null;
   tanggal: string;
   tanggal_iso: string;
   jam_masuk: string | null;
@@ -57,6 +59,7 @@ const listQuery = `
     k.no_karyawan AS nip,
     k.jabatan,
     k.divisi,
+    k.departemen,
     DATE_FORMAT(a.tanggal, '%d %b %Y') AS tanggal,
     DATE_FORMAT(a.tanggal, '%Y-%m-%d') AS tanggal_iso,
     DATE_FORMAT(a.jam_masuk, '%H:%i') AS jam_masuk,
@@ -86,6 +89,7 @@ function mapRow(row: ApprovalRow): AttendanceApprovalItem {
     nip: row.nip,
     jabatan: row.jabatan,
     divisi: row.divisi,
+    department: row.departemen,
     tanggal: row.tanggal,
     tanggalIso: row.tanggal_iso,
     jamMasuk: row.jam_masuk,

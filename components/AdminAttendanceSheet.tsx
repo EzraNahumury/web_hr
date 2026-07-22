@@ -40,6 +40,8 @@ type Props = {
   year: number;
   holidayMap: Record<string, string>;
   holidayTypeMap?: Record<string, string>;
+  // true jika admin ini boleh mengubah data karyawan HRD (super-editor).
+  canEditHrd?: boolean;
 };
 
 function buildDateIso(day: number, month: number, year: number) {
@@ -56,6 +58,7 @@ type SelectedAttendance = {
   employeeName: string;
   day: number;
   detail: AttendanceDayDetail;
+  readOnly?: boolean;
 } | null;
 
 function AttendanceDetailModal({
@@ -79,6 +82,8 @@ function AttendanceDetailModal({
   if (!selected) {
     return null;
   }
+
+  const readOnly = !!selected.readOnly;
 
   function handleRecover() {
     if (!selected) return;
@@ -178,6 +183,11 @@ function AttendanceDetailModal({
               Terlambat: {selected.detail.lateMinutes > 0 ? `${selected.detail.lateMinutes} menit` : "-"}
             </p>
 
+            {readOnly ? (
+              <div className="mt-4 rounded-xl border border-[#e2cfc7] bg-[#fbf3ee] px-4 py-3 text-sm text-[#8a5d52]">
+                Data karyawan <span className="font-semibold">HRD</span> hanya dapat diubah oleh admin yang berwenang. Anda hanya bisa melihat (read-only).
+              </div>
+            ) : (
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <label className="text-sm font-semibold text-[#3c2824]">
                 {selected.detail.code ? "Ubah Kode:" : "Set Kode:"}
@@ -213,6 +223,7 @@ function AttendanceDetailModal({
                 </span>
               ) : null}
             </div>
+            )}
 
             {selected.detail.approvalStatus ? (
               <div className="mt-4 rounded-2xl border border-[#ddd6fe] bg-[#f5f3ff] px-4 py-3">
@@ -248,6 +259,10 @@ function AttendanceDetailModal({
                 {selected.detail.recovered ? (
                   <span className="inline-flex items-center rounded-full bg-[#e7f8ef] px-3 py-1.5 text-xs font-semibold text-[#136c4c]">
                     Dipulihkan
+                  </span>
+                ) : readOnly ? (
+                  <span className="inline-flex items-center rounded-full bg-[#f0e6e2] px-3 py-1.5 text-xs font-semibold text-[#8a5d52]">
+                    Read-only (HRD)
                   </span>
                 ) : (
                   <button
@@ -368,7 +383,7 @@ function AttendanceDetailModal({
   );
 }
 
-export default function AdminAttendanceSheet({ days, rows, month, year, holidayMap, holidayTypeMap = {} }: Props) {
+export default function AdminAttendanceSheet({ days, rows, month, year, holidayMap, holidayTypeMap = {}, canEditHrd = false }: Props) {
   const router = useRouter();
   const [selected, setSelected] = useState<SelectedAttendance>(null);
   const [search, setSearch] = useState("");
@@ -618,6 +633,7 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                                   employeeName: row.name,
                                   day,
                                   detail,
+                                  readOnly: !canEditHrd && (row.department ?? "").trim().toUpperCase() === "HRD",
                                 })
                               : undefined
                           }
@@ -673,6 +689,7 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                                 approvalStatus: null,
                                 approvalJenis: null,
                               },
+                              readOnly: !canEditHrd && (row.department ?? "").trim().toUpperCase() === "HRD",
                             });
                           }}
                           className="inline-flex min-w-8 items-center justify-center rounded-lg border border-dashed border-[#e5d4ce] bg-[#fff4ee] px-2 py-1 text-xs text-[#b39086] transition hover:border-[#8f1d22] hover:bg-[#f5ddd2] hover:text-[#8f1d22]"

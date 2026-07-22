@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getCurrentAdminSession } from "@/lib/auth";
+import { getCurrentAdminSession, isHrdSuperEditor } from "@/lib/auth";
 import { processAttendanceApproval } from "@/lib/attendance-approval";
+import { isAttendanceOwnerHrd } from "@/lib/employees";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -21,6 +22,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
   const catatanAtasan =
     typeof body?.catatanAtasan === "string" && body.catatanAtasan.trim() ? body.catatanAtasan.trim() : null;
+
+  // Approval absensi karyawan HRD hanya untuk admin berwenang (super-editor).
+  if (!isHrdSuperEditor(admin.email) && (await isAttendanceOwnerHrd(Number(id)))) {
+    return NextResponse.json(
+      { error: "Data karyawan HRD hanya bisa diubah oleh admin yang berwenang." },
+      { status: 403 },
+    );
+  }
 
   const result = await processAttendanceApproval({
     absensiId: Number(id),

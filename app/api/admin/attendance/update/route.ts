@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentAdminSession } from "@/lib/auth";
+import { getCurrentAdminSession, isHrdSuperEditor } from "@/lib/auth";
+import { isEmployeeInHrd } from "@/lib/employees";
 import { setAttendanceCodeForDate } from "@/lib/hris";
 
 export async function POST(request: Request) {
@@ -25,6 +26,14 @@ export async function POST(request: Request) {
   }
   if (!code) {
     return NextResponse.json({ message: "Kode absensi wajib diisi." }, { status: 400 });
+  }
+
+  // Data karyawan HRD hanya bisa diubah admin berwenang (super-editor).
+  if (!isHrdSuperEditor(admin.email) && (await isEmployeeInHrd(employeeId))) {
+    return NextResponse.json(
+      { message: "Data karyawan HRD hanya bisa diubah oleh admin yang berwenang." },
+      { status: 403 },
+    );
   }
 
   try {

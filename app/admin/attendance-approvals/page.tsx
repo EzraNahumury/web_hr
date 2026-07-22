@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import AdminShell from "@/components/AdminShell";
 import AttendanceApprovalManager from "@/components/AttendanceApprovalManager";
-import { requireAdminSession } from "@/lib/auth";
+import { isHrdSuperEditor, requireAdminSession } from "@/lib/auth";
 import { listAttendanceApprovalsForAdmin } from "@/lib/attendance-approval";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +30,7 @@ export default async function AdminAttendanceApprovalsPage() {
           History Approval
         </Link>
       </div>
-      <AttendanceApprovalManager rows={rows} endpoint="/api/admin/attendance-approvals" />
+      <AttendanceApprovalManager rows={rows} endpoint="/api/admin/attendance-approvals" canEditHrd={isHrdSuperEditor(admin.email)} />
     </AdminShell>
   );
 }

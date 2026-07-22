@@ -9,6 +9,8 @@ type Props = {
   rows: AttendanceApprovalItem[];
   endpoint?: string; // base PATCH endpoint; kalau kosong -> read-only (history)
   title?: string;
+  // true jika admin ini boleh mengubah data karyawan HRD (super-editor).
+  canEditHrd?: boolean;
 };
 
 function jenisLabel(jenis: string | null) {
@@ -35,7 +37,7 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${cls}`}>{label}</span>;
 }
 
-export default function AttendanceApprovalManager({ rows, endpoint, title }: Props) {
+export default function AttendanceApprovalManager({ rows, endpoint, title, canEditHrd = false }: Props) {
   const router = useRouter();
   const readOnly = !endpoint;
   const [search, setSearch] = useState("");
@@ -182,7 +184,11 @@ export default function AttendanceApprovalManager({ rows, endpoint, title }: Pro
                     </td>
                     {!readOnly ? (
                       <td className="border-b border-[#f4ebe6] px-4 py-3">
-                        {r.status === "pending" ? (
+                        {r.status === "pending" && !canEditHrd && (r.department ?? "").trim().toUpperCase() === "HRD" ? (
+                          <span className="inline-flex items-center rounded-full bg-[#f0e6e2] px-3 py-1.5 text-xs font-semibold text-[#8a5d52]">
+                            Read-only (HRD)
+                          </span>
+                        ) : r.status === "pending" ? (
                           <div className="flex min-w-[220px] flex-col gap-2">
                             <input
                               value={notes[r.id] ?? ""}

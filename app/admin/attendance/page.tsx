@@ -1,6 +1,6 @@
 import AdminShell from "@/components/AdminShell";
 import AdminAttendanceSheet from "@/components/AdminAttendanceSheet";
-import { requireAdminSession } from "@/lib/auth";
+import { isHrdSuperEditor, requireAdminSession } from "@/lib/auth";
 import {
   clearStaleLoanOverridesOnce,
   recomputeMediaHostliveAdvertiserLateOnce,
@@ -178,7 +178,7 @@ export default async function AdminAttendancePage({
             </div>
           </div>
         </div>
-        <AdminAttendanceSheet days={sheet.days} rows={sheet.rows} month={sheet.month} year={sheet.year} holidayMap={holidayMap} holidayTypeMap={holidayTypeMap} />
+        <AdminAttendanceSheet days={sheet.days} rows={sheet.rows} month={sheet.month} year={sheet.year} holidayMap={holidayMap} holidayTypeMap={holidayTypeMap} canEditHrd={isHrdSuperEditor(admin.email)} />
       </div>
     </AdminShell>
   );
