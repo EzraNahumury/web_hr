@@ -202,7 +202,9 @@ export async function processAttendanceApproval(params: {
     }
   }
 
-  if (record.approval_status !== "pending") {
+  // Admin boleh MENGUBAH keputusan yang sudah final (approved <-> rejected). Non-admin (atasan)
+  // tidak bisa mengubah setelah final.
+  if (record.approval_status !== "pending" && !isAdmin) {
     return { ok: false, status: 409, message: "Approval absensi ini sudah final." };
   }
 
