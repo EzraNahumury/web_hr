@@ -67,6 +67,7 @@ const menuGroups: MenuGroup[] = [
       { label: "Summary Sales Nasional", href: "/admin/payroll-summary/sales-nasional", description: "Payroll khusus Sales Nasional" },
       { label: "Summary Penjahit", href: "/admin/payroll-summary/penjahit", description: "Payroll khusus Penjahit (mingguan & bulanan)" },
       { label: "Summary Payroll Freelance", href: "/admin/payroll-freelance", description: "Payroll karyawan Freelance (jam, pengerjaan, harian, custom)" },
+      { label: "Summary Payroll Partime", href: "/admin/payroll-summary/partime", description: "Payroll karyawan Partime (insentif ×25, uang makan ×25, potongan telat Rp5.000)" },
     ],
   },
   {

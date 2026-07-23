@@ -438,6 +438,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       LEFT JOIN payroll_employee_input pei ON pei.payroll_id = p.id
       WHERE p.periode_bulan = ? AND p.periode_tahun = ?
         AND COALESCE(LOWER(k.sub_divisi), '') <> 'penjahit'
+        AND COALESCE(LOWER(k.status_kepegawaian), '') <> 'partime'
         AND (
           k.status_data = 'aktif'
           OR k.tanggal_nonaktif IS NULL
@@ -569,7 +570,8 @@ export async function getAdminPayrollSummarySheet(period?: {
         WHERE status_data = 'aktif'
           AND COALESCE(LOWER(jabatan), '') NOT IN ('ceo', 'freelance')
           AND COALESCE(LOWER(sub_divisi), '') <> 'penjahit'
-          AND COALESCE(LOWER(status_kepegawaian), '') <> 'freelance'`,
+          AND COALESCE(LOWER(status_kepegawaian), '') <> 'freelance'
+          AND COALESCE(LOWER(status_kepegawaian), '') <> 'partime'`,
     ),
     pool.query<OmzetUnitRow[]>(
       `SELECT unit, total_omzet, is_custom_bonus
@@ -583,6 +585,7 @@ export async function getAdminPayrollSummarySheet(period?: {
           AND COALESCE(LOWER(jabatan), '') NOT IN ('ceo', 'freelance')
           AND COALESCE(LOWER(sub_divisi), '') <> 'penjahit'
           AND COALESCE(LOWER(status_kepegawaian), '') <> 'freelance'
+          AND COALESCE(LOWER(status_kepegawaian), '') <> 'partime'
         GROUP BY unit`,
     ),
     pool.query<RowDataPacket[]>(

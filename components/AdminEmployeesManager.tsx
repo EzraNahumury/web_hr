@@ -42,7 +42,7 @@ type FormState = {
   subDivision: string;
   placements: string[];
   costAllocation: string;
-  employmentStatus: "training" | "tetap" | "kontrak" | "freelance";
+  employmentStatus: "training" | "tetap" | "kontrak" | "freelance" | "partime";
   dataStatus: "aktif" | "nonaktif";
   firstJoinDate: string;
   contractDate: string;
@@ -116,6 +116,7 @@ function formatStatus(status: EmployeeListItem["employmentStatus"]) {
   if (status === "tetap") return "Tetap";
   if (status === "kontrak") return "Kontrak";
   if (status === "freelance") return "Freelance";
+  if (status === "partime") return "Partime";
   return status;
 }
 

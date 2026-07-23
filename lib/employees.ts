@@ -31,8 +31,8 @@ export type EmployeeListItem = {
   addressCurrent: string | null;
   phoneNumber: string | null;
   ktpPhoto: string | null;
-  employmentStatus: "training" | "tetap" | "kontrak" | "freelance";
-  workStatus: "training" | "tetap" | "kontrak" | "freelance";
+  employmentStatus: "training" | "tetap" | "kontrak" | "freelance" | "partime";
+  workStatus: "training" | "tetap" | "kontrak" | "freelance" | "partime";
   dataStatus: "aktif" | "nonaktif";
   firstJoinDate: string | null;
   contractDate: string | null;
@@ -154,6 +154,7 @@ export const EMPLOYEE_WORK_STATUSES = [
   "kontrak",
   "tetap",
   "freelance",
+  "partime",
 ] as const;
 export const EMPLOYEE_RELIGIONS = [
   "Islam",
@@ -198,8 +199,8 @@ export type EmployeePayload = {
   addressCurrent: string | null;
   phoneNumber: string | null;
   ktpPhoto: string | null;
-  employmentStatus: "training" | "tetap" | "kontrak" | "freelance";
-  workStatus: "training" | "tetap" | "kontrak" | "freelance";
+  employmentStatus: "training" | "tetap" | "kontrak" | "freelance" | "partime";
+  workStatus: "training" | "tetap" | "kontrak" | "freelance" | "partime";
   dataStatus: "aktif" | "nonaktif";
   firstJoinDate: string | null;
   contractDate: string | null;
@@ -377,10 +378,10 @@ export async function ensureEmployeeSchemaSupport() {
         `ALTER TABLE karyawan MODIFY COLUMN no_karyawan VARCHAR(50) NULL`,
       );
       await safeMigrate(
-        `ALTER TABLE karyawan MODIFY COLUMN status_kepegawaian ENUM('training','kontrak','tetap','freelance','magang','resign') NOT NULL DEFAULT 'kontrak'`,
+        `ALTER TABLE karyawan MODIFY COLUMN status_kepegawaian ENUM('training','kontrak','tetap','freelance','partime','magang','resign') NOT NULL DEFAULT 'kontrak'`,
       );
       await safeMigrate(
-        `ALTER TABLE karyawan MODIFY COLUMN status_kerja ENUM('training','kontrak','tetap','freelance','magang','resign') NOT NULL DEFAULT 'kontrak'`,
+        `ALTER TABLE karyawan MODIFY COLUMN status_kerja ENUM('training','kontrak','tetap','freelance','partime','magang','resign') NOT NULL DEFAULT 'kontrak'`,
       );
       await safeMigrate(
         `ALTER TABLE karyawan ADD COLUMN tipe_payroll_penjahit ENUM('mingguan','bulanan') NULL AFTER jabatan`,
@@ -582,7 +583,9 @@ export async function getEmployeeLookups() {
             ? "Kontrak"
             : value === "tetap"
               ? "Tetap"
-              : "Freelance",
+              : value === "freelance"
+                ? "Freelance"
+                : "Partime",
       value,
     })),
     dataStatuses: [
