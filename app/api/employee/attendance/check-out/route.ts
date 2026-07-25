@@ -156,6 +156,8 @@ export async function POST(request: Request) {
     const isFreelance = [employee.status_kepegawaian, employee.jabatan].some(
       (v) => (v ?? "").trim().toLowerCase() === "freelance",
     );
+    // Partime: shift TETAP pulang 22:00 → pulang sebelum 22:00 dianggap PA (pulang awal).
+    const isPartime = (employee.status_kepegawaian ?? "").trim().toLowerCase() === "partime";
     const isJne = detectedPlacement === "JNE";
     const isShiftEligible =
       isTokoGudangPlacement(detectedPlacement) || isMedia || isHostlive || isAdvertiser || isJne;
@@ -167,11 +169,13 @@ export async function POST(request: Request) {
     // Non-shift (office, penjahit) pakai jam kerja standar "pagi" (pulang 16:30) sebagai
     // acuan pulang awal. Freelance dikecualikan.
     const effectiveScheduledShift =
-      scheduledShift && scheduledShift !== "libur"
-        ? scheduledShift
-        : !isFreelance
-          ? "pagi"
-          : null;
+      isPartime
+        ? "partime"
+        : scheduledShift && scheduledShift !== "libur"
+          ? scheduledShift
+          : !isFreelance
+            ? "pagi"
+            : null;
 
     // Hanya freelance yang fleksibel (tidak terikat jam pulang).
     const isHalfDay = attendance.status_absensi === "setengah_hari";

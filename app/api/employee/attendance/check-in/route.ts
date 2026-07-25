@@ -192,6 +192,8 @@ export async function POST(request: Request) {
       [employee.status_kepegawaian, employee.jabatan].some(
         (v) => (v ?? "").trim().toLowerCase() === "freelance",
       );
+    // Partime: shift TETAP 17:00-22:00 (toleransi 5 mnt, masuk mulai 16:30), apa pun jadwal/penempatan.
+    const isPartime = (employee.status_kepegawaian ?? "").trim().toLowerCase() === "partime";
     const isShiftEligible =
       requiresSelfie && (isTokoGudangPlacement(detectedPlacement) || isMedia || isHostlive || isAdvertiser || isJne);
     // Jadwal SELALU dicek berdasar karyawan (bukan placement hasil geofence). Ini menutup
@@ -228,13 +230,26 @@ export async function POST(request: Request) {
       }
     }
 
-    // detectedShift: pakai jadwal kalau ada; kalau tidak & placement shift-eligible,
-    // fallback deteksi dari jam masuk. Non-shift tanpa jadwal -> null.
-    const detectedShift: AttendanceShift | null = scheduledShift
-      ? (scheduledShift as AttendanceShift)
-      : isShiftEligible
-        ? detectTokoGudangShift(currentTime)
-        : null;
+    // Partime: presensi masuk hanya dalam rentang shift partime (16:30 - 22:00).
+    if (isPartime && requiresSelfie && attendanceRequestStatus === "hadir") {
+      if (!isWithinScheduledShiftRange(currentTime, "partime")) {
+        return NextResponse.json(
+          {
+            message: `Di luar jam presensi Partime (${getShiftRangeLabel("partime")}). Presensi masuk paling awal 16:30.`,
+          },
+          { status: 403 },
+        );
+      }
+    }
+
+    // detectedShift: partime SELALU "partime"; selain itu pakai jadwal / deteksi placement.
+    const detectedShift: AttendanceShift | null = isPartime
+      ? "partime"
+      : scheduledShift
+        ? (scheduledShift as AttendanceShift)
+        : isShiftEligible
+          ? detectTokoGudangShift(currentTime)
+          : null;
     // Aturan baru per 5 Juli 2026: setengah hari DIHAPUS. Kalau request "setengah_hari"
     // datang (mis. dari app lama), perlakukan sebagai "hadir".
     const effectiveRequestStatus: AttendanceRequestStatus =
