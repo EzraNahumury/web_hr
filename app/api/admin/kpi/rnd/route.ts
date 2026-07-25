@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentAdminSession } from "@/lib/auth";
-import { upsertKpiRndInputs, type KpiRndInputRow } from "@/lib/kpi-rnd";
+import {
+  upsertKpiRndHariKerja,
+  upsertKpiRndInputs,
+  type KpiRndInputRow,
+} from "@/lib/kpi-rnd";
 
 function parsePositiveInt(value: unknown) {
   const n = Number(value);
@@ -19,6 +23,7 @@ export async function POST(request: Request) {
       employeeId?: unknown;
       month?: unknown;
       year?: unknown;
+      hariKerja?: unknown;
       rows?: unknown;
     };
 
@@ -52,6 +57,11 @@ export async function POST(request: Request) {
         } satisfies KpiRndInputRow;
       })
       .filter((r): r is KpiRndInputRow => r !== null);
+
+    const hariKerja = parsePositiveInt(body.hariKerja);
+    if (hariKerja) {
+      await upsertKpiRndHariKerja(month, year, hariKerja);
+    }
 
     await upsertKpiRndInputs(employeeId, month, year, rows);
 

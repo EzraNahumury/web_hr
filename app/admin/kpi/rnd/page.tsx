@@ -3,6 +3,7 @@ import { requireAdminSession } from "@/lib/auth";
 import {
   formatKpiPeriodLabel,
   getDefaultKpiPeriod,
+  getKpiRndHariKerja,
   getKpiRndInputs,
   getKpiTemplate,
   getRndEmployees,
@@ -33,9 +34,10 @@ export default async function AdminKpiRndPage({
     (empParam ? employees.find((e) => e.id === empParam) : undefined) ?? employees[0] ?? null;
 
   const template = selectedEmployee ? getKpiTemplate(selectedEmployee.role) : [];
-  const inputs = selectedEmployee
-    ? await getKpiRndInputs(selectedEmployee.id, month, year)
-    : {};
+  const [inputs, hariKerja] = await Promise.all([
+    selectedEmployee ? getKpiRndInputs(selectedEmployee.id, month, year) : Promise.resolve({}),
+    getKpiRndHariKerja(month, year),
+  ]);
 
   return (
     <AdminShell
@@ -49,6 +51,7 @@ export default async function AdminKpiRndPage({
         month={month}
         year={year}
         periodLabel={formatKpiPeriodLabel(month, year)}
+        hariKerja={hariKerja}
         employees={employees}
         selectedEmployee={selectedEmployee}
         template={template}

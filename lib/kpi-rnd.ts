@@ -288,6 +288,9 @@ export type KpiRndInputValue = {
   hasilOverride: "terpenuhi" | "tidak" | null; // null = otomatis dari perhitungan
 };
 
+// Pembagi default rumus Perhitungan (= aktual data / hari kerja). Bisa diubah per periode.
+export const DEFAULT_KPI_HARI_KERJA = 23;
+
 let kpiRndTableReady: Promise<void> | null = null;
 
 export async function ensureKpiRndTable() {
@@ -308,9 +311,42 @@ export async function ensureKpiRndTable() {
           INDEX idx_kpi_rnd_emp_period (karyawan_id, periode_bulan, periode_tahun)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
+      // Hari kerja (pembagi Perhitungan) per periode — sama untuk semua karyawan di bulan itu.
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS kpi_rnd_hari_kerja (
+          periode_bulan INT NOT NULL,
+          periode_tahun INT NOT NULL,
+          hari_kerja INT NOT NULL DEFAULT ${DEFAULT_KPI_HARI_KERJA},
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (periode_bulan, periode_tahun)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
     })();
   }
   return kpiRndTableReady;
+}
+
+// Hari kerja (pembagi rumus Perhitungan) untuk suatu periode. Default 23.
+export async function getKpiRndHariKerja(month: number, year: number): Promise<number> {
+  await ensureKpiRndTable();
+  const [rows] = await pool.query<(RowDataPacket & { hari_kerja: number })[]>(
+    `SELECT hari_kerja FROM kpi_rnd_hari_kerja WHERE periode_bulan = ? AND periode_tahun = ? LIMIT 1`,
+    [month, year],
+  );
+  const v = rows[0]?.hari_kerja;
+  return Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : DEFAULT_KPI_HARI_KERJA;
+}
+
+export async function upsertKpiRndHariKerja(month: number, year: number, hariKerja: number) {
+  await ensureKpiRndTable();
+  const value = Number.isInteger(hariKerja) && hariKerja > 0 ? hariKerja : DEFAULT_KPI_HARI_KERJA;
+  await pool.query(
+    `INSERT INTO kpi_rnd_hari_kerja (periode_bulan, periode_tahun, hari_kerja)
+     VALUES (?, ?, ?)
+     ON DUPLICATE KEY UPDATE hari_kerja = VALUES(hari_kerja)`,
+    [month, year, value],
+  );
+  return value;
 }
 
 // Karyawan divisi RnD (nama otomatis dari database).

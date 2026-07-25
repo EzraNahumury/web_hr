@@ -12,6 +12,7 @@ type Props = {
   month: number;
   year: number;
   periodLabel: string;
+  hariKerja: number;
   employees: RndEmployee[];
   selectedEmployee: RndEmployee | null;
   template: KpiGroup[];
@@ -19,12 +20,11 @@ type Props = {
 };
 
 type RowState = {
-  aktualData: string;
-  perhitungan: string; // string agar input bebas; diparse saat hitung
+  aktualData: string; // angka; Perhitungan dihitung = aktualData / hariKerja
   hasilOverride: "terpenuhi" | "tidak" | null;
 };
 
-function sanitizePercent(v: string) {
+function sanitizeNumber(v: string) {
   let s = v.replace(/[^\d.]/g, "");
   const firstDot = s.indexOf(".");
   if (firstDot !== -1) {
@@ -39,7 +39,7 @@ function toNum(v: string) {
 }
 
 function fmtBobot(b: number) {
-  return Number.isInteger(b) ? `${b}%` : `${b}%`;
+  return `${b}%`;
 }
 
 function buildInitialState(
@@ -52,7 +52,6 @@ function buildInitialState(
       const saved = inputs[item.key];
       state[item.key] = {
         aktualData: saved?.aktualData ?? "",
-        perhitungan: saved ? String(saved.perhitungan) : "",
         hasilOverride: saved?.hasilOverride ?? null,
       };
     }
@@ -64,6 +63,7 @@ export default function AdminKpiRnd({
   month,
   year,
   periodLabel,
+  hariKerja,
   employees,
   selectedEmployee,
   template,
@@ -74,14 +74,16 @@ export default function AdminKpiRnd({
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Kunci state ke employee terpilih supaya reset saat ganti karyawan/periode (props berubah).
+  // Kunci state ke employee + periode supaya reset saat berpindah (props berubah).
   const stateKey = `${selectedEmployee?.id ?? 0}-${month}-${year}`;
   const [rows, setRows] = useState<Record<string, RowState>>(() =>
     buildInitialState(template, inputs),
   );
+  const [hariKerjaStr, setHariKerjaStr] = useState(String(hariKerja));
   const [loadedKey, setLoadedKey] = useState(stateKey);
   if (loadedKey !== stateKey) {
     setRows(buildInitialState(template, inputs));
+    setHariKerjaStr(String(hariKerja));
     setLoadedKey(stateKey);
   }
 
@@ -89,27 +91,34 @@ export default function AdminKpiRnd({
     setRows((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
   }
 
+  const hariKerjaNum = Math.max(1, Math.round(toNum(hariKerjaStr)) || 0);
+
   const computed = useMemo(() => {
     let totalBobot = 0;
     let totalHasilBobot = 0;
     const perRow: Record<
       string,
-      { hasilBobot: number; hasilEffective: "terpenuhi" | "tidak"; perhitunganNum: number }
+      { perhitungan: number; hasilBobot: number; hasilEffective: "terpenuhi" | "tidak" }
     > = {};
     for (const g of template) {
       for (const item of g.items) {
         const st = rows[item.key];
-        const perhitunganNum = st ? toNum(st.perhitungan) : 0;
-        const hasilBobot = (perhitunganNum / 100) * item.bobot;
-        const hasilAuto: "terpenuhi" | "tidak" = perhitunganNum >= 100 ? "terpenuhi" : "tidak";
+        const aktual = st ? toNum(st.aktualData) : 0;
+        // Perhitungan = aktual data / hari kerja (%), dibatasi maksimal 100%.
+        const perhitungan = hariKerjaNum > 0 ? Math.min((aktual / hariKerjaNum) * 100, 100) : 0;
+        // Hasil Bobot = bobot × perhitungan (maksimal = bobot).
+        const hasilBobot = (perhitungan / 100) * item.bobot;
+        // Terpenuhi bila Hasil Bobot >= Bobot penilaian KPI.
+        const hasilAuto: "terpenuhi" | "tidak" =
+          hasilBobot >= item.bobot - 1e-9 ? "terpenuhi" : "tidak";
         const hasilEffective = st?.hasilOverride ?? hasilAuto;
-        perRow[item.key] = { hasilBobot, hasilEffective, perhitunganNum };
+        perRow[item.key] = { perhitungan, hasilBobot, hasilEffective };
         totalBobot += item.bobot;
         totalHasilBobot += hasilBobot;
       }
     }
     return { totalBobot, totalHasilBobot, perRow };
-  }, [rows, template]);
+  }, [rows, template, hariKerjaNum]);
 
   function handlePeriodChange(e: React.ChangeEvent<HTMLInputElement>) {
     const [y, m] = e.target.value.split("-").map(Number);
@@ -137,10 +146,11 @@ export default function AdminKpiRnd({
     const payloadRows = template.flatMap((g) =>
       g.items.map((item) => {
         const st = rows[item.key];
+        const c = computed.perRow[item.key];
         return {
           key: item.key,
           aktualData: st?.aktualData ?? "",
-          perhitungan: st ? toNum(st.perhitungan) : 0,
+          perhitungan: c ? c.perhitungan : 0,
           hasilOverride: st?.hasilOverride ?? null,
         };
       }),
@@ -154,6 +164,7 @@ export default function AdminKpiRnd({
             employeeId: selectedEmployee.id,
             month,
             year,
+            hariKerja: hariKerjaNum,
             rows: payloadRows,
           }),
         });
@@ -190,12 +201,22 @@ export default function AdminKpiRnd({
               Penilaian KPI — {periodLabel}
             </h3>
             <p className="mt-1 text-sm text-[#8a6b7a]">
-              Isi <span className="font-semibold">Aktual Data</span> &amp;{" "}
-              <span className="font-semibold">Perhitungan (%)</span> tiap baris. Hasil Bobot &amp; Total
-              dihitung otomatis. Kolom Hasil otomatis (≥100% = Terpenuhi) &amp; bisa diubah.
+              Isi <span className="font-semibold">Aktual Data</span> tiap baris. Perhitungan ={" "}
+              <span className="font-semibold">Aktual Data ÷ Hari Kerja</span> (maks 100%); Hasil Bobot ={" "}
+              <span className="font-semibold">Bobot × Perhitungan</span>; Hasil = Terpenuhi bila Hasil Bobot ≥ Bobot.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <label className="flex h-10 items-center gap-2 rounded-xl border border-[#ecd6e1] bg-white px-3 text-sm text-[#2a1a24]">
+              <span className="font-semibold text-[#9c4570]">Hari Kerja</span>
+              <input
+                value={hariKerjaStr}
+                onChange={(e) => setHariKerjaStr(e.target.value.replace(/[^\d]/g, ""))}
+                inputMode="numeric"
+                className="h-7 w-14 rounded-lg border border-[#ecd6e1] bg-white px-2 text-center text-sm outline-none focus:border-[#a2537a]"
+                placeholder="23"
+              />
+            </label>
             <input
               type="month"
               value={currentPeriodValue}
@@ -300,11 +321,11 @@ export default function AdminKpiRnd({
               <tbody>
                 {template.map((g) =>
                   g.items.map((item, idx) => {
-                    const st = rows[item.key] ?? { aktualData: "", perhitungan: "", hasilOverride: null };
+                    const st = rows[item.key] ?? { aktualData: "", hasilOverride: null };
                     const c = computed.perRow[item.key] ?? {
+                      perhitungan: 0,
                       hasilBobot: 0,
                       hasilEffective: "tidak" as const,
-                      perhitunganNum: 0,
                     };
                     const terpenuhi = c.hasilEffective === "terpenuhi";
                     return (
@@ -328,31 +349,21 @@ export default function AdminKpiRnd({
                             {g.total}%
                           </td>
                         ) : null}
-                        {/* Aktual Data */}
+                        {/* Aktual Data (input angka) */}
                         <td className={`${tdBorder} bg-[#fffbe8] p-1`}>
                           <input
                             value={st.aktualData}
-                            onChange={(e) => setRow(item.key, { aktualData: e.target.value })}
+                            onChange={(e) => setRow(item.key, { aktualData: sanitizeNumber(e.target.value) })}
+                            inputMode="decimal"
                             className="h-9 w-24 rounded-lg border border-[#e6dca8] bg-white px-2 text-center text-xs outline-none focus:border-[#a2537a]"
-                            placeholder="-"
+                            placeholder="0"
                           />
                         </td>
-                        {/* Perhitungan */}
-                        <td className={`${tdBorder} p-1`}>
-                          <div className="flex items-center justify-center gap-1">
-                            <input
-                              value={st.perhitungan}
-                              onChange={(e) => setRow(item.key, { perhitungan: sanitizePercent(e.target.value) })}
-                              inputMode="decimal"
-                              className="h-9 w-16 rounded-lg border border-[#ecd6e1] bg-white px-2 text-right text-xs outline-none focus:border-[#a2537a]"
-                              placeholder="0"
-                            />
-                            <span className="text-xs text-[#8a6b7a]">%</span>
-                          </div>
-                        </td>
-                        {/* Hasil Bobot */}
+                        {/* Perhitungan (otomatis, read-only) */}
+                        <td className={`${tdBorder} tabular-nums text-[#5b4a55]`}>{c.perhitungan.toFixed(2)}%</td>
+                        {/* Hasil Bobot (otomatis) */}
                         <td className={`${tdBorder} tabular-nums font-medium`}>{c.hasilBobot.toFixed(2)}%</td>
-                        {/* Hasil */}
+                        {/* Hasil (otomatis + bisa diubah) */}
                         <td className={`${tdBorder} p-1`}>
                           <select
                             value={st.hasilOverride ?? "auto"}
