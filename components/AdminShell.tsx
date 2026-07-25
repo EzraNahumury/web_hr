@@ -15,6 +15,8 @@ type MenuGroup = {
   // null = item berdiri sendiri tanpa header grup (mis. Dashboard).
   group: string | null;
   items: MenuItem[];
+  // true = grup jadi menu induk yang bisa di-expand/collapse (submenu), mis. KPI.
+  collapsible?: boolean;
 };
 
 type Props = {
@@ -72,6 +74,7 @@ const menuGroups: MenuGroup[] = [
   },
   {
     group: "KPI",
+    collapsible: true,
     items: [
       { label: "KPI RnD", href: "/admin/kpi/rnd", description: "Penilaian KPI tim RnD (Staff & SPV) — nama otomatis dari database" },
     ],
@@ -163,6 +166,23 @@ function CloseIcon() {
   );
 }
 
+function ChevronIcon({ open }: { open?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`h-4 w-4 flex-none transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+      aria-hidden="true"
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
 export default function AdminShell({
   title,
   description,
@@ -172,6 +192,19 @@ export default function AdminShell({
   children,
 }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Grup collapsible (mis. KPI) default terbuka bila salah satu anaknya sedang aktif.
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    for (const grp of menuGroups) {
+      if (grp.collapsible && grp.group) {
+        initial[grp.group] = grp.items.some((item) => item.href === currentPath);
+      }
+    }
+    return initial;
+  });
+
+  const toggleGroup = (name: string) =>
+    setExpandedGroups((prev) => ({ ...prev, [name]: !prev[name] }));
 
   useEffect(() => {
     if (!drawerOpen) return;
@@ -218,16 +251,47 @@ export default function AdminShell({
 
   const NavList = (
     <nav className="mt-6 min-h-0 flex-1 overflow-y-auto pr-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5">
-      {menuGroups.map((grp, idx) => (
-        <div key={grp.group ?? "__top"} className={idx === 0 ? "space-y-1" : "mt-4 space-y-1"}>
-          {grp.group ? (
-            <p className="px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#9a7f83]">
-              {grp.group}
-            </p>
-          ) : null}
-          {grp.items.map(renderItem)}
-        </div>
-      ))}
+      {menuGroups.map((grp, idx) => {
+        // Grup collapsible: header jadi tombol induk yang expand/collapse anak-anaknya.
+        if (grp.collapsible && grp.group) {
+          const open = expandedGroups[grp.group] ?? false;
+          const hasActiveChild = grp.items.some((item) => item.href === currentPath);
+          return (
+            <div key={grp.group} className={idx === 0 ? "space-y-1" : "mt-4 space-y-1"}>
+              <button
+                type="button"
+                onClick={() => toggleGroup(grp.group as string)}
+                aria-expanded={open}
+                className={
+                  hasActiveChild && !open
+                    ? "flex w-full items-center gap-3 rounded-xl bg-white/5 px-2.5 py-2 text-white transition hover:bg-white/10"
+                    : "flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-[#f7eaea] transition hover:bg-white/5"
+                }
+              >
+                <GridIcon active={hasActiveChild} />
+                <span className="flex-1 text-left text-sm font-semibold">{grp.group}</span>
+                <ChevronIcon open={open} />
+              </button>
+              {open ? (
+                <div className="mt-1 space-y-1 border-l border-white/10 pl-3">
+                  {grp.items.map(renderItem)}
+                </div>
+              ) : null}
+            </div>
+          );
+        }
+
+        return (
+          <div key={grp.group ?? "__top"} className={idx === 0 ? "space-y-1" : "mt-4 space-y-1"}>
+            {grp.group ? (
+              <p className="px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#9a7f83]">
+                {grp.group}
+              </p>
+            ) : null}
+            {grp.items.map(renderItem)}
+          </div>
+        );
+      })}
     </nav>
   );
 
