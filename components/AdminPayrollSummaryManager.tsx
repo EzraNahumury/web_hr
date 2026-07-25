@@ -208,6 +208,20 @@ export default function AdminPayrollSummaryManager({
     [sheet],
   );
 
+  // Baris yang sedang diedit → untuk menampilkan nilai EFEKTIF setelah kenaikan gaji tahunan.
+  // Field input tetap menyimpan BASELINE (mis. 50.000) supaya kenaikan otomatis tidak dobel
+  // saat disimpan ulang; nilai efektif (mis. 54.000) hanya ditampilkan sebagai info.
+  const editingRow =
+    editingPayrollId != null ? sheet?.rows.find((row) => row.id === editingPayrollId) ?? null : null;
+  const raiseInfo = editingRow
+    ? {
+        hasRaise: editingRow.dailyBaseSalary > (editingRow.inputGajiPerDay ?? 0),
+        effectiveDaily: editingRow.dailyBaseSalary,
+        effectiveMonthly: editingRow.monthlyBaseSalary,
+        hasOverride: (editingRow.inputOverrideGajiPokok ?? 0) > 0,
+      }
+    : null;
+
   const availableEmployeeOptions = useMemo(
     () => editingPayrollId
       ? employeeOptions
@@ -619,7 +633,7 @@ export default function AdminPayrollSummaryManager({
                     </>
                   ) : (
                     <>
-                      <Field label="Gaji Pokok Perhari / Perjam"><input value={form.gajiPerDay} onChange={(event) => updateField("gajiPerDay", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
+                      <Field label="Gaji Pokok Perhari / Perjam"><input value={form.gajiPerDay} onChange={(event) => updateField("gajiPerDay", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required />{raiseInfo?.hasRaise ? <p className="text-[11px] font-medium text-[#0d7f86]">Efektif setelah kenaikan tahunan: Rp {raiseInfo.effectiveDaily.toLocaleString("id-ID")} (baseline tetap disimpan)</p> : null}</Field>
                       {!isSalesNasional ? (
                         <>
                           <Field label="Tunjangan Jabatan"><input value={form.tunjanganJabatan} onChange={(event) => updateField("tunjanganJabatan", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>
@@ -636,7 +650,7 @@ export default function AdminPayrollSummaryManager({
                           {isSalesNasional ? <Field label="Kendaraan"><input value={form.kendaraan} onChange={(event) => updateField("kendaraan", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" /></Field> : null}
                         </>
                       ) : <Field label="Bonus Performa"><input value={form.bonusPerforma} onChange={(event) => updateField("bonusPerforma", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" required /></Field>}
-                      <Field label="Gaji Pokok (Bulanan)"><input value={form.overrideGajiPokok} onChange={(event) => updateField("overrideGajiPokok", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" /></Field>
+                      <Field label="Gaji Pokok (Bulanan)"><input value={form.overrideGajiPokok} onChange={(event) => updateField("overrideGajiPokok", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" />{raiseInfo?.hasRaise && raiseInfo.hasOverride ? <p className="text-[11px] font-medium text-[#0d7f86]">Efektif setelah kenaikan tahunan: Rp {raiseInfo.effectiveMonthly.toLocaleString("id-ID")} (baseline tetap disimpan)</p> : null}</Field>
                     </>
                   )}
                 </div>

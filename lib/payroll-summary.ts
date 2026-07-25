@@ -967,11 +967,20 @@ export async function getAdminPayrollSummarySheet(period?: {
     // Kalau muncul di Summary Payroll Freelance -> gaji pokok = total freelance PERSIS
     // (jam/pengerjaan/harian/custom). Freelancer lama (status='freelance' tapi belum
     // terdaftar di sheet) tetap pakai perhitungan per-jam dari absensi.
+    // Kenaikan gaji per tahun juga menaikkan GAJI KONTRAK (gaji pokok bulanan).
+    // Untuk override manual (Gaji Pokok Bulanan yang diketik admin) kenaikan DITAMBAHKAN
+    // di atas baseline: mis. Warisah 2.200.000 + (1 tahun × 100.000) = 2.300.000.
+    // Untuk yang non-override, gaji bulanan = dailyBaseSalary × workDays yang sudah
+    // memasukkan kenaikan lewat dailyBaseSalary, jadi TIDAK ditambah lagi (hindari dobel).
+    const monthlyRaise =
+      !isFreelance && annualRaisePerYear > 0 ? completedYears * annualRaisePerYear : 0;
     const monthlyBaseSalary = isFreelanceSheet
       ? (freelanceTotalMap.get(row.employee_id) ?? 0)
       : isFreelance
         ? (freelanceMinutes / 60) * dailyBaseSalary
-        : (carriedOverrideGajiPokok ?? dailyBaseSalary * workDays);
+        : carriedOverrideGajiPokok != null
+          ? carriedOverrideGajiPokok + monthlyRaise
+          : dailyBaseSalary * workDays;
 
     const positionAllowance = isFreelance ? 0 : toNumber(row.tunjangan_jabatan);
     const fixedMealAllowance = isFreelance ? 0 :
