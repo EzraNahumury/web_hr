@@ -39,6 +39,7 @@ type AttendanceRow = RowDataPacket & {
   no_karyawan: string;
   jabatan: string;
   divisi: string;
+  sub_divisi: string | null;
   departemen: string;
   email: string;
   attendance_date: string | null;
@@ -95,6 +96,7 @@ type AttendanceSheetRow = {
   nip: string;
   role: string;
   division: string;
+  subDivision: string;
   department: string;
   email: string;
   passwordLabel: string;
@@ -226,6 +228,7 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         k.no_karyawan,
         k.jabatan,
         k.divisi,
+        k.sub_divisi,
         k.departemen,
         u.email,
         DATE_FORMAT(a.tanggal, '%Y-%m-%d') AS attendance_date,
@@ -283,6 +286,7 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         nip: row.no_karyawan,
         role: row.jabatan,
         division: row.divisi,
+        subDivision: row.sub_divisi ?? "",
         department: row.departemen,
         email: row.email,
         passwordLabel: "Tersimpan",

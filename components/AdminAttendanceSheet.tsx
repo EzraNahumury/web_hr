@@ -27,6 +27,7 @@ type Row = {
   nip: string;
   role: string;
   division: string;
+  subDivision: string;
   department: string;
   email: string;
   passwordLabel: string;
@@ -500,7 +501,7 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
   const normalizedSearch = search.trim().toLowerCase();
   const filteredRows = normalizedSearch
     ? rows.filter((row) =>
-        [row.name, row.nip, row.role, row.division, row.department, row.email]
+        [row.name, row.nip, row.role, row.division, row.subDivision, row.department, row.email]
           .filter(Boolean)
           .some((field) => field.toLowerCase().includes(normalizedSearch)),
       )
@@ -513,7 +514,7 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Cari nama, NIP, jabatan, divisi, email..."
+          placeholder="Cari nama, NIP, jabatan, divisi, sub divisi, email..."
           className="h-12 w-full rounded-2xl border border-[#ead7ce] bg-white px-4 text-sm text-[#2d1b18] outline-none placeholder:text-[#b1948d] focus:border-[#c8716d] focus:shadow-[0_0_0_4px_rgba(200,113,109,0.12)] sm:max-w-md"
         />
         {normalizedSearch && (
