@@ -244,18 +244,14 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
 
       autoTable(doc, {
         startY: 45,
-        head: [["Nama", "Tanggal", "Jam", "Total", "Nominal", "Pekerjaan", "Deadline", "Order/QTY/Target", "Status", "Catatan"]],
+        head: [["Nama", "Tanggal", "Jam", "Total", "Nominal", "Deadline", "Status", "Catatan"]],
         body: filteredRows.map((row) => [
           (row.nama || "").toUpperCase(),
           row.tanggal,
           `${row.jam_mulai} - ${row.jam_selesai}`,
           `${row.total_jam} jam`,
           formatOvertimeNominal(row.total_jam),
-          (row.jenis_pekerjaan || "-").toUpperCase(),
           row.deadline || "-",
-          row.nama_order
-            ? `${row.nama_order.toUpperCase()}\nQTY: ${row.jumlah_qty ?? "-"}\nSblm: ${row.target_sebelum_lembur ?? "-"} | Sslh: ${row.target_setelah_lembur ?? "-"}`
-            : "-",
           (row.status_approval || "").toUpperCase(),
           (row.catatan_atasan || "-").toUpperCase(),
         ]),
@@ -268,10 +264,9 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
           2: { cellWidth: 22 },
           3: { cellWidth: 16 },
           4: { cellWidth: 32 },
-          5: { cellWidth: 22 },
-          6: { cellWidth: 48 },
-          7: { cellWidth: 20 },
-          8: { cellWidth: "auto" },
+          5: { cellWidth: 30 },
+          6: { cellWidth: 24 },
+          7: { cellWidth: "auto" },
         },
       });
 
