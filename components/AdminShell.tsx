@@ -71,6 +71,12 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    group: "KPI",
+    items: [
+      { label: "KPI RnD", href: "/admin/kpi/rnd", description: "Penilaian KPI tim RnD (Staff & SPV) — nama otomatis dari database" },
+    ],
+  },
+  {
     group: "Slip Gaji",
     items: [
       { label: "Slip Gaji", href: "/admin/payslips", description: "Detail slip gaji" },
