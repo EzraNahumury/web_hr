@@ -560,6 +560,14 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                   </th>
                 );
               })}
+              <th className="border-l-2 border-[#efe0d8] bg-[#fdecec] px-3 py-4 text-center min-w-[92px]">
+                Masuk
+                <span className="mt-0.5 block text-[9px] font-normal normal-case tracking-normal text-[#b58179]">berapa hari</span>
+              </th>
+              <th className="bg-[#fdecec] px-3 py-4 text-center min-w-[92px]">
+                Terlambat
+                <span className="mt-0.5 block text-[9px] font-normal normal-case tracking-normal text-[#b58179]">berapa kali</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -700,6 +708,12 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                     </td>
                   );
                 })}
+                <td className="border-l-2 border-[#efe0d8] bg-[#f6fbf7] px-3 py-4 text-center text-base font-bold text-[#1e7a3a]">
+                  {Object.values(row.daily).filter((d) => d.status === "hadir").length}
+                </td>
+                <td className="bg-[#fdf4f4] px-3 py-4 text-center text-base font-bold text-[#c0392b]">
+                  {Object.values(row.daily).filter((d) => d.code === "T").length}
+                </td>
               </tr>
             ))}
           </tbody>
