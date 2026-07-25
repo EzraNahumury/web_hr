@@ -151,6 +151,10 @@ export default function AdminPenjahitPayrollSummary({ sheet, employeeOptions }: 
   const [dendaValue, setDendaValue] = useState("");
   const [isDendaPending, startDendaTransition] = useTransition();
   const [dendaMessage, setDendaMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [kerajinanEditRow, setKerajinanEditRow] = useState<PenjahitComputedRow | null>(null);
+  const [kerajinanValue, setKerajinanValue] = useState("");
+  const [isKerajinanPending, startKerajinanTransition] = useTransition();
+  const [kerajinanMessage, setKerajinanMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   function handlePeriodChange(e: React.ChangeEvent<HTMLInputElement>) {
     // input type="month" -> value "YYYY-MM"
@@ -246,6 +250,41 @@ export default function AdminPenjahitPayrollSummary({ sheet, employeeOptions }: 
     setDendaEditRow(row);
     setDendaValue(row.potonganDenda > 0 ? formatNumericInput(String(Math.round(row.potonganDenda))) : "");
     setDendaMessage(null);
+  }
+
+  function openKerajinanEdit(row: PenjahitComputedRow) {
+    setKerajinanEditRow(row);
+    setKerajinanValue(row.kerajinanEarned > 0 ? formatNumericInput(String(Math.round(row.kerajinanEarned))) : "");
+    setKerajinanMessage(null);
+  }
+
+  function submitKerajinanOverride(reset: boolean) {
+    if (!kerajinanEditRow || !sheet) return;
+    const body = {
+      action: "save_kerajinan_penjahit",
+      employeeId: kerajinanEditRow.employeeId,
+      month: sheet.periodMonth,
+      year: sheet.periodYear,
+      kerajinan: reset ? "" : String(parseNumber(kerajinanValue)),
+    };
+    startKerajinanTransition(async () => {
+      try {
+        const res = await fetch("/api/admin/payroll-summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = (await res.json()) as { message?: string };
+        if (!res.ok) {
+          setKerajinanMessage({ type: "error", text: data.message ?? "Gagal menyimpan kerajinan." });
+          return;
+        }
+        setKerajinanEditRow(null);
+        router.refresh();
+      } catch {
+        setKerajinanMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
+      }
+    });
   }
 
   function submitDendaOverride(reset: boolean) {
@@ -600,8 +639,18 @@ export default function AdminPenjahitPayrollSummary({ sheet, employeeOptions }: 
                       <td className={tdNum}>{formatRupiah(row.totalGajiPokok)}</td>
                       {/* Uang Absensi */}
                       <td className={tdNum}>{formatRupiah(row.uangAbsensiTotal)}</td>
-                      {/* Kerajinan */}
-                      <td className={tdNum}>{row.kerajinanEarned > 0 ? formatRupiah(row.kerajinanEarned) : "-"}</td>
+                      {/* Kerajinan — klik untuk edit (override periode ini) */}
+                      <td className={`${tdBase} text-right p-0`}>
+                        <button
+                          type="button"
+                          onClick={() => openKerajinanEdit(row)}
+                          title="Klik untuk edit kerajinan (hanya periode ini)"
+                          className={`inline-flex w-full items-center justify-end gap-1 px-3 py-2.5 tabular-nums transition hover:bg-[#fff2ec] ${row.inputOverrideKerajinan !== null ? "font-semibold text-[#0d7f86] underline decoration-dotted underline-offset-2" : "text-[#2d1b18]"}`}
+                        >
+                          {row.kerajinanEarned > 0 ? formatRupiah(row.kerajinanEarned) : "-"}
+                          {row.inputOverrideKerajinan !== null ? <span className="text-[10px]">✎</span> : null}
+                        </button>
+                      </td>
                       {/* Lembur */}
                       <td className={tdNum}>{formatNum(row.lemburJam)}</td>
                       <td className={tdNum}>{row.bonusLembur > 0 ? formatRupiah(row.bonusLembur) : "-"}</td>
@@ -979,6 +1028,70 @@ export default function AdminPenjahitPayrollSummary({ sheet, employeeOptions }: 
                   className="h-11 flex-1 rounded-xl bg-[#0d7f86] text-sm font-semibold text-white hover:bg-[#0a6a70] disabled:opacity-60"
                 >
                   {isDendaPending ? "Menyimpan..." : "Simpan"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {kerajinanEditRow ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="bg-[#0d7f86] px-6 py-4">
+              <h3 className="text-lg font-semibold text-white">Edit Kerajinan</h3>
+              <p className="mt-0.5 text-sm text-white/80">
+                {kerajinanEditRow.nama} • {sheet?.periodLabel ?? ""}
+              </p>
+            </div>
+            <div className="space-y-4 px-6 py-5">
+              <p className="rounded-xl bg-[#f5fbfb] px-4 py-3 text-[13px] text-[#47696b]">
+                Nilai diubah <span className="font-semibold">hanya untuk periode ini</span>. Periode lain tetap otomatis dari sistem.
+                {kerajinanEditRow.inputOverrideKerajinan !== null
+                  ? " Saat ini memakai nilai manual."
+                  : " Saat ini otomatis dari sistem."}
+              </p>
+              <label className="block space-y-1.5">
+                <span className="block text-[13px] font-semibold text-[#466668]">Kerajinan (Rp)</span>
+                <input
+                  value={kerajinanValue}
+                  onChange={(e) => setKerajinanValue(formatNumericInput(e.target.value))}
+                  inputMode="numeric"
+                  autoFocus
+                  className="h-12 w-full rounded-2xl border border-[#d5e9ea] bg-white px-4 text-[#173033] outline-none focus:border-[#0d7f86] focus:shadow-[0_0_0_4px_rgba(13,127,134,0.16)]"
+                  placeholder="0"
+                />
+              </label>
+              {kerajinanMessage ? (
+                <p className={kerajinanMessage.type === "error" ? "text-sm text-red-600" : "text-sm text-emerald-700"}>
+                  {kerajinanMessage.text}
+                </p>
+              ) : null}
+              <div className="flex flex-wrap gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setKerajinanEditRow(null)}
+                  className="h-11 flex-1 rounded-xl border border-[#ead7ce] text-sm font-semibold text-[#8f1d22] hover:bg-[#fff2ec]"
+                >
+                  Batal
+                </button>
+                {kerajinanEditRow.inputOverrideKerajinan !== null ? (
+                  <button
+                    type="button"
+                    onClick={() => submitKerajinanOverride(true)}
+                    disabled={isKerajinanPending}
+                    className="h-11 flex-1 rounded-xl border border-[#0d7f86] text-sm font-semibold text-[#0d7f86] hover:bg-[#effbfb] disabled:opacity-60"
+                  >
+                    Reset Otomatis
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => submitKerajinanOverride(false)}
+                  disabled={isKerajinanPending}
+                  className="h-11 flex-1 rounded-xl bg-[#0d7f86] text-sm font-semibold text-white hover:bg-[#0a6a70] disabled:opacity-60"
+                >
+                  {isKerajinanPending ? "Menyimpan..." : "Simpan"}
                 </button>
               </div>
             </div>

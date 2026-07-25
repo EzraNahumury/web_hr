@@ -62,6 +62,7 @@ type PenjahitPayrollRow = RowDataPacket & {
   raw_override_pinjaman_pribadi: string | null;
   raw_override_gaji_pokok: string | null;
   raw_override_denda: string | null;
+  raw_override_kerajinan: string | null;
   potongan_kontrak: string;
   potongan_pinjaman: string;
 };
@@ -169,6 +170,7 @@ export type PenjahitComputedRow = {
   inputOverridePinjaman: number | null;
   inputPotonganLainLain: number | null;
   inputOverrideDenda: number | null;
+  inputOverrideKerajinan: number | null;
 };
 
 export type PenjahitPayrollSummarySheet = {
@@ -233,7 +235,8 @@ export async function getPenjahitSheet(period?: {
         pei.override_pinjaman AS raw_override_pinjaman,
         pei.override_pinjaman_pribadi AS raw_override_pinjaman_pribadi,
         pei.override_gaji_pokok AS raw_override_gaji_pokok,
-        pei.override_denda AS raw_override_denda
+        pei.override_denda AS raw_override_denda,
+        pei.override_kerajinan AS raw_override_kerajinan
       FROM payroll p
       INNER JOIN karyawan k ON k.id = p.karyawan_id
       LEFT JOIN payroll_employee_input pei ON pei.payroll_id = p.id
@@ -437,10 +440,14 @@ export async function getPenjahitSheet(period?: {
     const uangAbsensiTotal = uangAbsensiPerHari * masuk;
     const kerajinanNoIssue = sakit <= 2 && sakitTanpaSurat === 0 && alfa === 0;
     const kerajinanReachesHariKerja = (masuk + sakit + setengahHari + liburNasional) >= hariKerja;
-    const kerajinanEarned =
+    // Kerajinan bisa di-OVERRIDE manual per periode (klik kolom Kerajinan). null = otomatis.
+    const inputOverrideKerajinan =
+      row.raw_override_kerajinan !== null ? toNum(row.raw_override_kerajinan) : null;
+    const kerajinanEarnedAuto =
       hariKerja > 0 && kerajinanNoIssue && kerajinanReachesHariKerja
         ? uangKerajinanNominal
         : 0;
+    const kerajinanEarned = inputOverrideKerajinan ?? kerajinanEarnedAuto;
     const bonusLembur = lemburJam * 20000;
     const potonganSetengahHari = (gajiPokokPerHari / 2) * setengahHari;
     const potonganTelat = telat * 20000;
@@ -543,6 +550,7 @@ export async function getPenjahitSheet(period?: {
       inputOverridePinjaman: row.raw_override_pinjaman !== null ? toNum(row.raw_override_pinjaman) : null,
       inputPotonganLainLain: row.raw_override_pinjaman_pribadi !== null ? toNum(row.raw_override_pinjaman_pribadi) : null,
       inputOverrideDenda,
+      inputOverrideKerajinan,
     };
   });
 
