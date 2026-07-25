@@ -7,6 +7,7 @@ import type {
   KpiRndInputValue,
   RndEmployee,
 } from "@/lib/kpi-rnd";
+import { computeKpiPerhitungan } from "@/lib/kpi-formula";
 
 type Props = {
   month: number;
@@ -104,10 +105,10 @@ export default function AdminKpiRnd({
       for (const item of g.items) {
         const st = rows[item.key];
         const aktual = st ? toNum(st.aktualData) : 0;
-        // Perhitungan = aktual data / hari kerja (%), dibatasi maksimal 100%.
-        const perhitungan = hariKerjaNum > 0 ? Math.min((aktual / hariKerjaNum) * 100, 100) : 0;
-        // Hasil Bobot = bobot × perhitungan (maksimal = bobot).
-        const hasilBobot = (perhitungan / 100) * item.bobot;
+        // Perhitungan = rumus per baris (tidak dibatasi 100% — bisa mis. 104%).
+        const perhitungan = computeKpiPerhitungan(item.formula, aktual, hariKerjaNum);
+        // Hasil Bobot = bobot × perhitungan, dibatasi MAKSIMAL = bobot.
+        const hasilBobot = Math.min((perhitungan / 100) * item.bobot, item.bobot);
         // Terpenuhi bila Hasil Bobot >= Bobot penilaian KPI.
         const hasilAuto: "terpenuhi" | "tidak" =
           hasilBobot >= item.bobot - 1e-9 ? "terpenuhi" : "tidak";
@@ -201,9 +202,10 @@ export default function AdminKpiRnd({
               Penilaian KPI — {periodLabel}
             </h3>
             <p className="mt-1 text-sm text-[#8a6b7a]">
-              Isi <span className="font-semibold">Aktual Data</span> tiap baris. Perhitungan ={" "}
-              <span className="font-semibold">Aktual Data ÷ Hari Kerja</span> (maks 100%); Hasil Bobot ={" "}
-              <span className="font-semibold">Bobot × Perhitungan</span>; Hasil = Terpenuhi bila Hasil Bobot ≥ Bobot.
+              Isi <span className="font-semibold">Aktual Data</span> tiap baris. Perhitungan mengikuti{" "}
+              <span className="font-semibold">rumus tiap baris</span> (mis. absensi ÷ Hari Kerja, keterlambatan (5−x)/5,
+              briefing ÷ 25, pelanggaran 0=100%); Hasil Bobot = <span className="font-semibold">Bobot × Perhitungan</span>{" "}
+              (maks = Bobot); Hasil = Terpenuhi bila Hasil Bobot ≥ Bobot.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">

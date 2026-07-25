@@ -11,6 +11,10 @@ import { getActivePayrollPeriod } from "@/lib/payroll-admin";
 // memakai template SPV, jabatan lain memakai template Staff.
 // ─────────────────────────────────────────────────────────────────────────────
 
+export type { KpiFormula } from "@/lib/kpi-formula";
+export { computeKpiPerhitungan } from "@/lib/kpi-formula";
+import type { KpiFormula } from "@/lib/kpi-formula";
+
 export type KpiRole = "staff" | "spv";
 
 export type KpiItem = {
@@ -19,6 +23,7 @@ export type KpiItem = {
   caraUkur: string;
   caraPerhitungan: string;
   bobot: number; // persen (mis. 3 = 3%)
+  formula?: KpiFormula; // default = { type: "workdays" }
 };
 
 export type KpiGroup = {
@@ -35,7 +40,7 @@ export const STAFF_RND_KPI: KpiGroup[] = [
     total: 5,
     items: [
       { key: "s1_1", kpi: "Kepatuhan absensi masuk dan pulang", caraUkur: "(Hari hadir lengkap ÷ Hari kerja)×100%", caraPerhitungan: "Jumlah hari dia hadir", bobot: 3 },
-      { key: "s1_2", kpi: "Keterlambatan kerja ≤5x", caraUkur: "((5 - Jumlah Keterlambatan) / 5) × 100%", caraPerhitungan: "Jumlah keterlambatan", bobot: 2 },
+      { key: "s1_2", kpi: "Keterlambatan kerja ≤5x", caraUkur: "((5 - Jumlah Keterlambatan) / 5) × 100%", caraPerhitungan: "Jumlah keterlambatan", bobot: 2, formula: { type: "late", threshold: 5 } },
     ],
   },
   {
@@ -44,8 +49,8 @@ export const STAFF_RND_KPI: KpiGroup[] = [
     total: 3,
     items: [
       { key: "s2_1", kpi: "Kepatuhan penggunaan seragam", caraUkur: "(Jumlah hari tidak patuh ÷ Hari kerja) x 100%", caraPerhitungan: "1-25 (Berapa hari dia patuh memakai seragam)", bobot: 1 },
-      { key: "s2_2", kpi: "Kehadiran briefing tepat waktu", caraUkur: "(Hari hadir briefing ÷ Hari kerja)×100%", caraPerhitungan: "1-25 (Berapa hari dia mengikuti briefing tepat waktu)", bobot: 1 },
-      { key: "s2_3", kpi: "Kepatuhan terhadap peraturan perusahaan", caraUkur: "Jumlah pelanggaran", caraPerhitungan: "0-∞ (Jumlah pelanggaran peraturan perusahaan)", bobot: 1 },
+      { key: "s2_2", kpi: "Kehadiran briefing tepat waktu", caraUkur: "(Hari hadir briefing ÷ Hari kerja)×100%", caraPerhitungan: "1-25 (Berapa hari dia mengikuti briefing tepat waktu)", bobot: 1, formula: { type: "fixed", divisor: 25 } },
+      { key: "s2_3", kpi: "Kepatuhan terhadap peraturan perusahaan", caraUkur: "Jumlah pelanggaran", caraPerhitungan: "0-∞ (Jumlah pelanggaran peraturan perusahaan)", bobot: 1, formula: { type: "zeroBest" } },
     ],
   },
   {
@@ -94,7 +99,7 @@ export const STAFF_RND_KPI: KpiGroup[] = [
     total: 5,
     items: [
       { key: "s7_1", kpi: "Database Pattern Lab terupdate", caraUkur: "(Update terlaksana ÷ Target update)×100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 2 },
-      { key: "s7_2", kpi: "Tidak ada kehilangan file pola", caraUkur: "100% jika tidak ada kehilangan file", caraPerhitungan: "0-∞ (Jumlah file pola yang hilang)", bobot: 2 },
+      { key: "s7_2", kpi: "Tidak ada kehilangan file pola", caraUkur: "100% jika tidak ada kehilangan file", caraPerhitungan: "0-∞ (Jumlah file pola yang hilang)", bobot: 2, formula: { type: "zeroBest" } },
       { key: "s7_3", kpi: "Ketersediaan pola saat dibutuhkan", caraUkur: "(Permintaan terpenuhi ÷ Total permintaan)×100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 1 },
     ],
   },
@@ -143,7 +148,7 @@ export const STAFF_RND_KPI: KpiGroup[] = [
       { key: "s12_1", kpi: "Kehadiran pelaksanaan piket", caraUkur: "(Piket terlaksana ÷ Jadwal piket)×100%", caraPerhitungan: "0-8 (Jumlah total berapa kali karyawan melakukan piket kebersihan)", bobot: 1 },
       { key: "s12_2", kpi: "Tingkat kebersihan area kerja", caraUkur: "Checklist atasan", caraPerhitungan: "0-100", bobot: 2 },
       { key: "s12_3", kpi: "Tingkat kerapihan penyimpanan dokumen dan file kerja", caraUkur: "Checklist atasan", caraPerhitungan: "0-100", bobot: 1 },
-      { key: "s12_4", kpi: "Tidak ada keluhan terkait kebersihan area kerja", caraUkur: "100% jika tidak ada keluhan", caraPerhitungan: "0-∞ (Jumlah keluhan terkait kebersihan area kerja)", bobot: 1 },
+      { key: "s12_4", kpi: "Tidak ada keluhan terkait kebersihan area kerja", caraUkur: "100% jika tidak ada keluhan", caraPerhitungan: "0-∞ (Jumlah keluhan terkait kebersihan area kerja)", bobot: 1, formula: { type: "zeroBest" } },
     ],
   },
 ];
@@ -155,7 +160,7 @@ export const SPV_RND_KPI: KpiGroup[] = [
     total: 3,
     items: [
       { key: "v1_1", kpi: "Kepatuhan absensi masuk dan pulang", caraUkur: "(Hari hadir lengkap ÷ Hari kerja)×100%", caraPerhitungan: "Jumlah hari dia hadir", bobot: 2 },
-      { key: "v1_2", kpi: "Tingkat keterlambatan kerja ≤ 5 kali/bulan", caraUkur: "((5 - Jumlah Keterlambatan) / 5) × 100%", caraPerhitungan: "Jumlah keterlambatan", bobot: 1 },
+      { key: "v1_2", kpi: "Tingkat keterlambatan kerja ≤ 5 kali/bulan", caraUkur: "((5 - Jumlah Keterlambatan) / 5) × 100%", caraPerhitungan: "Jumlah keterlambatan", bobot: 1, formula: { type: "late", threshold: 5 } },
     ],
   },
   {
@@ -164,8 +169,8 @@ export const SPV_RND_KPI: KpiGroup[] = [
     total: 2,
     items: [
       { key: "v2_1", kpi: "Kepatuhan penggunaan seragam", caraUkur: "(Jumlah hari patuh ÷ Hari kerja) x 100%", caraPerhitungan: "1-25 (Berapa hari dia menggunakan seragam)", bobot: 1 },
-      { key: "v2_2", kpi: "Kepatuhan terhadap peraturan perusahaan", caraUkur: "Jumlah pelanggaran", caraPerhitungan: "0-∞ (Jumlah pelanggaran peraturan perusahaan)", bobot: 0.5 },
-      { key: "v2_3", kpi: "Etika dan profesionalitas kerja", caraUkur: "Jumlah teguran", caraPerhitungan: "0-∞ (Jumlah teguran etika kerja)", bobot: 0.5 },
+      { key: "v2_2", kpi: "Kepatuhan terhadap peraturan perusahaan", caraUkur: "Jumlah pelanggaran", caraPerhitungan: "0-∞ (Jumlah pelanggaran peraturan perusahaan)", bobot: 0.5, formula: { type: "zeroBest" } },
+      { key: "v2_3", kpi: "Etika dan profesionalitas kerja", caraUkur: "Jumlah teguran", caraPerhitungan: "0-∞ (Jumlah teguran etika kerja)", bobot: 0.5, formula: { type: "zeroBest" } },
     ],
   },
   {
