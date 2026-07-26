@@ -444,20 +444,20 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
         </div>
 
         <div className="overflow-auto max-h-[calc(100vh-320px)]">
-          <table className="min-w-full border-collapse text-left text-sm">
+          <table className="w-full border-collapse text-left text-sm">
             <thead className="sticky top-0 z-20">
               <tr className="border-b border-[#e7edf5] bg-[#f8fafc] text-xs uppercase tracking-[0.18em] text-[#8a96ad]">
-                <th className="px-6 py-4">Nama</th>
-                <th className="px-6 py-4">Tanggal</th>
-                <th className="px-6 py-4">Jam</th>
-                <th className="px-6 py-4">Total</th>
-                <th className="px-6 py-4">Nominal</th>
-                <th className="px-6 py-4">Diajukan Ke</th>
-                {flowTab === "double" ? <th className="px-6 py-4">Approval Atasan</th> : null}
-                <th className="px-6 py-4">Bukti</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4">Catatan</th>
-                <th className="px-6 py-4">Aksi</th>
+                <th className="px-3 py-3.5">Nama</th>
+                <th className="px-3 py-3.5">Tanggal</th>
+                <th className="px-3 py-3.5">Jam</th>
+                <th className="px-3 py-3.5">Total</th>
+                <th className="px-3 py-3.5">Nominal</th>
+                <th className="px-3 py-3.5">Diajukan Ke</th>
+                {flowTab === "double" ? <th className="px-3 py-3.5">Approval Atasan</th> : null}
+                <th className="px-3 py-3.5">Bukti</th>
+                <th className="px-3 py-3.5">Status</th>
+                <th className="px-3 py-3.5">Catatan</th>
+                <th className="px-3 py-3.5">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -477,14 +477,14 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
 
                   return (
                     <tr key={row.id} className="border-b border-[#eef2f7] text-[#42506a]">
-                      <td className="px-6 py-4 font-semibold uppercase text-[#172033]">{row.nama}</td>
-                      <td className="px-6 py-4">{row.tanggal}</td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-3.5 font-semibold uppercase text-[#172033]">{row.nama}</td>
+                      <td className="px-3 py-3.5">{row.tanggal}</td>
+                      <td className="px-3 py-3.5">
                         {row.jam_mulai} - {row.jam_selesai}
                       </td>
-                      <td className="px-6 py-4">{row.total_jam} jam</td>
-                      <td className="px-6 py-4 font-semibold tabular-nums text-[#172033]">{formatOvertimeNominal(row.total_jam)}</td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-3.5">{row.total_jam} jam</td>
+                      <td className="px-3 py-3.5 font-semibold tabular-nums text-[#172033]">{formatOvertimeNominal(row.total_jam)}</td>
+                      <td className="px-3 py-3.5">
                         {row.assigned_approver_name ? (
                           <span className="inline-flex rounded-full bg-[#fff3e0] px-3 py-1 text-xs font-semibold text-[#9c4d00]">
                             {row.assigned_approver_name}
@@ -496,7 +496,7 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
                         )}
                       </td>
                       {flowTab === "double" ? (
-                        <td className="px-6 py-4 text-xs">
+                        <td className="px-3 py-3.5 text-xs">
                           {row.first_approval_status === "approved" ? (
                             <span className="inline-flex flex-col gap-0.5">
                               <span className="inline-flex w-fit rounded-full bg-[#eaf8ef] px-3 py-1 text-xs font-semibold text-[#1f8f4c]">
@@ -517,7 +517,7 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
                           )}
                         </td>
                       ) : null}
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-3.5">
                         {row.bukti_lembur ? (
                           <button
                             type="button"
@@ -527,7 +527,7 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
                                 isImage: /\.(jpg|jpeg|png|webp)$/i.test(row.bukti_lembur ?? ""),
                               })
                             }
-                            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#d7deea] bg-white text-[#5b6680] transition hover:border-[#5b4fff] hover:text-[#5b4fff]"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-[#d7deea] bg-white text-[#5b6680] transition hover:border-[#5b4fff] hover:text-[#5b4fff]"
                             aria-label="Lihat bukti lembur"
                           >
                             <svg
@@ -550,7 +550,7 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
                           "-"
                         )}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-3.5">
                         <div className="space-y-2">
                           <StatusBadge status={row.status_approval} />
                           <p className="text-xs text-[#7a879f]">
@@ -558,7 +558,7 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
                           </p>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-3.5">
                         <input
                           value={notes[row.id] ?? ""}
                           onChange={(event) =>
@@ -569,15 +569,15 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
                           }
                           placeholder="Catatan atasan"
                           disabled={isLocked || !canApprove}
-                          className="h-11 w-[220px] rounded-xl border border-[#d7deea] bg-[#fbfcfe] px-3 text-sm text-[#172033] outline-none transition focus:border-[#5b4fff] disabled:cursor-not-allowed disabled:bg-[#f1f4f8] disabled:text-[#7a879f]"
+                          className="h-10 w-[150px] rounded-xl border border-[#d7deea] bg-[#fbfcfe] px-2.5 text-sm text-[#172033] outline-none transition focus:border-[#5b4fff] disabled:cursor-not-allowed disabled:bg-[#f1f4f8] disabled:text-[#7a879f]"
                         />
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap items-center gap-2">
+                      <td className="px-3 py-3.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           <button
                             type="button"
                             onClick={() => setDetailRow(row)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#d7deea] bg-white text-[#5b6680] transition hover:border-[#5b4fff] hover:text-[#5b4fff]"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-[#d7deea] bg-white text-[#5b6680] transition hover:border-[#5b4fff] hover:text-[#5b4fff]"
                             aria-label="Lihat detail pengajuan"
                             title="Detail pengajuan"
                           >
@@ -592,7 +592,7 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
                               <button
                                 type="button"
                                 onClick={() => { setError(null); setSuccess(null); setStatusRow(row); }}
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#d7deea] bg-white text-[#5b6680] transition hover:border-[#19a15f] hover:text-[#19a15f]"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-[#d7deea] bg-white text-[#5b6680] transition hover:border-[#19a15f] hover:text-[#19a15f]"
                                 aria-label="Update status lembur"
                                 title="Update status lembur (approve / reject)"
                               >
@@ -606,7 +606,7 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
                               <button
                                 type="button"
                                 onClick={() => openEdit(row)}
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#d7deea] bg-white text-[#5b6680] transition hover:border-[#8f1d22] hover:text-[#8f1d22]"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-[#d7deea] bg-white text-[#5b6680] transition hover:border-[#8f1d22] hover:text-[#8f1d22]"
                                 aria-label="Update tanggal & jam lembur"
                                 title="Update tanggal & jam lembur"
                               >
@@ -620,7 +620,7 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
                                 onClick={() => updateApproval(row.id, "approved")}
                                 disabled={isPending || !canAdminAct}
                                 title={waitingFirstApprover ? "Atasan belum menyetujui" : undefined}
-                                className="rounded-xl bg-[#19a15f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#14874f] disabled:cursor-not-allowed disabled:opacity-50"
+                                className="rounded-xl bg-[#19a15f] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#14874f] disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 Approve
                               </button>
@@ -629,7 +629,7 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
                                 onClick={() => updateApproval(row.id, "rejected")}
                                 disabled={isPending || !canAdminAct}
                                 title={waitingFirstApprover ? "Atasan belum menyetujui" : undefined}
-                                className="rounded-xl bg-[#ef4444] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#d73737] disabled:cursor-not-allowed disabled:opacity-50"
+                                className="rounded-xl bg-[#ef4444] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#d73737] disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 Reject
                               </button>
