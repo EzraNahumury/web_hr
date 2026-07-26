@@ -92,6 +92,7 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [search, setSearch] = useState("");
   const [isDownloading, setIsDownloading] = useState(false);
   const [flowTab, setFlowTab] = useState<"single" | "double">("single");
 
@@ -113,8 +114,13 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
         return true;
       });
     })();
-    return dateFiltered;
-  }, [baseTabRows, dateFrom, dateTo]);
+    const q = search.trim().toLowerCase();
+    if (!q) return dateFiltered;
+    return dateFiltered.filter((row) =>
+      [row.nama, row.assigned_approver_name, row.first_approver_name, row.approver_name]
+        .some((v) => (v ?? "").toLowerCase().includes(q)),
+    );
+  }, [baseTabRows, dateFrom, dateTo, search]);
 
   function updateApproval(id: number, status: "approved" | "rejected") {
     setError(null);
@@ -376,6 +382,39 @@ export default function AdminOvertimeApprovals({ rows, canApprove = false }: Pro
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+              {/* Search by nama */}
+              <div className="flex items-center gap-2 rounded-2xl border border-[#dfe5ef] bg-[#f8fafc] px-3 py-2">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className="h-4 w-4 flex-none text-[#8a96ad]"
+                  aria-hidden="true"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" strokeLinecap="round" />
+                </svg>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Cari nama..."
+                  className="w-40 bg-transparent text-sm text-[#172033] outline-none placeholder:text-[#8a96ad]"
+                  aria-label="Cari nama karyawan"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    className="text-xs text-[#8a96ad] hover:text-[#c63838]"
+                    aria-label="Hapus pencarian"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
               {/* Date range filter */}
               <div className="flex items-center gap-2 rounded-2xl border border-[#dfe5ef] bg-[#f8fafc] px-3 py-2">
                 <svg
