@@ -12,9 +12,9 @@ function countPeriodWorkDays(start: Date, end: Date) {
   return total;
 }
 
-// Jumlah tahun kerja yang SUDAH GENAP dihitung dari tanggal masuk pertama sampai tanggal acuan
-// (dipakai: tanggal MULAI periode payroll / tgl 26). Anniversary yang belum tercapai tidak dihitung.
-// Contoh: masuk 2025-06-20 → acuan 2026-05-26 = 0 tahun; acuan 2026-06-26 = 1 tahun.
+// Jumlah tahun kerja yang SUDAH GENAP dari tanggal masuk pertama sampai tanggal acuan.
+// Anniversary yang belum tercapai (acuan sebelum bulan/tanggal masuk) tidak dihitung.
+// Contoh: masuk 2025-06-20 → acuan 2026-05-25 = 0 tahun; acuan 2026-06-25 = 1 tahun.
 function countCompletedYears(joinDateSql: string | null | undefined, refDateSql: string): number {
   if (!joinDateSql) return 0;
   const j = joinDateSql.split("-").map(Number);
@@ -45,7 +45,7 @@ import {
   getApprovedReimbursementRowsForPeriod,
 } from "@/lib/reimbursements";
 import { isSalesNasionalRole } from "@/lib/sales-roles";
-import { INSENTIF_RAISE_EFFECTIVE_FROM, PAYROLL_OMZET_BONUS_RATE } from "@/lib/payroll-constants";
+import { RAISE_PROGRAM_FIRST_YEAR, PAYROLL_OMZET_BONUS_RATE } from "@/lib/payroll-constants";
 import { ensureContractReturnTable } from "@/lib/contract-returns";
 import { getFreelanceSheet } from "@/lib/payroll-freelance";
 
@@ -943,16 +943,24 @@ export async function getAdminPayrollSummarySheet(period?: {
       : (toNumber(row.raw_gaji_pokok_per_hari) || (workDays > 0 ? toNumber(row.gaji_pokok) / workDays : 0));
     // Kenaikan gaji per tahun → menambah INSENTIF KEHADIRAN (gaji pokok per hari).
     // Berlaku hanya untuk karyawan NON-freelance yang PUNYA insentif kehadiran (>0).
-    // BERTAHAP (tidak retroaktif): tahun kerja untuk kenaikan dihitung dari
-    // MAX(tanggal masuk pertama, INSENTIF_RAISE_EFFECTIVE_FROM) — jadi insentif tersimpan
-    // dianggap baseline "nilai sekarang", lalu naik +kenaikan/25 tiap tahun sejak aturan berlaku.
-    // Contoh: Warisah masuk 2021, kenaikan 100.000 → hanya +1 tahun (sejak aturan) = +4.000
-    // → 50.000 jadi 54.000 (BUKAN retroaktif 5 tahun). Ilyas masuk Jun 2025 → +4.000 → 30.000.
+    // BERTAHAP (tidak retroaktif) & pakai ANNIVERSARY ASLI (tanggal masuk pertama):
+    // completedYears = jumlah anniversary yang jatuh pada/sesudah tahun program (RAISE_PROGRAM_FIRST_YEAR)
+    // sampai AKHIR periode (range.endSql, tgl 25) — jadi kenaikan berlaku di payroll yang
+    // periodenya MENGANDUNG anniversary. Anniversary tahun sebelum program = baseline (dikurangi),
+    // sehingga karyawan yang bulan masuknya BELUM lewat di periode ini tidak ikut naik.
+    // Contoh: NARENDRA masuk 1 Sep 2023 → payroll Juli 2026 (26 Jun–25 Jul) = 0; payroll
+    // September 2026 (26 Agu–25 Sep, mengandung 1 Sep) = +1. Warisah masuk Mar 2021 → sejak
+    // payroll Maret 2026 = +1.
     const annualRaisePerYear = toNumber(row.kenaikan_tiap_tahun);
     const joinDate = row.tanggal_masuk_pertama;
-    const raiseFromDate =
-      joinDate && joinDate > INSENTIF_RAISE_EFFECTIVE_FROM ? joinDate : INSENTIF_RAISE_EFFECTIVE_FROM;
-    const completedYears = joinDate ? countCompletedYears(raiseFromDate, range.startSql) : 0;
+    const raiseBaselineCutoff = `${RAISE_PROGRAM_FIRST_YEAR - 1}-12-31`;
+    const completedYears = joinDate
+      ? Math.max(
+          0,
+          countCompletedYears(joinDate, range.endSql) -
+            countCompletedYears(joinDate, raiseBaselineCutoff),
+        )
+      : 0;
     const attendanceIncentiveRaise =
       !isFreelance && dailyBaseSalaryBase > 0 && annualRaisePerYear > 0
         ? (completedYears * annualRaisePerYear) / 25
