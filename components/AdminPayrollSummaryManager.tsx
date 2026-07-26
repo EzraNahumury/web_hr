@@ -48,6 +48,13 @@ type FormState = {
 const inputClassName = "h-12 w-full rounded-2xl border border-[#d5e9ea] bg-white px-4 text-[#173033] outline-none placeholder:text-[#87a6a8] focus:border-[#19d7df] focus:shadow-[0_0_0_4px_rgba(25,215,223,0.16)]";
 const selectClassName = `${inputClassName} appearance-none bg-[url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23055a61' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")] bg-[length:18px_18px] bg-[right_1rem_center] bg-no-repeat pr-11`;
 
+function formatTanggalId(value: string | null | undefined) {
+  if (!value) return "-";
+  const d = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return value;
+  return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" }).format(d);
+}
+
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
 }
@@ -589,6 +596,26 @@ export default function AdminPayrollSummaryManager({
 
             {selectedEmployee ? <div className="mt-1 rounded-[24px] border border-[#d5e9ea] bg-white px-5 py-5 text-sm text-[#35585b]"><p className="font-semibold text-[#19393d]">{selectedEmployee.name}</p><p className="mt-2">{selectedEmployee.role} | {selectedEmployee.division} | {selectedEmployee.department}</p><p className="mt-2">Pembagian rekapan: {selectedEmployee.recapGroup}</p></div> : null}
 
+            {selectedEmployee ? (
+              <div className="mt-3 rounded-[24px] border border-[#ead7ce] bg-[#fffaf6] px-5 py-4 text-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#a9713f]">Timeline Kerja</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#b08968]">Tanggal Pertama Masuk</p>
+                    <p className="mt-0.5 font-semibold text-[#5a3a28]">{formatTanggalId(selectedEmployee.firstJoinDate)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#b08968]">Tanggal Kontrak</p>
+                    <p className="mt-0.5 font-semibold text-[#5a3a28]">{formatTanggalId(selectedEmployee.contractDate)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#b08968]">Tanggal Selesai Kontrak</p>
+                    <p className="mt-0.5 font-semibold text-[#5a3a28]">{formatTanggalId(selectedEmployee.contractEndDate)}</p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             {isFreelance ? (
               <div className="space-y-4">
                 <div className="rounded-2xl border border-[#d5e9ea] bg-[#f0fbfb] px-4 py-3 text-sm text-[#35585b]">
@@ -661,26 +688,6 @@ export default function AdminPayrollSummaryManager({
                   )}
                 </div>
 
-                {!isSalesNasionalSummary ? <div className="mt-8">
-                  <p className="mb-4 text-sm font-semibold text-[#123336]">Override Kehadiran (Opsional, kosongkan jika ingin menggunakan data sistem)</p>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    <Field label="Masuk (Hari)"><input value={form.overrideMasuk} onChange={(event) => updateField("overrideMasuk", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
-                    <Field label="Lembur (Jam)"><input value={form.overrideLembur} onChange={(event) => updateField("overrideLembur", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
-                    <Field label="Izin / Off (Hari)"><input value={form.overrideIzin} onChange={(event) => updateField("overrideIzin", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
-                    <Field label="Sakit (Hari)"><input value={form.overrideSakit} onChange={(event) => updateField("overrideSakit", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
-                    <Field label="Sakit Tanpa Surat (Hari)"><input value={form.overrideSakitTanpaSurat} onChange={(event) => updateField("overrideSakitTanpaSurat", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
-                    <Field label="1/2 Hari (Hari)"><input value={form.overrideSetengahHari} onChange={(event) => updateField("overrideSetengahHari", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
-                  </div>
-                </div> : null}
-
-                {!isSalesNasionalSummary ? <div className="mt-8">
-                  <p className="mb-4 text-sm font-semibold text-[#123336]">Override Potongan (Opsional, kosongkan jika ingin menggunakan data sistem)</p>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <Field label="Kontrak"><input value={form.overrideKontrak} onChange={(event) => updateField("overrideKontrak", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
-                    <Field label="Pinjaman Perusahaan"><input value={form.overridePinjaman} onChange={(event) => updateField("overridePinjaman", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
-                    <Field label="Pinjaman Pribadi"><input value={form.overridePinjamanPribadi} onChange={(event) => updateField("overridePinjamanPribadi", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Otomatis" /></Field>
-                  </div>
-                </div> : null}
               </>
             )}
           </div>

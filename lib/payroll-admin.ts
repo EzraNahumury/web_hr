@@ -21,6 +21,9 @@ type PayrollEmployeeOptionRow = RowDataPacket & {
   pembagian_rekapan: string | null;
   status_kepegawaian: string | null;
   tipe_payroll_penjahit: string | null;
+  tanggal_masuk_pertama: string | null;
+  tanggal_kontrak: string | null;
+  tanggal_selesai_kontrak: string | null;
 };
 
 type AttendanceAggregateRow = RowDataPacket & {
@@ -86,6 +89,9 @@ export type PayrollEmployeeOption = {
   isSales: boolean;
   employmentStatus: string | null;
   isWeekly: boolean;
+  firstJoinDate: string | null;
+  contractDate: string | null;
+  contractEndDate: string | null;
 };
 
 export type PayrollFormPayload = {
@@ -514,7 +520,10 @@ export async function listPayrollEmployeeOptions(options?: {
         k.departemen,
         k.pembagian_rekapan,
         k.status_kepegawaian,
-        k.tipe_payroll_penjahit
+        k.tipe_payroll_penjahit,
+        DATE_FORMAT(k.tanggal_masuk_pertama, '%Y-%m-%d') AS tanggal_masuk_pertama,
+        DATE_FORMAT(k.tanggal_kontrak, '%Y-%m-%d') AS tanggal_kontrak,
+        DATE_FORMAT(k.tanggal_selesai_kontrak, '%Y-%m-%d') AS tanggal_selesai_kontrak
       FROM karyawan k
       WHERE k.status_data = 'aktif'
         ${placementFilter ? "AND LOWER(COALESCE(k.penempatan, '')) = LOWER(?)" : ""}
@@ -537,6 +546,9 @@ export async function listPayrollEmployeeOptions(options?: {
     recapGroup: row.pembagian_rekapan ?? "-",
     isSales: isSalesEmployeeFromValues(row.jabatan, row.divisi, row.sub_divisi),
     employmentStatus: row.status_kepegawaian ?? null,
+    firstJoinDate: row.tanggal_masuk_pertama ?? null,
+    contractDate: row.tanggal_kontrak ?? null,
+    contractEndDate: row.tanggal_selesai_kontrak ?? null,
     isWeekly:
       (row.sub_divisi ?? "").trim().toLowerCase() === "penjahit" &&
       (row.tipe_payroll_penjahit ?? "").trim().toLowerCase() === "mingguan",
