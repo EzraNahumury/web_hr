@@ -11,6 +11,7 @@ import {
   getShiftLateMinutes,
   getShiftRangeLabel,
   isAttendanceApprovalRuleActive,
+  isSundayDate,
   isTokoGudangPlacement,
   isWithinScheduledShiftRange,
   saveAttendancePhoto,
@@ -144,6 +145,7 @@ export async function POST(request: Request) {
     const attendanceDate = getJakartaDate();
     const attendanceDateTime = getJakartaDateTime();
     const currentTime = attendanceDateTime.split(" ")[1];
+    const isSunday = isSundayDate(attendanceDate);
 
     // Blokir: kalau ada hari lampau yang HADIR tapi belum absen pulang & belum dipulihkan admin.
     const blockingDate = await getBlockingMissingCheckout(employee.id, attendanceDate);
@@ -194,6 +196,9 @@ export async function POST(request: Request) {
       );
     // Partime: shift TETAP 17:00-22:00 (toleransi 5 mnt, masuk mulai 16:30), apa pun jadwal/penempatan.
     const isPartime = (employee.status_kepegawaian ?? "").trim().toLowerCase() === "partime";
+    // Partime hari MINGGU: jam masuk BEBAS (tidak dikunci window, tidak dihitung telat).
+    // Wajib 5 jam diperiksa saat pulang (check-out).
+    const isPartimeSunday = isPartime && isSunday;
     const isShiftEligible =
       requiresSelfie && (isTokoGudangPlacement(detectedPlacement) || isMedia || isHostlive || isAdvertiser || isJne);
     // Jadwal SELALU dicek berdasar karyawan (bukan placement hasil geofence). Ini menutup
@@ -217,7 +222,8 @@ export async function POST(request: Request) {
     if (
       scheduledShift &&
       requiresSelfie &&
-      attendanceRequestStatus === "hadir"
+      attendanceRequestStatus === "hadir" &&
+      !isPartimeSunday
     ) {
       const shiftKey = scheduledShift as AttendanceShift;
       if (!isWithinScheduledShiftRange(currentTime, shiftKey)) {
@@ -231,7 +237,8 @@ export async function POST(request: Request) {
     }
 
     // Partime: presensi masuk hanya dalam rentang shift partime (16:30 - 22:00).
-    if (isPartime && requiresSelfie && attendanceRequestStatus === "hadir") {
+    // Kecuali hari Minggu: jam masuk bebas (isPartimeSunday) → window tidak ditegakkan.
+    if (isPartime && !isPartimeSunday && requiresSelfie && attendanceRequestStatus === "hadir") {
       if (!isWithinScheduledShiftRange(currentTime, "partime")) {
         return NextResponse.json(
           {
@@ -260,7 +267,7 @@ export async function POST(request: Request) {
     const lateShift: AttendanceShift | null =
       detectedShift ?? (!isFreelance ? "pagi" : null);
     const lateMinutes =
-      requiresSelfie && lateShift && effectiveRequestStatus === "hadir"
+      requiresSelfie && lateShift && effectiveRequestStatus === "hadir" && !isPartimeSunday
         ? getShiftLateMinutes(currentTime, lateShift)
         : 0;
     const attendanceStatus =

@@ -8,8 +8,11 @@ import {
   getJakartaDate,
   getJakartaDateTime,
   isAttendanceApprovalRuleActive,
+  isDurationUnderMinutes,
   isEarlyLeaveByTime,
+  isSundayDate,
   isTokoGudangPlacement,
+  PARTIME_SUNDAY_MIN_MINUTES,
   saveAttendancePhoto,
 } from "@/lib/attendance";
 import { resolveAssignedApprover } from "@/lib/attendance-approver";
@@ -158,6 +161,8 @@ export async function POST(request: Request) {
     );
     // Partime: shift TETAP pulang 22:00 → pulang sebelum 22:00 dianggap PA (pulang awal).
     const isPartime = (employee.status_kepegawaian ?? "").trim().toLowerCase() === "partime";
+    // Partime hari MINGGU: jam bebas, wajib 5 jam. PA dinilai dari durasi (< 5 jam), bukan jam 22:00.
+    const isPartimeSunday = isPartime && isSundayDate(attendanceDate);
     const isJne = detectedPlacement === "JNE";
     const isShiftEligible =
       isTokoGudangPlacement(detectedPlacement) || isMedia || isHostlive || isAdvertiser || isJne;
@@ -182,7 +187,9 @@ export async function POST(request: Request) {
     const earlyLeaveFlagged =
       !isFreelance &&
       !isHalfDay &&
-      isEarlyLeaveByTime(attendance.jam_masuk_str, checkOutTime, effectiveScheduledShift);
+      (isPartimeSunday
+        ? isDurationUnderMinutes(attendance.jam_masuk_str, checkOutTime, PARTIME_SUNDAY_MIN_MINUTES)
+        : isEarlyLeaveByTime(attendance.jam_masuk_str, checkOutTime, effectiveScheduledShift));
 
     // ── Approval pulang awal (aturan baru per 5 Juli 2026) ──
     // Pulang awal (non-freelance) wajib approval atasan. Kalau sudah ada approval telat yang
