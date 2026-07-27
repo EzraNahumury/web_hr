@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import LogoutButton from "@/components/LogoutButton";
 import PayrollGreetingModal from "@/components/PayrollGreetingModal";
 import { isSalesFieldRole } from "@/lib/sales-roles";
-import { canSetSchedule } from "@/lib/scheduler-roles";
+import { canSetSchedule, isManager } from "@/lib/scheduler-roles";
 import { useEmployeeJadwalAccess } from "@/components/EmployeeJadwalAccessContext";
 
 type Props = {
@@ -73,6 +73,12 @@ const overtimeApprovalsMenu: MenuItem = {
   description: "Approve/reject pengajuan lembur tim",
 };
 
+const overtimeHistoryMenu: MenuItem = {
+  label: "History Lembur",
+  href: "/employee/overtime-history",
+  description: "Riwayat lembur semua karyawan (lihat saja)",
+};
+
 const attendanceApprovalsMenu: MenuItem = {
   label: "Approval Absensi",
   href: "/employee/attendance-approvals",
@@ -114,6 +120,10 @@ function buildMenuItems(
   // Approval hanya untuk atasan (supervisor/manager).
   if (canSetSchedule(role)) {
     extras.push(overtimeApprovalsMenu, attendanceApprovalsMenu);
+  }
+  // History Lembur (read-only, semua karyawan) khusus manager.
+  if (isManager(role)) {
+    extras.push(overtimeHistoryMenu);
   }
   if (extras.length > 0) result = [...result, ...extras];
 
