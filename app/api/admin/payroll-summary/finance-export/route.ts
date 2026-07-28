@@ -7,6 +7,7 @@ import { pool } from "@/lib/db";
 import { getAdminPayrollSummarySheet } from "@/lib/payroll-summary";
 import { getPenjahitSheet } from "@/lib/payroll-penjahit";
 import { getFreelanceSheet } from "@/lib/payroll-freelance";
+import { getPartimeSheet } from "@/lib/payroll-partime";
 
 export const dynamic = "force-dynamic";
 
@@ -32,11 +33,13 @@ export async function GET(request: NextRequest) {
   }
   const period = { month, year };
 
-  // Main sheet sudah termasuk karyawan Solo & Sales Nasional (semua non-penjahit).
-  const [mainSheet, penjahitSheet, freelanceSheet] = await Promise.all([
+  // Main sheet mencakup semua non-penjahit & non-partime. Penjahit, freelance, dan
+  // partime punya sheet sendiri (main query meng-exclude keduanya), jadi digabung terpisah.
+  const [mainSheet, penjahitSheet, freelanceSheet, partimeSheet] = await Promise.all([
     getAdminPayrollSummarySheet(period),
     getPenjahitSheet(period),
     getFreelanceSheet(period),
+    getPartimeSheet(period),
   ]);
 
   // Freelance: total gaji per karyawan (gabung semua tipe).
@@ -102,6 +105,20 @@ export async function GET(request: NextRequest) {
         bank: r.bank || "-",
         accountNumber: r.noRekening || "-",
         takeHome: Math.max(0, r.penerimaanBersih),
+      });
+      seen.add(r.employeeId);
+    }
+  }
+
+  // Partime — total gaji bersih (insentif & uang makan × hari masuk, dikurangi potongan telat).
+  if (partimeSheet) {
+    for (const r of partimeSheet.rows) {
+      if (seen.has(r.employeeId)) continue;
+      finance.push({
+        name: r.nama,
+        bank: r.bank || "-",
+        accountNumber: r.noRekening || "-",
+        takeHome: Math.max(0, r.totalGaji),
       });
       seen.add(r.employeeId);
     }
