@@ -14,16 +14,18 @@ import {
 } from "@/lib/payroll-admin";
 
 // ── Aturan gaji PARTIME (status_kepegawaian = 'partime') ────────────────────────
-// Rumus (dikonfirmasi user):
-//   1. Insentif kehadiran/hari × 25 (TETAP 25 hari, tidak melihat jumlah hadir)
+// Rumus (dikonfirmasi user 2026-07-28):
+//   1. Insentif kehadiran/hari × JUMLAH HARI MASUK (hadir aktual, bukan flat 25)
 //   2. Tunjangan jabatan (custom)
-//   3. Uang makan/hari × 25 (TETAP 25 hari)
+//   3. Uang makan/hari × JUMLAH HARI MASUK (hadir aktual)
 //   4. Subsidi (custom)
 //   5. BPJS (custom)
 //   - TIDAK ada uang kerajinan.
 //   - TIDAK ada lembur / bonus / transport.
 //   - Potongan HANYA telat: Rp5.000 per telat (bukan 20.000 seperti payroll biasa).
-//   - Absen/izin/sakit/alfa TIDAK memotong gaji (gaji flat ×25).
+//   - Absen/izin/sakit/alfa OTOMATIS mengurangi gaji karena hari masuk berkurang.
+// Catatan: PARTIME_FIXED_DAYS (25) TIDAK lagi jadi pengali gaji — hanya dipakai untuk
+// menurunkan rate/hari dari gaji_pokok bulanan lama (gaji_pokok / 25) bila rate/hari kosong.
 export const PARTIME_FIXED_DAYS = 25;
 export const PARTIME_LATE_DEDUCTION = 5000;
 
@@ -254,8 +256,9 @@ export async function getPartimeSheet(period?: {
     const masuk = att?.present ?? 0;
     const telat = att?.late ?? 0;
 
-    const insentifTotal = insentifPerHari * PARTIME_FIXED_DAYS;
-    const uangMakanTotal = uangMakanPerHari * PARTIME_FIXED_DAYS;
+    // Insentif & uang makan dibayar per HARI MASUK aktual (bukan flat 25 hari).
+    const insentifTotal = insentifPerHari * masuk;
+    const uangMakanTotal = uangMakanPerHari * masuk;
     const potonganTelat = telat * PARTIME_LATE_DEDUCTION;
 
     const totalGajiSebelumPotongan =

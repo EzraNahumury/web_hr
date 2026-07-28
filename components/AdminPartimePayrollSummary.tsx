@@ -151,10 +151,10 @@ export default function AdminPartimePayrollSummary({ sheet, employeeOptions }: P
       month: sheet.periodMonth,
       year: sheet.periodYear,
       employeeId,
-      // insentif kehadiran/hari -> gaji_pokok_per_hari (×25 di server-side sheet)
+      // insentif kehadiran/hari -> gaji_pokok_per_hari (×hari masuk di server-side sheet)
       gajiPerDay: parseNumber(form.insentifPerHari),
       tunjanganJabatan: parseNumber(form.tunjanganJabatan),
-      // uang makan/hari -> uang_makan_per_hari (×25 di server-side sheet)
+      // uang makan/hari -> uang_makan_per_hari (×hari masuk di server-side sheet)
       uangMakan: parseNumber(form.uangMakanPerHari),
       subsidi: parseNumber(form.subsidi),
       bpjs: parseNumber(form.bpjs),
@@ -228,8 +228,8 @@ export default function AdminPartimePayrollSummary({ sheet, employeeOptions }: P
             "BPJS",
             "Masuk",
             "Telat",
-            "Insentif x25",
-            "Uang Makan x25",
+            "Insentif (xMasuk)",
+            "Uang Makan (xMasuk)",
             "Total Sblm Potongan",
             "Potongan Telat",
             "Total Gaji",
@@ -298,7 +298,7 @@ export default function AdminPartimePayrollSummary({ sheet, employeeOptions }: P
               {sheet ? sheet.periodLabel : "Belum ada data"}
             </h3>
             <p className="mt-1 text-sm text-[#6b7099]">
-              Insentif ×25 hari · Uang makan ×25 hari · Potongan telat Rp5.000/telat
+              Insentif ×hari masuk · Uang makan ×hari masuk · Potongan telat Rp5.000/telat
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -388,8 +388,8 @@ export default function AdminPartimePayrollSummary({ sheet, employeeOptions }: P
                   <th className={thBase}>Masuk</th>
                   <th className={thBase}>Telat</th>
                   {/* Perhitungan */}
-                  <th className={thBase}>Insentif ×25</th>
-                  <th className={thBase}>Uang Makan ×25</th>
+                  <th className={thBase}>Insentif (×Masuk)</th>
+                  <th className={thBase}>Uang Makan (×Masuk)</th>
                   <th className={thBase}>Total Sblm Potongan</th>
                   <th className={thBase}>Potongan Telat</th>
                   <th className={thBase}>Total Gaji</th>
