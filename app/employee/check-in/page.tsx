@@ -29,6 +29,7 @@ export default async function EmployeeCheckInPage() {
       employeeMeta={`${employee.no_karyawan} • ${employee.jabatan}`}
       currentPath="/employee/check-in"
       employeeRole={employee.jabatan}
+      employeeDepartment={employee.departemen}
     >
       <EmployeeAttendanceCapture
         mode="check-in"

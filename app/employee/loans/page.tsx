@@ -40,6 +40,7 @@ export default async function EmployeeLoansPage() {
       employeeMeta={`${employee.no_karyawan} | ${employee.jabatan}`}
       currentPath="/employee/loans"
       employeeRole={employee.jabatan}
+      employeeDepartment={employee.departemen}
     >
       <EmployeeLoansManager
         employeeName={employee.nama}

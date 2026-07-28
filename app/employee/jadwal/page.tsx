@@ -61,6 +61,7 @@ export default async function EmployeeJadwalPage({
       employeeMeta={`${employee.no_karyawan} - ${employee.jabatan}`}
       currentPath="/employee/jadwal"
       employeeRole={employee.jabatan}
+      employeeDepartment={employee.departemen}
     >
       <SpvJadwalManager
         initialYear={year}

@@ -23,6 +23,7 @@ export default async function EmployeeBusinessTripsPage() {
       employeeMeta={`${employee.no_karyawan} | ${employee.jabatan}`}
       currentPath="/employee/business-trips"
       employeeRole={employee.jabatan}
+      employeeDepartment={employee.departemen}
     >
       <EmployeeBusinessTripManager initialRows={rows} defaultDate={getJakartaDate()} />
     </EmployeeShell>

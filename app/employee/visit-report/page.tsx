@@ -26,6 +26,7 @@ export default async function EmployeeVisitReportPage() {
       employeeMeta={`${employee.no_karyawan} • ${employee.jabatan}`}
       currentPath="/employee/visit-report"
       employeeRole={employee.jabatan}
+      employeeDepartment={employee.departemen}
     >
       <EmployeeVisitReportCapture />
     </EmployeeShell>

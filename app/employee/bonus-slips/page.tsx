@@ -114,6 +114,7 @@ export default async function EmployeeBonusSlipsPage({
       employeeMeta={`${employee.no_karyawan} • ${employee.jabatan}`}
       currentPath="/employee/bonus-slips"
       employeeRole={employee.jabatan}
+      employeeDepartment={employee.departemen}
     >
       <div className="space-y-6">
         <section className="rounded-[28px] border border-[#e3d5a8] bg-[linear-gradient(180deg,#fffdf0_0%,#fff7d6_100%)] px-5 py-5 shadow-[0_18px_40px_rgba(124,91,0,0.06)] sm:px-6">

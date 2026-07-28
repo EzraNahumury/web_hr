@@ -34,6 +34,7 @@ export default async function EmployeeCheckOutPage() {
       employeeMeta={`${employee.no_karyawan} • ${employee.jabatan}`}
       currentPath="/employee/check-out"
       employeeRole={employee.jabatan}
+      employeeDepartment={employee.departemen}
     >
       <EmployeeAttendanceCapture
         mode="check-out"

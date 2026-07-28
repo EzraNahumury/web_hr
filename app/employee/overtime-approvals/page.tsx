@@ -31,6 +31,7 @@ export default async function EmployeeOvertimeApprovalsPage() {
       employeeMeta={`${employee.no_karyawan} - ${employee.jabatan}`}
       currentPath="/employee/overtime-approvals"
       employeeRole={employee.jabatan}
+      employeeDepartment={employee.departemen}
     >
       <OvertimeApproverManager rows={rows} endpoint="/api/employee/overtime-approvals" />
     </EmployeeShell>

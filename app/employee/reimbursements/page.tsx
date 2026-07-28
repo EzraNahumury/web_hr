@@ -23,6 +23,7 @@ export default async function EmployeeReimbursementsPage() {
       employeeMeta={`${employee.no_karyawan} | ${employee.jabatan}`}
       currentPath="/employee/reimbursements"
       employeeRole={employee.jabatan}
+      employeeDepartment={employee.departemen}
     >
       <EmployeeReimbursementsManager initialRows={rows} defaultRequestDate={getJakartaDate()} />
     </EmployeeShell>

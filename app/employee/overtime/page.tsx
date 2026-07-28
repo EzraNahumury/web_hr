@@ -44,6 +44,7 @@ export default async function EmployeeOvertimePage() {
       employeeMeta={`${employee.no_karyawan} - ${employee.jabatan}`}
       currentPath="/employee/overtime"
       employeeRole={employee.jabatan}
+      employeeDepartment={employee.departemen}
     >
       <EmployeeOvertimeManager
         employeeId={employee.id}

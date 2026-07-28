@@ -18,3 +18,8 @@ export function isSupervisorRole(role: string | null | undefined) {
   const n = (role ?? "").trim().toLowerCase();
   return n === "supervisor" || n === "spv";
 }
+
+// Karyawan departemen Finance — dapat akses read-only menu Finance & Peminjaman Barang.
+export function isFinanceDept(department: string | null | undefined) {
+  return (department ?? "").trim().toLowerCase() === "finance";
+}

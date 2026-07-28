@@ -125,6 +125,7 @@ export default async function EmployeePayslipsPage({
       employeeMeta={`${employee.no_karyawan} • ${employee.jabatan}`}
       currentPath="/employee/payslips"
       employeeRole={employee.jabatan}
+      employeeDepartment={employee.departemen}
     >
       <div className="space-y-6">
         <section className="rounded-[28px] border border-[#ead7ce] bg-[linear-gradient(180deg,#fffdfb_0%,#fff5ef_100%)] px-5 py-5 shadow-[0_18px_40px_rgba(96,45,34,0.06)] sm:px-6">

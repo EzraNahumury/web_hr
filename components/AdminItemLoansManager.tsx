@@ -10,9 +10,10 @@ type EmployeeOption = { id: number; name: string; nip: string };
 type Props = {
   initialRows: ItemLoanRecord[];
   employees: EmployeeOption[];
+  readOnly?: boolean;
 };
 
-export default function AdminItemLoansManager({ initialRows, employees }: Props) {
+export default function AdminItemLoansManager({ initialRows, employees, readOnly = false }: Props) {
   const router = useRouter();
   const [rows, setRows] = useState(initialRows);
   const [isPending, startTransition] = useTransition();
@@ -167,7 +168,8 @@ export default function AdminItemLoansManager({ initialRows, employees }: Props)
         </div>
       ) : null}
 
-      {/* Form */}
+      {/* Form (disembunyikan saat read-only) */}
+      {!readOnly && (
       <section ref={formRef} className="rounded-[28px] border border-[#ead7ce] bg-white p-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold text-[#241716]">
@@ -292,6 +294,7 @@ export default function AdminItemLoansManager({ initialRows, employees }: Props)
           </button>
         </div>
       </section>
+      )}
 
       {/* Table */}
       <section className="overflow-hidden rounded-[28px] border border-[#ead7ce] bg-white shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
@@ -304,13 +307,13 @@ export default function AdminItemLoansManager({ initialRows, employees }: Props)
                 <th className="px-5 py-4">Barang Dipinjam</th>
                 <th className="px-5 py-4">Tgl Peminjaman</th>
                 <th className="px-5 py-4">Keterangan</th>
-                <th className="px-5 py-4 text-right">Aksi</th>
+                {!readOnly ? <th className="px-5 py-4 text-right">Aksi</th> : null}
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center text-sm text-[#8a6f68]">
+                  <td colSpan={readOnly ? 5 : 6} className="px-5 py-10 text-center text-sm text-[#8a6f68]">
                     Belum ada catatan peminjaman barang.
                   </td>
                 </tr>
@@ -339,6 +342,7 @@ export default function AdminItemLoansManager({ initialRows, employees }: Props)
                     </td>
                     <td className="px-5 py-4 tabular-nums text-[#241716]">{r.loanDate || "-"}</td>
                     <td className="px-5 py-4 text-[#5a443d]">{r.note || "-"}</td>
+                    {!readOnly ? (
                     <td className="px-5 py-4 text-right">
                       <div className="flex justify-end gap-2">
                         <button
@@ -358,6 +362,7 @@ export default function AdminItemLoansManager({ initialRows, employees }: Props)
                         </button>
                       </div>
                     </td>
+                    ) : null}
                   </tr>
                 ))
               )}

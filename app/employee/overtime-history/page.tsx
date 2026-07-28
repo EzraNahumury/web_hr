@@ -31,6 +31,7 @@ export default async function EmployeeOvertimeHistoryPage() {
       employeeMeta={`${employee.no_karyawan} - ${employee.jabatan}`}
       currentPath="/employee/overtime-history"
       employeeRole={employee.jabatan}
+      employeeDepartment={employee.departemen}
     >
       <AdminOvertimeApprovals rows={rows} canApprove={false} />
     </EmployeeShell>

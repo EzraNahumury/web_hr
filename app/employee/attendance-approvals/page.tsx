@@ -29,6 +29,7 @@ export default async function EmployeeAttendanceApprovalsPage() {
       employeeMeta={`${employee.no_karyawan} - ${employee.jabatan}`}
       currentPath="/employee/attendance-approvals"
       employeeRole={employee.jabatan}
+      employeeDepartment={employee.departemen}
     >
       <AttendanceApprovalManager rows={rows} endpoint="/api/employee/attendance-approvals" />
     </EmployeeShell>

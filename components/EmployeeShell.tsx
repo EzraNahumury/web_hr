@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import LogoutButton from "@/components/LogoutButton";
 import PayrollGreetingModal from "@/components/PayrollGreetingModal";
 import { isSalesFieldRole } from "@/lib/sales-roles";
-import { canSetSchedule, isManager } from "@/lib/scheduler-roles";
+import { canSetSchedule, isManager, isFinanceDept } from "@/lib/scheduler-roles";
 import { useEmployeeJadwalAccess } from "@/components/EmployeeJadwalAccessContext";
 
 type Props = {
@@ -15,6 +15,7 @@ type Props = {
   employeeMeta: string;
   currentPath: string;
   employeeRole?: string | null;
+  employeeDepartment?: string | null;
   children: React.ReactNode;
 };
 
@@ -79,6 +80,18 @@ const overtimeHistoryMenu: MenuItem = {
   description: "Riwayat lembur semua karyawan (lihat saja)",
 };
 
+const financeMenu: MenuItem = {
+  label: "Finance",
+  href: "/employee/finance",
+  description: "Rekap keuangan (lihat saja)",
+};
+
+const itemLoansMenu: MenuItem = {
+  label: "Peminjaman Barang",
+  href: "/employee/item-loans",
+  description: "Daftar peminjaman barang (lihat saja)",
+};
+
 const attendanceApprovalsMenu: MenuItem = {
   label: "Approval Absensi",
   href: "/employee/attendance-approvals",
@@ -97,6 +110,7 @@ function buildMenuItems(
   role: string | null | undefined,
   employeeName: string | undefined,
   canEditJadwal: boolean,
+  department: string | null | undefined,
 ): MenuItem[] {
   let result: MenuItem[] = baseMenuItems;
 
@@ -124,6 +138,10 @@ function buildMenuItems(
   // History Lembur (read-only, semua karyawan) khusus manager.
   if (isManager(role)) {
     extras.push(overtimeHistoryMenu);
+  }
+  // Finance & Peminjaman Barang (read-only) untuk karyawan departemen Finance.
+  if (isFinanceDept(department)) {
+    extras.push(financeMenu, itemLoansMenu);
   }
   if (extras.length > 0) result = [...result, ...extras];
 
@@ -215,10 +233,11 @@ export default function EmployeeShell({
   employeeMeta,
   currentPath,
   employeeRole,
+  employeeDepartment,
   children,
 }: Props) {
   const canEditJadwal = useEmployeeJadwalAccess();
-  const menuItems = buildMenuItems(employeeRole, employeeName, canEditJadwal);
+  const menuItems = buildMenuItems(employeeRole, employeeName, canEditJadwal, employeeDepartment);
   const initiallyOpen = menuItems.reduce<Record<string, boolean>>((acc, item) => {
     if (item.children) {
       acc[item.label] = item.children.some((sub) => sub.href === currentPath);

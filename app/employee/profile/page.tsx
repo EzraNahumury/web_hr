@@ -19,6 +19,7 @@ export default async function EmployeeProfilePage() {
       employeeMeta={`${employee.nip || "Belum ada NIP"} • ${employee.role || "Belum ada jabatan"}`}
       currentPath="/employee/profile"
       employeeRole={employee.role}
+      employeeDepartment={employee.department}
     >
       <EmployeeProfileForm initial={employee} />
     </EmployeeShell>

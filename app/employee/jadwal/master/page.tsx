@@ -33,6 +33,7 @@ export default async function EmployeeJadwalMasterPage() {
       employeeMeta={`${employee.no_karyawan} - ${employee.jabatan}`}
       currentPath="/employee/jadwal/master"
       employeeRole={employee.jabatan}
+      employeeDepartment={employee.departemen}
     >
       <JadwalMasterManager karyawanList={karyawanList} initialMaster={master} />
     </EmployeeShell>
