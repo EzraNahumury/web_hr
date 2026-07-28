@@ -107,6 +107,7 @@ type PayrollSheetBaseRow = RowDataPacket & {
   raw_override_pinjaman_pribadi: string | null;
   raw_override_gaji_pokok: string | null;
   raw_override_potongan_absensi: string | null;
+  raw_potongan_sp2: string | null;
   raw_freelance_rate_type: "per_hari" | "per_jam" | null;
   raw_gaji_pokok_per_jam: string | null;
   total_omzet_global: string | null;
@@ -221,6 +222,7 @@ export type AdminPayrollSummarySheetRow = {
   contractCut: number;
   loanCut: number;
   diligenceCut: number;
+  otherDeduction: number;
   contractReturn: number;
   netIncome: number;
   inputGajiPerDay: number;
@@ -245,6 +247,7 @@ export type AdminPayrollSummarySheetRow = {
   inputOverridePinjamanPribadi: number | null;
   inputOverrideGajiPokok: number | null;
   inputOverridePotonganAbsensi: number | null;
+  inputPotonganSp2: number | null;
   freelanceRateType: "per_hari" | "per_jam";
   inputGajiPerJam: number;
 };
@@ -427,6 +430,7 @@ export async function getAdminPayrollSummarySheet(period?: {
         pei.override_pinjaman_pribadi AS raw_override_pinjaman_pribadi,
         pei.override_gaji_pokok AS raw_override_gaji_pokok,
         pei.override_potongan_absensi AS raw_override_potongan_absensi,
+        pei.potongan_sp2 AS raw_potongan_sp2,
         pei.freelance_rate_type AS raw_freelance_rate_type,
         pei.gaji_pokok_per_jam AS raw_gaji_pokok_per_jam,
         NULL AS total_omzet_global,
@@ -912,6 +916,9 @@ export async function getAdminPayrollSummarySheet(period?: {
       row.raw_override_potongan_absensi !== null
         ? toNumber(row.raw_override_potongan_absensi)
         : null;
+    // Potongan lain-lain (mis. SP2) — nilai per periode ini saja.
+    const inputPotonganSp2 =
+      row.raw_potongan_sp2 !== null ? toNumber(row.raw_potongan_sp2) : null;
 
     const statusKepegawaianNorm = (row.status_kepegawaian ?? "").trim().toLowerCase();
     // Muncul di Summary Payroll Freelance? getFreelanceSheet berbasis jabatan='freelance',
@@ -1106,6 +1113,8 @@ export async function getAdminPayrollSummarySheet(period?: {
       ? 0
       : (inputOverridePinjaman ?? loanMap.get(row.employee_id) ?? 0);
     const personalLoan = isFreelance ? 0 : (inputOverridePinjamanPribadi ?? 0);
+    // Potongan lain-lain (SP2) — freelance tidak kena.
+    const otherDeduction = isFreelance ? 0 : (inputPotonganSp2 ?? 0);
     const fineDeduction = halfDayDeduction + lateDeduction + diligenceCut;
     // Pengembalian deposit kontrak (periode sesuai tanggal pengembalian) menambah take home pay.
     const contractReturn = contractReturnMap.get(row.employee_id) ?? 0;
@@ -1117,7 +1126,8 @@ export async function getAdminPayrollSummarySheet(period?: {
       (isSalesNasional ? salesNasionalGross : totalSalary) -
       contractDeduction -
       companyLoan -
-      personalLoan +
+      personalLoan -
+      otherDeduction +
       contractReturn;
 
     return {
@@ -1172,6 +1182,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       contractCut: contractDeduction,
       loanCut: companyLoan,
       diligenceCut,
+      otherDeduction,
       contractReturn,
       netIncome,
       inputGajiPerDay: toNumber(row.raw_gaji_pokok_per_hari),
@@ -1196,6 +1207,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       inputOverridePinjamanPribadi,
       inputOverrideGajiPokok,
       inputOverridePotonganAbsensi,
+      inputPotonganSp2,
       freelanceRateType: (row.raw_freelance_rate_type ?? "per_hari") as "per_hari" | "per_jam",
       inputGajiPerJam: toNumber(row.raw_gaji_pokok_per_jam),
     };
@@ -1210,7 +1222,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     totalBonusOmzet,
     totalNetIncome: mappedRows.reduce((total, row) => total + row.netIncome, 0),
     totalDeduction: mappedRows.reduce(
-      (total, row) => total + row.fineDeduction + row.contractCut + row.loanCut,
+      (total, row) => total + row.fineDeduction + row.contractCut + row.loanCut + row.otherDeduction,
       0,
     ),
     rows: mappedRows,

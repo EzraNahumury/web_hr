@@ -69,6 +69,7 @@ function validatePayrollPayload(body: Record<string, unknown>) {
     overridePinjaman: parseOverride(body.overridePinjaman),
     overridePinjamanPribadi: parseOverride(body.overridePinjamanPribadi),
     overrideGajiPokok: parseOverride(body.overrideGajiPokok),
+    potonganSp2: parseOverride(body.potonganSp2),
   };
 
   if ([
@@ -107,6 +108,7 @@ function validatePayrollPayload(body: Record<string, unknown>) {
     overridePinjaman: values.overridePinjaman,
     overridePinjamanPribadi: values.overridePinjamanPribadi,
     overrideGajiPokok: values.overrideGajiPokok,
+    potonganSp2: values.potonganSp2,
     freelanceRateType,
     gajiPerJam,
   };

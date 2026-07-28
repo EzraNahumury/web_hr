@@ -41,6 +41,7 @@ type FormState = {
   overridePinjaman: string;
   overridePinjamanPribadi: string;
   overrideGajiPokok: string;
+  potonganSp2: string;
   freelanceRateType: "per_hari" | "per_jam";
   gajiPerJam: string;
 };
@@ -78,7 +79,7 @@ function parseNumber(value: string) {
 }
 
 function emptyForm(employeeId = ""): FormState {
-  return { employeeId, gajiPerDay: "", tunjanganJabatan: "", uangMakan: "", subsidi: "", uangKerajinan: "", bpjs: "", bonusPerforma: "", insentif: "", uangTransport: "", kendaraan: "", overrideMasuk: "", overrideLembur: "", overrideIzin: "", overrideSakit: "", overrideSakitTanpaSurat: "", overrideSetengahHari: "", overrideKontrak: "", overridePinjaman: "", overridePinjamanPribadi: "", overrideGajiPokok: "", freelanceRateType: "per_hari", gajiPerJam: "" };
+  return { employeeId, gajiPerDay: "", tunjanganJabatan: "", uangMakan: "", subsidi: "", uangKerajinan: "", bpjs: "", bonusPerforma: "", insentif: "", uangTransport: "", kendaraan: "", overrideMasuk: "", overrideLembur: "", overrideIzin: "", overrideSakit: "", overrideSakitTanpaSurat: "", overrideSetengahHari: "", overrideKontrak: "", overridePinjaman: "", overridePinjamanPribadi: "", overrideGajiPokok: "", potonganSp2: "", freelanceRateType: "per_hari", gajiPerJam: "" };
 }
 
 function formatFormValue(value: number) {
@@ -112,6 +113,7 @@ function buildFormFromRow(row: AdminPayrollSummarySheetRow): FormState {
     overridePinjaman: formatOverrideValue(row.inputOverridePinjaman),
     overridePinjamanPribadi: formatOverrideValue(row.inputOverridePinjamanPribadi),
     overrideGajiPokok: formatOverrideValue(row.inputOverrideGajiPokok),
+    potonganSp2: formatOverrideValue(row.inputPotonganSp2),
     freelanceRateType: row.freelanceRateType ?? "per_hari",
     gajiPerJam: formatFormValue(row.inputGajiPerJam),
   };
@@ -318,6 +320,7 @@ export default function AdminPayrollSummaryManager({
       overridePinjaman: isFreelance ? null : (form.overridePinjaman !== "" ? parseNumber(form.overridePinjaman) : null),
       overridePinjamanPribadi: isFreelance ? null : (form.overridePinjamanPribadi !== "" ? parseNumber(form.overridePinjamanPribadi) : null),
       overrideGajiPokok: isFreelance ? null : (isSalesNasionalSummary ? parseNumber(form.overrideGajiPokok) : form.overrideGajiPokok !== "" ? parseNumber(form.overrideGajiPokok) : null),
+      potonganSp2: isFreelance ? null : (form.potonganSp2 !== "" ? parseNumber(form.potonganSp2) : null),
       freelanceRateType: isFreelance ? form.freelanceRateType : null,
       gajiPerJam: isFreelance && form.freelanceRateType === "per_jam" ? parseNumber(form.gajiPerJam) : 0,
     };
@@ -417,7 +420,7 @@ export default function AdminPayrollSummaryManager({
           row.lateCount,
           formatNumber(row.overtimeHours),
           row.overtimeBonus > 0 ? formatCurrency(row.overtimeBonus) : "-",
-          formatCurrency(row.fineDeduction + row.contractCut + row.loanCut),
+          formatCurrency(row.fineDeduction + row.contractCut + row.loanCut + row.otherDeduction),
           formatCurrency(row.loanCut),
           formatCurrency(row.monthlyBaseSalary),
           row.contractReturn > 0 ? formatCurrency(row.contractReturn) : "-",
@@ -688,6 +691,12 @@ export default function AdminPayrollSummaryManager({
                   )}
                 </div>
 
+                <div className="mt-4">
+                  <Field label="Potongan SP2 / Lain-lain">
+                    <input value={form.potonganSp2} onChange={(event) => updateField("potonganSp2", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Kosongkan jika tidak ada" />
+                  </Field>
+                  <p className="mt-1 text-xs text-[#628083]">Potongan lain-lain (mis. SP2). Hanya berlaku periode {periodMonth}/{periodYear}; periode berikutnya otomatis kembali normal. Masuk ke total potongan &amp; mengurangi Take Home Pay.</p>
+                </div>
               </>
             )}
           </div>
@@ -821,6 +830,7 @@ export default function AdminPayrollSummaryManager({
                     <th colSpan={3} className="border border-[#a8ebef] px-3 py-3">Tambahan</th>
                     <th colSpan={3} className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Total Potongan</th>
                     <th rowSpan={2} className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Potongan Absensi</th>
+                    <th rowSpan={2} className="border border-[#fde047] bg-[#facc15] px-3 py-3 text-[#713f12]">Potongan Lain-lain</th>
                     <th rowSpan={2} className="border border-[#fca5a5] bg-[#ef4444] px-3 py-3 text-white">Total All Potongan</th>
                     <th rowSpan={2} className="border border-[#fca5a5] bg-[#ef4444] px-3 py-3 text-white">Gaji Kontrak</th>
                     <th rowSpan={2} className="border border-[#86efac] bg-[#16a34a] px-3 py-3 text-white">Pengembalian Kontrak</th>
@@ -912,7 +922,8 @@ export default function AdminPayrollSummaryManager({
                           <span className="block px-2 py-2">{formatCurrency(row.diligenceCut)}</span>
                         )}
                       </td>
-                      <td className="border border-[#d7ecee] px-3 py-3 text-right font-semibold text-[#8f1d22]">{formatCurrency(row.fineDeduction + row.contractCut + row.loanCut)}</td>
+                      <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.otherDeduction)}</td>
+                      <td className="border border-[#d7ecee] px-3 py-3 text-right font-semibold text-[#8f1d22]">{formatCurrency(row.fineDeduction + row.contractCut + row.loanCut + row.otherDeduction)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.monthlyBaseSalary)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right font-semibold text-[#16a34a]">{row.contractReturn > 0 ? formatCurrency(row.contractReturn) : "-"}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.totalSalaryBeforeDeduction)}</td>

@@ -119,6 +119,7 @@ export type PayrollFormPayload = {
   overridePinjaman?: number | null;
   overridePinjamanPribadi?: number | null;
   overrideGajiPokok?: number | null;
+  potonganSp2?: number | null;
   freelanceRateType?: "per_hari" | "per_jam" | null;
   gajiPerJam?: number;
 };
@@ -464,6 +465,19 @@ export async function ensurePayrollSupportTables(connection?: QueryExecutor) {
   } catch (err: unknown) {
     if (getMysqlErrorCode(err) !== 'ER_DUP_FIELDNAME') {
       console.error("Migration warning for override_denda:", err);
+    }
+  }
+
+  // Potongan lain-lain (mis. SP2) — berlaku HANYA periode ini (tidak di-clone ke periode
+  // berikutnya), jadi periode selanjutnya otomatis kembali normal.
+  try {
+    await executor.query(`
+      ALTER TABLE payroll_employee_input
+      ADD COLUMN potongan_sp2 DECIMAL(14,2) NULL DEFAULT NULL
+    `);
+  } catch (err: unknown) {
+    if (getMysqlErrorCode(err) !== 'ER_DUP_FIELDNAME') {
+      console.error("Migration warning for potongan_sp2:", err);
     }
   }
 
@@ -1129,8 +1143,9 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
           override_pinjaman_pribadi,
           override_gaji_pokok,
           freelance_rate_type,
-          gaji_pokok_per_jam
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          gaji_pokok_per_jam,
+          potongan_sp2
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           payroll_type = VALUES(payroll_type),
           gaji_pokok_per_hari = VALUES(gaji_pokok_per_hari),
@@ -1154,7 +1169,8 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
           override_pinjaman_pribadi = VALUES(override_pinjaman_pribadi),
           override_gaji_pokok = VALUES(override_gaji_pokok),
           freelance_rate_type = VALUES(freelance_rate_type),
-          gaji_pokok_per_jam = VALUES(gaji_pokok_per_jam)
+          gaji_pokok_per_jam = VALUES(gaji_pokok_per_jam),
+          potongan_sp2 = VALUES(potongan_sp2)
       `,
       [
         payrollId,
@@ -1182,6 +1198,7 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
         finalOverrideGajiPokok,
         isFreelance ? freelanceRateType : null,
         isFreelance && freelanceRateType === "per_jam" ? (payload.gajiPerJam ?? null) : null,
+        isFreelance ? null : (payload.potonganSp2 ?? null),
       ],
     );
 
