@@ -58,6 +58,7 @@ export const EMPLOYEE_ROLES = [
   "Manager",
   "Supervisor",
   "Staff",
+  "Staff Senior",
   "Freelance",
   "Sales Area",
   "Sales Nasional",
