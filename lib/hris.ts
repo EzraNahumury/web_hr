@@ -1115,6 +1115,7 @@ export async function listFinancePencairanGaji(period?: {
       if (!u) continue;
       u.totalBersih += row.netIncome;
       u.uangKontrak += row.contractDeduction;
+      u.pengembalianKontrak += row.contractReturn;
       u.potonganTerlambat += row.lateDeduction;
       u.potonganSetengahHari += row.halfDayDeduction;
       u.potonganKerajinan += row.diligenceCut;
