@@ -2,7 +2,7 @@ import { RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
 import { ensureAttendanceShiftSupport, isAttendanceApprovalRuleActive, isCheckInWithinOnTimeWindow, isEarlyLeaveByTime, isHalfDayByTime, isHalfDayRuleActive } from "@/lib/attendance";
 import { getEmployeeRemainingLoanTotal } from "@/lib/loans";
-import { getAdminPayrollSummarySheet } from "@/lib/payroll-summary";
+import { getCombinedFinanceRows } from "@/lib/finance-rows";
 import {
   ensureJadwalKaryawanSchema,
   JADWAL_EFFECTIVE_FROM,
@@ -754,19 +754,18 @@ export async function listFinanceByUnit(period?: {
   month?: number;
   year?: number;
 }): Promise<FinanceByUnitResult> {
-  // Use the live-computed payroll summary sheet so that netIncome (Penerimaan
-  // Bersih) matches exactly what is shown in the AdminPayrollSummaryManager,
-  // including any override values stored in payroll_employee_input.
-  const sheet = await getAdminPayrollSummarySheet(period);
+  // Gabungan semua summary (main + Solo + Sales Nasional + Freelance + Penjahit + Partime)
+  // supaya netIncome & potongan cocok dengan yang tampil di tiap Summary Payroll.
+  const { rows: financeRows, period: resolvedPeriod } = await getCombinedFinanceRows(period);
 
-  if (!sheet || !sheet.rows.length) {
+  if (!financeRows.length) {
     return { unitGroups: [], period: null };
   }
 
   // Accumulate per unit → department
   const unitMap = new Map<string, Map<string, FinanceUnitDeptData>>();
 
-  for (const row of sheet.rows) {
+  for (const row of financeRows) {
     const unit = financeUnitOf(row);
     const dept = row.department;
 
@@ -827,7 +826,7 @@ export async function listFinanceByUnit(period?: {
 
   return {
     unitGroups,
-    period: { month: sheet.periodMonth, year: sheet.periodYear },
+    period: resolvedPeriod,
   };
 }
 
@@ -866,14 +865,14 @@ export async function listFinancePembebanan(period?: {
   month?: number;
   year?: number;
 }): Promise<PembebananResult> {
-  const sheet = await getAdminPayrollSummarySheet(period);
-  if (!sheet || !sheet.rows.length)
+  const { rows: financeRows, period: resolvedPeriod } = await getCombinedFinanceRows(period);
+  if (!financeRows.length)
     return { rows: [], units: [], period: null };
 
   // Accumulate totalSalary: typeKey -> unitKeyword -> total
   const acc = new Map<string, Map<string, number>>();
 
-  for (const row of sheet.rows) {
+  for (const row of financeRows) {
     const pb = (row.pembebanan ?? "").toLowerCase().trim();
     if (!pb || pb === "tidak keduanya") continue;
 
@@ -901,7 +900,7 @@ export async function listFinancePembebanan(period?: {
 
   // Collect ordered unit names from payroll rows (same order as finance table)
   const unitSet = new Set<string>();
-  for (const row of sheet.rows) {
+  for (const row of financeRows) {
     unitSet.add(financeUnitOf(row));
   }
   const units = Array.from(unitSet).sort(
@@ -928,7 +927,7 @@ export async function listFinancePembebanan(period?: {
   return {
     rows,
     units,
-    period: { month: sheet.periodMonth, year: sheet.periodYear },
+    period: resolvedPeriod,
   };
 }
 
@@ -950,8 +949,8 @@ export async function listKeteranganHutangKontrak(period?: {
   month?: number;
   year?: number;
 }): Promise<KeteranganHutangKontrakResult> {
-  const sheet = await getAdminPayrollSummarySheet(period);
-  if (!sheet || !sheet.rows.length)
+  const { rows: financeRows, period: resolvedPeriod } = await getCombinedFinanceRows(period);
+  if (!financeRows.length)
     return {
       kontrak: {},
       hutangPerusahaan: {},
@@ -963,7 +962,7 @@ export async function listKeteranganHutangKontrak(period?: {
   const hutangPerusahaan: Record<string, KeteranganItem[]> = {};
   const hutangPribadi: Record<string, KeteranganItem[]> = {};
 
-  for (const row of sheet.rows) {
+  for (const row of financeRows) {
     const unit = financeUnitOf(row);
 
     if (row.contractDeduction > 0) {
@@ -986,7 +985,7 @@ export async function listKeteranganHutangKontrak(period?: {
     kontrak,
     hutangPerusahaan,
     hutangPribadi,
-    period: { month: sheet.periodMonth, year: sheet.periodYear },
+    period: resolvedPeriod,
   };
 }
 
@@ -1080,14 +1079,12 @@ export async function listFinancePencairanGaji(period?: {
   month?: number;
   year?: number;
 }): Promise<PencairanGajiResult> {
-  const sheet = await getAdminPayrollSummarySheet(period);
+  const { rows: financeRows, period: resolvedSheetPeriod } = await getCombinedFinanceRows(period);
 
   // Collect unit names from payroll data, then merge with fixed order
   const unitSet = new Set<string>(PENCAIRAN_UNIT_ORDER);
-  if (sheet) {
-    for (const row of sheet.rows) {
-      unitSet.add(financeUnitOf(row));
-    }
+  for (const row of financeRows) {
+    unitSet.add(financeUnitOf(row));
   }
   const extraUnits = Array.from(unitSet)
     .filter((u) => !PENCAIRAN_UNIT_ORDER.includes(u))
@@ -1109,26 +1106,22 @@ export async function listFinancePencairanGaji(period?: {
     };
   }
 
-  if (sheet) {
-    for (const row of sheet.rows) {
-      const u = acc[financeUnitOf(row)];
-      if (!u) continue;
-      u.totalBersih += row.netIncome;
-      u.uangKontrak += row.contractDeduction;
-      u.pengembalianKontrak += row.contractReturn;
-      u.potonganTerlambat += row.lateDeduction;
-      u.potonganSetengahHari += row.halfDayDeduction;
-      u.potonganKerajinan += row.diligenceCut;
-      u.hutangPerusahaan += row.companyLoan;
-    }
+  for (const row of financeRows) {
+    const u = acc[financeUnitOf(row)];
+    if (!u) continue;
+    u.totalBersih += row.netIncome;
+    u.uangKontrak += row.contractDeduction;
+    u.pengembalianKontrak += row.contractReturn;
+    u.potonganTerlambat += row.lateDeduction;
+    u.potonganSetengahHari += row.halfDayDeduction;
+    u.potonganKerajinan += row.diligenceCut;
+    u.hutangPerusahaan += row.companyLoan;
   }
 
   // Tambah lembur custom (finance) per unit
-  const resolvedPeriod = sheet
-    ? { month: sheet.periodMonth, year: sheet.periodYear }
-    : period?.month && period?.year
-      ? { month: period.month, year: period.year }
-      : null;
+  const resolvedPeriod =
+    resolvedSheetPeriod ??
+    (period?.month && period?.year ? { month: period.month, year: period.year } : null);
 
   if (resolvedPeriod) {
     const lemburMap = await listFinanceLemburTambahan(resolvedPeriod);
