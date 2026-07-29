@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 type PeriodOption = {
   month: number;
@@ -19,12 +19,15 @@ export default function FinancePeriodSelector({
   selectedYear,
 }: Props) {
   const router = useRouter();
+  // Pakai path saat ini supaya bekerja di /admin/finance maupun /employee/finance
+  // (jangan hardcode /admin/finance — dulu employee kena redirect ke login).
+  const pathname = usePathname();
   const currentValue = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}`;
 
   function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
     if (!event.target.value) return;
     const [year, month] = event.target.value.split("-");
-    router.push(`/admin/finance?month=${Number(month)}&year=${Number(year)}`);
+    router.push(`${pathname}?month=${Number(month)}&year=${Number(year)}`);
   }
 
   return (
