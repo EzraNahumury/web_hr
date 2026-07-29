@@ -999,7 +999,7 @@ export type PencairanGajiByUnit = {
   uangKontrak: number;
   pengembalianKontrak: number;
   potonganTerlambat: number;
-  potonganSetengahHari: number;
+  potonganLain: number;
   potonganKerajinan: number;
   hutangPerusahaan: number;
   lemburTambahan: number;
@@ -1099,7 +1099,7 @@ export async function listFinancePencairanGaji(period?: {
       uangKontrak: 0,
       pengembalianKontrak: 0,
       potonganTerlambat: 0,
-      potonganSetengahHari: 0,
+      potonganLain: 0,
       potonganKerajinan: 0,
       hutangPerusahaan: 0,
       lemburTambahan: 0,
@@ -1113,7 +1113,7 @@ export async function listFinancePencairanGaji(period?: {
     u.uangKontrak += row.contractDeduction;
     u.pengembalianKontrak += row.contractReturn;
     u.potonganTerlambat += row.lateDeduction;
-    u.potonganSetengahHari += row.halfDayDeduction;
+    u.potonganLain += row.otherDeduction;
     u.potonganKerajinan += row.diligenceCut;
     u.hutangPerusahaan += row.companyLoan;
   }
@@ -1132,7 +1132,7 @@ export async function listFinancePencairanGaji(period?: {
           uangKontrak: 0,
           pengembalianKontrak: 0,
           potonganTerlambat: 0,
-          potonganSetengahHari: 0,
+          potonganLain: 0,
           potonganKerajinan: 0,
           hutangPerusahaan: 0,
           lemburTambahan: 0,

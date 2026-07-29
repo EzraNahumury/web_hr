@@ -246,7 +246,7 @@ export default function FinanceRecap({
               (d?.totalBersih ?? 0) +
               (d?.uangKontrak ?? 0) +
               (d?.potonganTerlambat ?? 0) +
-              (d?.potonganSetengahHari ?? 0) +
+              (d?.potonganLain ?? 0) +
               (d?.potonganKerajinan ?? 0) +
               (d?.hutangPerusahaan ?? 0) +
               (d?.lemburTambahan ?? 0)
@@ -264,7 +264,7 @@ export default function FinanceRecap({
             { label: "Uang kontrak", key: "uangKontrak" },
             { label: "Pengembalian kontrak", key: "pengembalianKontrak" },
             { label: "Potongan uang terlambat", key: "potonganTerlambat" },
-            { label: "Potongan uang setengah hari", key: "potonganSetengahHari" },
+            { label: "Potongan lain-lain", key: "potonganLain" },
             { label: "Potongan uang kerajinan", key: "potonganKerajinan" },
             { label: "Hutang ke perusahaan", key: "hutangPerusahaan" },
             { label: "Lembur (custom)", key: "lemburTambahan" },
@@ -308,7 +308,7 @@ export default function FinanceRecap({
                           (d?.totalBersih ?? 0) +
                           (d?.uangKontrak ?? 0) +
                           (d?.potonganTerlambat ?? 0) +
-                          (d?.potonganSetengahHari ?? 0) +
+                          (d?.potonganLain ?? 0) +
                           (d?.potonganKerajinan ?? 0) +
                           (d?.hutangPerusahaan ?? 0) +
                           (d?.lemburTambahan ?? 0);
