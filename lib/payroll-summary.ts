@@ -108,6 +108,7 @@ type PayrollSheetBaseRow = RowDataPacket & {
   raw_override_gaji_pokok: string | null;
   raw_override_potongan_absensi: string | null;
   raw_potongan_sp2: string | null;
+  raw_potongan_sp2_note: string | null;
   raw_freelance_rate_type: "per_hari" | "per_jam" | null;
   raw_gaji_pokok_per_jam: string | null;
   total_omzet_global: string | null;
@@ -223,6 +224,7 @@ export type AdminPayrollSummarySheetRow = {
   loanCut: number;
   diligenceCut: number;
   otherDeduction: number;
+  otherDeductionNote: string | null;
   contractReturn: number;
   netIncome: number;
   inputGajiPerDay: number;
@@ -431,6 +433,7 @@ export async function getAdminPayrollSummarySheet(period?: {
         pei.override_gaji_pokok AS raw_override_gaji_pokok,
         pei.override_potongan_absensi AS raw_override_potongan_absensi,
         pei.potongan_sp2 AS raw_potongan_sp2,
+        pei.potongan_sp2_note AS raw_potongan_sp2_note,
         pei.freelance_rate_type AS raw_freelance_rate_type,
         pei.gaji_pokok_per_jam AS raw_gaji_pokok_per_jam,
         NULL AS total_omzet_global,
@@ -919,6 +922,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     // Potongan lain-lain (mis. SP2) — nilai per periode ini saja.
     const inputPotonganSp2 =
       row.raw_potongan_sp2 !== null ? toNumber(row.raw_potongan_sp2) : null;
+    const otherDeductionNote = row.raw_potongan_sp2_note ?? null;
 
     const statusKepegawaianNorm = (row.status_kepegawaian ?? "").trim().toLowerCase();
     // Muncul di Summary Payroll Freelance? getFreelanceSheet berbasis jabatan='freelance',
@@ -1183,6 +1187,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       loanCut: companyLoan,
       diligenceCut,
       otherDeduction,
+      otherDeductionNote,
       contractReturn,
       netIncome,
       inputGajiPerDay: toNumber(row.raw_gaji_pokok_per_hari),

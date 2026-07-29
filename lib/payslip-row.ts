@@ -59,6 +59,7 @@ export function mapPenjahitRow(row: PenjahitComputedRow): AdminPayrollSummaryShe
     loanCut: row.potonganPinjaman + row.potonganLainLain,
     diligenceCut: row.uangKerajinanNominal - row.kerajinanEarned,
     otherDeduction: 0,
+    otherDeductionNote: null,
     netIncome: row.penerimaanBersih,
     inputGajiPerDay: row.inputGajiPerDay,
     inputTunjanganJabatan: row.inputTunjanganJabatan,

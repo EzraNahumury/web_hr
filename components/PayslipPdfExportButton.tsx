@@ -22,6 +22,7 @@ export type PayslipPdfPayload = {
   deductions: PayslipPdfLineItem[];
   remainingLoan: number;
   netIncome: number;
+  otherDeductionNote?: string | null;
   pencairan?: {
     type: "mingguan" | "bulanan";
     items: PayslipPdfLineItem[];
@@ -246,7 +247,22 @@ async function buildPayslipPdf(fileName: string, pdfData: PayslipPdfPayload) {
     });
   }
 
-  drawSignatureBlock(doc, 105, 195, "Owner", OWNER_NAME, ownerSignatureDataUrl);
+  const noteText = pdfData.otherDeductionNote?.trim();
+  if (noteText) {
+    // Keterangan potongan lain-lain di kiri, tanda tangan di kanan.
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(154, 127, 110);
+    doc.text("KETERANGAN POTONGAN LAIN-LAIN", 19, 190);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(90, 70, 60);
+    doc.text(noteText, 19, 196, { maxWidth: 95 });
+    doc.setTextColor(17, 17, 17);
+    drawSignatureBlock(doc, 165, 195, "Owner", OWNER_NAME, ownerSignatureDataUrl);
+  } else {
+    drawSignatureBlock(doc, 105, 195, "Owner", OWNER_NAME, ownerSignatureDataUrl);
+  }
 
   doc.setFont("helvetica", "italic");
   doc.setFontSize(8);

@@ -5,6 +5,7 @@ import {
   setDendaPenjahitOverride,
   setKerajinanPenjahitOverride,
   setPotonganAbsensiOverride,
+  setPotonganSp2Override,
   upsertPayrollPeriodOmzet,
   upsertPayrollFromForm,
   type OmzetUnitInput,
@@ -109,6 +110,8 @@ function validatePayrollPayload(body: Record<string, unknown>) {
     overridePinjamanPribadi: values.overridePinjamanPribadi,
     overrideGajiPokok: values.overrideGajiPokok,
     potonganSp2: values.potonganSp2,
+    potonganSp2Note:
+      typeof body.potonganSp2Note === "string" ? body.potonganSp2Note.trim() || null : null,
     freelanceRateType,
     gajiPerJam,
   };
@@ -182,6 +185,8 @@ export async function POST(request: Request) {
         ? "save_omzet"
         : body.action === "save_potongan_absensi"
           ? "save_potongan_absensi"
+          : body.action === "save_potongan_sp2"
+          ? "save_potongan_sp2"
           : body.action === "save_denda_penjahit"
             ? "save_denda_penjahit"
             : body.action === "save_kerajinan_penjahit"
@@ -201,6 +206,23 @@ export async function POST(request: Request) {
           value === null
             ? `Potongan absensi periode ${saved.periodMonth}/${saved.periodYear} dikembalikan ke otomatis.`
             : `Potongan absensi periode ${saved.periodMonth}/${saved.periodYear} berhasil diubah.`,
+        saved,
+      });
+    }
+
+    if (action === "save_potongan_sp2") {
+      const employeeId = Number(body.employeeId);
+      if (!Number.isInteger(employeeId) || employeeId <= 0) {
+        return NextResponse.json({ message: "Karyawan tidak valid." }, { status: 400 });
+      }
+      // value null/"" -> hapus potongan lain-lain
+      const value = parseOverride(body.potonganSp2);
+      const saved = await setPotonganSp2Override(employeeId, periodResult.period, value);
+      return NextResponse.json({
+        message:
+          value === null
+            ? `Potongan lain-lain periode ${saved.periodMonth}/${saved.periodYear} dihapus.`
+            : `Potongan lain-lain periode ${saved.periodMonth}/${saved.periodYear} berhasil diubah.`,
         saved,
       });
     }

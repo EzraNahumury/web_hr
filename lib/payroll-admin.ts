@@ -120,6 +120,7 @@ export type PayrollFormPayload = {
   overridePinjamanPribadi?: number | null;
   overrideGajiPokok?: number | null;
   potonganSp2?: number | null;
+  potonganSp2Note?: string | null;
   freelanceRateType?: "per_hari" | "per_jam" | null;
   gajiPerJam?: number;
 };
@@ -478,6 +479,18 @@ export async function ensurePayrollSupportTables(connection?: QueryExecutor) {
   } catch (err: unknown) {
     if (getMysqlErrorCode(err) !== 'ER_DUP_FIELDNAME') {
       console.error("Migration warning for potongan_sp2:", err);
+    }
+  }
+
+  // Catatan/alasan potongan lain-lain (SP2) — per periode, mengikuti potongan_sp2.
+  try {
+    await executor.query(`
+      ALTER TABLE payroll_employee_input
+      ADD COLUMN potongan_sp2_note TEXT NULL DEFAULT NULL
+    `);
+  } catch (err: unknown) {
+    if (getMysqlErrorCode(err) !== 'ER_DUP_FIELDNAME') {
+      console.error("Migration warning for potongan_sp2_note:", err);
     }
   }
 
@@ -1144,8 +1157,9 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
           override_gaji_pokok,
           freelance_rate_type,
           gaji_pokok_per_jam,
-          potongan_sp2
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          potongan_sp2,
+          potongan_sp2_note
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           payroll_type = VALUES(payroll_type),
           gaji_pokok_per_hari = VALUES(gaji_pokok_per_hari),
@@ -1170,7 +1184,8 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
           override_gaji_pokok = VALUES(override_gaji_pokok),
           freelance_rate_type = VALUES(freelance_rate_type),
           gaji_pokok_per_jam = VALUES(gaji_pokok_per_jam),
-          potongan_sp2 = VALUES(potongan_sp2)
+          potongan_sp2 = VALUES(potongan_sp2),
+          potongan_sp2_note = VALUES(potongan_sp2_note)
       `,
       [
         payrollId,
@@ -1199,6 +1214,7 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
         isFreelance ? freelanceRateType : null,
         isFreelance && freelanceRateType === "per_jam" ? (payload.gajiPerJam ?? null) : null,
         isFreelance ? null : (payload.potonganSp2 ?? null),
+        isFreelance ? null : (payload.potonganSp2Note ?? null),
       ],
     );
 
@@ -1251,6 +1267,36 @@ export async function setPotonganAbsensiOverride(
       INSERT INTO payroll_employee_input (payroll_id, karyawan_id, override_potongan_absensi)
       VALUES (?, ?, ?)
       ON DUPLICATE KEY UPDATE override_potongan_absensi = VALUES(override_potongan_absensi)
+    `,
+    [payrollId, employeeId, value],
+  );
+
+  return { payrollId, employeeId, periodMonth: period.month, periodYear: period.year };
+}
+
+// Update nominal Potongan Lain-lain (SP2) untuk SATU periode dari tabel (klik nominal).
+// Catatan/alasan (potongan_sp2_note) TIDAK diubah di sini. value = null -> hapus potongan.
+export async function setPotonganSp2Override(
+  employeeId: number,
+  period: { month: number; year: number },
+  value: number | null,
+) {
+  await ensurePayrollSupportTables();
+
+  const [payrollRows] = await pool.query<(RowDataPacket & { id: number })[]>(
+    `SELECT id FROM payroll WHERE karyawan_id = ? AND periode_bulan = ? AND periode_tahun = ? LIMIT 1`,
+    [employeeId, period.month, period.year],
+  );
+  const payrollId = payrollRows[0]?.id;
+  if (!payrollId) {
+    throw new Error("Data payroll periode ini belum ada untuk karyawan tersebut.");
+  }
+
+  await pool.query(
+    `
+      INSERT INTO payroll_employee_input (payroll_id, karyawan_id, potongan_sp2)
+      VALUES (?, ?, ?)
+      ON DUPLICATE KEY UPDATE potongan_sp2 = VALUES(potongan_sp2)
     `,
     [payrollId, employeeId, value],
   );

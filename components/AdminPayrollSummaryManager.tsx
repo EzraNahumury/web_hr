@@ -42,6 +42,7 @@ type FormState = {
   overridePinjamanPribadi: string;
   overrideGajiPokok: string;
   potonganSp2: string;
+  potonganSp2Note: string;
   freelanceRateType: "per_hari" | "per_jam";
   gajiPerJam: string;
 };
@@ -79,7 +80,7 @@ function parseNumber(value: string) {
 }
 
 function emptyForm(employeeId = ""): FormState {
-  return { employeeId, gajiPerDay: "", tunjanganJabatan: "", uangMakan: "", subsidi: "", uangKerajinan: "", bpjs: "", bonusPerforma: "", insentif: "", uangTransport: "", kendaraan: "", overrideMasuk: "", overrideLembur: "", overrideIzin: "", overrideSakit: "", overrideSakitTanpaSurat: "", overrideSetengahHari: "", overrideKontrak: "", overridePinjaman: "", overridePinjamanPribadi: "", overrideGajiPokok: "", potonganSp2: "", freelanceRateType: "per_hari", gajiPerJam: "" };
+  return { employeeId, gajiPerDay: "", tunjanganJabatan: "", uangMakan: "", subsidi: "", uangKerajinan: "", bpjs: "", bonusPerforma: "", insentif: "", uangTransport: "", kendaraan: "", overrideMasuk: "", overrideLembur: "", overrideIzin: "", overrideSakit: "", overrideSakitTanpaSurat: "", overrideSetengahHari: "", overrideKontrak: "", overridePinjaman: "", overridePinjamanPribadi: "", overrideGajiPokok: "", potonganSp2: "", potonganSp2Note: "", freelanceRateType: "per_hari", gajiPerJam: "" };
 }
 
 function formatFormValue(value: number) {
@@ -114,6 +115,7 @@ function buildFormFromRow(row: AdminPayrollSummarySheetRow): FormState {
     overridePinjamanPribadi: formatOverrideValue(row.inputOverridePinjamanPribadi),
     overrideGajiPokok: formatOverrideValue(row.inputOverrideGajiPokok),
     potonganSp2: formatOverrideValue(row.inputPotonganSp2),
+    potonganSp2Note: row.otherDeductionNote ?? "",
     freelanceRateType: row.freelanceRateType ?? "per_hari",
     gajiPerJam: formatFormValue(row.inputGajiPerJam),
   };
@@ -156,6 +158,9 @@ export default function AdminPayrollSummaryManager({
   const [absensiEditRow, setAbsensiEditRow] = useState<AdminPayrollSummarySheetRow | null>(null);
   const [absensiValue, setAbsensiValue] = useState("");
   const [isAbsensiPending, startAbsensiTransition] = useTransition();
+  const [sp2EditRow, setSp2EditRow] = useState<AdminPayrollSummarySheetRow | null>(null);
+  const [sp2Value, setSp2Value] = useState("");
+  const [isSp2Pending, startSp2Transition] = useTransition();
 
   const [periodYear, periodMonth] = useMemo(() => {
     const [year, month] = selectedPeriod.split("-");
@@ -321,6 +326,7 @@ export default function AdminPayrollSummaryManager({
       overridePinjamanPribadi: isFreelance ? null : (form.overridePinjamanPribadi !== "" ? parseNumber(form.overridePinjamanPribadi) : null),
       overrideGajiPokok: isFreelance ? null : (isSalesNasionalSummary ? parseNumber(form.overrideGajiPokok) : form.overrideGajiPokok !== "" ? parseNumber(form.overrideGajiPokok) : null),
       potonganSp2: isFreelance ? null : (form.potonganSp2 !== "" ? parseNumber(form.potonganSp2) : null),
+      potonganSp2Note: isFreelance || form.potonganSp2 === "" ? null : (form.potonganSp2Note.trim() || null),
       freelanceRateType: isFreelance ? form.freelanceRateType : null,
       gajiPerJam: isFreelance && form.freelanceRateType === "per_jam" ? parseNumber(form.gajiPerJam) : 0,
     };
@@ -498,6 +504,42 @@ export default function AdminPayrollSummaryManager({
         }
         setPayrollMessage({ type: "success", text: data.message ?? "Potongan absensi tersimpan." });
         setAbsensiEditRow(null);
+        router.refresh();
+      } catch {
+        setPayrollMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
+      }
+    });
+  }
+
+  function openSp2Edit(row: AdminPayrollSummarySheetRow) {
+    setSp2EditRow(row);
+    setSp2Value(formatNumericInput(String(Math.round(row.otherDeduction))));
+  }
+
+  function submitSp2Override(reset: boolean) {
+    if (!sp2EditRow) return;
+    const employeeId = sp2EditRow.employeeId;
+    const body = {
+      action: "save_potongan_sp2",
+      employeeId,
+      month: periodMonth,
+      year: periodYear,
+      potonganSp2: reset ? "" : String(parseNumber(sp2Value)),
+    };
+    startSp2Transition(async () => {
+      try {
+        const res = await fetch("/api/admin/payroll-summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = (await res.json()) as { message?: string };
+        if (!res.ok) {
+          setPayrollMessage({ type: "error", text: data.message ?? "Gagal menyimpan potongan lain-lain." });
+          return;
+        }
+        setPayrollMessage({ type: "success", text: data.message ?? "Potongan lain-lain tersimpan." });
+        setSp2EditRow(null);
         router.refresh();
       } catch {
         setPayrollMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
@@ -696,6 +738,20 @@ export default function AdminPayrollSummaryManager({
                     <input value={form.potonganSp2} onChange={(event) => updateField("potonganSp2", formatNumericInput(event.target.value))} className={inputClassName} inputMode="numeric" placeholder="Kosongkan jika tidak ada" />
                   </Field>
                   <p className="mt-1 text-xs text-[#628083]">Potongan lain-lain (mis. SP2). Hanya berlaku periode {periodMonth}/{periodYear}; periode berikutnya otomatis kembali normal. Masuk ke total potongan &amp; mengurangi Take Home Pay.</p>
+                  {form.potonganSp2.trim() !== "" ? (
+                    <div className="mt-3">
+                      <Field label="Keterangan / Alasan Potongan Lain-lain">
+                        <textarea
+                          value={form.potonganSp2Note}
+                          onChange={(event) => updateField("potonganSp2Note", event.target.value)}
+                          rows={3}
+                          placeholder="Tulis alasan potongan (mis. SP2 karena ...)"
+                          className={`${inputClassName} h-auto py-3`}
+                        />
+                      </Field>
+                      <p className="mt-1 text-xs text-[#628083]">Keterangan ini muncul di popup nominal (tabel) dan di slip gaji.</p>
+                    </div>
+                  ) : null}
                 </div>
               </>
             )}
@@ -922,7 +978,21 @@ export default function AdminPayrollSummaryManager({
                           <span className="block px-2 py-2">{formatCurrency(row.diligenceCut)}</span>
                         )}
                       </td>
-                      <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.otherDeduction)}</td>
+                      <td className="border border-[#d7ecee] px-1 py-1 text-right">
+                        {canEdit ? (
+                          <button
+                            type="button"
+                            onClick={() => openSp2Edit(row)}
+                            title="Klik untuk lihat alasan & ubah nominal potongan lain-lain (periode ini)"
+                            className={`inline-flex w-full items-center justify-end gap-1 rounded-lg px-2 py-2 transition hover:bg-[#fff2ec] ${row.otherDeduction > 0 ? "font-semibold text-[#0d7f86] underline decoration-dotted underline-offset-2" : "text-[#3a2b27]"}`}
+                          >
+                            {formatCurrency(row.otherDeduction)}
+                            {row.otherDeductionNote ? <span className="text-[10px]">✎</span> : null}
+                          </button>
+                        ) : (
+                          <span className="block px-2 py-2">{formatCurrency(row.otherDeduction)}</span>
+                        )}
+                      </td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right font-semibold text-[#8f1d22]">{formatCurrency(row.fineDeduction + row.contractCut + row.loanCut + row.otherDeduction)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right">{formatCurrency(row.monthlyBaseSalary)}</td>
                       <td className="border border-[#d7ecee] px-3 py-3 text-right font-semibold text-[#16a34a]">{row.contractReturn > 0 ? formatCurrency(row.contractReturn) : "-"}</td>
@@ -1003,6 +1073,66 @@ export default function AdminPayrollSummaryManager({
                   {isAbsensiPending ? "Menyimpan..." : "Simpan"}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {sp2EditRow ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="bg-[#8f1d22] px-6 py-4">
+              <h3 className="text-lg font-semibold text-white">Potongan Lain-lain</h3>
+              <p className="mt-0.5 text-sm text-white/80">{sp2EditRow.name} • {selectedPeriodLabel}</p>
+            </div>
+            <div className="space-y-4 px-6 py-5">
+              <div>
+                <p className="text-[13px] font-semibold text-[#8f1d22]">Keterangan / Alasan</p>
+                <p className="mt-1 whitespace-pre-wrap rounded-xl bg-[#fff5f3] px-4 py-3 text-[13px] text-[#5a3a2d]">
+                  {sp2EditRow.otherDeductionNote?.trim()
+                    ? sp2EditRow.otherDeductionNote
+                    : "— Belum ada keterangan. Isi lewat form (Update Payroll)."}
+                </p>
+              </div>
+              <label className="block space-y-1.5">
+                <span className="block text-[13px] font-semibold text-[#8f1d22]">Nominal (Rp)</span>
+                <input
+                  value={sp2Value}
+                  onChange={(e) => setSp2Value(formatNumericInput(e.target.value))}
+                  inputMode="numeric"
+                  autoFocus
+                  className="h-12 w-full rounded-2xl border border-[#ead7ce] bg-white px-4 text-[#241716] outline-none focus:border-[#8f1d22] focus:shadow-[0_0_0_4px_rgba(143,29,34,0.14)]"
+                  placeholder="0"
+                />
+              </label>
+              <div className="flex flex-wrap gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setSp2EditRow(null)}
+                  className="h-11 flex-1 rounded-xl border border-[#ead7ce] text-sm font-semibold text-[#8f1d22] hover:bg-[#fff2ec]"
+                >
+                  Batal
+                </button>
+                {sp2EditRow.otherDeduction > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => submitSp2Override(true)}
+                    disabled={isSp2Pending}
+                    className="h-11 flex-1 rounded-xl border border-[#8f1d22] text-sm font-semibold text-[#8f1d22] hover:bg-[#fff2ec] disabled:opacity-60"
+                  >
+                    Hapus
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => submitSp2Override(false)}
+                  disabled={isSp2Pending}
+                  className="h-11 flex-1 rounded-xl bg-[#8f1d22] text-sm font-semibold text-white hover:bg-[#7a181d] disabled:opacity-60"
+                >
+                  {isSp2Pending ? "Menyimpan..." : "Simpan"}
+                </button>
+              </div>
+              <p className="text-[11px] text-[#9a7f6e]">Keterangan/alasan diubah lewat form (Update Payroll). Di sini hanya ubah nominal untuk periode ini.</p>
             </div>
           </div>
         </div>

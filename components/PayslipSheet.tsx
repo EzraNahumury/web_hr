@@ -168,6 +168,7 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
     { label: "Uang Kerajinan", value: row.diligenceCut },
     { label: "Pinjaman", value: totalPinjaman },
     { label: "Kontrak", value: row.contractDeduction },
+    { label: "Potongan Lain-lain", value: row.otherDeduction },
   ];
 
   const pdfData: PayslipPdfPayload = {
@@ -184,6 +185,7 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
     deductions: deductionItems,
     remainingLoan: row.remainingLoanBalance,
     netIncome: row.netIncome,
+    otherDeductionNote: row.otherDeductionNote,
     pencairan: isPenjahit
       ? {
           type: row.penjahitInfo?.tipe ?? "bulanan",
@@ -356,9 +358,21 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
               </div>
             ) : null}
 
-            <div className="mx-auto mt-10 flex max-w-xs justify-center border-t border-dashed border-[#d8c9bf] pt-8 text-center">
-              <SignatureBlock title="Owner" name={OWNER_NAME} image={OWNER_SIGNATURE_IMAGE} />
-            </div>
+            {row.otherDeductionNote?.trim() ? (
+              <div className="mt-10 flex flex-col gap-6 border-t border-dashed border-[#d8c9bf] pt-8 sm:flex-row sm:items-end sm:justify-between">
+                <div className="max-w-sm text-left">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[#9a7f6e]">Keterangan Potongan Lain-lain</p>
+                  <p className="mt-2 whitespace-pre-wrap text-sm text-[#5a463c]">{row.otherDeductionNote}</p>
+                </div>
+                <div className="text-center">
+                  <SignatureBlock title="Owner" name={OWNER_NAME} image={OWNER_SIGNATURE_IMAGE} />
+                </div>
+              </div>
+            ) : (
+              <div className="mx-auto mt-10 flex max-w-xs justify-center border-t border-dashed border-[#d8c9bf] pt-8 text-center">
+                <SignatureBlock title="Owner" name={OWNER_NAME} image={OWNER_SIGNATURE_IMAGE} />
+              </div>
+            )}
 
             <p className="mt-8 text-center text-[11px] italic leading-relaxed text-[#8a6f68]">
               {PRIVACY_NOTE}
@@ -446,9 +460,21 @@ export default function PayslipSheet({ row, periodLabel, rangeLabel }: PayslipSh
           </div>
         ) : null}
 
-        <div className="payslip-pdf-signatures">
-          <PrintSignatureBlock title="Owner" name={OWNER_NAME} image={OWNER_SIGNATURE_IMAGE} />
-        </div>
+        {row.otherDeductionNote?.trim() ? (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 24, marginTop: 24 }}>
+            <div style={{ maxWidth: "55%", textAlign: "left" }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", color: "#9a7f6e", textTransform: "uppercase", margin: 0 }}>Keterangan Potongan Lain-lain</p>
+              <p style={{ marginTop: 6, fontSize: 12, color: "#5a463c", whiteSpace: "pre-wrap" }}>{row.otherDeductionNote}</p>
+            </div>
+            <div className="payslip-pdf-signatures" style={{ marginTop: 0 }}>
+              <PrintSignatureBlock title="Owner" name={OWNER_NAME} image={OWNER_SIGNATURE_IMAGE} />
+            </div>
+          </div>
+        ) : (
+          <div className="payslip-pdf-signatures">
+            <PrintSignatureBlock title="Owner" name={OWNER_NAME} image={OWNER_SIGNATURE_IMAGE} />
+          </div>
+        )}
 
         <p className="payslip-pdf-privacy-note">{PRIVACY_NOTE}</p>
       </article>
