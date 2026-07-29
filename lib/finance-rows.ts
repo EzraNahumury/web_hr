@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { RowDataPacket } from "mysql2";
 
 import { pool } from "@/lib/db";
@@ -112,7 +113,10 @@ function mapPartimeFinanceRow(r: PartimeComputedRow, meta?: KaryawanMeta): Admin
 // - Main sheet (Summary Payroll + Solo + Sales Nasional + Freelance) — sudah termasuk.
 // - Penjahit & Partime — di-exclude dari main sheet, jadi ditambahkan di sini,
 //   diperkaya unit/penempatan/pembebanan dari tabel karyawan agar masuk grup unit Finance.
-export async function getCombinedFinanceRows(period?: {
+// Dibungkus React cache() supaya saat 4 fungsi Finance memanggilnya dengan
+// argumen period yang sama (dalam satu request), sheet berat (main/penjahit/
+// partime) hanya dihitung SEKALI — menghindari beban/deadlock ensurePayrollPeriodCloned.
+export const getCombinedFinanceRows = cache(async function getCombinedFinanceRows(period?: {
   month?: number;
   year?: number;
 }): Promise<CombinedFinanceRows> {
@@ -181,4 +185,4 @@ export async function getCombinedFinanceRows(period?: {
   }
 
   return { rows, period: resolvedPeriod };
-}
+});

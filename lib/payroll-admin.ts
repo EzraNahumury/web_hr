@@ -591,7 +591,32 @@ async function runOneOffMigrationsSilently() {
   }
 }
 
+// Dedup panggilan CONCURRENT untuk periode yang sama: bila beberapa pemanggil
+// (mis. main + penjahit + partime sheet) meminta clone periode yang sama secara
+// bersamaan, mereka berbagi SATU transaksi INSERT...SELECT — mencegah deadlock &
+// pool exhaustion. Memo dihapus saat selesai agar request berikutnya tetap jalan.
+const inFlightPeriodClone = new Map<
+  string,
+  Promise<{ cloned: boolean; sourceMonth?: number; sourceYear?: number }>
+>();
+
 export async function ensurePayrollPeriodCloned(
+  targetMonth: number,
+  targetYear: number,
+): Promise<{ cloned: boolean; sourceMonth?: number; sourceYear?: number }> {
+  const key = `${targetYear}-${targetMonth}`;
+  const existing = inFlightPeriodClone.get(key);
+  if (existing) return existing;
+  const p = ensurePayrollPeriodClonedImpl(targetMonth, targetYear);
+  inFlightPeriodClone.set(key, p);
+  try {
+    return await p;
+  } finally {
+    inFlightPeriodClone.delete(key);
+  }
+}
+
+async function ensurePayrollPeriodClonedImpl(
   targetMonth: number,
   targetYear: number,
 ): Promise<{ cloned: boolean; sourceMonth?: number; sourceYear?: number }> {
