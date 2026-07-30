@@ -2,6 +2,7 @@ import { Fragment } from "react";
 
 import FinancePeriodSelector from "@/components/FinancePeriodSelector";
 import FinanceLemburCustom from "@/components/FinanceLemburCustom";
+import FinanceNominalCell from "@/components/FinanceNominalCell";
 import type {
   FinanceRecapData,
   FinanceUnitDeptData,
@@ -26,15 +27,19 @@ function formatPeriod(month: number, year: number): string {
   return `${MONTHS_ID[month - 1]} ${year}`;
 }
 
-function DataCells({ data }: { data: FinanceUnitDeptData }) {
+function DataCells({ data, unit }: { data: FinanceUnitDeptData; unit: string }) {
+  const ctx = `${data.departemen} — ${unit}`;
+  const td = "border border-[#e0ccc5] px-3 py-2";
+  const map = (pick: (m: FinanceUnitDeptData["members"][number]) => number) =>
+    data.members.map((m) => ({ name: m.name, amount: pick(m) }));
   return (
     <>
-      <td className="border border-[#e0ccc5] px-3 py-2 text-right tabular-nums text-[#241716]">{formatRp(data.totalGaji)}</td>
-      <td className="border border-[#e0ccc5] px-3 py-2 text-right tabular-nums text-[#241716]">{formatRp(data.totalPotonganDenda)}</td>
-      <td className="border border-[#e0ccc5] px-3 py-2 text-right tabular-nums text-[#241716]">{formatRp(data.totalPotonganKontrak)}</td>
-      <td className="border border-[#e0ccc5] px-3 py-2 text-right tabular-nums text-[#241716]">{formatRp(data.totalPotonganPinjaman)}</td>
-      <td className="border border-[#e0ccc5] px-3 py-2 text-right tabular-nums text-[#241716]">{formatRp(data.totalPotonganLain)}</td>
-      <td className="border border-[#e0ccc5] px-3 py-2 text-right tabular-nums font-semibold text-[#8b3a2a]">{formatRp(data.total)}</td>
+      <FinanceNominalCell className={td} value={data.totalGaji} title={`Gaji · ${ctx}`} members={map((m) => m.gaji)} />
+      <FinanceNominalCell className={td} value={data.totalPotonganDenda} title={`Potongan Denda · ${ctx}`} members={map((m) => m.denda)} />
+      <FinanceNominalCell className={td} value={data.totalPotonganKontrak} title={`Potongan Kontrak · ${ctx}`} members={map((m) => m.kontrak)} />
+      <FinanceNominalCell className={td} value={data.totalPotonganPinjaman} title={`Potongan Pinjaman · ${ctx}`} members={map((m) => m.pinjaman)} />
+      <FinanceNominalCell className={td} value={data.totalPotonganLain} title={`Potongan Lain-lain · ${ctx}`} members={map((m) => m.lain)} />
+      <FinanceNominalCell className={td} value={data.total} title={`Total · ${ctx}`} members={map((m) => m.total)} strong />
     </>
   );
 }
@@ -159,7 +164,7 @@ export default function FinanceRecap({
                       return (
                         <Fragment key={group.unit}>
                           <td className="border border-[#e0ccc5] px-3 py-2 font-medium text-[#241716]">{deptName}</td>
-                          {deptData ? <DataCells data={deptData} /> : <ZeroCells />}
+                          {deptData ? <DataCells data={deptData} unit={group.unit} /> : <ZeroCells />}
                         </Fragment>
                       );
                     })}
@@ -178,15 +183,19 @@ export default function FinanceRecap({
                   const tPinjaman = visibleDepts.reduce((s, d) => s + d.totalPotonganPinjaman, 0);
                   const tLain = visibleDepts.reduce((s, d) => s + d.totalPotonganLain, 0);
                   const tTotal = tGaji + tDenda + tKontrak + tPinjaman + tLain;
+                  const tMembers = visibleDepts.flatMap((d) => d.members);
+                  const tMap = (pick: (m: FinanceUnitDeptData["members"][number]) => number) =>
+                    tMembers.map((m) => ({ name: m.name, amount: pick(m) }));
+                  const tTd = "border border-[#e0ccc5] px-3 py-3";
                   return (
                     <Fragment key={group.unit}>
                       <td className="border border-[#e0ccc5] px-3 py-3 font-bold text-[#7a3828]">Total</td>
-                      <td className="border border-[#e0ccc5] px-3 py-3 text-right tabular-nums font-bold text-[#241716]">{formatRp(tGaji)}</td>
-                      <td className="border border-[#e0ccc5] px-3 py-3 text-right tabular-nums font-bold text-[#241716]">{formatRp(tDenda)}</td>
-                      <td className="border border-[#e0ccc5] px-3 py-3 text-right tabular-nums font-bold text-[#241716]">{formatRp(tKontrak)}</td>
-                      <td className="border border-[#e0ccc5] px-3 py-3 text-right tabular-nums font-bold text-[#241716]">{formatRp(tPinjaman)}</td>
-                      <td className="border border-[#e0ccc5] px-3 py-3 text-right tabular-nums font-bold text-[#241716]">{formatRp(tLain)}</td>
-                      <td className="border border-[#e0ccc5] px-3 py-3 text-right tabular-nums font-bold text-[#8b3a2a]">{formatRp(tTotal)}</td>
+                      <FinanceNominalCell className={tTd} value={tGaji} title={`Gaji · Total ${group.unit}`} members={tMap((m) => m.gaji)} strong />
+                      <FinanceNominalCell className={tTd} value={tDenda} title={`Potongan Denda · Total ${group.unit}`} members={tMap((m) => m.denda)} strong />
+                      <FinanceNominalCell className={tTd} value={tKontrak} title={`Potongan Kontrak · Total ${group.unit}`} members={tMap((m) => m.kontrak)} strong />
+                      <FinanceNominalCell className={tTd} value={tPinjaman} title={`Potongan Pinjaman · Total ${group.unit}`} members={tMap((m) => m.pinjaman)} strong />
+                      <FinanceNominalCell className={tTd} value={tLain} title={`Potongan Lain-lain · Total ${group.unit}`} members={tMap((m) => m.lain)} strong />
+                      <FinanceNominalCell className={tTd} value={tTotal} title={`Total · ${group.unit}`} members={tMap((m) => m.total)} strong />
                     </Fragment>
                   );
                 })}

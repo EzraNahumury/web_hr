@@ -717,6 +717,17 @@ export async function listFinanceSummary() {
   return rows;
 }
 
+// Rincian per karyawan untuk popup "dari mana nominal ini" di tabel Pembagian Rekapan.
+export type FinanceMember = {
+  name: string;
+  gaji: number;
+  denda: number;
+  kontrak: number;
+  pinjaman: number;
+  lain: number;
+  total: number;
+};
+
 export type FinanceUnitDeptData = {
   departemen: string;
   totalGaji: number;
@@ -725,6 +736,7 @@ export type FinanceUnitDeptData = {
   totalPotonganPinjaman: number;
   totalPotonganLain: number;
   total: number;
+  members: FinanceMember[];
 };
 
 export type FinanceUnitGroup = {
@@ -781,6 +793,7 @@ export async function listFinanceByUnit(period?: {
       totalPotonganPinjaman: 0,
       totalPotonganLain: 0,
       total: 0,
+      members: [],
     };
 
     existing.totalGaji += row.netIncome;
@@ -794,6 +807,15 @@ export async function listFinanceByUnit(period?: {
       existing.totalPotonganKontrak +
       existing.totalPotonganPinjaman +
       existing.totalPotonganLain;
+    existing.members.push({
+      name: row.name,
+      gaji: row.netIncome,
+      denda: row.fineDeduction,
+      kontrak: row.contractCut,
+      pinjaman: row.loanCut,
+      lain: row.otherDeduction,
+      total: row.netIncome + row.fineDeduction + row.contractCut + row.loanCut + row.otherDeduction,
+    });
 
     deptMap.set(dept, existing);
   }
@@ -827,6 +849,7 @@ export async function listFinanceByUnit(period?: {
         0,
       ),
       total: departments.reduce((s, d) => s + d.total, 0),
+      members: departments.flatMap((d) => d.members),
     };
 
     unitGroups.push({ unit, departments, totals });
