@@ -723,6 +723,7 @@ export type FinanceUnitDeptData = {
   totalPotonganDenda: number;
   totalPotonganKontrak: number;
   totalPotonganPinjaman: number;
+  totalPotonganLain: number;
   total: number;
 };
 
@@ -778,6 +779,7 @@ export async function listFinanceByUnit(period?: {
       totalPotonganDenda: 0,
       totalPotonganKontrak: 0,
       totalPotonganPinjaman: 0,
+      totalPotonganLain: 0,
       total: 0,
     };
 
@@ -785,11 +787,13 @@ export async function listFinanceByUnit(period?: {
     existing.totalPotonganDenda += row.fineDeduction;
     existing.totalPotonganKontrak += row.contractCut;
     existing.totalPotonganPinjaman += row.loanCut;
+    existing.totalPotonganLain += row.otherDeduction;
     existing.total =
       existing.totalGaji +
       existing.totalPotonganDenda +
       existing.totalPotonganKontrak +
-      existing.totalPotonganPinjaman;
+      existing.totalPotonganPinjaman +
+      existing.totalPotonganLain;
 
     deptMap.set(dept, existing);
   }
@@ -816,6 +820,10 @@ export async function listFinanceByUnit(period?: {
       ),
       totalPotonganPinjaman: departments.reduce(
         (s, d) => s + d.totalPotonganPinjaman,
+        0,
+      ),
+      totalPotonganLain: departments.reduce(
+        (s, d) => s + d.totalPotonganLain,
         0,
       ),
       total: departments.reduce((s, d) => s + d.total, 0),

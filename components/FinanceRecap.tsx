@@ -33,6 +33,7 @@ function DataCells({ data }: { data: FinanceUnitDeptData }) {
       <td className="border border-[#e0ccc5] px-3 py-2 text-right tabular-nums text-[#241716]">{formatRp(data.totalPotonganDenda)}</td>
       <td className="border border-[#e0ccc5] px-3 py-2 text-right tabular-nums text-[#241716]">{formatRp(data.totalPotonganKontrak)}</td>
       <td className="border border-[#e0ccc5] px-3 py-2 text-right tabular-nums text-[#241716]">{formatRp(data.totalPotonganPinjaman)}</td>
+      <td className="border border-[#e0ccc5] px-3 py-2 text-right tabular-nums text-[#241716]">{formatRp(data.totalPotonganLain)}</td>
       <td className="border border-[#e0ccc5] px-3 py-2 text-right tabular-nums font-semibold text-[#8b3a2a]">{formatRp(data.total)}</td>
     </>
   );
@@ -41,6 +42,7 @@ function DataCells({ data }: { data: FinanceUnitDeptData }) {
 function ZeroCells() {
   return (
     <>
+      <td className="border border-[#e0ccc5] px-3 py-2 text-right tabular-nums text-[#c0a89e]">0</td>
       <td className="border border-[#e0ccc5] px-3 py-2 text-right tabular-nums text-[#c0a89e]">0</td>
       <td className="border border-[#e0ccc5] px-3 py-2 text-right tabular-nums text-[#c0a89e]">0</td>
       <td className="border border-[#e0ccc5] px-3 py-2 text-right tabular-nums text-[#c0a89e]">0</td>
@@ -73,7 +75,7 @@ export default function FinanceRecap({
   } = data;
 
   const periodLabel = activePeriod ? formatPeriod(activePeriod.month, activePeriod.year) : null;
-  const totalCols = unitGroups.length * 6;
+  const totalCols = unitGroups.length * 7;
 
   const deptNamesByUnit = new Map<string, string[]>();
   for (const g of unitGroups) {
@@ -118,7 +120,7 @@ export default function FinanceRecap({
               </tr>
               <tr>
                 {unitGroups.map((group) => (
-                  <th key={group.unit} colSpan={6} className="border border-[#e0ccc5] bg-[#fce9e2] px-4 py-2 text-center text-sm font-bold tracking-wide text-[#8b3a2a]">
+                  <th key={group.unit} colSpan={7} className="border border-[#e0ccc5] bg-[#fce9e2] px-4 py-2 text-center text-sm font-bold tracking-wide text-[#8b3a2a]">
                     {group.unit}
                   </th>
                 ))}
@@ -131,6 +133,7 @@ export default function FinanceRecap({
                     <th className="border border-[#e0ccc5] px-3 py-3 text-right">Potongan Denda</th>
                     <th className="border border-[#e0ccc5] px-3 py-3 text-right">Potongan Kontrak</th>
                     <th className="border border-[#e0ccc5] px-3 py-3 text-right">Potongan Pinjaman</th>
+                    <th className="border border-[#e0ccc5] px-3 py-3 text-right">Potongan Lain-lain</th>
                     <th className="border border-[#e0ccc5] px-3 py-3 text-right">Total</th>
                   </Fragment>
                 ))}
@@ -173,7 +176,8 @@ export default function FinanceRecap({
                   const tDenda = visibleDepts.reduce((s, d) => s + d.totalPotonganDenda, 0);
                   const tKontrak = visibleDepts.reduce((s, d) => s + d.totalPotonganKontrak, 0);
                   const tPinjaman = visibleDepts.reduce((s, d) => s + d.totalPotonganPinjaman, 0);
-                  const tTotal = tGaji + tDenda + tKontrak + tPinjaman;
+                  const tLain = visibleDepts.reduce((s, d) => s + d.totalPotonganLain, 0);
+                  const tTotal = tGaji + tDenda + tKontrak + tPinjaman + tLain;
                   return (
                     <Fragment key={group.unit}>
                       <td className="border border-[#e0ccc5] px-3 py-3 font-bold text-[#7a3828]">Total</td>
@@ -181,6 +185,7 @@ export default function FinanceRecap({
                       <td className="border border-[#e0ccc5] px-3 py-3 text-right tabular-nums font-bold text-[#241716]">{formatRp(tDenda)}</td>
                       <td className="border border-[#e0ccc5] px-3 py-3 text-right tabular-nums font-bold text-[#241716]">{formatRp(tKontrak)}</td>
                       <td className="border border-[#e0ccc5] px-3 py-3 text-right tabular-nums font-bold text-[#241716]">{formatRp(tPinjaman)}</td>
+                      <td className="border border-[#e0ccc5] px-3 py-3 text-right tabular-nums font-bold text-[#241716]">{formatRp(tLain)}</td>
                       <td className="border border-[#e0ccc5] px-3 py-3 text-right tabular-nums font-bold text-[#8b3a2a]">{formatRp(tTotal)}</td>
                     </Fragment>
                   );
@@ -262,7 +267,6 @@ export default function FinanceRecap({
           const rows: { label: string; key: keyof PencairanGajiByUnit }[] = [
             { label: "Total bersih (sudah potongan)", key: "totalBersih" },
             { label: "Uang kontrak", key: "uangKontrak" },
-            { label: "Pengembalian kontrak", key: "pengembalianKontrak" },
             { label: "Potongan uang terlambat", key: "potonganTerlambat" },
             { label: "Potongan lain-lain", key: "potonganLain" },
             { label: "Potongan uang kerajinan", key: "potonganKerajinan" },
@@ -343,6 +347,36 @@ export default function FinanceRecap({
                     <tr className="bg-[#fffaf8]">
                       <td className="w-52 border border-[#e0ccc5] px-4 py-2 font-semibold text-[#241716]">Total AVA + Ayres + JNE</td>
                       <td className="w-44 border border-[#e0ccc5] px-4 py-2 text-right tabular-nums text-[#241716]">{formatRp(allTotal)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ── KETERANGAN (Pengembalian Kontrak per unit) ── */}
+              <div className="w-fit overflow-x-auto rounded-[24px] border border-[#ead7ce] bg-white shadow-sm">
+                <table className="border-collapse text-sm">
+                  <thead>
+                    <tr>
+                      <th colSpan={1 + pencairan.units.length} className="border border-[#e0ccc5] bg-[#f5e8e4] px-4 py-3 text-center text-sm font-bold uppercase tracking-widest text-[#7a3828]">
+                        KETERANGAN
+                        {periodLabel && <span className="ml-2 text-xs font-medium text-[#9e7467]">— {periodLabel}</span>}
+                      </th>
+                    </tr>
+                    <tr className="bg-[#fff8f4] text-xs uppercase tracking-[0.14em] text-[#9e7467]">
+                      <th className="w-56 border border-[#e0ccc5] px-4 py-3 text-left">Kategori</th>
+                      {pencairan.units.map((unit) => (
+                        <th key={unit} className="w-40 border border-[#e0ccc5] px-4 py-3 text-right">{unit}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="bg-white">
+                      <td className="w-56 border border-[#e0ccc5] px-4 py-2 font-semibold text-[#241716]">Pengembalian kontrak</td>
+                      {pencairan.units.map((unit) => (
+                        <td key={unit} className="w-40 border border-[#e0ccc5] px-4 py-2 text-right tabular-nums text-[#241716]">
+                          {formatRp(pencairan.byUnit[unit]?.pengembalianKontrak ?? 0)}
+                        </td>
+                      ))}
                     </tr>
                   </tbody>
                 </table>
