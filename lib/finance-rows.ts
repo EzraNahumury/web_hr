@@ -8,6 +8,7 @@ import {
 } from "@/lib/payroll-summary";
 import { getPenjahitSheet } from "@/lib/payroll-penjahit";
 import { getPartimeSheet, type PartimeComputedRow } from "@/lib/payroll-partime";
+import { getFreelanceSheet } from "@/lib/payroll-freelance";
 import { mapPenjahitRow } from "@/lib/payslip-row";
 
 export type CombinedFinanceRows = {
@@ -109,6 +110,98 @@ function mapPartimeFinanceRow(r: PartimeComputedRow, meta?: KaryawanMeta): Admin
   };
 }
 
+// Freelance (jabatan 'freelance') → AdminPayrollSummarySheetRow untuk Finance.
+// Take home = total freelance (jam/pengerjaan/harian/custom). Tidak ada potongan.
+function mapFreelanceFinanceRow(
+  employeeId: number,
+  name: string,
+  total: number,
+  meta?: KaryawanMeta,
+): AdminPayrollSummarySheetRow {
+  return {
+    id: 0,
+    employeeId,
+    number: 0,
+    name,
+    role: "Freelance",
+    division: "",
+    recapGroup: "",
+    unit: meta?.unit ?? null,
+    pembebanan: meta?.pembebanan ?? null,
+    penempatan: meta?.penempatan ?? null,
+    department: meta?.departemen ?? "-",
+    bank: "-",
+    accountNumber: "-",
+    payrollType: "non_sales",
+    monthlyBaseSalary: total,
+    dailyBaseSalary: 0,
+    positionAllowance: 0,
+    fixedMealAllowance: 0,
+    subsidy: 0,
+    fixedDiligenceAllowance: 0,
+    bpjs: 0,
+    performanceBonus: 0,
+    transportAllowance: 0,
+    incentive: 0,
+    vehicleAllowance: 0,
+    travelReimbursement: 0,
+    workDays: 0,
+    presentDays: 0,
+    totalBaseSalary: total,
+    omzetBonus: 0,
+    mealAllowance: 0,
+    diligenceAllowance: 0,
+    overtimeHours: 0,
+    overtimeBonus: 0,
+    leaveCount: 0,
+    sickCount: 0,
+    sickWithoutNoteCount: 0,
+    halfDayCount: 0,
+    halfDayDeduction: 0,
+    lateCount: 0,
+    lateDeduction: 0,
+    totalSalary: total,
+    totalSalaryBeforeDeduction: total,
+    contractDeduction: 0,
+    companyLoan: 0,
+    personalLoan: 0,
+    remainingLoanBalance: 0,
+    fineDeduction: 0,
+    contractCut: 0,
+    loanCut: 0,
+    diligenceCut: 0,
+    otherDeduction: 0,
+    otherDeductionNote: null,
+    contractReturn: 0,
+    netIncome: total,
+    inputGajiPerDay: 0,
+    inputTunjanganJabatan: 0,
+    inputUangMakan: 0,
+    inputSubsidi: 0,
+    inputUangKerajinan: 0,
+    inputBpjs: 0,
+    inputBonusPerforma: 0,
+    inputInsentif: 0,
+    inputUangTransport: 0,
+    inputKendaraan: 0,
+    inputPerjalananDinasReimburse: 0,
+    inputOverrideMasuk: null,
+    inputOverrideLembur: null,
+    inputOverrideIzin: null,
+    inputOverrideSakit: null,
+    inputOverrideSakitTanpaSurat: null,
+    inputOverrideSetengahHari: null,
+    inputOverrideKontrak: null,
+    inputOverridePinjaman: null,
+    inputOverridePinjamanPribadi: null,
+    inputOverrideGajiPokok: null,
+    inputOverridePotonganAbsensi: null,
+    inputPotonganSp2: null,
+    freelanceRateType: "per_hari",
+    inputGajiPerJam: 0,
+  };
+}
+
 // Gabungan SEMUA baris payroll untuk perhitungan Finance:
 // - Main sheet (Summary Payroll + Solo + Sales Nasional + Freelance) — sudah termasuk.
 // - Penjahit & Partime — di-exclude dari main sheet, jadi ditambahkan di sini,
@@ -120,13 +213,15 @@ export const getCombinedFinanceRows = cache(async function getCombinedFinanceRow
   month?: number;
   year?: number;
 }): Promise<CombinedFinanceRows> {
-  const [mainSheet, penjahitSheet, partimeSheet] = await Promise.all([
+  const [mainSheet, penjahitSheet, partimeSheet, freelanceSheet] = await Promise.all([
     getAdminPayrollSummarySheet(period),
     getPenjahitSheet(period),
     getPartimeSheet(period),
+    getFreelanceSheet(period),
   ]);
 
   const rows: AdminPayrollSummarySheetRow[] = mainSheet ? [...mainSheet.rows] : [];
+  const mainIds = new Set(mainSheet ? mainSheet.rows.map((r) => r.employeeId) : []);
 
   const resolvedPeriod = mainSheet
     ? { month: mainSheet.periodMonth, year: mainSheet.periodYear }
@@ -138,9 +233,24 @@ export const getCombinedFinanceRows = cache(async function getCombinedFinanceRow
           ? { month: period.month, year: period.year }
           : null;
 
+  // Freelance: total per karyawan (gabung semua tipe). Yang SUDAH ada di main sheet
+  // (punya baris payroll) di-skip supaya tidak dobel.
+  const freelanceTotal = new Map<number, { name: string; total: number }>();
+  const addFreelance = (id: number, name: string, total: number) => {
+    const cur = freelanceTotal.get(id);
+    if (cur) cur.total += total;
+    else freelanceTotal.set(id, { name, total });
+  };
+  for (const r of freelanceSheet.jam) addFreelance(r.employeeId, r.name, r.total);
+  for (const r of freelanceSheet.pengerjaan) addFreelance(r.employeeId, r.name, r.total);
+  for (const r of freelanceSheet.harian) addFreelance(r.employeeId, r.name, r.total);
+  for (const r of freelanceSheet.custom) addFreelance(r.employeeId, r.name, r.grandTotal);
+  const freelanceToAdd = [...freelanceTotal.keys()].filter((id) => !mainIds.has(id));
+
   const extraIds = [
     ...(penjahitSheet?.rows.map((r) => r.employeeId) ?? []),
     ...(partimeSheet?.rows.map((r) => r.employeeId) ?? []),
+    ...freelanceToAdd,
   ];
 
   const metaMap = new Map<number, KaryawanMeta>();
@@ -182,6 +292,11 @@ export const getCombinedFinanceRows = cache(async function getCombinedFinanceRow
     for (const pr of partimeSheet.rows) {
       rows.push(mapPartimeFinanceRow(pr, metaMap.get(pr.employeeId)));
     }
+  }
+
+  for (const id of freelanceToAdd) {
+    const f = freelanceTotal.get(id)!;
+    rows.push(mapFreelanceFinanceRow(id, f.name, f.total, metaMap.get(id)));
   }
 
   return { rows, period: resolvedPeriod };
