@@ -9,15 +9,15 @@ import {
   isUserJadwalEditor,
   listTokoGudangKaryawan,
 } from "@/lib/jadwal-karyawan";
-import { getPayrollDateRange } from "@/lib/payroll-admin";
+import { getActivePayrollPeriod, getPayrollDateRange } from "@/lib/payroll-admin";
 import { canSetSchedule, isJadwalWhitelisted } from "@/lib/scheduler-roles";
 
 export const dynamic = "force-dynamic";
 
+// Default = periode payroll AKTIF (tgl >25 sudah pindah ke bulan berikut), sama dengan
+// periode tujuan distribusi Master Set Jadwal, supaya perubahan master langsung terlihat.
 function getDefaultPeriod() {
-  const now = new Date();
-  const jakarta = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
-  return { year: jakarta.getFullYear(), month: jakarta.getMonth() + 1 };
+  return getActivePayrollPeriod();
 }
 
 export default async function EmployeeJadwalPage({
