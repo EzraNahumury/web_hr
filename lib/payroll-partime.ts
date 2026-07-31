@@ -20,8 +20,8 @@ import {
 //   3. Uang makan/hari × JUMLAH HARI MASUK (hadir aktual)
 //   4. Subsidi (custom)
 //   5. BPJS (custom)
-//   - TIDAK ada uang kerajinan.
-//   - TIDAK ada lembur / bonus / transport.
+//   6. Lembur (jam × Rp20.000) — sama seperti Summary Payroll utama; menambah gaji.
+//   - TIDAK ada uang kerajinan / transport.
 //   - Potongan HANYA telat: Rp5.000 per telat (bukan 20.000 seperti payroll biasa).
 //   - Absen/izin/sakit/alfa OTOMATIS mengurangi gaji karena hari masuk berkurang.
 // Catatan: PARTIME_FIXED_DAYS (25) TIDAK lagi jadi pengali gaji — hanya dipakai untuk
@@ -96,6 +96,8 @@ export type PartimeComputedRow = {
   // Perhitungan
   insentifTotal: number; // insentifPerHari × 25
   uangMakanTotal: number; // uangMakanPerHari × 25
+  overtimeHours: number; // total jam lembur (lembur approved + jadwal lembur)
+  overtimeBonus: number; // overtimeHours × 20.000
   potonganTelat: number; // telat × 5.000
   totalGajiSebelumPotongan: number;
   totalGaji: number;
@@ -198,6 +200,31 @@ export async function getPartimeSheet(period?: {
     [...employeeIds, range.startSql, range.endSql],
   );
 
+  // Lembur: SAMA PERSIS payroll utama = lembur (approved) + jadwal shift='lembur' (jam kerja > 8j).
+  const [[lemburApprovedRows], [jadwalLemburRows]] = await Promise.all([
+    pool.query<(RowDataPacket & { employee_id: number; total_jam: string | number })[]>(
+      `SELECT karyawan_id AS employee_id, total_jam FROM lembur
+       WHERE karyawan_id IN (${placeholders}) AND tanggal BETWEEN ? AND ? AND status_approval = 'approved'`,
+      [...employeeIds, range.startSql, range.endSql],
+    ),
+    pool.query<(RowDataPacket & { employee_id: number; total_jam: string | number })[]>(
+      `SELECT a.karyawan_id AS employee_id,
+          SUM(FLOOR(GREATEST(TIMESTAMPDIFF(MINUTE, a.jam_masuk, a.jam_pulang) - 480, 0) / 30) * 30) / 60 AS total_jam
+       FROM absensi a
+       INNER JOIN jadwal_karyawan j ON j.karyawan_id = a.karyawan_id AND j.tanggal = a.tanggal
+       WHERE a.karyawan_id IN (${placeholders}) AND a.tanggal BETWEEN ? AND ?
+         AND a.status_absensi = 'hadir' AND j.shift = 'lembur'
+         AND a.jam_masuk IS NOT NULL AND a.jam_pulang IS NOT NULL
+       GROUP BY a.karyawan_id`,
+      [...employeeIds, range.startSql, range.endSql],
+    ),
+  ]);
+  const overtimeMap = new Map<number, number>();
+  for (const r of lemburApprovedRows)
+    overtimeMap.set(r.employee_id, (overtimeMap.get(r.employee_id) ?? 0) + toNum(r.total_jam));
+  for (const r of jadwalLemburRows)
+    overtimeMap.set(r.employee_id, (overtimeMap.get(r.employee_id) ?? 0) + toNum(r.total_jam));
+
   // Hitung MASUK & TELAT dengan logika SAMA PERSIS payroll utama (lib/payroll-summary.ts):
   // telat = hari HADIR yang kode_absensi-nya 'T' (bukan recompute dari jam), sudah di-approve,
   // dan bukan hari setengah-hari. Telat/pulang-awal belum di-approve dianggap alfa (tidak dihitung).
@@ -260,9 +287,12 @@ export async function getPartimeSheet(period?: {
     const insentifTotal = insentifPerHari * masuk;
     const uangMakanTotal = uangMakanPerHari * masuk;
     const potonganTelat = telat * PARTIME_LATE_DEDUCTION;
+    // Lembur: jam × Rp20.000, sama seperti Summary Payroll utama. Menambah gaji.
+    const overtimeHours = overtimeMap.get(row.employee_id) ?? 0;
+    const overtimeBonus = overtimeHours * 20000;
 
     const totalGajiSebelumPotongan =
-      insentifTotal + tunjanganJabatan + uangMakanTotal + subsidi + bpjs;
+      insentifTotal + tunjanganJabatan + uangMakanTotal + subsidi + bpjs + overtimeBonus;
     const totalGaji = totalGajiSebelumPotongan - potonganTelat;
 
     return {
@@ -284,6 +314,8 @@ export async function getPartimeSheet(period?: {
       telat,
       insentifTotal,
       uangMakanTotal,
+      overtimeHours,
+      overtimeBonus,
       potonganTelat,
       totalGajiSebelumPotongan,
       totalGaji,

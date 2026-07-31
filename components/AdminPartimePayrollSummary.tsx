@@ -228,6 +228,8 @@ export default function AdminPartimePayrollSummary({ sheet, employeeOptions }: P
             "BPJS",
             "Masuk",
             "Telat",
+            "Lembur (Jam)",
+            "Lembur (Bonus)",
             "Insentif (xMasuk)",
             "Uang Makan (xMasuk)",
             "Total Sblm Potongan",
@@ -245,6 +247,8 @@ export default function AdminPartimePayrollSummary({ sheet, employeeOptions }: P
           rp0(row.bpjs),
           row.masuk,
           row.telat,
+          row.overtimeHours,
+          rp0(row.overtimeBonus),
           rp0(row.insentifTotal),
           rp0(row.uangMakanTotal),
           rp0(row.totalGajiSebelumPotongan),
@@ -260,6 +264,7 @@ export default function AdminPartimePayrollSummary({ sheet, employeeOptions }: P
           1: { halign: "left", cellWidth: 40 },
           7: { halign: "center" },
           8: { halign: "center" },
+          9: { halign: "center" },
         },
       });
 
@@ -372,6 +377,7 @@ export default function AdminPartimePayrollSummary({ sheet, employeeOptions }: P
                   <th className={thBase} rowSpan={2}>No Rekening</th>
                   <th className={thGroup} colSpan={5}>Nominal (Custom)</th>
                   <th className={thGroup} colSpan={3}>Absensi</th>
+                  <th className={thGroup} colSpan={2}>Lembur</th>
                   <th className={thGroup} colSpan={5}>Perhitungan</th>
                   <th className={thBase} rowSpan={2}>Aksi</th>
                 </tr>
@@ -387,6 +393,9 @@ export default function AdminPartimePayrollSummary({ sheet, employeeOptions }: P
                   <th className={thBase}>Hari (Tetap)</th>
                   <th className={thBase}>Masuk</th>
                   <th className={thBase}>Telat</th>
+                  {/* Lembur */}
+                  <th className={thBase}>Jam</th>
+                  <th className={thBase}>Bonus</th>
                   {/* Perhitungan */}
                   <th className={thBase}>Insentif (×Masuk)</th>
                   <th className={thBase}>Uang Makan (×Masuk)</th>
@@ -417,6 +426,10 @@ export default function AdminPartimePayrollSummary({ sheet, employeeOptions }: P
                     <td className={tdNum}>{row.hariTetap}</td>
                     <td className={tdNum}>{row.masuk}</td>
                     <td className={tdNum}>{row.telat}</td>
+
+                    {/* Lembur */}
+                    <td className={tdNum}>{row.overtimeHours}</td>
+                    <td className={tdNum}>{formatRupiah(row.overtimeBonus)}</td>
 
                     {/* Perhitungan */}
                     <td className={tdNum}>{formatRupiah(row.insentifTotal)}</td>
