@@ -40,6 +40,7 @@ export type EmployeeListItem = {
   annualRaise: string;
   userActive: boolean;
   penjahitPayrollType: "mingguan" | "bulanan" | null;
+  csType: "selling" | "order" | null;
   freelanceTipePayroll: "jam" | "pengerjaan" | "custom_pengerjaan" | "harian" | null;
   isShift: boolean;
   createdAt: string;
@@ -209,6 +210,7 @@ export type EmployeePayload = {
   annualRaise: number;
   userActive: boolean;
   penjahitPayrollType: "mingguan" | "bulanan" | null;
+  csType: "selling" | "order" | null;
   freelanceTipePayroll: "jam" | "pengerjaan" | "custom_pengerjaan" | "harian" | null;
   isShift: boolean;
 };
@@ -246,6 +248,7 @@ type EmployeeRow = RowDataPacket & {
   tanggal_selesai_kontrak: string | null;
   kenaikan_tiap_tahun: string;
   tipe_payroll_penjahit: "mingguan" | "bulanan" | null;
+  cs_type: "selling" | "order" | null;
   tipe_freelance: "jam" | "pengerjaan" | "custom_pengerjaan" | "harian" | null;
   penempatan_extra: string | null;
   is_shift: number;
@@ -297,6 +300,7 @@ function mapEmployee(row: EmployeeRow): EmployeeListItem {
     annualRaise: row.kenaikan_tiap_tahun,
     userActive: row.status_aktif === 1,
     penjahitPayrollType: row.tipe_payroll_penjahit ?? null,
+    csType: row.cs_type ?? null,
     freelanceTipePayroll: row.tipe_freelance ?? null,
     isShift: row.is_shift === 1,
     createdAt: row.created_at,
@@ -340,6 +344,7 @@ const employeeSelectQuery = `
     DATE_FORMAT(k.tanggal_selesai_kontrak, '%Y-%m-%d') AS tanggal_selesai_kontrak,
     k.kenaikan_tiap_tahun,
     k.tipe_payroll_penjahit,
+    k.cs_type,
     k.tipe_freelance,
     u.status_aktif,
     DATE_FORMAT(k.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
@@ -383,6 +388,9 @@ export async function ensureEmployeeSchemaSupport() {
       );
       await safeMigrate(
         `ALTER TABLE karyawan MODIFY COLUMN status_kerja ENUM('training','kontrak','tetap','freelance','partime','magang','resign') NOT NULL DEFAULT 'kontrak'`,
+      );
+      await safeMigrate(
+        `ALTER TABLE karyawan ADD COLUMN cs_type ENUM('selling','order') NULL AFTER sub_divisi`,
       );
       await safeMigrate(
         `ALTER TABLE karyawan ADD COLUMN tipe_payroll_penjahit ENUM('mingguan','bulanan') NULL AFTER jabatan`,
@@ -753,8 +761,9 @@ export async function insertEmployee(payload: EmployeePayload) {
           kenaikan_tiap_tahun,
           tipe_payroll_penjahit,
           tipe_freelance,
-          is_shift
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 'nonaktif' THEN CURDATE() ELSE NULL END, ?, ?, ?, ?, ?, ?, ?)
+          is_shift,
+          cs_type
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 'nonaktif' THEN CURDATE() ELSE NULL END, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         userId,
@@ -791,6 +800,7 @@ export async function insertEmployee(payload: EmployeePayload) {
         payload.penjahitPayrollType ?? null,
         payload.freelanceTipePayroll ?? null,
         payload.isShift ? 1 : 0,
+        payload.csType ?? null,
       ],
     );
 
@@ -935,7 +945,8 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
           kenaikan_tiap_tahun = ?,
           tipe_payroll_penjahit = ?,
           tipe_freelance = ?,
-          is_shift = ?
+          is_shift = ?,
+          cs_type = ?
         WHERE id = ?
       `,
       [
@@ -972,6 +983,7 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
         payload.penjahitPayrollType ?? null,
         payload.freelanceTipePayroll ?? null,
         payload.isShift ? 1 : 0,
+        payload.csType ?? null,
         id,
       ],
     );

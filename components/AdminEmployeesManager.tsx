@@ -51,6 +51,7 @@ type FormState = {
   userActive: boolean;
   isShift: boolean;
   penjahitPayrollType: "mingguan" | "bulanan" | "";
+  csType: "selling" | "order" | "";
   freelanceTipePayroll: "jam" | "pengerjaan" | "custom_pengerjaan" | "harian" | "";
 };
 
@@ -73,6 +74,7 @@ const emptyForm: FormState = {
   userActive: true,
   isShift: false,
   penjahitPayrollType: "",
+  csType: "",
   freelanceTipePayroll: "",
 };
 
@@ -206,6 +208,7 @@ function toFormState(employee: EmployeeListItem): FormState {
     userActive: employee.userActive,
     isShift: employee.isShift,
     penjahitPayrollType: employee.penjahitPayrollType ?? "",
+    csType: employee.csType ?? "",
     freelanceTipePayroll: employee.freelanceTipePayroll ?? "",
   };
 }
@@ -457,6 +460,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
         userActive: form.userActive,
         isShift: form.isShift,
         penjahitPayrollType: form.penjahitPayrollType || null,
+        csType: form.csType || null,
         freelanceTipePayroll: form.freelanceTipePayroll || null,
       };
 
@@ -528,6 +532,9 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
       { label: "Akun", value: viewingEmployee.userActive ? "Aktif" : "Nonaktif" },
       ...(viewingEmployee.subDivision?.toLowerCase() === "penjahit" && viewingEmployee.penjahitPayrollType
         ? [{ label: "Tipe Payroll Penjahit", value: viewingEmployee.penjahitPayrollType === "mingguan" ? "Mingguan (tgl 1, 8, 16, 25)" : "Bulanan (tgl 25)" }]
+        : []),
+      ...(viewingEmployee.subDivision?.toLowerCase() === "customer service" && viewingEmployee.csType
+        ? [{ label: "Tipe CS", value: viewingEmployee.csType === "selling" ? "CS Selling" : "CS Order" }]
         : []),
     ]
     : [];
@@ -681,7 +688,21 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
               <Field label="Jabatan"><select value={form.role} onChange={(event) => { updateField("role", event.target.value); if (event.target.value.toLowerCase() !== "freelance") { updateField("freelanceTipePayroll", ""); } }} className={selectClassName}><option value="">Pilih jabatan</option>{lookups.roles.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
               <Field label="Departemen"><select value={form.department} onChange={(event) => updateField("department", event.target.value)} className={selectClassName}><option value="">Pilih departemen</option>{lookups.departments.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
               <Field label="Divisi"><select value={form.division} onChange={(event) => updateField("division", event.target.value)} className={selectClassName}><option value="">Pilih divisi</option>{lookups.divisions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
-              <Field label="Sub Divisi"><select value={form.subDivision} onChange={(event) => { updateField("subDivision", event.target.value); if (event.target.value.toLowerCase() !== "penjahit") { updateField("penjahitPayrollType", ""); } }} className={selectClassName}><option value="">Pilih sub divisi</option>{lookups.subDivisions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+              <div className="space-y-2">
+                <Field label="Sub Divisi"><select value={form.subDivision} onChange={(event) => { const v = event.target.value; updateField("subDivision", v); if (v.toLowerCase() !== "penjahit") { updateField("penjahitPayrollType", ""); } if (v.toLowerCase() !== "customer service") { updateField("csType", ""); } }} className={selectClassName}><option value="">Pilih sub divisi</option>{lookups.subDivisions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+                {form.subDivision.toLowerCase() === "customer service" ? (
+                  <div className="flex flex-wrap gap-4 rounded-[14px] border border-[#ead7ce] bg-[#fff8f5] px-4 py-3">
+                    <label className="flex cursor-pointer items-center gap-2 text-sm text-[#2d1b18]">
+                      <input type="checkbox" checked={form.csType === "selling"} onChange={() => updateField("csType", form.csType === "selling" ? "" : "selling")} className="h-4 w-4 accent-[#8f1d22]" />
+                      CS Selling
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-2 text-sm text-[#2d1b18]">
+                      <input type="checkbox" checked={form.csType === "order"} onChange={() => updateField("csType", form.csType === "order" ? "" : "order")} className="h-4 w-4 accent-[#8f1d22]" />
+                      CS Order
+                    </label>
+                  </div>
+                ) : null}
+              </div>
               <div className="space-y-2">
                 <span className="block text-sm font-medium text-[#4a3430]">Penempatan</span>
                 {form.placements.map((p, idx) => (
