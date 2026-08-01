@@ -10,7 +10,9 @@ export type KpiFormula =
   | { type: "workdays" }
   | { type: "fixed"; divisor: number }
   | { type: "late"; threshold: number }
-  | { type: "zeroBest" };
+  | { type: "zeroBest" }
+  | { type: "direct" } // aktual langsung dipakai sebagai persen (input 0-100)
+  | { type: "omzet" }; // khusus: Perhitungan = Realisasi ÷ Target × 100 (dihitung terpisah)
 
 // Hasil dalam persen (0-100+, tidak dibatasi 100). Pembatasan "maks = bobot" dilakukan di Hasil Bobot.
 export function computeKpiPerhitungan(
@@ -26,6 +28,10 @@ export function computeKpiPerhitungan(
       return f.threshold > 0 ? Math.max(((f.threshold - aktual) / f.threshold) * 100, 0) : 0;
     case "zeroBest":
       return aktual <= 0 ? 100 : 0;
+    case "direct":
+      return aktual; // aktual sudah dalam persen (0-100)
+    case "omzet":
+      return 0; // dihitung terpisah di komponen (butuh Target & Realisasi)
     case "workdays":
     default:
       return hariKerja > 0 ? (aktual / hariKerja) * 100 : 0;

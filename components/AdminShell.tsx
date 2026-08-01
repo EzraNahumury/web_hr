@@ -77,6 +77,7 @@ const menuGroups: MenuGroup[] = [
     collapsible: true,
     items: [
       { label: "KPI RnD", href: "/admin/kpi/rnd", description: "Penilaian KPI tim RnD (Staff & SPV) — nama otomatis dari database" },
+      { label: "KPI Finance", href: "/admin/kpi/finance", description: "Penilaian KPI Staff Finance (AYRES & Toko) — nama otomatis dari database" },
     ],
   },
   {
