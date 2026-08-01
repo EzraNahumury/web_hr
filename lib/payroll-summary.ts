@@ -1108,10 +1108,13 @@ export async function getAdminPayrollSummarySheet(period?: {
       statusKepegawaianNorm === "freelance" ||
       isFreelance ||
       isSalesNasional;
+    // Potongan kontrak = override manual, atau jadwal dari tabel potongan_kontrak (bulan/tahun).
+    // TIDAK fallback ke kolom p.potongan_kontrak (snapshot lama bisa basi: jadwal berubah tapi
+    // kolom payroll periode lama tak ikut ter-update → potongan hantu di bulan yang tak dijadwalkan).
     const rawContractDeduction =
       inputOverrideKontrak ??
       contractMap.get(row.employee_id) ??
-      toNumber(row.potongan_kontrak);
+      0;
     const contractDeduction = isContractWaived ? 0 : rawContractDeduction;
     const companyLoan = isFreelance
       ? 0

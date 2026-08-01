@@ -476,12 +476,13 @@ export async function getPenjahitSheet(period?: {
     const statusKepegawaianNorm = (row.status_kepegawaian ?? "").trim().toLowerCase();
     const isContractWaived =
       statusKepegawaianNorm === "tetap" || statusKepegawaianNorm === "freelance";
-    // Sumber potongan kontrak = tabel potongan_kontrak (modul Potongan Kontrak) untuk periode
-    // ini; fallback ke kolom payroll lama bila belum ada. Override manual tetap menang.
+    // Sumber potongan kontrak = tabel potongan_kontrak (modul Potongan Kontrak) untuk periode ini.
+    // TIDAK fallback ke kolom p.potongan_kontrak (snapshot lama bisa basi → potongan hantu di
+    // bulan yang tak dijadwalkan). Override manual tetap menang.
     const rawPotonganKontrak =
       row.raw_override_kontrak !== null
         ? toNum(row.raw_override_kontrak)
-        : (contractDeductionMap.get(row.employee_id) ?? toNum(row.potongan_kontrak));
+        : (contractDeductionMap.get(row.employee_id) ?? 0);
     const potonganKontrak = isContractWaived ? 0 : rawPotonganKontrak;
     const potonganPinjaman = row.raw_override_pinjaman !== null
       ? toNum(row.raw_override_pinjaman)
