@@ -71,7 +71,16 @@ export default async function AdminPayrollSummaryPage({
     >
       <AdminPayrollSummaryManager
         sheet={excludeSalesNasionalSheet(sheet)}
-        employeeOptions={employeeOptions.filter((employee) => !isSalesNasionalRole(employee.role) && !isPenjahit(employee.subDivision) && !isFreelanceJabatan(employee.role))}
+        employeeOptions={employeeOptions.filter((employee) => {
+          const status = (employee.employmentStatus ?? "").trim().toLowerCase();
+          return (
+            !isSalesNasionalRole(employee.role) &&
+            !isPenjahit(employee.subDivision) &&
+            !isFreelanceJabatan(employee.role) &&
+            status !== "partime" &&
+            status !== "freelance"
+          );
+        })}
         omzetPeriod={omzetPeriod}
         periodOptions={periodOptions}
         canEdit={isPayrollEditor(admin.email)}

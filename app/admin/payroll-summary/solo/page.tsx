@@ -8,6 +8,9 @@ import {
   type OmzetGroupConfig,
 } from "@/lib/payroll-admin";
 import { getAdminPayrollSummarySheet } from "@/lib/payroll-summary";
+import { isSalesNasionalRole } from "@/lib/sales-roles";
+import { isPenjahit } from "@/lib/penjahit-roles";
+import { isFreelanceJabatan } from "@/lib/freelance-roles";
 
 const SOLO_PLACEMENT = "Toko Solo";
 
@@ -60,7 +63,16 @@ export default async function AdminSoloPayrollSummaryPage({
     >
       <AdminPayrollSummaryManager
         sheet={sheet}
-        employeeOptions={employeeOptions}
+        employeeOptions={employeeOptions.filter((employee) => {
+          const status = (employee.employmentStatus ?? "").trim().toLowerCase();
+          return (
+            !isSalesNasionalRole(employee.role) &&
+            !isPenjahit(employee.subDivision) &&
+            !isFreelanceJabatan(employee.role) &&
+            status !== "partime" &&
+            status !== "freelance"
+          );
+        })}
         omzetPeriod={omzetPeriod}
         periodOptions={periodOptions}
         basePath="/admin/payroll-summary/solo"
