@@ -266,7 +266,7 @@ export async function getPenjahitSheet(period?: {
   const employeeIds = rows.map((r) => r.employee_id);
   const placeholders = employeeIds.map(() => "?").join(",");
 
-  const [[attendanceRows], [overtimeRows], [jadwalLemburRows], loanRows, [remainingLoanRows], [contractReturnRows]] = await Promise.all([
+  const [[attendanceRows], [overtimeRows], [jadwalLemburRows], loanRows, [remainingLoanRows], [contractReturnRows], [contractDeductionRows]] = await Promise.all([
     pool.query<AttendanceRawRow[]>(
       `SELECT a.karyawan_id AS employee_id,
         DATE_FORMAT(a.tanggal, '%Y-%m-%d') AS tanggal_iso,
@@ -328,11 +328,25 @@ export async function getPenjahitSheet(period?: {
          AND tanggal_pengembalian BETWEEN ? AND ?`,
       [...employeeIds, range.startSql, range.endSql],
     ),
+    // Potongan kontrak periode ini dari tabel potongan_kontrak (sumber kebenaran modul
+    // Potongan Kontrak). Penjahit sebelumnya baca p.potongan_kontrak yang tak terisi.
+    pool.query<RowDataPacket[]>(
+      `SELECT karyawan_id AS employee_id, COALESCE(SUM(nominal_potongan), 0) AS nominal
+       FROM potongan_kontrak
+       WHERE karyawan_id IN (${placeholders}) AND bulan = ? AND tahun = ?
+       GROUP BY karyawan_id`,
+      [...employeeIds, periodMonth, periodYear],
+    ),
   ]);
 
   const contractReturnMap = new Map<number, number>();
   for (const r of contractReturnRows as Array<{ employee_id: number; nominal: number | string }>) {
     contractReturnMap.set(r.employee_id, toNum(r.nominal));
+  }
+
+  const contractDeductionMap = new Map<number, number>();
+  for (const r of contractDeductionRows as Array<{ employee_id: number; nominal: number | string }>) {
+    contractDeductionMap.set(r.employee_id, toNum(r.nominal));
   }
 
   // Cicilan pinjaman per minggu (custom) untuk pencairan mingguan penjahit.
@@ -462,8 +476,12 @@ export async function getPenjahitSheet(period?: {
     const statusKepegawaianNorm = (row.status_kepegawaian ?? "").trim().toLowerCase();
     const isContractWaived =
       statusKepegawaianNorm === "tetap" || statusKepegawaianNorm === "freelance";
+    // Sumber potongan kontrak = tabel potongan_kontrak (modul Potongan Kontrak) untuk periode
+    // ini; fallback ke kolom payroll lama bila belum ada. Override manual tetap menang.
     const rawPotonganKontrak =
-      row.raw_override_kontrak !== null ? toNum(row.raw_override_kontrak) : toNum(row.potongan_kontrak);
+      row.raw_override_kontrak !== null
+        ? toNum(row.raw_override_kontrak)
+        : (contractDeductionMap.get(row.employee_id) ?? toNum(row.potongan_kontrak));
     const potonganKontrak = isContractWaived ? 0 : rawPotonganKontrak;
     const potonganPinjaman = row.raw_override_pinjaman !== null
       ? toNum(row.raw_override_pinjaman)
