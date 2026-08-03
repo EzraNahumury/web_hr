@@ -668,6 +668,82 @@ export const STOK_STAFF_TOKO_KPI: KpiGroup[] = [
   },
 ];
 
+// Template STAFF + sub divisi MARKETPLACE + penempatan Toko. Total bobot 105% (sesuai sheet asli;
+// grup Pengelolaan Marketplace berbobot 65%).
+export const MP_STAFF_TOKO_KPI: KpiGroup[] = [
+  {
+    no: 1,
+    tugas: "Kehadiran",
+    total: 5,
+    items: [
+      { key: "mpt1_1", kpi: "Kepatuhan absensi 100%", caraUkur: "(Hari hadir ÷ Hari kerja) × 100%", caraPerhitungan: "Jumlah hari dia hadir", bobot: 3 },
+      { key: "mpt1_2", kpi: "Keterlambatan kerja ≤ 5x", caraUkur: "((5 - Jumlah Keterlambatan) ÷ 5) × 100%", caraPerhitungan: "Jumlah keterlambatan", bobot: 2, formula: { type: "late", threshold: 5 } },
+    ],
+  },
+  {
+    no: 2,
+    tugas: "Kedisiplinan & Etika Kerja",
+    total: 5,
+    items: [
+      { key: "mpt2_1", kpi: "Kepatuhan penggunaan seragam 100%", caraUkur: "(Hari patuh seragam ÷ Hari kerja) × 100%", caraPerhitungan: "1-25 (Berapa hari dia patuh pakai seragam)", bobot: 1 },
+      { key: "mpt2_2", kpi: "Kepatuhan penggunaan ID Card 100%", caraUkur: "(Hari menggunakan ID Card ÷ Hari kerja) × 100%", caraPerhitungan: "1-25 (Berapa hari dia patuh pakai ID Card)", bobot: 1 },
+      { key: "mpt2_3", kpi: "Pelanggaran etika kerja 0%", caraUkur: "Jumlah pelanggaran etika per bulan", caraPerhitungan: "0-∞ (Jumlah pelanggaran etika per bulan)", bobot: 1, formula: { type: "zeroBest" } },
+      { key: "mpt2_4", kpi: "Kepatuhan terhadap peraturan perusahaan", caraUkur: "Jumlah pelanggaran per bulan", caraPerhitungan: "0-∞ (Jumlah pelanggaran per bulan)", bobot: 2, formula: { type: "zeroBest" } },
+    ],
+  },
+  {
+    no: 3,
+    tugas: "Pengelolaan Marketplace",
+    total: 65,
+    items: [
+      { key: "mpt3_1", kpi: "Operasional toko berjalan 100%", caraUkur: "Penilaian atasan/checklist operasional", caraPerhitungan: "0-100 (Penilaian atasan/checklist)", bobot: 4, formula: { type: "direct" } },
+      { key: "mpt3_2", kpi: "Tingkat toko tidak aktif 0%", caraUkur: "Jumlah hari toko tidak aktif", caraPerhitungan: "0-∞ (Jumlah hari toko tidak aktif)", bobot: 4, formula: { type: "zeroBest" } },
+      { key: "mpt3_3", kpi: "Ketepatan upload produk 100%", caraUkur: "(Produk terupload ÷ Target upload) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 4, formula: { type: "ratio" } },
+      { key: "mpt3_4", kpi: "Ketepatan update stok 100%", caraUkur: "(Update stok terlaksana ÷ Jadwal update) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 4, formula: { type: "ratio" } },
+      { key: "mpt3_5", kpi: "Tingkat kesalahan stok 0%", caraUkur: "Jumlah kesalahan stok", caraPerhitungan: "0-∞ (Jumlah kesalahan stok)", bobot: 3, formula: { type: "zeroBest" } },
+      { key: "mpt3_6", kpi: "Pelaksanaan campaign sesuai jadwal 100%", caraUkur: "(Campaign terlaksana ÷ Campaign direncanakan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 7, formula: { type: "ratio" } },
+      { key: "mpt3_7", kpi: "Pengelolaan iklan berjalan 100%", caraUkur: "(Aktivitas optimasi iklan ÷ Target aktivitas) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 5, formula: { type: "ratio" } },
+      { key: "mpt3_8", kpi: "Pencapaian omzet Rp1.000.000.000/bulan", caraUkur: "(Realisasi omzet ÷ Target Rp1.000.000.000) × 100%", caraPerhitungan: "Jumlah pencapaian omzet", bobot: 12, formula: { type: "fixed", divisor: 1000000000 } },
+      { key: "mpt3_9", kpi: "Pencapaian ROAS minimal 10 atau ACOS 10%", caraUkur: "(ROAS aktual ÷ Target ROAS 10) × 100%", caraPerhitungan: "Jumlah pencapaian ROAS/ACOS", bobot: 15, formula: { type: "fixed", divisor: 10 } },
+      { key: "mpt3_10", kpi: "Tingkat penalti toko 0%", caraUkur: "Jumlah penalti marketplace", caraPerhitungan: "0-∞ (Jumlah penalti marketplace)", bobot: 4, formula: { type: "zeroBest" } },
+      { key: "mpt3_11", kpi: "Tingkat komplain marketplace < 5%", caraUkur: "Jumlah komplain marketplace", caraPerhitungan: "0-∞ (Jumlah komplain marketplace)", bobot: 3, formula: { type: "zeroBest" } },
+    ],
+  },
+  {
+    no: 4,
+    tugas: "Laporan Marketplace",
+    total: 15,
+    items: [
+      { key: "mpt4_1", kpi: "Laporan harian tepat waktu 100%", caraUkur: "(Laporan tepat waktu ÷ Total laporan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 3, formula: { type: "ratio" } },
+      { key: "mpt4_2", kpi: "Laporan 2 mingguan tepat waktu 100%", caraUkur: "(Laporan tepat waktu ÷ Total laporan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 3, formula: { type: "ratio" } },
+      { key: "mpt4_3", kpi: "Laporan bulanan tepat waktu 100%", caraUkur: "(Laporan tepat waktu ÷ Total laporan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 3, formula: { type: "ratio" } },
+      { key: "mpt4_4", kpi: "Akurasi data laporan 100%", caraUkur: "(Data benar ÷ Total data laporan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 4, formula: { type: "ratio" } },
+      { key: "mpt4_5", kpi: "Kelengkapan laporan 100%", caraUkur: "Checklist atasan", caraPerhitungan: "0-100 (Checklist atasan)", bobot: 2, formula: { type: "direct" } },
+    ],
+  },
+  {
+    no: 5,
+    tugas: "Koordinasi Antar Divisi",
+    total: 10,
+    items: [
+      { key: "mpt5_1", kpi: "Kesalahan koordinasi stok & pengiriman 0%", caraUkur: "Jumlah kesalahan koordinasi", caraPerhitungan: "0-∞ (Jumlah kesalahan koordinasi)", bobot: 4, formula: { type: "zeroBest" } },
+      { key: "mpt5_2", kpi: "Kelancaran koordinasi dengan tim media 100%", caraUkur: "Penilaian atasan", caraPerhitungan: "0-100 (Penilaian atasan)", bobot: 3, formula: { type: "direct" } },
+      { key: "mpt5_3", kpi: "Ketepatan penyampaian kebutuhan promosi & konten 100%", caraUkur: "(Permintaan tepat waktu ÷ Total permintaan) × 100%", caraPerhitungan: "0-100 (Hasil dari perhitungan cara ukur)", bobot: 3, formula: { type: "direct" } },
+    ],
+  },
+  {
+    no: 6,
+    tugas: "Kebersihan Area Kerja",
+    total: 5,
+    items: [
+      { key: "mpt6_1", kpi: "Kehadiran piket kebersihan", caraUkur: "(Piket terlaksana ÷ Jadwal) × 100%", caraPerhitungan: "0-8 (Jumlah piket kebersihan)", bobot: 1, formula: { type: "fixed", divisor: 8 } },
+      { key: "mpt6_2", kpi: "Kebersihan area kerja", caraUkur: "Checklist atasan", caraPerhitungan: "0-100 (Checklist atasan)", bobot: 2, formula: { type: "direct" } },
+      { key: "mpt6_3", kpi: "Kerapihan area kerja & dokumen", caraUkur: "Checklist atasan", caraPerhitungan: "0-100 (Checklist atasan)", bobot: 1, formula: { type: "direct" } },
+      { key: "mpt6_4", kpi: "Keluhan kebersihan area kerja", caraUkur: "100% jika tidak ada keluhan", caraPerhitungan: "0-∞ (Jumlah keluhan)", bobot: 1, formula: { type: "zeroBest" } },
+    ],
+  },
+];
+
 export const CS_TYPE_LABEL: Record<CsType, string> = {
   selling: "CS Selling",
   order: "CS Order",
@@ -692,8 +768,7 @@ export function getSalesRetailTemplate(
   if (sub === "purchase") return PURCHASE_KPI;
   if (sub === "stok" || sub === "stock") return STOK_STAFF_TOKO_KPI;
   if (sub === "marketplace") {
-    if (isSpv) return MP_SPV_KPI;
-    return []; // Staff Marketplace (Toko) — template belum tersedia (gambar terpotong).
+    return isSpv ? MP_SPV_KPI : MP_STAFF_TOKO_KPI;
   }
   switch (csType) {
     case "order":
@@ -711,7 +786,7 @@ export function getSalesRetailTemplate(
 const ALL_SALES_RETAIL_KEYS = new Set(
   [
     ...CS_SELLING_KPI, ...CS_ORDER_KPI, ...CS_GROSIR_KPI, ...CS_MARKETPLACE_KPI, ...PURCHASE_KPI,
-    ...MP_SPV_KPI, ...STOK_STAFF_TOKO_KPI,
+    ...MP_SPV_KPI, ...STOK_STAFF_TOKO_KPI, ...MP_STAFF_TOKO_KPI,
   ].flatMap((g) => g.items.map((i) => i.key)),
 );
 
