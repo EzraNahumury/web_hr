@@ -12,6 +12,7 @@ export type KpiFormula =
   | { type: "late"; threshold: number }
   | { type: "zeroBest" }
   | { type: "direct" } // aktual langsung dipakai sebagai persen (input 0-100)
+  | { type: "ratio" } // aktual berupa rasio 0-1 → persen (aktual × 100)
   | { type: "omzet" }; // khusus: Perhitungan = Realisasi ÷ Target × 100 (dihitung terpisah)
 
 // Hasil dalam persen (0-100+, tidak dibatasi 100). Pembatasan "maks = bobot" dilakukan di Hasil Bobot.
@@ -30,6 +31,8 @@ export function computeKpiPerhitungan(
       return aktual <= 0 ? 100 : 0;
     case "direct":
       return aktual; // aktual sudah dalam persen (0-100)
+    case "ratio":
+      return aktual * 100; // aktual berupa rasio 0-1
     case "omzet":
       return 0; // dihitung terpisah di komponen (butuh Target & Realisasi)
     case "workdays":
