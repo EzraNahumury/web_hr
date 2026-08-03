@@ -79,6 +79,7 @@ const menuGroups: MenuGroup[] = [
       { label: "KPI RnD", href: "/admin/kpi/rnd", description: "Penilaian KPI tim RnD (Staff & SPV) — nama otomatis dari database" },
       { label: "KPI Finance", href: "/admin/kpi/finance", description: "Penilaian KPI Staff Finance (AYRES & Toko) — nama otomatis dari database" },
       { label: "KPI Sales & Retail", href: "/admin/kpi/sales-retail", description: "Penilaian KPI Customer Service (Selling / Order / Grosir / Marketplace)" },
+      { label: "KPI Logistik", href: "/admin/kpi/logistik", description: "Penilaian KPI Supervisor divisi Logistik" },
     ],
   },
   {

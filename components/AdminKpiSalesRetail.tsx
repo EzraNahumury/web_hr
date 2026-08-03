@@ -23,6 +23,10 @@ type Props = {
   selectedEmployee: SalesRetailEmployee | null;
   template: KpiGroup[];
   inputs: Record<string, KpiSalesRetailInputValue>;
+  // Reuse untuk modul KPI lain (mis. Logistik). Default = Sales & Retail.
+  basePath?: string; // path halaman untuk navigasi periode/karyawan
+  endpoint?: string; // endpoint API simpan
+  groupLabelOverride?: string; // override badge kelompok (mis. "Supervisor Logistik")
 };
 
 type RowState = { aktualData: string; hasilOverride: "terpenuhi" | "tidak" | null };
@@ -69,6 +73,9 @@ export default function AdminKpiSalesRetail({
   selectedEmployee,
   template,
   inputs,
+  basePath = "/admin/kpi/sales-retail",
+  endpoint = "/api/admin/kpi/sales-retail",
+  groupLabelOverride,
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -119,7 +126,7 @@ export default function AdminKpiSalesRetail({
       params.set("year", String(y));
     }
     setMessage(null);
-    router.push(`/admin/kpi/sales-retail?${params.toString()}`);
+    router.push(`${basePath}?${params.toString()}`);
   }
 
   function handleEmployeeChange(e: React.ChangeEvent<HTMLSelectElement>) {
@@ -128,7 +135,7 @@ export default function AdminKpiSalesRetail({
     params.set("month", String(month));
     params.set("year", String(year));
     setMessage(null);
-    router.push(`/admin/kpi/sales-retail?${params.toString()}`);
+    router.push(`${basePath}?${params.toString()}`);
   }
 
   function handleSave() {
@@ -148,7 +155,7 @@ export default function AdminKpiSalesRetail({
     );
     startTransition(async () => {
       try {
-        const res = await fetch("/api/admin/kpi/sales-retail", {
+        const res = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ employeeId: selectedEmployee.id, month, year, hariKerja: hariKerjaNum, rows: payloadRows }),
@@ -174,7 +181,7 @@ export default function AdminKpiSalesRetail({
   const tdBorder = "px-3 py-2 text-xs text-[#3a2513] border border-[#f2e2d0] align-middle text-center";
 
   const isCustomerService = (selectedEmployee?.subDivisi ?? "").trim().toLowerCase() === "customer service";
-  const csLabel = selectedEmployee ? kindLabel(selectedEmployee) : null;
+  const csLabel = selectedEmployee ? (groupLabelOverride ?? kindLabel(selectedEmployee)) : null;
   const templateEmpty = !!selectedEmployee && template.length === 0;
 
   return (
@@ -189,8 +196,8 @@ export default function AdminKpiSalesRetail({
               Penilaian KPI — {periodLabel}
             </h3>
             <p className="mt-1 text-sm text-[#8a6a4a]">
-              Customer Service. Isi <span className="font-semibold">Aktual Data</span> tiap baris; Perhitungan mengikuti rumus per baris
-              (absensi ÷ Hari Kerja, "0-1" = rasio, "0-100" penilaian, "0-∞" jumlah = 0 berarti 100%, omzet ÷ target).
+              Isi <span className="font-semibold">Aktual Data</span> tiap baris; Perhitungan mengikuti rumus per baris
+              (absensi ÷ Hari Kerja; rasio 0-1; penilaian 0-100; jumlah 0-∞ = 0 berarti 100%; omzet ÷ target).
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
