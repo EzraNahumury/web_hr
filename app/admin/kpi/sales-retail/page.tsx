@@ -33,7 +33,9 @@ export default async function AdminKpiSalesRetailPage({
   const selectedEmployee =
     (empParam ? employees.find((e) => e.id === empParam) : undefined) ?? employees[0] ?? null;
 
-  const template = selectedEmployee ? getSalesRetailTemplate(selectedEmployee.csType) : [];
+  const template = selectedEmployee
+    ? getSalesRetailTemplate(selectedEmployee.subDivisi, selectedEmployee.csType)
+    : [];
   const [inputs, hariKerja] = await Promise.all([
     selectedEmployee ? getKpiSalesRetailInputs(selectedEmployee.id, month, year) : Promise.resolve({}),
     getKpiSalesRetailHariKerja(month, year),

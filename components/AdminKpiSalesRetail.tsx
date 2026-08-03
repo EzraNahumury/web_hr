@@ -30,6 +30,12 @@ function toNum(v: string) {
   return Number.isFinite(n) ? n : 0;
 }
 
+// Label kelompok KPI: Purchase (sub divisi) atau tipe CS.
+function kindLabel(emp: SalesRetailEmployee): string {
+  if ((emp.subDivisi ?? "").trim().toLowerCase() === "purchase") return "Purchase";
+  return emp.csType ? CS_TYPE_LABEL[emp.csType] : "Tipe CS belum diset";
+}
+
 function buildInitialState(template: KpiGroup[], inputs: Record<string, KpiSalesRetailInputValue>) {
   const state: Record<string, RowState> = {};
   for (const g of template) {
@@ -154,7 +160,8 @@ export default function AdminKpiSalesRetail({
   const td = "px-3 py-2 text-xs text-[#3a2513] border border-[#f2e2d0] align-top";
   const tdBorder = "px-3 py-2 text-xs text-[#3a2513] border border-[#f2e2d0] align-middle text-center";
 
-  const csLabel = selectedEmployee?.csType ? CS_TYPE_LABEL[selectedEmployee.csType] : null;
+  const isPurchase = (selectedEmployee?.subDivisi ?? "").trim().toLowerCase() === "purchase";
+  const csLabel = selectedEmployee ? kindLabel(selectedEmployee) : null;
 
   return (
     <div className="space-y-6">
@@ -197,7 +204,7 @@ export default function AdminKpiSalesRetail({
               >
                 {employees.map((emp) => (
                   <option key={emp.id} value={emp.id}>
-                    {emp.nama.toUpperCase()} — {emp.csType ? CS_TYPE_LABEL[emp.csType] : "Tipe CS belum diset"}
+                    {emp.nama.toUpperCase()} — {kindLabel(emp)}
                   </option>
                 ))}
               </select>
@@ -222,8 +229,8 @@ export default function AdminKpiSalesRetail({
               <p className="text-xs text-[#8a6a4a]">{selectedEmployee.jabatan || "-"} · {selectedEmployee.penempatan || "-"}</p>
             </div>
             <div className="rounded-2xl border border-[#f0dcc4] bg-white px-5 py-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#b15a1a]">Tipe CS</p>
-              <p className="mt-1 text-lg font-semibold text-[#3a2513]">{csLabel ?? "Belum diset (default CS Selling)"}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#b15a1a]">{isPurchase ? "Sub Divisi" : "Tipe CS"}</p>
+              <p className="mt-1 text-lg font-semibold text-[#3a2513]">{isPurchase ? "Purchase" : (selectedEmployee?.csType ? csLabel : "Belum diset (default CS Selling)")}</p>
             </div>
             <div className="rounded-2xl border border-[#f0dcc4] bg-white px-5 py-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-[#b15a1a]">Total Bobot</p>
@@ -245,10 +252,10 @@ export default function AdminKpiSalesRetail({
 
       {!selectedEmployee ? (
         <div className="rounded-[28px] border border-[#f0dcc4] bg-white px-6 py-16 text-center shadow-sm">
-          <p className="text-base font-semibold text-[#3a2513]">Belum ada karyawan Customer Service</p>
+          <p className="text-base font-semibold text-[#3a2513]">Belum ada karyawan Customer Service / Purchase</p>
           <p className="mt-2 text-sm text-[#8a6a4a]">
-            Tidak ditemukan karyawan aktif dengan sub divisi <span className="font-semibold">Customer Service</span>.
-            Set sub divisi &amp; tipe CS karyawan di menu Data Karyawan.
+            Tidak ditemukan karyawan aktif dengan sub divisi <span className="font-semibold">Customer Service</span> atau{" "}
+            <span className="font-semibold">Purchase</span>. Set sub divisi (dan tipe CS untuk Customer Service) di menu Data Karyawan.
           </p>
         </div>
       ) : (

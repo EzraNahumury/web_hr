@@ -377,6 +377,92 @@ export const CS_MARKETPLACE_KPI: KpiGroup[] = [
   },
 ];
 
+// Template PURCHASE — sub divisi Purchase. Total bobot 100%.
+export const PURCHASE_KPI: KpiGroup[] = [
+  {
+    no: 1,
+    tugas: "Kehadiran",
+    total: 5,
+    items: [
+      { key: "pur1_1", kpi: "Kepatuhan absensi 100%", caraUkur: "(Hari hadir ÷ Hari kerja) × 100%", caraPerhitungan: "Jumlah hari dia hadir", bobot: 3 },
+      { key: "pur1_2", kpi: "Keterlambatan kerja ≤ 5x", caraUkur: "((5 - Jumlah Keterlambatan) ÷ 5) × 100%", caraPerhitungan: "Jumlah keterlambatan", bobot: 2, formula: { type: "late", threshold: 5 } },
+    ],
+  },
+  {
+    no: 2,
+    tugas: "Kedisiplinan & Etika Kerja",
+    total: 5,
+    items: [
+      { key: "pur2_1", kpi: "Kepatuhan penggunaan seragam 100%", caraUkur: "(Hari patuh seragam ÷ Hari kerja) × 100%", caraPerhitungan: "1-25 (Berapa hari dia patuh pakai seragam)", bobot: 1 },
+      { key: "pur2_2", kpi: "Kepatuhan penggunaan ID Card 100%", caraUkur: "(Hari menggunakan ID Card ÷ Hari kerja) × 100%", caraPerhitungan: "1-25 (Berapa hari dia patuh pakai ID Card)", bobot: 1 },
+      { key: "pur2_3", kpi: "Kepatuhan penggunaan sepatu/flat shoes 100%", caraUkur: "(Hari sesuai ketentuan ÷ Hari kerja) × 100%", caraPerhitungan: "1-25 (Berapa hari dia patuh pakai flat shoes)", bobot: 1 },
+      { key: "pur2_4", kpi: "Pelanggaran etika kerja 0%", caraUkur: "Jumlah pelanggaran per bulan", caraPerhitungan: "0-∞ (Jumlah pelanggaran)", bobot: 1, formula: { type: "zeroBest" } },
+      { key: "pur2_5", kpi: "Kepatuhan terhadap peraturan perusahaan", caraUkur: "Penilaian atasan", caraPerhitungan: "0-100 (Penilaian atasan)", bobot: 1, formula: { type: "direct" } },
+    ],
+  },
+  {
+    no: 3,
+    tugas: "Pengelolaan Stok & Perencanaan Pembelian",
+    total: 25,
+    items: [
+      { key: "pur3_1", kpi: "Ketepatan pengecekan stok 100%", caraUkur: "(Cek stok benar ÷ total pengecekan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 5, formula: { type: "ratio" } },
+      { key: "pur3_2", kpi: "Kekosongan stok produk utama 0%", caraUkur: "Jumlah stockout", caraPerhitungan: "0-∞ (Berapa kali stok kosong pada produk utama)", bobot: 5, formula: { type: "zeroBest" } },
+      { key: "pur3_3", kpi: "Ketepatan perencanaan pembelian 100%", caraUkur: "(Rencana sesuai kebutuhan ÷ total kebutuhan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 5, formula: { type: "ratio" } },
+      { key: "pur3_4", kpi: "Monitoring stok minimum 100%", caraUkur: "(Monitoring dilakukan ÷ jadwal) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 5, formula: { type: "ratio" } },
+      { key: "pur3_5", kpi: "Akurasi rekomendasi pembelian", caraUkur: "Penilaian atasan", caraPerhitungan: "0-100 (Nilai penilaian atasan terhadap akurasi rekomendasi pembelian)", bobot: 5, formula: { type: "direct" } },
+    ],
+  },
+  {
+    no: 4,
+    tugas: "Proses Pembelian & Purchasing Order",
+    total: 25,
+    items: [
+      { key: "pur4_1", kpi: "Ketepatan proses pemesanan 100%", caraUkur: "(Order benar ÷ total order) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 4, formula: { type: "ratio" } },
+      { key: "pur4_2", kpi: "Ketepatan pembuatan form order 100%", caraUkur: "(Form benar ÷ total form) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 4, formula: { type: "ratio" } },
+      { key: "pur4_3", kpi: "Ketepatan pembuatan PO 100%", caraUkur: "(PO benar ÷ total PO) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 5, formula: { type: "ratio" } },
+      { key: "pur4_4", kpi: "Kesalahan invoice supplier 0%", caraUkur: "Jumlah kesalahan invoice supplier", caraPerhitungan: "0-∞ (Jumlah kesalahan invoice supplier)", bobot: 4, formula: { type: "zeroBest" } },
+      { key: "pur4_5", kpi: "Ketepatan input invoice ke Accurate 100%", caraUkur: "(Input tepat waktu ÷ total invoice) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 4, formula: { type: "ratio" } },
+      { key: "pur4_6", kpi: "Keterlambatan input invoice < 2 jam", caraUkur: "(Input tepat waktu/terlambat < 2 jam ÷ total invoice) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 4, formula: { type: "ratio" } },
+    ],
+  },
+  {
+    no: 5,
+    tugas: "Monitoring & Penerimaan Barang",
+    total: 25,
+    items: [
+      { key: "pur5_1", kpi: "Follow up pengiriman barang 100%", caraUkur: "(Follow up dilakukan ÷ total pengiriman) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 4, formula: { type: "ratio" } },
+      { key: "pur5_2", kpi: "Update status pengiriman 100%", caraUkur: "(Update dilakukan ÷ total pengiriman) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 3, formula: { type: "ratio" } },
+      { key: "pur5_3", kpi: "Kesesuaian barang datang dengan PO 100%", caraUkur: "(Barang sesuai ÷ total barang datang) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 5, formula: { type: "ratio" } },
+      { key: "pur5_4", kpi: "Kesalahan penerimaan barang 0%", caraUkur: "Jumlah kesalahan penerimaan", caraPerhitungan: "0-∞ (Jumlah kesalahan penerimaan barang)", bobot: 5, formula: { type: "zeroBest" } },
+      { key: "pur5_5", kpi: "Pembelian via supplier Indonesia maksimal ≤ 3 hari", caraUkur: "Rata-rata hari pengiriman", caraPerhitungan: "Rata-rata hari pengiriman (≤ 3 = 100%)", bobot: 4, formula: { type: "maxTarget", threshold: 3 } },
+      { key: "pur5_6", kpi: "Pembelian via supplier China ≤ 4 bulan", caraUkur: "Rata-rata hari pengiriman", caraPerhitungan: "Rata-rata hari pengiriman (≤ 120 = 100%)", bobot: 4, formula: { type: "maxTarget", threshold: 120 } },
+    ],
+  },
+  {
+    no: 6,
+    tugas: "Koordinasi & Dukungan Operasional",
+    total: 10,
+    items: [
+      { key: "pur6_1", kpi: "Referensi produk baru 100%", caraUkur: "(Usulan valid ÷ total usulan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 3, formula: { type: "ratio" } },
+      { key: "pur6_2", kpi: "Kelancaran koordinasi dengan finance 100%", caraUkur: "Penilaian atasan", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 2, formula: { type: "ratio" } },
+      { key: "pur6_3", kpi: "Ketepatan laporan closing ≤ 20.00 WIB", caraUkur: "(Laporan tepat waktu ÷ total laporan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 2, formula: { type: "ratio" } },
+      { key: "pur6_4", kpi: "Ketepatan input saldo bank 100%", caraUkur: "(Input benar ÷ total input) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 2, formula: { type: "ratio" } },
+      { key: "pur6_5", kpi: "Pelayanan customer (bila diperlukan) 100%", caraUkur: "Penilaian atasan", caraPerhitungan: "0-100 (Nilai penilaian atasan terhadap pelayanan customer)", bobot: 1, formula: { type: "direct" } },
+    ],
+  },
+  {
+    no: 7,
+    tugas: "Kebersihan Area Kerja",
+    total: 5,
+    items: [
+      { key: "pur7_1", kpi: "Kehadiran piket kebersihan", caraUkur: "(Piket terlaksana ÷ jadwal) × 100%", caraPerhitungan: "0-8 (Jumlah piket kebersihan)", bobot: 1, formula: { type: "fixed", divisor: 8 } },
+      { key: "pur7_2", kpi: "Kebersihan area kerja", caraUkur: "Checklist atasan", caraPerhitungan: "0-100 (Checklist atasan)", bobot: 2, formula: { type: "direct" } },
+      { key: "pur7_3", kpi: "Kerapihan meja & dokumen kerja", caraUkur: "Checklist atasan", caraPerhitungan: "0-100 (Checklist atasan)", bobot: 1, formula: { type: "direct" } },
+      { key: "pur7_4", kpi: "Keluhan kebersihan area kerja", caraUkur: "100% jika tidak ada keluhan", caraPerhitungan: "0-∞ (Jumlah keluhan)", bobot: 1, formula: { type: "zeroBest" } },
+    ],
+  },
+];
+
 export const CS_TYPE_LABEL: Record<CsType, string> = {
   selling: "CS Selling",
   order: "CS Order",
@@ -384,7 +470,12 @@ export const CS_TYPE_LABEL: Record<CsType, string> = {
   marketplace: "CS Marketplace",
 };
 
-export function getSalesRetailTemplate(csType: CsType | null): KpiGroup[] {
+// Template dipilih dari sub divisi + cs_type. Purchase → PURCHASE_KPI; Customer Service → cs_type.
+export function getSalesRetailTemplate(
+  subDivisi: string | null,
+  csType: CsType | null,
+): KpiGroup[] {
+  if ((subDivisi ?? "").trim().toLowerCase() === "purchase") return PURCHASE_KPI;
   switch (csType) {
     case "order":
       return CS_ORDER_KPI;
@@ -399,8 +490,8 @@ export function getSalesRetailTemplate(csType: CsType | null): KpiGroup[] {
 }
 
 const ALL_SALES_RETAIL_KEYS = new Set(
-  [...CS_SELLING_KPI, ...CS_ORDER_KPI, ...CS_GROSIR_KPI, ...CS_MARKETPLACE_KPI].flatMap((g) =>
-    g.items.map((i) => i.key),
+  [...CS_SELLING_KPI, ...CS_ORDER_KPI, ...CS_GROSIR_KPI, ...CS_MARKETPLACE_KPI, ...PURCHASE_KPI].flatMap(
+    (g) => g.items.map((i) => i.key),
   ),
 );
 
@@ -454,7 +545,7 @@ export async function ensureKpiSalesRetailTables() {
   return kpiSalesRetailReady;
 }
 
-// Karyawan sub divisi Customer Service (nama otomatis dari database).
+// Karyawan sub divisi Customer Service ATAU Purchase (nama otomatis dari database).
 export async function getCustomerServiceEmployees(): Promise<SalesRetailEmployee[]> {
   const [rows] = await pool.query<
     (RowDataPacket & {
@@ -464,7 +555,7 @@ export async function getCustomerServiceEmployees(): Promise<SalesRetailEmployee
     `SELECT k.id, k.nama, k.jabatan, k.sub_divisi, k.penempatan, k.cs_type
        FROM karyawan k
       WHERE k.status_data = 'aktif'
-        AND LOWER(COALESCE(k.sub_divisi, '')) = 'customer service'
+        AND LOWER(COALESCE(k.sub_divisi, '')) IN ('customer service', 'purchase')
       ORDER BY k.nama ASC`,
   );
   return rows.map((r) => ({
