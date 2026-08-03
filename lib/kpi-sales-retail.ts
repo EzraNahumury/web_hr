@@ -753,8 +753,7 @@ export const CS_TYPE_LABEL: Record<CsType, string> = {
 
 // Template dipilih dari sub divisi + jabatan + cs_type.
 //   - Purchase         → PURCHASE_KPI
-//   - Marketplace + SPV → MP_SPV_KPI ; Marketplace + Staff → (template staff-toko, BELUM tersedia → [])
-//   - Stok             → STOK_STAFF_TOKO_KPI
+//   - Marketplace + SPV → MP_SPV_KPI ; Marketplace + Staff → MP_STAFF_TOKO_KPI
 //   - Customer Service → per cs_type
 export function getSalesRetailTemplate(
   subDivisi: string | null,
@@ -766,7 +765,6 @@ export function getSalesRetailTemplate(
   const isSpv = jab.includes("supervisor") || jab.includes("spv");
 
   if (sub === "purchase") return PURCHASE_KPI;
-  if (sub === "stok" || sub === "stock") return STOK_STAFF_TOKO_KPI;
   if (sub === "marketplace") {
     return isSpv ? MP_SPV_KPI : MP_STAFF_TOKO_KPI;
   }
@@ -850,7 +848,7 @@ export async function getCustomerServiceEmployees(): Promise<SalesRetailEmployee
     `SELECT k.id, k.nama, k.jabatan, k.sub_divisi, k.penempatan, k.cs_type
        FROM karyawan k
       WHERE k.status_data = 'aktif'
-        AND LOWER(COALESCE(k.sub_divisi, '')) IN ('customer service', 'purchase', 'marketplace', 'stok', 'stock')
+        AND LOWER(COALESCE(k.sub_divisi, '')) IN ('customer service', 'purchase', 'marketplace')
       ORDER BY k.nama ASC`,
   );
   return rows.map((r) => ({
