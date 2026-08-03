@@ -11,7 +11,6 @@ import {
   getShiftLateMinutes,
   getShiftRangeLabel,
   isAttendanceApprovalRuleActive,
-  isSundayDate,
   isTokoGudangPlacement,
   isWithinScheduledShiftRange,
   saveAttendancePhoto,
@@ -145,7 +144,6 @@ export async function POST(request: Request) {
     const attendanceDate = getJakartaDate();
     const attendanceDateTime = getJakartaDateTime();
     const currentTime = attendanceDateTime.split(" ")[1];
-    const isSunday = isSundayDate(attendanceDate);
 
     // Blokir: kalau ada hari lampau yang HADIR tapi belum absen pulang & belum dipulihkan admin.
     const blockingDate = await getBlockingMissingCheckout(employee.id, attendanceDate);
@@ -194,11 +192,9 @@ export async function POST(request: Request) {
       [employee.status_kepegawaian, employee.jabatan].some(
         (v) => (v ?? "").trim().toLowerCase() === "freelance",
       );
-    // Partime: shift TETAP 17:00-22:00 (toleransi 5 mnt, masuk mulai 16:30), apa pun jadwal/penempatan.
+    // Partime: presensi BEBAS setiap hari (Senin–Minggu) — jam masuk tidak dikunci &
+    // tidak dihitung telat. Wajib kerja 5 jam; pulang < 5 jam = PA (dicek saat check-out).
     const isPartime = (employee.status_kepegawaian ?? "").trim().toLowerCase() === "partime";
-    // Partime hari MINGGU: jam masuk BEBAS (tidak dikunci window, tidak dihitung telat).
-    // Wajib 5 jam diperiksa saat pulang (check-out).
-    const isPartimeSunday = isPartime && isSunday;
     const isShiftEligible =
       requiresSelfie && (isTokoGudangPlacement(detectedPlacement) || isMedia || isHostlive || isAdvertiser || isJne);
     // Jadwal SELALU dicek berdasar karyawan (bukan placement hasil geofence). Ini menutup
@@ -219,30 +215,18 @@ export async function POST(request: Request) {
       );
     }
 
+    // Partime: jam masuk BEBAS setiap hari → range jadwal TIDAK ditegakkan.
     if (
       scheduledShift &&
       requiresSelfie &&
       attendanceRequestStatus === "hadir" &&
-      !isPartimeSunday
+      !isPartime
     ) {
       const shiftKey = scheduledShift as AttendanceShift;
       if (!isWithinScheduledShiftRange(currentTime, shiftKey)) {
         return NextResponse.json(
           {
             message: `Di luar jam shift Anda. Jadwal hari ini: ${getShiftRangeLabel(shiftKey)}. Presensi hanya bisa dilakukan dalam rentang tersebut.`,
-          },
-          { status: 403 },
-        );
-      }
-    }
-
-    // Partime: presensi masuk hanya dalam rentang shift partime (16:30 - 22:00).
-    // Kecuali hari Minggu: jam masuk bebas (isPartimeSunday) → window tidak ditegakkan.
-    if (isPartime && !isPartimeSunday && requiresSelfie && attendanceRequestStatus === "hadir") {
-      if (!isWithinScheduledShiftRange(currentTime, "partime")) {
-        return NextResponse.json(
-          {
-            message: `Di luar jam presensi Partime (${getShiftRangeLabel("partime")}). Presensi masuk paling awal 16:30.`,
           },
           { status: 403 },
         );
@@ -267,7 +251,7 @@ export async function POST(request: Request) {
     const lateShift: AttendanceShift | null =
       detectedShift ?? (!isFreelance ? "pagi" : null);
     const lateMinutes =
-      requiresSelfie && lateShift && effectiveRequestStatus === "hadir" && !isPartimeSunday
+      requiresSelfie && lateShift && effectiveRequestStatus === "hadir" && !isPartime
         ? getShiftLateMinutes(currentTime, lateShift)
         : 0;
     const attendanceStatus =

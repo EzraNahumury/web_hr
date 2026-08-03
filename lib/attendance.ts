@@ -223,11 +223,11 @@ export function isEarlyLeaveByTime(
   return outMins < coStart;
 }
 
-// ── Aturan khusus PARTIME hari MINGGU ──────────────────────────────────────────
-// Partime kadang masuk hari Minggu. Di hari Minggu jam masuk BEBAS (tidak dikunci
-// window 16:30-22:00, tidak dihitung telat), tapi WAJIB kerja 5 jam. Pulang sebelum
-// 5 jam sejak jam masuk = pulang awal (PA) → sama seperti PA biasa (approval + keterangan).
-export const PARTIME_SUNDAY_MIN_MINUTES = 5 * 60; // 5 jam
+// ── Aturan PARTIME (setiap hari, Senin–Minggu) ─────────────────────────────────
+// Partime presensi BEBAS jam berapa saja, tidak dihitung telat, tapi WAJIB kerja 5 jam.
+// Pulang sebelum 5 jam sejak jam masuk = pulang awal (PA) → sama seperti PA biasa
+// (butuh keterangan + approval atasan).
+export const PARTIME_MIN_WORK_MINUTES = 5 * 60; // 5 jam
 
 // Minggu (WIB) berdasar tanggal absensi "YYYY-MM-DD". Diparse sebagai UTC agar
 // bebas dari timezone server (tanggal sudah kalender WIB dari getJakartaDate()).
