@@ -146,10 +146,11 @@ function validatePayload(body: Record<string, unknown>) {
         body.penjahitPayrollType === "mingguan" || body.penjahitPayrollType === "bulanan"
           ? (body.penjahitPayrollType as "mingguan" | "bulanan")
           : null,
-      csType:
-        body.csType === "selling" || body.csType === "order"
-          ? (body.csType as "selling" | "order")
-          : null,
+      csType: (["selling", "order", "grosir", "marketplace"] as const).includes(
+        body.csType as "selling" | "order" | "grosir" | "marketplace",
+      )
+        ? (body.csType as "selling" | "order" | "grosir" | "marketplace")
+        : null,
       freelanceTipePayroll: (["jam", "pengerjaan", "custom_pengerjaan", "harian"] as const).includes(
         body.freelanceTipePayroll as "jam" | "pengerjaan" | "custom_pengerjaan" | "harian",
       )

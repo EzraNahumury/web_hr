@@ -40,7 +40,7 @@ export type EmployeeListItem = {
   annualRaise: string;
   userActive: boolean;
   penjahitPayrollType: "mingguan" | "bulanan" | null;
-  csType: "selling" | "order" | null;
+  csType: "selling" | "order" | "grosir" | "marketplace" | null;
   freelanceTipePayroll: "jam" | "pengerjaan" | "custom_pengerjaan" | "harian" | null;
   isShift: boolean;
   createdAt: string;
@@ -210,7 +210,7 @@ export type EmployeePayload = {
   annualRaise: number;
   userActive: boolean;
   penjahitPayrollType: "mingguan" | "bulanan" | null;
-  csType: "selling" | "order" | null;
+  csType: "selling" | "order" | "grosir" | "marketplace" | null;
   freelanceTipePayroll: "jam" | "pengerjaan" | "custom_pengerjaan" | "harian" | null;
   isShift: boolean;
 };
@@ -248,7 +248,7 @@ type EmployeeRow = RowDataPacket & {
   tanggal_selesai_kontrak: string | null;
   kenaikan_tiap_tahun: string;
   tipe_payroll_penjahit: "mingguan" | "bulanan" | null;
-  cs_type: "selling" | "order" | null;
+  cs_type: "selling" | "order" | "grosir" | "marketplace" | null;
   tipe_freelance: "jam" | "pengerjaan" | "custom_pengerjaan" | "harian" | null;
   penempatan_extra: string | null;
   is_shift: number;
@@ -390,7 +390,10 @@ export async function ensureEmployeeSchemaSupport() {
         `ALTER TABLE karyawan MODIFY COLUMN status_kerja ENUM('training','kontrak','tetap','freelance','partime','magang','resign') NOT NULL DEFAULT 'kontrak'`,
       );
       await safeMigrate(
-        `ALTER TABLE karyawan ADD COLUMN cs_type ENUM('selling','order') NULL AFTER sub_divisi`,
+        `ALTER TABLE karyawan ADD COLUMN cs_type ENUM('selling','order','grosir','marketplace') NULL AFTER sub_divisi`,
+      );
+      await safeMigrate(
+        `ALTER TABLE karyawan MODIFY COLUMN cs_type ENUM('selling','order','grosir','marketplace') NULL`,
       );
       await safeMigrate(
         `ALTER TABLE karyawan ADD COLUMN tipe_payroll_penjahit ENUM('mingguan','bulanan') NULL AFTER jabatan`,

@@ -51,7 +51,7 @@ type FormState = {
   userActive: boolean;
   isShift: boolean;
   penjahitPayrollType: "mingguan" | "bulanan" | "";
-  csType: "selling" | "order" | "";
+  csType: "selling" | "order" | "grosir" | "marketplace" | "";
   freelanceTipePayroll: "jam" | "pengerjaan" | "custom_pengerjaan" | "harian" | "";
 };
 
@@ -534,7 +534,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
         ? [{ label: "Tipe Payroll Penjahit", value: viewingEmployee.penjahitPayrollType === "mingguan" ? "Mingguan (tgl 1, 8, 16, 25)" : "Bulanan (tgl 25)" }]
         : []),
       ...(viewingEmployee.subDivision?.toLowerCase() === "customer service" && viewingEmployee.csType
-        ? [{ label: "Tipe CS", value: viewingEmployee.csType === "selling" ? "CS Selling" : "CS Order" }]
+        ? [{ label: "Tipe CS", value: { selling: "CS Selling", order: "CS Order", grosir: "CS Grosir", marketplace: "CS Marketplace" }[viewingEmployee.csType] }]
         : []),
     ]
     : [];
@@ -692,14 +692,17 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                 <Field label="Sub Divisi"><select value={form.subDivision} onChange={(event) => { const v = event.target.value; updateField("subDivision", v); if (v.toLowerCase() !== "penjahit") { updateField("penjahitPayrollType", ""); } if (v.toLowerCase() !== "customer service") { updateField("csType", ""); } }} className={selectClassName}><option value="">Pilih sub divisi</option>{lookups.subDivisions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
                 {form.subDivision.toLowerCase() === "customer service" ? (
                   <div className="flex flex-wrap gap-4 rounded-[14px] border border-[#ead7ce] bg-[#fff8f5] px-4 py-3">
-                    <label className="flex cursor-pointer items-center gap-2 text-sm text-[#2d1b18]">
-                      <input type="checkbox" checked={form.csType === "selling"} onChange={() => updateField("csType", form.csType === "selling" ? "" : "selling")} className="h-4 w-4 accent-[#8f1d22]" />
-                      CS Selling
-                    </label>
-                    <label className="flex cursor-pointer items-center gap-2 text-sm text-[#2d1b18]">
-                      <input type="checkbox" checked={form.csType === "order"} onChange={() => updateField("csType", form.csType === "order" ? "" : "order")} className="h-4 w-4 accent-[#8f1d22]" />
-                      CS Order
-                    </label>
+                    {([
+                      { value: "selling", label: "CS Selling" },
+                      { value: "order", label: "CS Order" },
+                      { value: "grosir", label: "CS Grosir" },
+                      { value: "marketplace", label: "CS Marketplace" },
+                    ] as const).map((opt) => (
+                      <label key={opt.value} className="flex cursor-pointer items-center gap-2 text-sm text-[#2d1b18]">
+                        <input type="checkbox" checked={form.csType === opt.value} onChange={() => updateField("csType", form.csType === opt.value ? "" : opt.value)} className="h-4 w-4 accent-[#8f1d22]" />
+                        {opt.label}
+                      </label>
+                    ))}
                   </div>
                 ) : null}
               </div>
