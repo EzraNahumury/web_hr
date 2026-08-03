@@ -38,9 +38,14 @@ function toNum(v: string) {
   return Number.isFinite(n) ? n : 0;
 }
 
-// Label kelompok KPI: Purchase (sub divisi) atau tipe CS.
+// Label kelompok KPI berdasarkan sub divisi + jabatan.
 function kindLabel(emp: SalesRetailEmployee): string {
-  if ((emp.subDivisi ?? "").trim().toLowerCase() === "purchase") return "Purchase";
+  const sub = (emp.subDivisi ?? "").trim().toLowerCase();
+  const jab = (emp.jabatan ?? "").trim().toLowerCase();
+  const isSpv = jab.includes("supervisor") || jab.includes("spv");
+  if (sub === "purchase") return "Purchase";
+  if (sub === "stok" || sub === "stock") return "Staff Stok";
+  if (sub === "marketplace") return isSpv ? "SPV Marketplace" : "Staff Marketplace";
   return emp.csType ? CS_TYPE_LABEL[emp.csType] : "Tipe CS belum diset";
 }
 
@@ -168,8 +173,9 @@ export default function AdminKpiSalesRetail({
   const td = "px-3 py-2 text-xs text-[#3a2513] border border-[#f2e2d0] align-top";
   const tdBorder = "px-3 py-2 text-xs text-[#3a2513] border border-[#f2e2d0] align-middle text-center";
 
-  const isPurchase = (selectedEmployee?.subDivisi ?? "").trim().toLowerCase() === "purchase";
+  const isCustomerService = (selectedEmployee?.subDivisi ?? "").trim().toLowerCase() === "customer service";
   const csLabel = selectedEmployee ? kindLabel(selectedEmployee) : null;
+  const templateEmpty = !!selectedEmployee && template.length === 0;
 
   return (
     <div className="space-y-6">
@@ -237,8 +243,10 @@ export default function AdminKpiSalesRetail({
               <p className="text-xs text-[#8a6a4a]">{selectedEmployee.jabatan || "-"} · {selectedEmployee.penempatan || "-"}</p>
             </div>
             <div className="rounded-2xl border border-[#f0dcc4] bg-white px-5 py-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#b15a1a]">{isPurchase ? "Sub Divisi" : "Tipe CS"}</p>
-              <p className="mt-1 text-lg font-semibold text-[#3a2513]">{isPurchase ? "Purchase" : (selectedEmployee?.csType ? csLabel : "Belum diset (default CS Selling)")}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#b15a1a]">Kelompok KPI</p>
+              <p className="mt-1 text-lg font-semibold text-[#3a2513]">
+                {isCustomerService && !selectedEmployee?.csType ? "Belum diset (default CS Selling)" : csLabel}
+              </p>
             </div>
             <div className="rounded-2xl border border-[#f0dcc4] bg-white px-5 py-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-[#b15a1a]">Total Bobot</p>
@@ -262,8 +270,17 @@ export default function AdminKpiSalesRetail({
         <div className="rounded-[28px] border border-[#f0dcc4] bg-white px-6 py-16 text-center shadow-sm">
           <p className="text-base font-semibold text-[#3a2513]">Belum ada karyawan Customer Service / Purchase</p>
           <p className="mt-2 text-sm text-[#8a6a4a]">
-            Tidak ditemukan karyawan aktif dengan sub divisi <span className="font-semibold">Customer Service</span> atau{" "}
-            <span className="font-semibold">Purchase</span>. Set sub divisi (dan tipe CS untuk Customer Service) di menu Data Karyawan.
+            Tidak ditemukan karyawan aktif dengan sub divisi <span className="font-semibold">Customer Service</span>,{" "}
+            <span className="font-semibold">Purchase</span>, <span className="font-semibold">Marketplace</span>, atau{" "}
+            <span className="font-semibold">Stok</span>. Set sub divisi (dan tipe CS untuk Customer Service) di menu Data Karyawan.
+          </p>
+        </div>
+      ) : templateEmpty ? (
+        <div className="rounded-[28px] border border-[#f0dcc4] bg-white px-6 py-16 text-center shadow-sm">
+          <p className="text-base font-semibold text-[#3a2513]">Template KPI belum tersedia</p>
+          <p className="mt-2 text-sm text-[#8a6a4a]">
+            Kombinasi <span className="font-semibold">{kindLabel(selectedEmployee)}</span> ({selectedEmployee.penempatan || "-"})
+            belum punya template KPI. Kirimkan sheet lengkapnya untuk ditambahkan.
           </p>
         </div>
       ) : (

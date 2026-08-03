@@ -463,6 +463,211 @@ export const PURCHASE_KPI: KpiGroup[] = [
   },
 ];
 
+// Template SUPERVISOR + sub divisi MARKETPLACE. Total bobot 100%.
+export const MP_SPV_KPI: KpiGroup[] = [
+  {
+    no: 1,
+    tugas: "Kehadiran Kerja",
+    total: 3,
+    items: [
+      { key: "mps1_1", kpi: "Kepatuhan absensi masuk dan pulang", caraUkur: "(Hari hadir lengkap ÷ Hari kerja) × 100%", caraPerhitungan: "Jumlah hari dia hadir", bobot: 2 },
+      { key: "mps1_2", kpi: "Tingkat keterlambatan kerja < 5 kali/bulan", caraUkur: "((5 - Jumlah Keterlambatan) ÷ 5) × 100%", caraPerhitungan: "Jumlah keterlambatan", bobot: 1, formula: { type: "late", threshold: 5 } },
+    ],
+  },
+  {
+    no: 2,
+    tugas: "Disiplin & Kepatuhan Kerja",
+    total: 3,
+    items: [
+      { key: "mps2_1", kpi: "Kepatuhan penggunaan seragam", caraUkur: "Checklist atasan", caraPerhitungan: "0-100 (Checklist atasan)", bobot: 1, formula: { type: "direct" } },
+      { key: "mps2_2", kpi: "Kepatuhan terhadap peraturan perusahaan", caraUkur: "Jumlah pelanggaran", caraPerhitungan: "0-∞ (Jumlah pelanggaran)", bobot: 1, formula: { type: "zeroBest" } },
+      { key: "mps2_3", kpi: "Etika dan profesionalitas kerja", caraUkur: "Jumlah teguran", caraPerhitungan: "0-∞ (Jumlah teguran)", bobot: 1, formula: { type: "zeroBest" } },
+    ],
+  },
+  {
+    no: 3,
+    tugas: "Monitoring Operasional Toko Retail",
+    total: 15,
+    items: [
+      { key: "mps3_1", kpi: "Operasional toko berjalan 100%", caraUkur: "(Hari operasional normal ÷ Hari operasional) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 5, formula: { type: "ratio" } },
+      { key: "mps3_2", kpi: "Tingkat kendala operasional toko 0%", caraUkur: "(0 kendala = 100%)", caraPerhitungan: "0-∞ (Jumlah kendala)", bobot: 3, formula: { type: "zeroBest" } },
+      { key: "mps3_3", kpi: "Monitoring toko berjalan 100%", caraUkur: "(Monitoring terlaksana ÷ Jadwal monitoring) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 4, formula: { type: "ratio" } },
+      { key: "mps3_4", kpi: "Ketepatan laporan hasil monitoring toko", caraUkur: "(Laporan tepat waktu ÷ Total laporan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 3, formula: { type: "ratio" } },
+    ],
+  },
+  {
+    no: 4,
+    tugas: "Pengawasan Performa Divisi Sales & Retail",
+    total: 32,
+    items: [
+      { key: "mps4_1", kpi: "Monitoring seluruh divisi berjalan 100%", caraUkur: "(Monitoring terlaksana ÷ Jadwal monitoring) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 7, formula: { type: "ratio" } },
+      { key: "mps4_2", kpi: "Target CS Selling Ayres tercapai 225 pcs/hari", caraUkur: "(Realisasi ÷ Target 5.625 pcs/bulan) × 100%", caraPerhitungan: "Jumlah realisasi pcs", bobot: 5, formula: { type: "fixed", divisor: 5625 } },
+      { key: "mps4_3", kpi: "Target CS AVA Rp150 juta/bulan tercapai", caraUkur: "(Realisasi ÷ Target Rp150.000.000) × 100%", caraPerhitungan: "Jumlah realisasi omzet", bobot: 5, formula: { type: "fixed", divisor: 150000000 } },
+      { key: "mps4_4", kpi: "Target Marketplace Rp1 miliar/bulan tercapai", caraUkur: "(Realisasi ÷ Target Rp1.000.000.000) × 100%", caraPerhitungan: "Jumlah realisasi omzet", bobot: 5, formula: { type: "fixed", divisor: 1000000000 } },
+      { key: "mps4_5", kpi: "Target Sales Rp200 juta/bulan tercapai", caraUkur: "(Realisasi ÷ Target Rp200.000.000) × 100%", caraPerhitungan: "Jumlah realisasi omzet", bobot: 4, formula: { type: "fixed", divisor: 200000000 } },
+      { key: "mps4_6", kpi: "Kesehatan toko marketplace 100%", caraUkur: "Penilaian marketplace score", caraPerhitungan: "0-100 (Marketplace score)", bobot: 2, formula: { type: "direct" } },
+      { key: "mps4_7", kpi: "Tingkat penalti marketplace 0%", caraUkur: "(0 penalti = 100%)", caraPerhitungan: "0-∞ (Jumlah penalti)", bobot: 2, formula: { type: "zeroBest" } },
+      { key: "mps4_8", kpi: "Response time customer < 3 menit", caraUkur: "(Chat sesuai SLA ÷ Total chat) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 1, formula: { type: "ratio" } },
+      { key: "mps4_9", kpi: "Tingkat komplain customer < 5%", caraUkur: "(0 komplain = 100%)", caraPerhitungan: "0-∞ (Jumlah komplain)", bobot: 1, formula: { type: "zeroBest" } },
+    ],
+  },
+  {
+    no: 5,
+    tugas: "Koordinasi & Penyelesaian Kendala Operasional",
+    total: 15,
+    items: [
+      { key: "mps5_1", kpi: "Koordinasi antar divisi berjalan 100%", caraUkur: "Penilaian atasan", caraPerhitungan: "0-100 (Penilaian atasan)", bobot: 4, formula: { type: "direct" } },
+      { key: "mps5_2", kpi: "Penyelesaian kendala maksimal 1x24 jam", caraUkur: "(Kendala selesai tepat waktu ÷ Total kendala) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 4, formula: { type: "ratio" } },
+      { key: "mps5_3", kpi: "Koordinasi stok & pengiriman berjalan", caraUkur: "(Koordinasi terlaksana ÷ Kebutuhan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 3, formula: { type: "ratio" } },
+      { key: "mps5_4", kpi: "Ketepatan pemenuhan kebutuhan barang", caraUkur: "(Permintaan terpenuhi ÷ Total permintaan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 2, formula: { type: "ratio" } },
+      { key: "mps5_5", kpi: "Keterlambatan pengadaan barang 0%", caraUkur: "(0 keterlambatan = 100%)", caraPerhitungan: "0-∞ (Jumlah keterlambatan)", bobot: 2, formula: { type: "zeroBest" } },
+    ],
+  },
+  {
+    no: 6,
+    tugas: "Briefing, Evaluasi & Strategi Penjualan",
+    total: 14,
+    items: [
+      { key: "mps6_1", kpi: "Briefing dan evaluasi berjalan 100%", caraUkur: "(Briefing terlaksana ÷ Jadwal briefing) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 3, formula: { type: "ratio" } },
+      { key: "mps6_2", kpi: "Follow up evaluasi penjualan berjalan", caraUkur: "(Follow up terlaksana ÷ Temuan evaluasi) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 2, formula: { type: "ratio" } },
+      { key: "mps6_3", kpi: "Penyelesaian pekerjaan sesuai deadline", caraUkur: "(Tugas selesai tepat waktu ÷ Total tugas) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 2, formula: { type: "ratio" } },
+      { key: "mps6_4", kpi: "Peningkatan performa penjualan sesuai target", caraUkur: "(Realisasi ÷ Target) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 2, formula: { type: "ratio" } },
+      { key: "mps6_5", kpi: "Pelaksanaan strategi penjualan berjalan", caraUkur: "Penilaian atasan", caraPerhitungan: "0-100 (Penilaian atasan)", bobot: 5, formula: { type: "direct" } },
+    ],
+  },
+  {
+    no: 7,
+    tugas: "Pelaporan Operasional Perusahaan",
+    total: 10,
+    items: [
+      { key: "mps7_1", kpi: "Laporan harian tepat waktu", caraUkur: "(Laporan tepat waktu ÷ Hari kerja) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 2, formula: { type: "ratio" } },
+      { key: "mps7_2", kpi: "Laporan mingguan tepat waktu", caraUkur: "(Laporan tepat waktu ÷ Total laporan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 3, formula: { type: "ratio" } },
+      { key: "mps7_3", kpi: "Laporan bulanan tepat waktu", caraUkur: "(Laporan tepat waktu ÷ Total laporan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 3, formula: { type: "ratio" } },
+      { key: "mps7_4", kpi: "Kelengkapan & akurasi laporan", caraUkur: "Penilaian atasan", caraPerhitungan: "0-100 (Penilaian atasan)", bobot: 2, formula: { type: "direct" } },
+    ],
+  },
+  {
+    no: 8,
+    tugas: "Pengelolaan Jadwal Shift & Absensi Tim",
+    total: 5,
+    items: [
+      { key: "mps8_1", kpi: "Jadwal shift selesai sebelum tanggal 25", caraUkur: "(Tepat waktu = 100%)", caraPerhitungan: "0-100 (100 jika tepat waktu)", bobot: 2, formula: { type: "direct" } },
+      { key: "mps8_2", kpi: "Akurasi data absensi tim", caraUkur: "(Data benar ÷ Total data) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 1, formula: { type: "ratio" } },
+      { key: "mps8_3", kpi: "Tindak lanjut perubahan shift H-1", caraUkur: "(Permintaan diproses ÷ Total permintaan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 1, formula: { type: "ratio" } },
+      { key: "mps8_4", kpi: "Kesalahan absensi akibat keterlambatan update 0%", caraUkur: "(0 kesalahan = 100%)", caraPerhitungan: "0-∞ (Jumlah kesalahan)", bobot: 1, formula: { type: "zeroBest" } },
+    ],
+  },
+  {
+    no: 9,
+    tugas: "Kebersihan & Kerapihan Area Kerja",
+    total: 3,
+    items: [
+      { key: "mps9_1", kpi: "Kehadiran pelaksanaan piket", caraUkur: "(Piket terlaksana ÷ Jadwal piket) × 100%", caraPerhitungan: "0-8 (Jumlah piket kebersihan)", bobot: 1, formula: { type: "fixed", divisor: 8 } },
+      { key: "mps9_2", kpi: "Tingkat kebersihan area kerja", caraUkur: "Checklist atasan", caraPerhitungan: "0-100 (Checklist atasan)", bobot: 1, formula: { type: "direct" } },
+      { key: "mps9_3", kpi: "Tingkat kerapihan area kerja", caraUkur: "Checklist atasan", caraPerhitungan: "0-100 (Checklist atasan)", bobot: 1, formula: { type: "direct" } },
+    ],
+  },
+];
+
+// Template STAFF + sub divisi STOK + penempatan Toko. Total bobot 100%.
+export const STOK_STAFF_TOKO_KPI: KpiGroup[] = [
+  {
+    no: 1,
+    tugas: "Kehadiran Kerja",
+    total: 5,
+    items: [
+      { key: "stk1_1", kpi: "Kepatuhan absensi masuk dan pulang", caraUkur: "(Hari hadir lengkap ÷ Hari kerja) × 100%", caraPerhitungan: "Jumlah hari dia hadir", bobot: 3 },
+      { key: "stk1_2", kpi: "Tingkat keterlambatan kerja < 5 kali/bulan", caraUkur: "((5 - Jumlah Keterlambatan) ÷ 5) × 100%", caraPerhitungan: "Jumlah keterlambatan", bobot: 2, formula: { type: "late", threshold: 5 } },
+    ],
+  },
+  {
+    no: 2,
+    tugas: "Disiplin & Kepatuhan Kerja",
+    total: 5,
+    items: [
+      { key: "stk2_1", kpi: "Kepatuhan penggunaan seragam", caraUkur: "(Hari patuh seragam ÷ Hari kerja) × 100%", caraPerhitungan: "1-25 (Berapa hari dia patuh memakai seragam)", bobot: 2 },
+      { key: "stk2_2", kpi: "Kepatuhan terhadap peraturan perusahaan", caraUkur: "Jumlah pelanggaran", caraPerhitungan: "0-∞ (Jumlah pelanggaran peraturan perusahaan)", bobot: 2, formula: { type: "zeroBest" } },
+      { key: "stk2_3", kpi: "Etika dan profesionalitas kerja", caraUkur: "Jumlah teguran", caraPerhitungan: "0-∞ (Jumlah teguran etika kerja)", bobot: 1, formula: { type: "zeroBest" } },
+    ],
+  },
+  {
+    no: 3,
+    tugas: "Distribusi Barang & Kebutuhan Operasional",
+    total: 25,
+    items: [
+      { key: "stk3_1", kpi: "Ketepatan pengiriman barang", caraUkur: "(Pengiriman tepat ÷ Total pengiriman) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 8, formula: { type: "ratio" } },
+      { key: "stk3_2", kpi: "Seluruh kebutuhan distribusi diproses", caraUkur: "(Permintaan selesai ÷ Total permintaan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 7, formula: { type: "ratio" } },
+      { key: "stk3_3", kpi: "Tidak terjadi kehilangan barang selama distribusi", caraUkur: "100% jika tidak ada kasus", caraPerhitungan: "0-∞ (Jumlah kasus kehilangan barang selama distribusi)", bobot: 5, formula: { type: "zeroBest" } },
+      { key: "stk3_4", kpi: "Ketepatan waktu pengiriman", caraUkur: "(Pengiriman tepat waktu ÷ Total pengiriman) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 5, formula: { type: "ratio" } },
+    ],
+  },
+  {
+    no: 4,
+    tugas: "Penyiapan Barang Toko & Reseller",
+    total: 14,
+    items: [
+      { key: "stk4_1", kpi: "Akurasi penyiapan barang", caraUkur: "(Barang sesuai ÷ Total barang disiapkan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 6, formula: { type: "ratio" } },
+      { key: "stk4_2", kpi: "Seluruh permintaan barang diproses", caraUkur: "(Permintaan selesai ÷ Total permintaan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 2, formula: { type: "ratio" } },
+      { key: "stk4_3", kpi: "Tingkat kesalahan penyiapan barang", caraUkur: "(Barang benar ÷ Total penyiapan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 4, formula: { type: "ratio" } },
+      { key: "stk4_4", kpi: "Pesanan siap sesuai target waktu", caraUkur: "(Pesanan tepat waktu ÷ Total pesanan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 2, formula: { type: "ratio" } },
+    ],
+  },
+  {
+    no: 5,
+    tugas: "Pengelolaan Bahan Produksi & Pengrajin",
+    total: 10,
+    items: [
+      { key: "stk5_1", kpi: "Ketersediaan stok batu", caraUkur: "(Hari stok tersedia ÷ Hari kerja) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 4, formula: { type: "ratio" } },
+      { key: "stk5_2", kpi: "Ketepatan pengiriman batu ke pengrajin", caraUkur: "(Pengiriman tepat ÷ Total pengiriman) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 3, formula: { type: "ratio" } },
+      { key: "stk5_3", kpi: "Tidak terjadi keterlambatan pengiriman bahan produksi", caraUkur: "(Pengiriman tepat waktu ÷ Total pengiriman) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 2, formula: { type: "ratio" } },
+      { key: "stk5_4", kpi: "Informasi kebutuhan stok batu tersampaikan", caraUkur: "(Laporan dibuat ÷ Total kebutuhan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 1, formula: { type: "ratio" } },
+    ],
+  },
+  {
+    no: 6,
+    tugas: "Pengelolaan Pesanan Dekker COD",
+    total: 20,
+    items: [
+      { key: "stk6_1", kpi: "Pesanan Dekker COD diproses 100%", caraUkur: "(Pesanan selesai ÷ Total pesanan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 6, formula: { type: "ratio" } },
+      { key: "stk6_2", kpi: "Tingkat kesalahan produksi 0%", caraUkur: "(Produksi benar ÷ Total produksi) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 5, formula: { type: "ratio" } },
+      { key: "stk6_3", kpi: "Akurasi kesesuaian pesanan", caraUkur: "(Pesanan sesuai ÷ Total pesanan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 5, formula: { type: "ratio" } },
+      { key: "stk6_4", kpi: "Ketepatan waktu penyelesaian pesanan", caraUkur: "(Pesanan tepat waktu ÷ Total pesanan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 4, formula: { type: "ratio" } },
+    ],
+  },
+  {
+    no: 7,
+    tugas: "Dukungan Produksi & Personalisasi Produk",
+    total: 10,
+    items: [
+      { key: "stk7_1", kpi: "Akurasi hasil pekerjaan produksi", caraUkur: "(Pekerjaan sesuai standar ÷ Total pekerjaan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 4, formula: { type: "ratio" } },
+      { key: "stk7_2", kpi: "Seluruh kebutuhan produksi ditindaklanjuti", caraUkur: "(Permintaan selesai ÷ Total permintaan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 3, formula: { type: "ratio" } },
+      { key: "stk7_3", kpi: "Tingkat kesalahan produksi", caraUkur: "(Pekerjaan benar ÷ Total pekerjaan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 2, formula: { type: "ratio" } },
+      { key: "stk7_4", kpi: "Kecepatan penyelesaian bantuan produksi", caraUkur: "Penilaian atasan", caraPerhitungan: "0-100 (Penilaian atasan)", bobot: 1, formula: { type: "direct" } },
+    ],
+  },
+  {
+    no: 8,
+    tugas: "Dukungan Operasional & Display Toko AVA",
+    total: 6,
+    items: [
+      { key: "stk8_1", kpi: "Kebutuhan display toko terpenuhi", caraUkur: "(Permintaan selesai ÷ Total permintaan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 2, formula: { type: "ratio" } },
+      { key: "stk8_2", kpi: "Penataan produk sesuai standar", caraUkur: "Checklist atasan", caraPerhitungan: "0-100 (Nilai checklist atasan)", bobot: 2, formula: { type: "direct" } },
+      { key: "stk8_3", kpi: "Tindak lanjut kebutuhan operasional toko maksimal 1x24 jam", caraUkur: "(Tindak lanjut tepat waktu ÷ Total kebutuhan) × 100%", caraPerhitungan: "0-1 (Hasil dari perhitungan cara ukur)", bobot: 2, formula: { type: "ratio" } },
+    ],
+  },
+  {
+    no: 9,
+    tugas: "Kebersihan & Kerapihan Area Kerja",
+    total: 5,
+    items: [
+      { key: "stk9_1", kpi: "Kehadiran pelaksanaan piket", caraUkur: "(Piket terlaksana ÷ Jadwal piket) × 100%", caraPerhitungan: "0-8 (Jumlah piket kebersihan)", bobot: 1, formula: { type: "fixed", divisor: 8 } },
+      { key: "stk9_2", kpi: "Tingkat kebersihan area kerja", caraUkur: "Checklist atasan", caraPerhitungan: "0-100 (Nilai checklist kebersihan area kerja oleh atasan)", bobot: 2, formula: { type: "direct" } },
+      { key: "stk9_3", kpi: "Kerapihan penyimpanan barang dan perlengkapan", caraUkur: "Checklist atasan", caraPerhitungan: "0-100 (Nilai checklist kerapihan penyimpanan barang)", bobot: 1, formula: { type: "direct" } },
+      { key: "stk9_4", kpi: "Keluhan kebersihan area kerja", caraUkur: "100% jika tidak ada keluhan", caraPerhitungan: "0-∞ (Jumlah keluhan kebersihan area kerja)", bobot: 1, formula: { type: "zeroBest" } },
+    ],
+  },
+];
+
 export const CS_TYPE_LABEL: Record<CsType, string> = {
   selling: "CS Selling",
   order: "CS Order",
@@ -470,12 +675,26 @@ export const CS_TYPE_LABEL: Record<CsType, string> = {
   marketplace: "CS Marketplace",
 };
 
-// Template dipilih dari sub divisi + cs_type. Purchase → PURCHASE_KPI; Customer Service → cs_type.
+// Template dipilih dari sub divisi + jabatan + cs_type.
+//   - Purchase         → PURCHASE_KPI
+//   - Marketplace + SPV → MP_SPV_KPI ; Marketplace + Staff → (template staff-toko, BELUM tersedia → [])
+//   - Stok             → STOK_STAFF_TOKO_KPI
+//   - Customer Service → per cs_type
 export function getSalesRetailTemplate(
   subDivisi: string | null,
+  jabatan: string | null,
   csType: CsType | null,
 ): KpiGroup[] {
-  if ((subDivisi ?? "").trim().toLowerCase() === "purchase") return PURCHASE_KPI;
+  const sub = (subDivisi ?? "").trim().toLowerCase();
+  const jab = (jabatan ?? "").trim().toLowerCase();
+  const isSpv = jab.includes("supervisor") || jab.includes("spv");
+
+  if (sub === "purchase") return PURCHASE_KPI;
+  if (sub === "stok" || sub === "stock") return STOK_STAFF_TOKO_KPI;
+  if (sub === "marketplace") {
+    if (isSpv) return MP_SPV_KPI;
+    return []; // Staff Marketplace (Toko) — template belum tersedia (gambar terpotong).
+  }
   switch (csType) {
     case "order":
       return CS_ORDER_KPI;
@@ -490,9 +709,10 @@ export function getSalesRetailTemplate(
 }
 
 const ALL_SALES_RETAIL_KEYS = new Set(
-  [...CS_SELLING_KPI, ...CS_ORDER_KPI, ...CS_GROSIR_KPI, ...CS_MARKETPLACE_KPI, ...PURCHASE_KPI].flatMap(
-    (g) => g.items.map((i) => i.key),
-  ),
+  [
+    ...CS_SELLING_KPI, ...CS_ORDER_KPI, ...CS_GROSIR_KPI, ...CS_MARKETPLACE_KPI, ...PURCHASE_KPI,
+    ...MP_SPV_KPI, ...STOK_STAFF_TOKO_KPI,
+  ].flatMap((g) => g.items.map((i) => i.key)),
 );
 
 export type SalesRetailEmployee = {
@@ -555,7 +775,7 @@ export async function getCustomerServiceEmployees(): Promise<SalesRetailEmployee
     `SELECT k.id, k.nama, k.jabatan, k.sub_divisi, k.penempatan, k.cs_type
        FROM karyawan k
       WHERE k.status_data = 'aktif'
-        AND LOWER(COALESCE(k.sub_divisi, '')) IN ('customer service', 'purchase')
+        AND LOWER(COALESCE(k.sub_divisi, '')) IN ('customer service', 'purchase', 'marketplace', 'stok', 'stock')
       ORDER BY k.nama ASC`,
   );
   return rows.map((r) => ({
