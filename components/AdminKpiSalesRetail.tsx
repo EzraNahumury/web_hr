@@ -3,8 +3,16 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import type { KpiGroup } from "@/lib/kpi-rnd";
-import { CS_TYPE_LABEL, type KpiSalesRetailInputValue, type SalesRetailEmployee } from "@/lib/kpi-sales-retail";
+import type { CsType, KpiSalesRetailInputValue, SalesRetailEmployee } from "@/lib/kpi-sales-retail";
 import { computeKpiPerhitungan } from "@/lib/kpi-formula";
+
+// Inline di sini (client) supaya tidak meng-import modul server lib/kpi-sales-retail sebagai value.
+const CS_TYPE_LABEL: Record<CsType, string> = {
+  selling: "CS Selling",
+  order: "CS Order",
+  grosir: "CS Grosir",
+  marketplace: "CS Marketplace",
+};
 
 type Props = {
   month: number;
