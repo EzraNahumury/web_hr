@@ -372,6 +372,58 @@ export async function distributeMasterToPeriod(
   return { inserted: result.affectedRows };
 }
 
+// Saat cell Master DIKOSONGKAN (removeKeys), hapus juga Bagan (jadwal_karyawan) untuk
+// hari (day-of-week) tsb di dalam periode aktif, supaya Bagan ikut ter-update (kosong).
+// pairs.hari: 1=Senin..7=Minggu (ISO).
+export async function clearMasterDowFromPeriod(
+  startSql: string,
+  endSql: string,
+  pairs: { karyawanId: number; hari: number }[],
+): Promise<{ deleted: number }> {
+  if (pairs.length === 0) return { deleted: 0 };
+  await ensureJadwalKaryawanSchema();
+
+  const byHari = new Map<number, Set<number>>();
+  for (const p of pairs) {
+    let s = byHari.get(p.hari);
+    if (!s) {
+      s = new Set();
+      byHari.set(p.hari, s);
+    }
+    s.add(p.karyawanId);
+  }
+
+  const conds: string[] = [];
+  const values: (number | string)[] = [];
+  const [sy, sm, sd] = startSql.split("-").map(Number);
+  const [ey, em, ed] = endSql.split("-").map(Number);
+  const cur = new Date(sy, sm - 1, sd);
+  const end = new Date(ey, em - 1, ed);
+  while (cur <= end) {
+    const y = cur.getFullYear();
+    const mo = cur.getMonth() + 1;
+    const d = cur.getDate();
+    const dateStr = `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const dow = cur.getDay(); // 0=Min..6=Sab
+    const hariIso = dow === 0 ? 7 : dow;
+    const ids = byHari.get(hariIso);
+    if (ids) {
+      for (const id of ids) {
+        conds.push("(karyawan_id = ? AND tanggal = ?)");
+        values.push(id, dateStr);
+      }
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+  if (conds.length === 0) return { deleted: 0 };
+
+  const [result] = await pool.query<ResultSetHeader>(
+    `DELETE FROM jadwal_karyawan WHERE ${conds.join(" OR ")}`,
+    values,
+  );
+  return { deleted: result.affectedRows };
+}
+
 export async function deleteJadwalMasterEntries(
   pairs: { karyawanId: number; hari: number }[],
 ) {

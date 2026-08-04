@@ -9,6 +9,7 @@ import {
 } from "@/lib/auth";
 import { getEmployeeByUserId } from "@/lib/hris";
 import {
+  clearMasterDowFromPeriod,
   deleteJadwalMasterEntries,
   distributeMasterToPeriod,
   getJadwalMasterAll,
@@ -128,11 +129,15 @@ export async function POST(request: Request) {
     if (entries.length > 0) await upsertJadwalMasterBulk(entries, session.id);
     if (removeKeys.length > 0) await deleteJadwalMasterEntries(removeKeys);
 
-    // Otomatis distribusikan master ke Bagan periode payroll BERJALAN (fill-only, tidak
-    // menimpa jadwal yang sudah ada / hasil tukar shift manual).
+    // Otomatis distribusikan master ke Bagan periode payroll BERJALAN: hari yang ADA shift
+    // di master ditimpa; cell master yang DIKOSONGKAN (removeKeys) juga menghapus Bagan
+    // hari tsb agar Bagan ikut ter-update.
     const active = getActivePayrollPeriod();
     const range = getPayrollDateRange(active.month, active.year);
     const dist = await distributeMasterToPeriod(range.startSql, range.endSql, session.id);
+    if (removeKeys.length > 0) {
+      await clearMasterDowFromPeriod(range.startSql, range.endSql, removeKeys);
+    }
 
     return NextResponse.json({
       message: "Master jadwal tersimpan & diterapkan ke Bagan periode berjalan.",
