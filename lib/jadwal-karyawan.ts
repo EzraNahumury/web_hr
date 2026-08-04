@@ -14,7 +14,8 @@ export type JadwalShift =
   | "siang_sore"
   | "jne_pagi"
   | "jne_siang"
-  | "jne_minggu";
+  | "jne_minggu"
+  | "ayres_siang";
 
 export const JADWAL_SHIFT_LABELS: Record<JadwalShift, string> = {
   pagi: "Pagi",
@@ -29,6 +30,7 @@ export const JADWAL_SHIFT_LABELS: Record<JadwalShift, string> = {
   jne_pagi: "JNE Pagi (08:00 - 16:00)",
   jne_siang: "JNE Siang (14:00 - 21:00)",
   jne_minggu: "JNE Minggu/Libur (13:00 - 20:00)",
+  ayres_siang: "Siang (14:00 - 22:00)",
 };
 
 export const JADWAL_EFFECTIVE_FROM = "2026-05-01";
@@ -51,7 +53,7 @@ export function ensureJadwalKaryawanSchema(): Promise<void> {
           id INT AUTO_INCREMENT PRIMARY KEY,
           karyawan_id INT NOT NULL,
           tanggal DATE NOT NULL,
-          shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','libur','pagi_full','pagi_short','siang_sore','jne_pagi','jne_siang','jne_minggu') NOT NULL,
+          shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','libur','pagi_full','pagi_short','siang_sore','jne_pagi','jne_siang','jne_minggu','ayres_siang') NOT NULL,
           created_by INT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -62,7 +64,7 @@ export function ensureJadwalKaryawanSchema(): Promise<void> {
       try {
         await pool.query(`
           ALTER TABLE jadwal_karyawan
-          MODIFY COLUMN shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','libur','pagi_full','pagi_short','siang_sore','jne_pagi','jne_siang','jne_minggu') NOT NULL
+          MODIFY COLUMN shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','libur','pagi_full','pagi_short','siang_sore','jne_pagi','jne_siang','jne_minggu','ayres_siang') NOT NULL
         `);
       } catch (error) {
         console.error("Migration warning jadwal_karyawan.shift:", error);
@@ -246,7 +248,7 @@ export function ensureJadwalMasterSchema(): Promise<void> {
           id INT AUTO_INCREMENT PRIMARY KEY,
           karyawan_id INT NOT NULL,
           hari TINYINT NOT NULL,
-          shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','libur','pagi_full','pagi_short','siang_sore','jne_pagi','jne_siang','jne_minggu') NOT NULL,
+          shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','libur','pagi_full','pagi_short','siang_sore','jne_pagi','jne_siang','jne_minggu','ayres_siang') NOT NULL,
           created_by INT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

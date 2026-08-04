@@ -20,16 +20,30 @@ export const JNE_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
   { value: "libur", label: "Libur" },
 ];
 
+// Ayres: hanya Pagi (08:30-16:30), Siang (14:00-22:00), Libur.
+export const AYRES_SHIFT_OPTIONS: { value: ShiftOption; label: string }[] = [
+  { value: "", label: "—" },
+  { value: "pagi", label: "Pagi (08:30 - 16:30)" },
+  { value: "ayres_siang", label: "Siang (14:00 - 22:00)" },
+  { value: "libur", label: "Libur" },
+];
+
 // Nilai shift yang valid per dropdown (untuk validasi server).
 export const STANDARD_SHIFT_VALUES = ["pagi", "lembur", "siang", "libur"] as const;
 export const JNE_SHIFT_VALUES = ["jne_pagi", "jne_siang", "jne_minggu", "libur"] as const;
+export const AYRES_SHIFT_VALUES = ["pagi", "ayres_siang", "libur"] as const;
 
 export function isEkspedisiPlacement(penempatan: string | null | undefined): boolean {
   return (penempatan ?? "").trim() === "JNE";
 }
 
+export function isAyresPlacement(penempatan: string | null | undefined): boolean {
+  return (penempatan ?? "").trim().toLowerCase() === "ayres";
+}
+
 export function getShiftOptionsFor(penempatan: string) {
   if (isEkspedisiPlacement(penempatan)) return JNE_SHIFT_OPTIONS;
+  if (isAyresPlacement(penempatan)) return AYRES_SHIFT_OPTIONS;
   return SHIFT_OPTIONS;
 }
 
@@ -46,4 +60,5 @@ export const SHIFT_COLOR: Record<JadwalShift, string> = {
   jne_pagi: "bg-orange-50 text-orange-700 border-orange-200",
   jne_siang: "bg-rose-50 text-rose-700 border-rose-200",
   jne_minggu: "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200",
+  ayres_siang: "bg-sky-50 text-sky-700 border-sky-200",
 };

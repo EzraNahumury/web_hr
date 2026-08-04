@@ -67,7 +67,8 @@ export type AttendanceShift =
   | "jne_pagi"
   | "jne_siang"
   | "jne_minggu"
-  | "partime";
+  | "partime"
+  | "ayres_siang";
 
 const SHIFT_START: Record<AttendanceShift, number> = {
   pagi: 8 * 60 + 30,         // 08:30
@@ -82,6 +83,7 @@ const SHIFT_START: Record<AttendanceShift, number> = {
   jne_siang: 14 * 60,        // 14:00 (selesai 21:00)
   jne_minggu: 13 * 60,       // 13:00 (selesai 20:00)
   partime: 17 * 60,          // 17:00 (Partime — selesai 22:00)
+  ayres_siang: 14 * 60,      // 14:00 (Ayres Siang — selesai 22:00)
 };
 
 // Toleransi keterlambatan per shift. Jika lateMinutes <= tolerance maka dianggap tepat waktu.
@@ -107,6 +109,7 @@ const CHECKIN_WINDOW: Record<AttendanceShift, Range> = {
   jne_siang:  [13 * 60 + 30,      17 * 60],       // 13:30-17:00
   jne_minggu: [12 * 60 + 30,      14 * 60],       // 12:30-14:00
   partime:    [16 * 60 + 30,      22 * 60],       // 16:30-22:00 (masuk mulai 16:30, tepat waktu s/d 17:05)
+  ayres_siang:[13 * 60 + 30,      14 * 60 + 30],  // 13:30-14:30 (masuk mulai 13:30, tepat waktu s/d 14:05)
 };
 
 const CHECKOUT_WINDOW: Record<AttendanceShift, Range> = {
@@ -122,6 +125,7 @@ const CHECKOUT_WINDOW: Record<AttendanceShift, Range> = {
   jne_siang:  [20 * 60 + 30,      21 * 60 + 30],  // 20:30-21:30
   jne_minggu: [19 * 60 + 30,      20 * 60 + 30],  // 19:30-20:30
   partime:    [22 * 60,           23 * 60],       // pulang 22:00 → pulang sebelum 22:00 dianggap PA
+  ayres_siang:[22 * 60,           23 * 60],       // pulang 22:00 → pulang sebelum 22:00 dianggap PA
 };
 
 function timeToMinutes(time: string): number {
@@ -326,7 +330,7 @@ export function ensureAttendanceShiftSupport(): Promise<void> {
     shiftColumnReady = (async () => {
       try {
         await pool.query(
-          `ALTER TABLE absensi ADD COLUMN shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','partime') NULL AFTER kode_absensi`,
+          `ALTER TABLE absensi ADD COLUMN shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','partime','ayres_siang') NULL AFTER kode_absensi`,
         );
       } catch (err: unknown) {
         const code = typeof err === "object" && err !== null && "code" in err ? (err as { code: string }).code : "";
@@ -334,7 +338,7 @@ export function ensureAttendanceShiftSupport(): Promise<void> {
       }
       try {
         await pool.query(
-          `ALTER TABLE absensi MODIFY COLUMN shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','partime') NULL`,
+          `ALTER TABLE absensi MODIFY COLUMN shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','partime','ayres_siang') NULL`,
         );
       } catch (err) {
         console.error("Failed to widen shift enum", err);

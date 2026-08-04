@@ -18,6 +18,8 @@ import {
 } from "@/lib/jadwal-karyawan";
 import { getActivePayrollPeriod, getPayrollDateRange } from "@/lib/payroll-admin";
 import {
+  AYRES_SHIFT_VALUES,
+  isAyresPlacement,
   isEkspedisiPlacement,
   JNE_SHIFT_VALUES,
   STANDARD_SHIFT_VALUES,
@@ -48,6 +50,7 @@ async function getSchedulerSession() {
 
 const standardSet = new Set<string>(STANDARD_SHIFT_VALUES);
 const jneSet = new Set<string>(JNE_SHIFT_VALUES);
+const ayresSet = new Set<string>(AYRES_SHIFT_VALUES);
 
 function parsePositiveInt(v: unknown) {
   const n = Number(v);
@@ -73,12 +76,14 @@ export async function POST(request: Request) {
     // Karyawan valid = is_shift = 1. Ekspedisi (JNE) pakai set shift JNE, selain itu set standar.
     const validIds = new Set<number>();
     const jneIds = new Set<number>();
+    const ayresIds = new Set<number>();
     const [rows] = await pool.query<(RowDataPacket & { id: number; penempatan: string })[]>(
       `SELECT id, penempatan FROM karyawan WHERE status_data = 'aktif' AND is_shift = 1`,
     );
     for (const r of rows) {
       validIds.add(r.id);
       if (isEkspedisiPlacement(r.penempatan)) jneIds.add(r.id);
+      else if (isAyresPlacement(r.penempatan)) ayresIds.add(r.id);
     }
 
     const entries: { karyawanId: number; hari: number; shift: JadwalShift }[] = [];
@@ -94,13 +99,15 @@ export async function POST(request: Request) {
       if (!hari || hari < 1 || hari > 7) {
         return NextResponse.json({ message: `Hari tidak valid: ${String(rec.hari)}` }, { status: 400 });
       }
-      const allowed = jneIds.has(karyawanId) ? jneSet : standardSet;
+      const allowed = jneIds.has(karyawanId) ? jneSet : ayresIds.has(karyawanId) ? ayresSet : standardSet;
       if (!allowed.has(shift)) {
         return NextResponse.json(
           {
             message: jneIds.has(karyawanId)
               ? "Karyawan Ekspedisi (JNE) hanya boleh shift Pagi/Siang/Minggu atau Libur."
-              : "Shift hanya boleh Pagi, Lembur, Siang, atau Libur.",
+              : ayresIds.has(karyawanId)
+                ? "Karyawan Ayres hanya boleh shift Pagi, Siang (14:00-22:00), atau Libur."
+                : "Shift hanya boleh Pagi, Lembur, Siang, atau Libur.",
           },
           { status: 400 },
         );
