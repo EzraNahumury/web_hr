@@ -255,6 +255,16 @@ export function ensureJadwalMasterSchema(): Promise<void> {
           UNIQUE KEY uk_karyawan_hari (karyawan_id, hari)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
+      // Tabel lama (dibuat sebelum shift baru ditambah) perlu di-MODIFY agar ENUM
+      // menyertakan 'ayres_siang' dll — kalau tidak, nilai baru di-truncate ke '' saat simpan.
+      try {
+        await pool.query(`
+          ALTER TABLE jadwal_master
+          MODIFY COLUMN shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','libur','pagi_full','pagi_short','siang_sore','jne_pagi','jne_siang','jne_minggu','ayres_siang') NOT NULL
+        `);
+      } catch (error) {
+        console.error("Migration warning jadwal_master.shift:", error);
+      }
     })();
   }
   return jadwalMasterSchemaReady;
