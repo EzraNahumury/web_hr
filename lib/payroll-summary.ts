@@ -963,7 +963,15 @@ export async function getAdminPayrollSummarySheet(period?: {
     // naik Jun 2027. Masuk Mar 2025 → 2026 TETAP, naik Mar 2027.
     const annualRaisePerYear = toNumber(row.kenaikan_tiap_tahun);
     const joinDate = row.tanggal_masuk_pertama;
-    const raiseBaselineYears = joinDate ? countCompletedYears(joinDate, RAISE_EFFECTIVE_FROM) : 0;
+    // Baseline = anniversary yang jatuh SEBELUM tanggal efektif. Anniversary TEPAT pada tanggal
+    // efektif (mis. Vina masuk 1 Jun, efektif 1 Jun 2026) IKUT naik — jadi baseline dihitung
+    // sampai H-1 (mis. 31 Mei 2026).
+    const raiseBaselineCutoff = (() => {
+      const d = new Date(`${RAISE_EFFECTIVE_FROM}T00:00:00Z`);
+      d.setUTCDate(d.getUTCDate() - 1);
+      return d.toISOString().slice(0, 10);
+    })();
+    const raiseBaselineYears = joinDate ? countCompletedYears(joinDate, raiseBaselineCutoff) : 0;
     const completedYears = joinDate
       ? Math.max(0, countCompletedYears(joinDate, range.endSql) - raiseBaselineYears)
       : 0;
