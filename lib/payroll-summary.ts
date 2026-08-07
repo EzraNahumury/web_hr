@@ -965,12 +965,15 @@ export async function getAdminPayrollSummarySheet(period?: {
     const annualRaisePerYear = toNumber(row.kenaikan_tiap_tahun);
     const joinDate = row.tanggal_masuk_pertama;
     const raiseBaselineCutoff = `${RAISE_PROGRAM_FIRST_YEAR - 1}-12-31`;
+    // Baseline = anniversary yang sudah lewat s/d akhir tahun sebelum program, TAPI minimal 1
+    // (tahun kerja PERTAMA selalu baseline / tidak naik). Jadi karyawan yang masuk 2025 baru
+    // naik pada anniversary KE-2 (2027), bukan anniversary pertama (2026). Karyawan lama tidak
+    // terpengaruh karena baseline mereka sudah ≥ 1.
+    const raiseBaselineYears = joinDate
+      ? Math.max(1, countCompletedYears(joinDate, raiseBaselineCutoff))
+      : 0;
     const completedYears = joinDate
-      ? Math.max(
-          0,
-          countCompletedYears(joinDate, range.endSql) -
-            countCompletedYears(joinDate, raiseBaselineCutoff),
-        )
+      ? Math.max(0, countCompletedYears(joinDate, range.endSql) - raiseBaselineYears)
       : 0;
     const attendanceIncentiveRaise =
       !isFreelance && dailyBaseSalaryBase > 0 && annualRaisePerYear > 0
