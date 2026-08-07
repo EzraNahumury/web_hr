@@ -45,7 +45,7 @@ import {
   getApprovedReimbursementRowsForPeriod,
 } from "@/lib/reimbursements";
 import { isSalesNasionalRole } from "@/lib/sales-roles";
-import { RAISE_PROGRAM_FIRST_YEAR, PAYROLL_OMZET_BONUS_RATE } from "@/lib/payroll-constants";
+import { RAISE_EFFECTIVE_FROM, PAYROLL_OMZET_BONUS_RATE } from "@/lib/payroll-constants";
 import { ensureContractReturnTable } from "@/lib/contract-returns";
 import { getFreelanceSheet } from "@/lib/payroll-freelance";
 
@@ -954,24 +954,16 @@ export async function getAdminPayrollSummarySheet(period?: {
       : (toNumber(row.raw_gaji_pokok_per_hari) || (workDays > 0 ? toNumber(row.gaji_pokok) / workDays : 0));
     // Kenaikan gaji per tahun → menambah INSENTIF KEHADIRAN (gaji pokok per hari).
     // Berlaku hanya untuk karyawan NON-freelance yang PUNYA insentif kehadiran (>0).
-    // BERTAHAP (tidak retroaktif) & pakai ANNIVERSARY ASLI (tanggal masuk pertama):
-    // completedYears = jumlah anniversary yang jatuh pada/sesudah tahun program (RAISE_PROGRAM_FIRST_YEAR)
-    // sampai AKHIR periode (range.endSql, tgl 25) — jadi kenaikan berlaku di payroll yang
-    // periodenya MENGANDUNG anniversary. Anniversary tahun sebelum program = baseline (dikurangi),
-    // sehingga karyawan yang bulan masuknya BELUM lewat di periode ini tidak ikut naik.
-    // Contoh: NARENDRA masuk 1 Sep 2023 → payroll Juli 2026 (26 Jun–25 Jul) = 0; payroll
-    // September 2026 (26 Agu–25 Sep, mengandung 1 Sep) = +1. Warisah masuk Mar 2021 → sejak
-    // payroll Maret 2026 = +1.
+    // EFEKTIF sejak RAISE_EFFECTIVE_FROM (1 Juni 2026) & pakai ANNIVERSARY ASLI (tanggal masuk):
+    // completedYears = jumlah anniversary yang jatuh SESUDAH tanggal efektif, sampai AKHIR periode
+    // (range.endSql). Anniversary pada/sebelum tanggal efektif = baseline (dikurangi), jadi:
+    //   - Anniversary Jan–Mei → 2026 masih baseline (TETAP), naik pertama 2027.
+    //   - Anniversary Jun–Des → naik mulai 2026 di bulan anniversary-nya.
+    // Contoh: NARENDRA masuk 1 Sep 2023 → naik Sep 2026. Vina masuk 1 Jun 2024 → 2026 TETAP,
+    // naik Jun 2027. Masuk Mar 2025 → 2026 TETAP, naik Mar 2027.
     const annualRaisePerYear = toNumber(row.kenaikan_tiap_tahun);
     const joinDate = row.tanggal_masuk_pertama;
-    const raiseBaselineCutoff = `${RAISE_PROGRAM_FIRST_YEAR - 1}-12-31`;
-    // Baseline = anniversary yang sudah lewat s/d akhir tahun sebelum program, TAPI minimal 1
-    // (tahun kerja PERTAMA selalu baseline / tidak naik). Jadi karyawan yang masuk 2025 baru
-    // naik pada anniversary KE-2 (2027), bukan anniversary pertama (2026). Karyawan lama tidak
-    // terpengaruh karena baseline mereka sudah ≥ 1.
-    const raiseBaselineYears = joinDate
-      ? Math.max(1, countCompletedYears(joinDate, raiseBaselineCutoff))
-      : 0;
+    const raiseBaselineYears = joinDate ? countCompletedYears(joinDate, RAISE_EFFECTIVE_FROM) : 0;
     const completedYears = joinDate
       ? Math.max(0, countCompletedYears(joinDate, range.endSql) - raiseBaselineYears)
       : 0;

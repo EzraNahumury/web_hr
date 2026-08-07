@@ -1,9 +1,11 @@
 export const PAYROLL_OMZET_BONUS_RATE = 0.007;
 
-// Program kenaikan gaji tahunan (Insentif Kehadiran & Gaji Kontrak) mulai TAHUN 2026.
-// Setiap karyawan naik +1 tingkat pada ANNIVERSARY-nya sendiri (bulan & tanggal masuk pertama),
-// dihitung hanya untuk anniversary pada/sesudah tahun ini. Anniversary tahun sebelumnya = baseline
-// (TIDAK retroaktif): insentif/gaji tersimpan dianggap "nilai sekarang" sebelum program berjalan.
-// Contoh: masuk 1 Sep 2023, kenaikan 100.000 → naik pertama pada anniversary 2026 (1 Sep 2026),
-// jadi di payroll sebelum September 2026 BELUM naik. Masuk Mar 2021 → naik pertama Mar 2026.
-export const RAISE_PROGRAM_FIRST_YEAR = 2026;
+// Program kenaikan gaji tahunan (Insentif Kehadiran & Gaji Kontrak) EFEKTIF sejak 1 Juni 2026.
+// Setiap karyawan naik +1 tingkat pada ANNIVERSARY-nya (bulan & tanggal masuk pertama), TAPI
+// hanya untuk anniversary yang jatuh SESUDAH tanggal efektif ini. Anniversary pada/sebelum
+// 1 Juni 2026 = baseline (TIDAK retroaktif): insentif/gaji tersimpan = nilai manual "sekarang".
+// Akibatnya:
+//   - Anniversary Jun–Des → naik mulai 2026 (di bulan anniversary-nya). Mis. masuk 1 Sep → naik Sep 2026.
+//   - Anniversary Jan–Mei → 2026 masih baseline (TETAP), naik pertama di anniversary 2027.
+//   - Anniversary tepat 1 Juni → 2026 baseline, naik 2027.
+export const RAISE_EFFECTIVE_FROM = "2026-06-01";
