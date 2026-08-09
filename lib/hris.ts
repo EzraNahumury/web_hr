@@ -1,6 +1,6 @@
 import { RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
-import { ensureAttendanceShiftSupport, isAttendanceApprovalRuleActive, isCheckInWithinOnTimeWindow, isEarlyLeaveByTime, isHalfDayByTime, isHalfDayRuleActive } from "@/lib/attendance";
+import { ensureAttendanceShiftSupport, isAttendanceApprovalRuleActive, isCheckInWithinOnTimeWindow, isDurationUnderMinutes, isEarlyLeaveByTime, isHalfDayByTime, isHalfDayRuleActive, PARTIME_MIN_WORK_MINUTES } from "@/lib/attendance";
 import { getEmployeeRemainingLoanTotal } from "@/lib/loans";
 import { getCombinedFinanceRows } from "@/lib/finance-rows";
 import {
@@ -41,6 +41,7 @@ type AttendanceRow = RowDataPacket & {
   divisi: string;
   sub_divisi: string | null;
   departemen: string;
+  status_kepegawaian: string | null;
   email: string;
   attendance_date: string | null;
   status_absensi: string | null;
@@ -230,6 +231,7 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         k.divisi,
         k.sub_divisi,
         k.departemen,
+        k.status_kepegawaian,
         u.email,
         DATE_FORMAT(a.tanggal, '%Y-%m-%d') AS attendance_date,
         a.status_absensi,
@@ -301,10 +303,18 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         row.scheduled_shift && row.scheduled_shift !== "libur"
           ? row.scheduled_shift
           : row.absensi_shift;
+      // Partime: presensi bebas, wajib kerja 5 jam. PA dinilai dari DURASI (< 5 jam), BUKAN
+      // jam pulang tetap — sama seperti aturan di check-out. Jam masuk fleksibel → tidak ada
+      // "di luar window", jadi dianggap tepat waktu selama hadir.
+      const isPartimeRow = (row.status_kepegawaian ?? "").trim().toLowerCase() === "partime";
       const isEarlyLeave =
-        code === "O" && isEarlyLeaveByTime(row.jam_masuk, row.jam_pulang, knownShift);
+        code === "O" &&
+        (isPartimeRow
+          ? isDurationUnderMinutes(row.jam_masuk, row.jam_pulang, PARTIME_MIN_WORK_MINUTES)
+          : isEarlyLeaveByTime(row.jam_masuk, row.jam_pulang, knownShift));
       const isOnTimeWindow =
-        code === "O" && isCheckInWithinOnTimeWindow(row.jam_masuk, knownShift);
+        code === "O" &&
+        (isPartimeRow ? true : isCheckInWithinOnTimeWindow(row.jam_masuk, knownShift));
       byEmployee.get(row.employee_id)!.daily[day] = {
         code,
         date: row.attendance_date,
