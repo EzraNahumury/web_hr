@@ -99,6 +99,7 @@ export default function SpvJadwalManager({
     () => buildJadwalMap(initialJadwal),
   );
   const [dirty, setDirty] = useState(false);
+  const [search, setSearch] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [holidayTarget, setHolidayTarget] = useState<PeriodDay | null>(null);
@@ -328,6 +329,18 @@ export default function SpvJadwalManager({
     }
   }
 
+  // Pencarian hanya memfilter baris yang DITAMPILKAN. Semua data edit tetap di jadwalMap
+  // (berkunci id karyawan), jadi karyawan yang tersembunyi tidak kehilangan jadwalnya.
+  const filteredKaryawan = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return karyawanList;
+    return karyawanList.filter((k) =>
+      [k.nama, k.noKaryawan, k.penempatan, k.subDivisi, k.jabatan]
+        .filter((v): v is string => typeof v === "string" && v.length > 0)
+        .some((v) => v.toLowerCase().includes(q)),
+    );
+  }, [karyawanList, search]);
+
   return (
     <div className="space-y-5">
       {toast ? (
@@ -359,10 +372,47 @@ export default function SpvJadwalManager({
                 {periodDays.length > 0 ? `${MONTH_LABELS[periodDays[0].month - 1]} ${periodDays[0].day} – ${MONTH_LABELS[periodDays[periodDays.length - 1].month - 1]} ${periodDays[periodDays.length - 1].day}, ${year}` : ""}
               </span>
             </label>
+            <label className="block">
+              <span className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#7a6059]">
+                Cari Karyawan
+              </span>
+              <div className="relative mt-1">
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Nama, NIP, jabatan, divisi..."
+                  className="h-11 w-64 rounded-2xl border border-[#ead7ce] bg-white pl-10 pr-9 text-sm text-[#2d1b18] outline-none focus:border-[#c8716d]"
+                />
+                <svg
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#a16f63]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+                {search ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    aria-label="Bersihkan pencarian"
+                    className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-[#a16f63] transition hover:bg-[#fdebda] hover:text-[#8f1d22]"
+                  >
+                    ×
+                  </button>
+                ) : null}
+              </div>
+            </label>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="rounded-2xl border border-[#ead7ce] bg-[#fff7f3] px-4 py-2.5 text-sm text-[#7a6059]">
-              Karyawan: <span className="font-semibold text-[#241716]">{karyawanList.length}</span>
+              Karyawan:{" "}
+              <span className="font-semibold text-[#241716]">
+                {search.trim() ? `${filteredKaryawan.length} / ${karyawanList.length}` : karyawanList.length}
+              </span>
               <span className="mx-2 text-[#ead7ce]">|</span>
               Jadwal terisi:{" "}
               <span className="font-semibold text-emerald-700">{jadwalMap.size}</span>
@@ -452,7 +502,17 @@ export default function SpvJadwalManager({
               </tr>
             </thead>
             <tbody>
-              {karyawanList.map((k) => {
+              {filteredKaryawan.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={periodDays.length + 2}
+                    className="px-4 py-8 text-center text-sm text-[#8a6f68]"
+                  >
+                    Tidak ada karyawan cocok dengan pencarian &ldquo;{search}&rdquo;.
+                  </td>
+                </tr>
+              ) : null}
+              {filteredKaryawan.map((k) => {
                 const shiftOptions = getShiftOptionsFor(k.penempatan);
                 return (
                 <tr
