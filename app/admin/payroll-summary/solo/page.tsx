@@ -76,7 +76,7 @@ export default async function AdminSoloPayrollSummaryPage({
         omzetPeriod={omzetPeriod}
         periodOptions={periodOptions}
         basePath="/admin/payroll-summary/solo"
-        canEdit={isPayrollEditor(admin.email)}
+        canEdit={await isPayrollEditor(admin.email)}
       />
     </AdminShell>
   );

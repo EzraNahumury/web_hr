@@ -221,17 +221,9 @@ export async function clearSpvSessionCookie() {
   cookieStore.delete(SPV_SESSION_COOKIE);
 }
 
-// Whitelist email admin yang punya hak EDIT di halaman Summary Payroll & turunannya.
-// Admin lain tetap bisa MELIHAT (read-only), tapi tidak bisa simpan/edit/hapus/input omzet.
-const PAYROLL_EDITOR_EMAILS: ReadonlyArray<string> = [
-  "avafamily17@gmail.com",
-];
-
-export function isPayrollEditor(email: string | null | undefined): boolean {
-  if (!email) return false;
-  const normalized = email.trim().toLowerCase();
-  return PAYROLL_EDITOR_EMAILS.includes(normalized);
-}
+// Hak EDIT di halaman Summary Payroll & turunannya kini dikelola dari menu Master
+// (Akun Payroll), tersimpan di DB. Admin lain tetap bisa MELIHAT (read-only).
+export { isPayrollEditor } from "@/lib/payroll-editors";
 
 // Whitelist email admin yang boleh APPROVE/REJECT pengajuan lembur.
 // Admin lain tetap bisa MELIHAT (read-only), tapi tidak bisa approve/reject/edit status.

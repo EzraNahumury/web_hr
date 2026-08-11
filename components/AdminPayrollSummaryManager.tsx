@@ -559,7 +559,7 @@ export default function AdminPayrollSummaryManager({
             <p className="font-semibold text-[#8a3b1a]">Mode Lihat Saja (Read-Only)</p>
             <p className="mt-1 text-[#7a6059]">
               Anda dapat melihat data Summary Payroll, tetapi tidak bisa mengedit, menyimpan, menghapus, atau input omzet.
-              Hanya admin <span className="font-semibold text-[#241716]">avafamily17@gmail.com</span> yang punya hak edit.
+              Hanya admin dengan hak Akun Payroll yang bisa mengedit — atur di menu Master &rsaquo; Akun Payroll.
               Hubungi admin pengelola payroll untuk perubahan data.
             </p>
           </div>

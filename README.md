@@ -266,7 +266,7 @@ Selain peran, ada **whitelist email** di `lib/auth.ts` untuk aksi sensitif:
 
 | Fungsi | Arti |
 |--------|------|
-| `isPayrollEditor(email)` | Hanya email tertentu boleh **edit/simpan** Summary Payroll; admin lain read-only |
+| `isPayrollEditor(email)` | Hanya akun terpilih boleh **edit/simpan** Summary Payroll; admin lain read-only. Async, whitelist tersimpan di DB (tabel `payroll_editor`) & diatur dari menu **Master › Akun Payroll** |
 | `isOvertimeApprover(email)` | Hanya email tertentu boleh **approve/reject** lembur; admin lain read-only |
 | `isHrdSuperEditor(email)` | Data karyawan **departemen HRD** (edit kode absensi, pulihkan, approval telat/pulang awal) hanya bisa diubah oleh admin whitelist ini (2 super-admin); admin lain — termasuk HRD yang punya akun admin — **read-only** atas data HRD (tidak bisa edit datanya sendiri) |
 

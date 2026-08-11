@@ -18,7 +18,7 @@ export async function DELETE(
     return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
   }
 
-  if (!isPayrollEditor(admin.email)) {
+  if (!(await isPayrollEditor(admin.email))) {
     return NextResponse.json(
       { message: "Hanya admin tertentu yang berhak menghapus payroll." },
       { status: 403 },

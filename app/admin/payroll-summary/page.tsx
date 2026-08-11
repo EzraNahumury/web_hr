@@ -83,7 +83,7 @@ export default async function AdminPayrollSummaryPage({
         })}
         omzetPeriod={omzetPeriod}
         periodOptions={periodOptions}
-        canEdit={isPayrollEditor(admin.email)}
+        canEdit={await isPayrollEditor(admin.email)}
       />
     </AdminShell>
   );

@@ -165,7 +165,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
   }
 
-  if (!isPayrollEditor(admin.email)) {
+  if (!(await isPayrollEditor(admin.email))) {
     return NextResponse.json(
       { message: "Hanya admin tertentu yang berhak mengedit Summary Payroll. Hubungi admin pengelola payroll." },
       { status: 403 },
