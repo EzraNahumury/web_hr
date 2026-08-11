@@ -575,12 +575,17 @@ export async function getEmployeeById(id: number) {
 export async function getEmployeeLookups() {
   await ensureEmployeeSchemaSupport();
 
+  // 5 kategori ini (unit/jabatan/departemen/divisi/sub_divisi) dikelola dari menu Master
+  // (tabel master_lookup), bukan hardcode. Sisanya tetap dari konstanta.
+  const { getMasterLookupOptions } = await import("@/lib/master-lookup");
+  const master = await getMasterLookupOptions();
+
   return {
-    units: EMPLOYEE_UNITS.map((value) => ({ label: value, value })),
-    roles: EMPLOYEE_ROLES.map((value) => ({ label: value, value })),
-    departments: EMPLOYEE_DEPARTMENTS.map((value) => ({ label: value, value })),
-    divisions: EMPLOYEE_DIVISIONS.map((value) => ({ label: value, value })),
-    subDivisions: EMPLOYEE_SUB_DIVISIONS.map((value) => ({ label: value, value })),
+    units: master.units,
+    roles: master.roles,
+    departments: master.departments,
+    divisions: master.divisions,
+    subDivisions: master.subDivisions,
     placements: EMPLOYEE_PLACEMENTS.map((value) => ({ label: value, value })),
     costAllocations: EMPLOYEE_COST_ALLOCATIONS.map((value) => ({
       label: value.replace(/\b\w/g, (char) => char.toUpperCase()),

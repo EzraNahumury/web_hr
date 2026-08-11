@@ -101,6 +101,17 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    group: "Master",
+    collapsible: true,
+    items: [
+      { label: "Unit", href: "/admin/master/unit", description: "Kelola isi dropdown Unit" },
+      { label: "Jabatan", href: "/admin/master/jabatan", description: "Kelola isi dropdown Jabatan" },
+      { label: "Departemen", href: "/admin/master/departemen", description: "Kelola isi dropdown Departemen" },
+      { label: "Divisi", href: "/admin/master/divisi", description: "Kelola isi dropdown Divisi" },
+      { label: "Sub Divisi", href: "/admin/master/sub_divisi", description: "Kelola isi dropdown Sub Divisi" },
+    ],
+  },
+  {
     group: "Pengaturan",
     items: [{ label: "Role", href: "/admin/roles", description: "Kelola akun admin & SPV" }],
   },
