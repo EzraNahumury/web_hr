@@ -7,6 +7,7 @@ import {
   recomputePagiHalfDayOnce,
 } from "@/lib/attendance-recompute";
 import { getAttendanceSheet } from "@/lib/hris";
+import { getAttendanceCodeOptions } from "@/lib/attendance-codes";
 import { listNationalHolidaysInRange } from "@/lib/holidays";
 import { getCurrentAttendancePeriod } from "@/lib/payroll-admin";
 import Link from "next/link";
@@ -79,6 +80,7 @@ export default async function AdminAttendancePage({
   const holidays = await listNationalHolidaysInRange(periodStartDate, periodEndDate);
   const holidayMap = Object.fromEntries(holidays.map((h) => [h.date, h.description]));
   const holidayTypeMap = Object.fromEntries(holidays.map((h) => [h.date, h.type]));
+  const codeOptions = await getAttendanceCodeOptions();
   const previousMonth = sheet.month === 1 ? 12 : sheet.month - 1;
   const previousYear = sheet.month === 1 ? sheet.year - 1 : sheet.year;
   const nextMonth = sheet.month === 12 ? 1 : sheet.month + 1;
@@ -178,7 +180,7 @@ export default async function AdminAttendancePage({
             </div>
           </div>
         </div>
-        <AdminAttendanceSheet days={sheet.days} rows={sheet.rows} month={sheet.month} year={sheet.year} holidayMap={holidayMap} holidayTypeMap={holidayTypeMap} canEditHrd={isHrdSuperEditor(admin.email)} />
+        <AdminAttendanceSheet days={sheet.days} rows={sheet.rows} month={sheet.month} year={sheet.year} holidayMap={holidayMap} holidayTypeMap={holidayTypeMap} canEditHrd={isHrdSuperEditor(admin.email)} codeOptions={codeOptions} />
       </div>
     </AdminShell>
   );

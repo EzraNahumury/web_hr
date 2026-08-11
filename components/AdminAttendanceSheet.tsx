@@ -5,21 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { AttendanceDayDetail } from "@/lib/hris";
 
-const ATTENDANCE_CODE_OPTIONS: { code: string; label: string }[] = [
-  { code: "O", label: "Hadir (O)" },
-  { code: "T", label: "Terlambat (T)" },
-  { code: "PA", label: "Pulang Awal (PA)" },
-  { code: "H", label: "Setengah Hari (H)" },
-  { code: "S", label: "Sakit + Surat (S)" },
-  { code: "SX", label: "Sakit Tanpa Surat (SX)" },
-  { code: "I", label: "Izin (I)" },
-  { code: "A", label: "Alfa (A)" },
-  { code: "L", label: "Libur (L)" },
-  { code: "LN", label: "Libur Nasional (LN)" },
-  { code: "LP", label: "Libur Perusahaan (LP)" },
-  { code: "C", label: "Cuti (C)" },
-  { code: "-", label: "Tidak Absen (-)" },
-];
+// Opsi kode absensi kini dikelola dari Master (Kode Absensi) & diteruskan sebagai prop.
+type AttendanceCodeOption = { code: string; label: string };
 
 type Row = {
   employeeId: number;
@@ -43,6 +30,7 @@ type Props = {
   holidayTypeMap?: Record<string, string>;
   // true jika admin ini boleh mengubah data karyawan HRD (super-editor).
   canEditHrd?: boolean;
+  codeOptions: AttendanceCodeOption[];
 };
 
 function buildDateIso(day: number, month: number, year: number) {
@@ -65,9 +53,11 @@ type SelectedAttendance = {
 function AttendanceDetailModal({
   selected,
   onClose,
+  codeOptions,
 }: {
   selected: SelectedAttendance;
   onClose: () => void;
+  codeOptions: AttendanceCodeOption[];
 }) {
   const router = useRouter();
   const [pendingCode, setPendingCode] = useState<string>("");
@@ -200,7 +190,7 @@ function AttendanceDetailModal({
                 className="h-10 rounded-xl border border-[#e8d5cc] bg-white px-3 text-sm text-[#241716] outline-none focus:border-[#c97f5b] focus:shadow-[0_0_0_3px_rgba(201,127,91,0.14)]"
               >
                 <option value="">Pilih kode...</option>
-                {ATTENDANCE_CODE_OPTIONS.map((option) => (
+                {codeOptions.map((option) => (
                   <option key={option.code} value={option.code}>
                     {option.label}
                   </option>
@@ -384,7 +374,7 @@ function AttendanceDetailModal({
   );
 }
 
-export default function AdminAttendanceSheet({ days, rows, month, year, holidayMap, holidayTypeMap = {}, canEditHrd = false }: Props) {
+export default function AdminAttendanceSheet({ days, rows, month, year, holidayMap, holidayTypeMap = {}, canEditHrd = false, codeOptions }: Props) {
   const router = useRouter();
   const [selected, setSelected] = useState<SelectedAttendance>(null);
   const [search, setSearch] = useState("");
@@ -735,7 +725,7 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
         <div style={{ width: tableScrollWidth, height: 1 }} aria-hidden="true" />
       </div>
 
-      <AttendanceDetailModal selected={selected} onClose={() => setSelected(null)} />
+      <AttendanceDetailModal selected={selected} onClose={() => setSelected(null)} codeOptions={codeOptions} />
 
       {holidayTarget ? (() => {
         const isExistingHoliday = Boolean(holidayMap[holidayTarget.date]);

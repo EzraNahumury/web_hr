@@ -3,6 +3,7 @@ import { pool } from "@/lib/db";
 import { ensureAttendanceShiftSupport, isAttendanceApprovalRuleActive, isCheckInWithinOnTimeWindow, isDurationUnderMinutes, isEarlyLeaveByTime, isHalfDayByTime, isHalfDayRuleActive, PARTIME_MIN_WORK_MINUTES } from "@/lib/attendance";
 import { getEmployeeRemainingLoanTotal } from "@/lib/loans";
 import { getCombinedFinanceRows } from "@/lib/finance-rows";
+import { getAttendanceCodeStatusMap } from "@/lib/attendance-codes";
 import {
   ensureJadwalKaryawanSchema,
   JADWAL_EFFECTIVE_FROM,
@@ -449,22 +450,9 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
   };
 }
 
-const ATTENDANCE_CODE_TO_STATUS: Record<string, string> = {
-  O: "hadir",
-  T: "hadir",
-  H: "setengah_hari",
-  S: "sakit",
-  SX: "sakit",
-  I: "izin",
-  A: "alfa",
-  L: "libur",
-  LN: "libur", // Libur Nasional
-  LP: "libur", // Libur Perusahaan — sama seperti L (dapat gaji pokok, tidak uang makan)
-  C: "libur",
-  X: "alfa",
-  PA: "hadir", // Pulang Awal — tetap dihitung hadir untuk payroll
-};
-
+// Kode absensi & pemetaan kategori payroll dikelola dari Master (Kode Absensi), tersimpan
+// di tabel attendance_code — lihat lib/attendance-codes.ts. Konstanta di bawah tetap ada
+// sebagai referensi/dokumentasi kode bawaan.
 export const ADMIN_ATTENDANCE_CODE_OPTIONS = [
   { code: "O", label: "Hadir (O)" },
   { code: "T", label: "Terlambat (T)" },
@@ -516,7 +504,9 @@ export async function setAttendanceCodeForDate(
     return { employeeId, date: dateIso, code: "-", status: "libur" };
   }
 
-  const status = ATTENDANCE_CODE_TO_STATUS[code];
+  // Peta kode -> kategori payroll kini dikelola dari Master (Kode Absensi), tersimpan di DB.
+  const statusMap = await getAttendanceCodeStatusMap();
+  const status = statusMap[code];
   if (!status) {
     throw new Error("Kode absensi tidak valid.");
   }

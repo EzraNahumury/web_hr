@@ -109,6 +109,7 @@ const menuGroups: MenuGroup[] = [
       { label: "Departemen", href: "/admin/master/departemen", description: "Kelola isi dropdown Departemen" },
       { label: "Divisi", href: "/admin/master/divisi", description: "Kelola isi dropdown Divisi" },
       { label: "Sub Divisi", href: "/admin/master/sub_divisi", description: "Kelola isi dropdown Sub Divisi" },
+      { label: "Kode Absensi", href: "/admin/master/kode-absensi", description: "Kelola kode absensi & kategori payroll" },
       { label: "Akun Payroll", href: "/admin/master/akun-payroll", description: "Atur akun admin yang bisa edit payroll" },
     ],
   },
