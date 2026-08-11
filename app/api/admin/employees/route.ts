@@ -2,13 +2,8 @@ import { NextResponse } from "next/server";
 import { getCurrentAdminSession } from "@/lib/auth";
 import {
   EMPLOYEE_COST_ALLOCATIONS,
-  EMPLOYEE_DEPARTMENTS,
-  EMPLOYEE_DIVISIONS,
   EMPLOYEE_PLACEMENTS,
   EMPLOYEE_RELIGIONS,
-  EMPLOYEE_ROLES,
-  EMPLOYEE_SUB_DIVISIONS,
-  EMPLOYEE_UNITS,
   EMPLOYEE_WORK_STATUSES,
   EmployeePayload,
   insertEmployee,
@@ -16,6 +11,7 @@ import {
   getEmployeeLookups,
   getEmployeeStats,
 } from "@/lib/employees";
+import { getMasterLookupOptions } from "@/lib/master-lookup";
 
 function normalizeText(value: unknown) {
   if (typeof value !== "string") {
@@ -26,7 +22,7 @@ function normalizeText(value: unknown) {
   return trimmed ? trimmed : null;
 }
 
-function validatePayload(body: Record<string, unknown>) {
+async function validatePayload(body: Record<string, unknown>) {
   const nip = normalizeText(body.nip);
   const name = normalizeText(body.name);
   const unit = normalizeText(body.unit);
@@ -49,26 +45,23 @@ function validatePayload(body: Record<string, unknown>) {
     return { error: "Nama wajib diisi." };
   }
 
-  if (unit && !EMPLOYEE_UNITS.includes(unit as (typeof EMPLOYEE_UNITS)[number])) {
+  // Validasi 5 kategori ini terhadap Master (DB), bukan konstanta — agar nilai baru
+  // yang ditambahkan admin lewat menu Master ikut diterima.
+  const master = await getMasterLookupOptions();
+  const has = (opts: { value: string }[], v: string) => opts.some((o) => o.value === v);
+  if (unit && !has(master.units, unit)) {
     return { error: "Unit tidak valid." };
   }
-
-  if (role && !EMPLOYEE_ROLES.includes(role as (typeof EMPLOYEE_ROLES)[number])) {
+  if (role && !has(master.roles, role)) {
     return { error: "Jabatan tidak valid." };
   }
-
-  if (department && !EMPLOYEE_DEPARTMENTS.includes(department as (typeof EMPLOYEE_DEPARTMENTS)[number])) {
+  if (department && !has(master.departments, department)) {
     return { error: "Departemen tidak valid." };
   }
-
-  if (division && !EMPLOYEE_DIVISIONS.includes(division as (typeof EMPLOYEE_DIVISIONS)[number])) {
+  if (division && !has(master.divisions, division)) {
     return { error: "Divisi tidak valid." };
   }
-
-  if (
-    subDivision &&
-    !EMPLOYEE_SUB_DIVISIONS.includes(subDivision as (typeof EMPLOYEE_SUB_DIVISIONS)[number])
-  ) {
+  if (subDivision && !has(master.subDivisions, subDivision)) {
     return { error: "Sub divisi tidak valid." };
   }
 
@@ -196,7 +189,7 @@ export async function POST(request: Request) {
 
   try {
     const body = (await request.json()) as Record<string, unknown>;
-    const result = validatePayload(body);
+    const result = await validatePayload(body);
 
     if ("error" in result) {
       return NextResponse.json({ message: result.error }, { status: 400 });
