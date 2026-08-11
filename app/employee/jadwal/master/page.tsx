@@ -5,6 +5,7 @@ import JadwalMasterManager from "@/components/JadwalMasterManager";
 import { requireEmployeeSession } from "@/lib/auth";
 import { getEmployeeByUserId } from "@/lib/hris";
 import { getJadwalMasterAll, isUserJadwalEditor, listTokoGudangKaryawan } from "@/lib/jadwal-karyawan";
+import { getActivePayrollPeriod, getPayrollDateRange } from "@/lib/payroll-admin";
 import { canSetSchedule, isJadwalWhitelisted } from "@/lib/scheduler-roles";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,8 @@ export default async function EmployeeJadwalMasterPage() {
   }
 
   const [karyawanList, master] = await Promise.all([listTokoGudangKaryawan(), getJadwalMasterAll()]);
+  const active = getActivePayrollPeriod();
+  const period = getPayrollDateRange(active.month, active.year);
 
   return (
     <EmployeeShell
@@ -35,7 +38,12 @@ export default async function EmployeeJadwalMasterPage() {
       employeeRole={employee.jabatan}
       employeeDepartment={employee.departemen}
     >
-      <JadwalMasterManager karyawanList={karyawanList} initialMaster={master} />
+      <JadwalMasterManager
+        karyawanList={karyawanList}
+        initialMaster={master}
+        periodStart={period.startSql}
+        periodEnd={period.endSql}
+      />
     </EmployeeShell>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import type { JadwalMasterItem, JadwalShift, TokoGudangKaryawan } from "@/lib/jadwal-karyawan";
@@ -10,6 +10,8 @@ type Props = {
   karyawanList: TokoGudangKaryawan[];
   initialMaster: JadwalMasterItem[];
   basePath?: string; // untuk endpoint API (default /api/spv/jadwal-master)
+  periodStart?: string; // YYYY-MM-DD, awal periode payroll berjalan
+  periodEnd?: string; // YYYY-MM-DD, akhir periode payroll berjalan
 };
 
 const HARI: { hari: number; label: string; short: string }[] = [
@@ -22,19 +24,46 @@ const HARI: { hari: number; label: string; short: string }[] = [
   { hari: 7, label: "Minggu", short: "Min" },
 ];
 
+const MONTH_LABELS = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
+
+function fmtDate(d: string) {
+  const [y, m, day] = d.split("-");
+  return `${Number(day)} ${MONTH_LABELS[Number(m) - 1]} ${y}`;
+}
+
 function buildMap(rows: JadwalMasterItem[]) {
   const m = new Map<string, JadwalShift>();
   for (const r of rows) m.set(`${r.karyawanId}|${r.hari}`, r.shift);
   return m;
 }
 
-export default function JadwalMasterManager({ karyawanList, initialMaster }: Props) {
+export default function JadwalMasterManager({
+  karyawanList,
+  initialMaster,
+  periodStart,
+  periodEnd,
+}: Props) {
   const router = useRouter();
+  const hasPeriod = !!periodStart && !!periodEnd;
   const [masterMap, setMasterMap] = useState<Map<string, JadwalShift>>(() => buildMap(initialMaster));
   const [dirty, setDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [search, setSearch] = useState("");
+  const [rangeStart, setRangeStart] = useState(periodStart ?? "");
+  const [rangeEnd, setRangeEnd] = useState(periodEnd ?? "");
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  const isFullPeriod = rangeStart === periodStart && rangeEnd === periodEnd;
+  const rangeInvalid = hasPeriod && !!rangeStart && !!rangeEnd && rangeStart > rangeEnd;
+
+  // Selaraskan rentang ke periode bila periode berjalan berganti (mis. rollover tgl 25).
+  useEffect(() => {
+    setRangeStart(periodStart ?? "");
+    setRangeEnd(periodEnd ?? "");
+  }, [periodStart, periodEnd]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -99,7 +128,11 @@ export default function JadwalMasterManager({ karyawanList, initialMaster }: Pro
       const res = await fetch("/api/spv/jadwal-master", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ entries, removeKeys }),
+        body: JSON.stringify({
+          entries,
+          removeKeys,
+          ...(hasPeriod ? { rangeStart, rangeEnd } : {}),
+        }),
       });
       const data = (await res.json()) as { message?: string; distributed?: number };
       if (!res.ok) {
@@ -108,9 +141,9 @@ export default function JadwalMasterManager({ karyawanList, initialMaster }: Pro
       }
       setToast({
         type: "success",
-        message: `Master tersimpan & otomatis diterapkan ke Bagan periode berjalan${
+        message: `${data.message ?? "Master tersimpan & diterapkan ke Bagan."}${
           typeof data.distributed === "number" ? ` (${data.distributed} sel terisi)` : ""
-        }. Cek Bagan Set Jadwal untuk edit/tukar shift bila perlu.`,
+        } Cek Bagan Set Jadwal untuk edit/tukar shift bila perlu.`,
       });
       setDirty(false);
       router.refresh();
@@ -138,7 +171,7 @@ export default function JadwalMasterManager({ karyawanList, initialMaster }: Pro
           <button
             type="button"
             onClick={handleSave}
-            disabled={isSaving || !dirty}
+            disabled={isSaving || !dirty || rangeInvalid}
             className="h-11 rounded-2xl bg-[#8f1d22] px-6 text-sm font-semibold text-white shadow-[0_2px_10px_rgba(143,29,34,0.25)] transition hover:bg-[#a12228] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSaving ? "Menyimpan..." : "Simpan Master"}
@@ -155,6 +188,66 @@ export default function JadwalMasterManager({ karyawanList, initialMaster }: Pro
           }
         >
           {toast.message}
+        </div>
+      ) : null}
+
+      {hasPeriod ? (
+        <div className="rounded-[24px] border border-[#ead7ce] bg-white px-6 py-4">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a16f63]">
+                Terapkan ke Rentang Tanggal
+              </p>
+              <p className="mt-1 max-w-xl text-sm text-[#7a6059]">
+                Pola mingguan di bawah diterapkan ke Bagan hanya pada rentang tanggal ini. Default =
+                seluruh periode berjalan ({fmtDate(periodStart as string)} – {fmtDate(periodEnd as string)}).
+              </p>
+            </div>
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="block">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#7a6059]">Dari</span>
+                <input
+                  type="date"
+                  value={rangeStart}
+                  min={periodStart}
+                  max={periodEnd}
+                  onChange={(e) => setRangeStart(e.target.value)}
+                  className="mt-1 h-11 rounded-2xl border border-[#ead7ce] bg-white px-4 text-sm text-[#2d1b18] outline-none focus:border-[#c8716d]"
+                />
+              </label>
+              <label className="block">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#7a6059]">Sampai</span>
+                <input
+                  type="date"
+                  value={rangeEnd}
+                  min={periodStart}
+                  max={periodEnd}
+                  onChange={(e) => setRangeEnd(e.target.value)}
+                  className="mt-1 h-11 rounded-2xl border border-[#ead7ce] bg-white px-4 text-sm text-[#2d1b18] outline-none focus:border-[#c8716d]"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setRangeStart(periodStart as string);
+                  setRangeEnd(periodEnd as string);
+                }}
+                disabled={isFullPeriod}
+                className="h-11 rounded-2xl border border-[#ead7ce] bg-[#fff7f3] px-4 text-sm font-semibold text-[#8f1d22] transition hover:bg-[#fdebda] disabled:opacity-40"
+              >
+                Seluruh periode
+              </button>
+            </div>
+          </div>
+          {rangeInvalid ? (
+            <p className="mt-3 rounded-xl bg-[#fff4f4] px-3 py-2 text-xs font-semibold text-[#b13232]">
+              Tanggal &ldquo;Dari&rdquo; tidak boleh melebihi &ldquo;Sampai&rdquo;.
+            </p>
+          ) : !isFullPeriod ? (
+            <p className="mt-3 rounded-xl bg-[#f0fbf6] px-3 py-2 text-xs font-semibold text-[#136c4c]">
+              Hanya diterapkan ke {fmtDate(rangeStart)} – {fmtDate(rangeEnd)}.
+            </p>
+          ) : null}
         </div>
       ) : null}
 

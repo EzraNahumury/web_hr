@@ -133,17 +133,42 @@ export async function POST(request: Request) {
     // di master ditimpa; cell master yang DIKOSONGKAN (removeKeys) juga menghapus Bagan
     // hari tsb agar Bagan ikut ter-update.
     const active = getActivePayrollPeriod();
-    const range = getPayrollDateRange(active.month, active.year);
-    const dist = await distributeMasterToPeriod(range.startSql, range.endSql, session.id);
-    if (removeKeys.length > 0) {
-      await clearMasterDowFromPeriod(range.startSql, range.endSql, removeKeys);
+    const period = getPayrollDateRange(active.month, active.year);
+
+    // Rentang distribusi opsional: default = SELURUH periode payroll berjalan. Bila client
+    // mengirim rangeStart/rangeEnd (mis. tgl 2–15), pola mingguan hanya diterapkan ke rentang
+    // itu di Bagan. Di-clamp ke batas periode supaya tidak menyentuh tanggal di luar periode.
+    const isoDate = /^\d{4}-\d{2}-\d{2}$/;
+    const reqStart = typeof body.rangeStart === "string" && isoDate.test(body.rangeStart) ? body.rangeStart : null;
+    const reqEnd = typeof body.rangeEnd === "string" && isoDate.test(body.rangeEnd) ? body.rangeEnd : null;
+    let distStart = period.startSql;
+    let distEnd = period.endSql;
+    if (reqStart && reqEnd) {
+      distStart = reqStart > period.startSql ? reqStart : period.startSql;
+      distEnd = reqEnd < period.endSql ? reqEnd : period.endSql;
+      if (distStart > distEnd) {
+        return NextResponse.json(
+          { message: "Rentang tanggal di luar periode payroll berjalan." },
+          { status: 400 },
+        );
+      }
     }
 
+    const dist = await distributeMasterToPeriod(distStart, distEnd, session.id);
+    if (removeKeys.length > 0) {
+      await clearMasterDowFromPeriod(distStart, distEnd, removeKeys);
+    }
+
+    const fullPeriod = distStart === period.startSql && distEnd === period.endSql;
     return NextResponse.json({
-      message: "Master jadwal tersimpan & diterapkan ke Bagan periode berjalan.",
+      message: fullPeriod
+        ? "Master jadwal tersimpan & diterapkan ke Bagan periode berjalan."
+        : `Master jadwal tersimpan & diterapkan ke Bagan tanggal ${distStart} s/d ${distEnd}.`,
       saved: entries.length,
       removed: removeKeys.length,
       distributed: dist.inserted,
+      rangeStart: distStart,
+      rangeEnd: distEnd,
     });
   } catch (error) {
     console.error("jadwal-master POST error", error);
