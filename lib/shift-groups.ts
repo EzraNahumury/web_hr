@@ -308,14 +308,16 @@ type SaveGroupInput = {
   memberIds: number[]; // include (custom) / exclude (target-based)
 };
 
-function validateGroupInput(input: SaveGroupInput) {
+async function validateGroupInput(input: SaveGroupInput) {
   const name = input.name.trim();
   if (!name) throw new Error("Nama grup kosong.");
   if (name.length > 80) throw new Error("Nama grup terlalu panjang.");
   if (!isShiftTargetType(input.targetType)) throw new Error("Tipe target tidak valid.");
   const targetValue = input.targetType === "custom" ? null : (input.targetValue ?? "").trim();
   if (input.targetType !== "custom" && !targetValue) throw new Error("Nilai target wajib diisi.");
-  const codes = input.shiftCodes.filter((c) => SELECTABLE_CODES.has(c));
+  const selectable = await getSelectableShifts();
+  const selectableCodes = new Set(selectable.map((s) => s.code));
+  const codes = input.shiftCodes.filter((c) => selectableCodes.has(c));
   if (codes.length === 0) throw new Error("Pilih minimal 1 shift untuk dropdown grup.");
   return { name, targetValue: targetValue || null, codes };
 }
@@ -344,7 +346,7 @@ async function replaceGroupChildren(groupId: number, codes: string[], memberIds:
 
 export async function createShiftGroup(input: SaveGroupInput): Promise<void> {
   await ensureShiftGroupSchema();
-  const { name, targetValue, codes } = validateGroupInput(input);
+  const { name, targetValue, codes } = await validateGroupInput(input);
   const [maxRow] = await pool.query<(RowDataPacket & { maxSort: number | null })[]>(
     `SELECT MAX(sort) AS maxSort FROM shift_group`,
   );
@@ -359,7 +361,7 @@ export async function createShiftGroup(input: SaveGroupInput): Promise<void> {
 
 export async function updateShiftGroup(id: number, input: SaveGroupInput): Promise<void> {
   await ensureShiftGroupSchema();
-  const { name, targetValue, codes } = validateGroupInput(input);
+  const { name, targetValue, codes } = await validateGroupInput(input);
   const [res] = await pool.query<ResultSetHeader>(
     `UPDATE shift_group SET name = ?, target_type = ?, target_value = ? WHERE id = ?`,
     [name, input.targetType, targetValue, id],
