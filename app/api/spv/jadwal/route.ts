@@ -51,21 +51,6 @@ async function getSchedulerSession() {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const VALID_SHIFTS: JadwalShift[] = [
-  "pagi",
-  "lembur",
-  "siang",
-  "setengah_1",
-  "setengah_2",
-  "libur",
-  "pagi_full",
-  "pagi_short",
-  "siang_sore",
-  "jne_pagi",
-  "jne_siang",
-  "jne_minggu",
-];
-
 function parsePositiveInt(v: unknown) {
   const n = Number(v);
   return Number.isInteger(n) && n > 0 ? n : null;
@@ -79,8 +64,10 @@ function parseYearMonth(yearRaw: unknown, monthRaw: unknown) {
   return { year, month };
 }
 
+// Cek FORMAT saja (termasuk kode shift custom). Validasi nilai yang boleh dipakai per
+// karyawan ditangani oleh allowed-set (grup / penempatan) di bawah.
 function isValidShift(value: unknown): value is JadwalShift {
-  return typeof value === "string" && VALID_SHIFTS.includes(value as JadwalShift);
+  return typeof value === "string" && /^[a-z0-9_]{1,24}$/.test(value);
 }
 
 function isValidDateInPeriod(date: string, year: number, month: number) {

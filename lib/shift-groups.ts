@@ -2,6 +2,7 @@ import { ResultSetHeader, RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
 import { ensureEmployeeSchemaSupport } from "@/lib/employees";
 import { getShiftOptionsFor, type ShiftOption } from "@/lib/jadwal-shift-options";
+import { getSelectableShifts, getShiftLabelMap } from "@/lib/shift-defs";
 
 // ── FASE 1: grup shift (targeting jabatan/departemen/penempatan/custom + pengecualian) ──
 // Grup hanya MENYUSUN dropdown shift dari shift yang SUDAH ADA. Belum menyentuh jam absensi.
@@ -14,20 +15,8 @@ export function isShiftTargetType(v: unknown): v is ShiftTargetType {
   return typeof v === "string" && (SHIFT_TARGET_TYPES as readonly string[]).includes(v);
 }
 
-// Katalog shift yang boleh dipilih untuk mengisi dropdown sebuah grup (Fase 1 = shift existing).
-export const SELECTABLE_SHIFTS: { code: string; label: string }[] = [
-  { code: "pagi", label: "Pagi (08:30 - 16:30)" },
-  { code: "siang", label: "Siang (12:00 - 21:00)" },
-  { code: "lembur", label: "Lembur (10:00 - 21:00)" },
-  { code: "ayres_siang", label: "Siang (14:00 - 22:00)" },
-  { code: "jne_pagi", label: "JNE Pagi (08:00 - 16:00)" },
-  { code: "jne_siang", label: "JNE Siang (14:00 - 21:00)" },
-  { code: "jne_minggu", label: "JNE Minggu (13:00 - 20:00)" },
-  { code: "libur", label: "Libur" },
-];
-
-const SELECTABLE_CODES = new Set(SELECTABLE_SHIFTS.map((s) => s.code));
-const SHIFT_LABEL = new Map(SELECTABLE_SHIFTS.map((s) => [s.code, s.label] as const));
+// Katalog shift yang boleh dipilih (built-in + custom) kini berasal dari tabel shift_def
+// (lihat lib/shift-defs.ts): getSelectableShifts() & getShiftLabelMap().
 
 export type ShiftGroupRoster = {
   id: number;
@@ -253,17 +242,22 @@ async function buildEmployeeGroupMap(): Promise<Map<number, ShiftGroup>> {
 export async function getShiftOptionsByKaryawan(
   roster: { id: number; penempatan: string }[],
 ): Promise<Record<number, { value: ShiftOption; label: string }[]>> {
-  const groupMap = await buildEmployeeGroupMap();
+  const [groupMap, labelMap, selectable] = await Promise.all([
+    buildEmployeeGroupMap(),
+    getShiftLabelMap(),
+    getSelectableShifts(),
+  ]);
+  const selectableCodes = new Set(selectable.map((s) => s.code));
   const out: Record<number, { value: ShiftOption; label: string }[]> = {};
   for (const emp of roster) {
     const group = groupMap.get(emp.id);
     if (group && group.shiftCodes.length > 0) {
-      const codes = group.shiftCodes.filter((c) => SELECTABLE_CODES.has(c));
+      const codes = group.shiftCodes.filter((c) => selectableCodes.has(c));
       // "libur" wajib selalu tersedia (hari off/libur nasional lewat Bagan), walau tak dipilih.
       if (!codes.includes("libur")) codes.push("libur");
       out[emp.id] = [
         { value: "", label: "—" },
-        ...codes.map((c) => ({ value: c as ShiftOption, label: SHIFT_LABEL.get(c) ?? c })),
+        ...codes.map((c) => ({ value: c as ShiftOption, label: labelMap.get(c) ?? c })),
       ];
     } else {
       out[emp.id] = getShiftOptionsFor(emp.penempatan);

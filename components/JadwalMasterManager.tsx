@@ -324,7 +324,7 @@ export default function JadwalMasterManager({
                               value={value}
                               onChange={(e) => setCell(k.id, d.hari, e.target.value as ShiftOption)}
                               className={`h-9 w-full rounded-lg border px-1.5 text-xs outline-none focus:border-[#c97f5b] ${
-                                value ? SHIFT_COLOR[value as JadwalShift] : "border-[#e8d5cc] bg-white text-[#241716]"
+                                value ? (SHIFT_COLOR[value as JadwalShift] ?? "border-[#c9b8d6] bg-[#f5f0fa] text-[#5b4a72]") : "border-[#e8d5cc] bg-white text-[#241716]"
                               }`}
                             >
                               {options.map((o) => (

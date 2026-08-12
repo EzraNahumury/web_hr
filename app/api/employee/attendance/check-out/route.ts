@@ -5,6 +5,7 @@ import { getCurrentEmployeeSession } from "@/lib/auth";
 import {
   detectTokoGudangShiftFinal,
   ensureAttendanceShiftSupport,
+  ensureShiftDefsLoaded,
   getJakartaDate,
   getJakartaDateTime,
   isAttendanceApprovalRuleActive,
@@ -41,6 +42,7 @@ type AttendanceRow = RowDataPacket & {
 export async function POST(request: Request) {
   try {
     await ensureAttendanceShiftSupport();
+    await ensureShiftDefsLoaded(); // merge jam shift custom sebelum hitung PA
 
     const session = await getCurrentEmployeeSession();
 

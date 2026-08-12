@@ -5,6 +5,7 @@ import { getCurrentEmployeeSession } from "@/lib/auth";
 import {
   detectTokoGudangShift,
   ensureAttendanceShiftSupport,
+  ensureShiftDefsLoaded,
   getJakartaDate,
   getJakartaDateTime,
   getBlockingMissingCheckout,
@@ -46,6 +47,7 @@ type AttendanceRequestStatus =
 export async function POST(request: Request) {
   try {
     await ensureAttendanceShiftSupport();
+    await ensureShiftDefsLoaded(); // merge jam shift custom sebelum hitung telat/PA
 
     const session = await getCurrentEmployeeSession();
 

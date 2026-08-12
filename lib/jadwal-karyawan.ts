@@ -62,10 +62,8 @@ export function ensureJadwalKaryawanSchema(): Promise<void> {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
       try {
-        await pool.query(`
-          ALTER TABLE jadwal_karyawan
-          MODIFY COLUMN shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','libur','pagi_full','pagi_short','siang_sore','jne_pagi','jne_siang','jne_minggu','ayres_siang') NOT NULL
-        `);
+        // ENUM→VARCHAR agar kode shift CUSTOM (dinamis dari shift_def) bisa disimpan.
+        await pool.query(`ALTER TABLE jadwal_karyawan MODIFY COLUMN shift VARCHAR(24) NOT NULL`);
       } catch (error) {
         console.error("Migration warning jadwal_karyawan.shift:", error);
       }
@@ -255,13 +253,10 @@ export function ensureJadwalMasterSchema(): Promise<void> {
           UNIQUE KEY uk_karyawan_hari (karyawan_id, hari)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
-      // Tabel lama (dibuat sebelum shift baru ditambah) perlu di-MODIFY agar ENUM
-      // menyertakan 'ayres_siang' dll — kalau tidak, nilai baru di-truncate ke '' saat simpan.
+      // ENUM→VARCHAR agar kode shift CUSTOM (dinamis dari shift_def) bisa disimpan.
+      // Nilai ENUM lama (string) dipertahankan apa adanya saat konversi.
       try {
-        await pool.query(`
-          ALTER TABLE jadwal_master
-          MODIFY COLUMN shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','libur','pagi_full','pagi_short','siang_sore','jne_pagi','jne_siang','jne_minggu','ayres_siang') NOT NULL
-        `);
+        await pool.query(`ALTER TABLE jadwal_master MODIFY COLUMN shift VARCHAR(24) NOT NULL`);
       } catch (error) {
         console.error("Migration warning jadwal_master.shift:", error);
       }

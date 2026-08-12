@@ -70,7 +70,9 @@ export type AttendanceShift =
   | "partime"
   | "ayres_siang";
 
-const SHIFT_START: Record<AttendanceShift, number> = {
+// Record<string, ...> agar shift CUSTOM (kode dinamis dari shift_def) bisa di-merge saat
+// runtime lewat ensureShiftDefsLoaded(). Entri built-in di bawah TIDAK pernah ditimpa.
+const SHIFT_START: Record<string, number> = {
   pagi: 8 * 60 + 30,         // 08:30
   lembur: 10 * 60,           // 10:00
   siang: 12 * 60,            // 12:00
@@ -86,8 +88,12 @@ const SHIFT_START: Record<AttendanceShift, number> = {
   ayres_siang: 14 * 60,      // 14:00 (Ayres Siang — selesai 22:00)
 };
 
+// Kode shift bawaan (di-snapshot sebelum merge custom) — dipakai untuk melindungi jam
+// built-in dari penimpaan saat merge shift custom.
+const BUILTIN_SHIFT_CODES = new Set(Object.keys(SHIFT_START));
+
 // Toleransi keterlambatan per shift. Jika lateMinutes <= tolerance maka dianggap tepat waktu.
-const SHIFT_TOLERANCE_MINUTES: Partial<Record<AttendanceShift, number>> = {
+const SHIFT_TOLERANCE_MINUTES: Partial<Record<string, number>> = {
   jne_pagi: 10,
   jne_siang: 10,
   jne_minggu: 10,
@@ -96,7 +102,7 @@ const SHIFT_TOLERANCE_MINUTES: Partial<Record<AttendanceShift, number>> = {
 
 type Range = readonly [number, number];
 
-const CHECKIN_WINDOW: Record<AttendanceShift, Range> = {
+const CHECKIN_WINDOW: Record<string, Range> = {
   pagi:       [8 * 60,            8 * 60 + 30],   // 08:00-08:30
   lembur:     [9 * 60 + 45,       10 * 60],       // 09:45-10:00
   siang:      [11 * 60 + 45,      12 * 60],       // 11:45-12:00
@@ -112,7 +118,7 @@ const CHECKIN_WINDOW: Record<AttendanceShift, Range> = {
   ayres_siang:[13 * 60 + 30,      14 * 60 + 30],  // 13:30-14:30 (masuk mulai 13:30, tepat waktu s/d 14:05)
 };
 
-const CHECKOUT_WINDOW: Record<AttendanceShift, Range> = {
+const CHECKOUT_WINDOW: Record<string, Range> = {
   pagi:       [16 * 60 + 30,      17 * 60 + 30],  // 16:30-17:30
   lembur:     [20 * 60,           21 * 60],       // 20:00-21:00
   siang:      [20 * 60,           21 * 60],       // 20:00-21:00
@@ -282,8 +288,10 @@ export function isPagiAutoHalfDay(
 }
 
 export function getShiftLateMinutes(time: string, shift: AttendanceShift): number {
+  const start = SHIFT_START[shift];
+  if (start === undefined) return 0; // shift custom belum ter-load → jangan hitung telat asal
   const mins = timeToMinutes(time);
-  const lateRaw = Math.max(mins - SHIFT_START[shift], 0);
+  const lateRaw = Math.max(mins - start, 0);
   // Default toleransi 5 menit untuk semua shift; JNE tetap 10 menit lewat SHIFT_TOLERANCE_MINUTES override.
   const tolerance = SHIFT_TOLERANCE_MINUTES[shift] ?? 5;
   return lateRaw <= tolerance ? 0 : lateRaw;
@@ -302,12 +310,14 @@ export function isWithinScheduledShiftRange(
   const mins = timeToMinutes(time);
   const ciWindow = CHECKIN_WINDOW[shift];
   const coWindow = CHECKOUT_WINDOW[shift];
+  if (!ciWindow || !coWindow) return true; // shift tak dikenal → jangan blokir presensi
   return mins >= ciWindow[0] && mins <= coWindow[1];
 }
 
 export function getShiftRangeLabel(shift: AttendanceShift): string {
   const ci = CHECKIN_WINDOW[shift];
   const co = CHECKOUT_WINDOW[shift];
+  if (!ci || !co) return "";
   return `${minutesToTimeLabel(ci[0])} - ${minutesToTimeLabel(co[1])}`;
 }
 
@@ -323,6 +333,25 @@ export function isTokoGudangPlacement(penempatan: string | null | undefined): bo
   return TOKO_GUDANG_PLACEMENTS.has(penempatan ?? "");
 }
 
+// Merge shift CUSTOM (jam dari tabel shift_def) ke map jam di atas. Entri built-in TIDAK
+// pernah ditimpa. Panggil sebelum menghitung telat/PA agar shift custom terjadwal dikenali.
+// Selalu reload (query kecil) supaya shift custom yang baru dibuat langsung berlaku.
+export async function ensureShiftDefsLoaded(): Promise<void> {
+  try {
+    const { getCustomShiftAttendanceDefs } = await import("@/lib/shift-defs");
+    const defs = await getCustomShiftAttendanceDefs();
+    for (const d of defs) {
+      if (BUILTIN_SHIFT_CODES.has(d.code)) continue; // jaga-jaga: jangan timpa built-in
+      SHIFT_START[d.code] = d.startMin;
+      SHIFT_TOLERANCE_MINUTES[d.code] = d.toleranceMin;
+      CHECKIN_WINDOW[d.code] = [d.checkinStartMin, d.checkinEndMin];
+      CHECKOUT_WINDOW[d.code] = [d.checkoutStartMin, d.checkoutEndMin];
+    }
+  } catch (err) {
+    console.error("ensureShiftDefsLoaded failed", err);
+  }
+}
+
 let shiftColumnReady: Promise<void> | null = null;
 
 export function ensureAttendanceShiftSupport(): Promise<void> {
@@ -330,18 +359,18 @@ export function ensureAttendanceShiftSupport(): Promise<void> {
     shiftColumnReady = (async () => {
       try {
         await pool.query(
-          `ALTER TABLE absensi ADD COLUMN shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','partime','ayres_siang') NULL AFTER kode_absensi`,
+          `ALTER TABLE absensi ADD COLUMN shift VARCHAR(24) NULL AFTER kode_absensi`,
         );
       } catch (err: unknown) {
         const code = typeof err === "object" && err !== null && "code" in err ? (err as { code: string }).code : "";
         if (code !== "ER_DUP_FIELDNAME") throw err;
       }
       try {
-        await pool.query(
-          `ALTER TABLE absensi MODIFY COLUMN shift ENUM('pagi','lembur','siang','setengah_1','setengah_2','partime','ayres_siang') NULL`,
-        );
+        // ENUM→VARCHAR agar kode shift CUSTOM (dinamis) bisa disimpan. Nilai ENUM lama
+        // (string) dipertahankan apa adanya saat konversi.
+        await pool.query(`ALTER TABLE absensi MODIFY COLUMN shift VARCHAR(24) NULL`);
       } catch (err) {
-        console.error("Failed to widen shift enum", err);
+        console.error("Failed to widen shift column", err);
       }
       // Flag: record hadir yang lupa absen pulang. absen_dipulihkan=1 artinya admin sudah
       // "Pulihkan" -> tidak lagi memblokir absensi karyawan.

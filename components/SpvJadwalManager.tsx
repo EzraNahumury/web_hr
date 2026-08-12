@@ -567,7 +567,7 @@ export default function SpvJadwalManager({
                           onChange={(e) => setCell(k.id, pd.date, e.target.value as ShiftOption)}
                           className={`h-9 w-full rounded-lg border px-1 text-[11px] font-semibold focus:outline-none ${
                             value
-                              ? SHIFT_COLOR[value as JadwalShift]
+                              ? (SHIFT_COLOR[value as JadwalShift] ?? "border-[#c9b8d6] bg-[#f5f0fa] text-[#5b4a72]")
                               : "border-[#ead7ce] bg-white text-[#a3958f]"
                           }`}
                         >
