@@ -6,6 +6,7 @@ import {
   listTokoGudangKaryawan,
 } from "@/lib/jadwal-karyawan";
 import { getActivePayrollPeriod, getPayrollDateRange } from "@/lib/payroll-admin";
+import { getShiftOptionsByKaryawan } from "@/lib/shift-groups";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,9 @@ export default async function SpvJadwalPage({
     listTokoGudangKaryawan(),
     getJadwalForRange(range.startSql, range.endSql),
   ]);
+  const optionsByKaryawan = await getShiftOptionsByKaryawan(
+    karyawanList.map((k) => ({ id: k.id, penempatan: k.penempatan })),
+  );
 
   return (
     <SpvShell
@@ -48,6 +52,7 @@ export default async function SpvJadwalPage({
         initialMonth={month}
         karyawanList={karyawanList}
         initialJadwal={jadwalList}
+        optionsByKaryawan={optionsByKaryawan}
       />
     </SpvShell>
   );

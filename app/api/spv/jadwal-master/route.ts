@@ -26,6 +26,7 @@ import {
   STANDARD_SHIFT_VALUES,
 } from "@/lib/jadwal-shift-options";
 import { canSetSchedule, isJadwalWhitelisted } from "@/lib/scheduler-roles";
+import { getAllowedShiftsByKaryawan } from "@/lib/shift-groups";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -87,6 +88,10 @@ export async function POST(request: Request) {
       else if (isAyresPlacement(r.penempatan)) ayresIds.add(r.id);
     }
 
+    // Shift yang diizinkan per karyawan bila dia masuk grup Set Jadwal (Master). Bila tidak,
+    // fallback ke set berbasis penempatan (perilaku lama).
+    const allowedByKaryawan = await getAllowedShiftsByKaryawan();
+
     const entries: { karyawanId: number; hari: number; shift: JadwalShift }[] = [];
     for (const item of entriesRaw) {
       if (!item || typeof item !== "object") continue;
@@ -100,15 +105,19 @@ export async function POST(request: Request) {
       if (!hari || hari < 1 || hari > 7) {
         return NextResponse.json({ message: `Hari tidak valid: ${String(rec.hari)}` }, { status: 400 });
       }
-      const allowed = jneIds.has(karyawanId) ? jneSet : ayresIds.has(karyawanId) ? ayresSet : standardSet;
+      const groupAllowed = allowedByKaryawan.get(karyawanId);
+      const allowed =
+        groupAllowed ?? (jneIds.has(karyawanId) ? jneSet : ayresIds.has(karyawanId) ? ayresSet : standardSet);
       if (!allowed.has(shift)) {
         return NextResponse.json(
           {
-            message: jneIds.has(karyawanId)
-              ? "Karyawan Ekspedisi (JNE) hanya boleh shift Pagi/Siang/Minggu atau Libur."
-              : ayresIds.has(karyawanId)
-                ? "Karyawan Ayres hanya boleh shift Pagi, Siang (14:00-22:00), atau Libur."
-                : "Shift hanya boleh Pagi, Lembur, Siang, atau Libur.",
+            message: groupAllowed
+              ? "Shift tidak sesuai grup Set Jadwal untuk karyawan ini."
+              : jneIds.has(karyawanId)
+                ? "Karyawan Ekspedisi (JNE) hanya boleh shift Pagi/Siang/Minggu atau Libur."
+                : ayresIds.has(karyawanId)
+                  ? "Karyawan Ayres hanya boleh shift Pagi, Siang (14:00-22:00), atau Libur."
+                  : "Shift hanya boleh Pagi, Lembur, Siang, atau Libur.",
           },
           { status: 400 },
         );

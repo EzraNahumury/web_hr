@@ -6,6 +6,7 @@ import { requireEmployeeSession } from "@/lib/auth";
 import { getEmployeeByUserId } from "@/lib/hris";
 import { getJadwalMasterAll, isUserJadwalEditor, listTokoGudangKaryawan } from "@/lib/jadwal-karyawan";
 import { getActivePayrollPeriod, getPayrollDateRange } from "@/lib/payroll-admin";
+import { getShiftOptionsByKaryawan } from "@/lib/shift-groups";
 import { canSetSchedule, isJadwalWhitelisted } from "@/lib/scheduler-roles";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +28,9 @@ export default async function EmployeeJadwalMasterPage() {
   const [karyawanList, master] = await Promise.all([listTokoGudangKaryawan(), getJadwalMasterAll()]);
   const active = getActivePayrollPeriod();
   const period = getPayrollDateRange(active.month, active.year);
+  const optionsByKaryawan = await getShiftOptionsByKaryawan(
+    karyawanList.map((k) => ({ id: k.id, penempatan: k.penempatan })),
+  );
 
   return (
     <EmployeeShell
@@ -43,6 +47,7 @@ export default async function EmployeeJadwalMasterPage() {
         initialMaster={master}
         periodStart={period.startSql}
         periodEnd={period.endSql}
+        optionsByKaryawan={optionsByKaryawan}
       />
     </EmployeeShell>
   );

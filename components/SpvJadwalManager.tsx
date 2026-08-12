@@ -16,6 +16,9 @@ type Props = {
   initialMonth: number;
   karyawanList: TokoGudangKaryawan[];
   initialJadwal: JadwalKaryawanItem[];
+  // Opsi dropdown shift per karyawan (dari Master Set Jadwal / grup shift). Fallback ke
+  // getShiftOptionsFor(penempatan) bila karyawan tak ada di map.
+  optionsByKaryawan?: Record<number, { value: ShiftOption; label: string }[]>;
 };
 
 const MONTH_LABELS = [
@@ -84,6 +87,7 @@ export default function SpvJadwalManager({
   initialMonth,
   karyawanList,
   initialJadwal,
+  optionsByKaryawan,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -513,7 +517,7 @@ export default function SpvJadwalManager({
                 </tr>
               ) : null}
               {filteredKaryawan.map((k) => {
-                const shiftOptions = getShiftOptionsFor(k.penempatan);
+                const shiftOptions = optionsByKaryawan?.[k.id] ?? getShiftOptionsFor(k.penempatan);
                 return (
                 <tr
                   key={k.id}

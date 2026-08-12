@@ -3,6 +3,7 @@ import JadwalMasterManager from "@/components/JadwalMasterManager";
 import { requireAdminSession } from "@/lib/auth";
 import { getJadwalMasterAll, listTokoGudangKaryawan } from "@/lib/jadwal-karyawan";
 import { getActivePayrollPeriod, getPayrollDateRange } from "@/lib/payroll-admin";
+import { getShiftOptionsByKaryawan } from "@/lib/shift-groups";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,9 @@ export default async function AdminJadwalMasterPage() {
   const [karyawanList, master] = await Promise.all([listTokoGudangKaryawan(), getJadwalMasterAll()]);
   const active = getActivePayrollPeriod();
   const period = getPayrollDateRange(active.month, active.year);
+  const optionsByKaryawan = await getShiftOptionsByKaryawan(
+    karyawanList.map((k) => ({ id: k.id, penempatan: k.penempatan })),
+  );
 
   return (
     <AdminShell
@@ -25,6 +29,7 @@ export default async function AdminJadwalMasterPage() {
         initialMaster={master}
         periodStart={period.startSql}
         periodEnd={period.endSql}
+        optionsByKaryawan={optionsByKaryawan}
       />
     </AdminShell>
   );

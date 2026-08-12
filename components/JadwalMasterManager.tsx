@@ -12,6 +12,8 @@ type Props = {
   basePath?: string; // untuk endpoint API (default /api/spv/jadwal-master)
   periodStart?: string; // YYYY-MM-DD, awal periode payroll berjalan
   periodEnd?: string; // YYYY-MM-DD, akhir periode payroll berjalan
+  // Opsi dropdown shift per karyawan (dari grup shift Master). Fallback ke penempatan.
+  optionsByKaryawan?: Record<number, { value: ShiftOption; label: string }[]>;
 };
 
 const HARI: { hari: number; label: string; short: string }[] = [
@@ -45,6 +47,7 @@ export default function JadwalMasterManager({
   initialMaster,
   periodStart,
   periodEnd,
+  optionsByKaryawan,
 }: Props) {
   const router = useRouter();
   const hasPeriod = !!periodStart && !!periodEnd;
@@ -284,7 +287,7 @@ export default function JadwalMasterManager({
                 </tr>
               ) : (
                 filtered.map((k) => {
-                  const options = getShiftOptionsFor(k.penempatan);
+                  const options = optionsByKaryawan?.[k.id] ?? getShiftOptionsFor(k.penempatan);
                   return (
                     <tr key={k.id} className="border-b border-[#f4ebe6]">
                       <td className="sticky left-0 z-10 bg-white px-4 py-2">
