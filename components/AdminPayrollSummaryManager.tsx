@@ -155,6 +155,7 @@ export default function AdminPayrollSummaryManager({
   const [searchQuery, setSearchQuery] = useState("");
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingFinance, setIsExportingFinance] = useState(false);
+  const [isExportingGaji, setIsExportingGaji] = useState(false);
   const [absensiEditRow, setAbsensiEditRow] = useState<AdminPayrollSummarySheetRow | null>(null);
   const [absensiValue, setAbsensiValue] = useState("");
   const [isAbsensiPending, startAbsensiTransition] = useTransition();
@@ -475,6 +476,18 @@ export default function AdminPayrollSummaryManager({
     }
   }
 
+  // Download Gaji: 1 PDF berisi SEMUA karyawan lintas menu summary payroll, nilai dari
+  // kolom Gaji Kontrak (gaji pokok bulanan). Digenerate server.
+  function handleDownloadGaji() {
+    setIsExportingGaji(true);
+    try {
+      const url = `/api/admin/payroll-summary/gaji-export?month=${periodMonth}&year=${periodYear}`;
+      window.location.href = url;
+    } finally {
+      setTimeout(() => setIsExportingGaji(false), 1500);
+    }
+  }
+
   function openAbsensiEdit(row: AdminPayrollSummarySheetRow) {
     setAbsensiEditRow(row);
     setAbsensiValue(formatNumericInput(String(Math.round(row.diligenceCut))));
@@ -580,6 +593,19 @@ export default function AdminPayrollSummaryManager({
               <path d="M5 21h14" />
             </svg>
             {isExportingFinance ? "Membuat Excel..." : "Download Finance"}
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadGaji}
+            disabled={isExportingGaji || filteredRows.length === 0}
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#b45309] px-6 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(180,83,9,0.22)] transition hover:-translate-y-0.5 hover:bg-[#96450a] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 3v12" />
+              <path d="m7 10 5 5 5-5" />
+              <path d="M5 21h14" />
+            </svg>
+            {isExportingGaji ? "Membuat PDF..." : "Download Gaji"}
           </button>
           <button
             type="button"

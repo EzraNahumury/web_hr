@@ -209,7 +209,7 @@ function mapFreelanceFinanceRow(
 // Dibungkus React cache() supaya saat 4 fungsi Finance memanggilnya dengan
 // argumen period yang sama (dalam satu request), sheet berat (main/penjahit/
 // partime) hanya dihitung SEKALI — menghindari beban/deadlock ensurePayrollPeriodCloned.
-export const getCombinedFinanceRows = cache(async function getCombinedFinanceRows(period?: {
+async function computeCombinedFinanceRows(period?: {
   month?: number;
   year?: number;
 }): Promise<CombinedFinanceRows> {
@@ -300,4 +300,10 @@ export const getCombinedFinanceRows = cache(async function getCombinedFinanceRow
   }
 
   return { rows, period: resolvedPeriod };
-});
+}
+
+// Versi ber-cache (per-request) untuk halaman Finance yang memanggil berkali-kali.
+export const getCombinedFinanceRows = cache(computeCombinedFinanceRows);
+
+// Versi tanpa cache untuk dipakai di Route Handler (di luar scope React cache).
+export const getCombinedFinanceRowsUncached = computeCombinedFinanceRows;
