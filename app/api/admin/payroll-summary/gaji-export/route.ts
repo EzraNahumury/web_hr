@@ -2,7 +2,10 @@ import type { NextRequest } from "next/server";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+import type { RowDataPacket } from "mysql2";
+
 import { getCurrentAdminSession } from "@/lib/auth";
+import { pool } from "@/lib/db";
 import { getCombinedFinanceRowsUncached } from "@/lib/finance-rows";
 
 export const dynamic = "force-dynamic";
@@ -23,9 +26,9 @@ function rupiah(n: number) {
   return `Rp ${new Intl.NumberFormat("id-ID").format(Math.round(n || 0))}`;
 }
 
-// Download Gaji: 1 PDF berisi SEMUA karyawan lintas menu Summary Payroll
-// (utama/Solo/Sales Nasional/Penjahit/Partime/Freelance), nilai = kolom GAJI KONTRAK
-// (monthlyBaseSalary / gaji pokok bulanan).
+// Download Gaji: 1 PDF berisi karyawan lintas menu Summary Payroll
+// (utama/Solo/Sales Nasional/Penjahit/Partime), TANPA freelance. Nilai = kolom
+// TAKE HOME PAY SEBELUM DIPOTONG (totalSalaryBeforeDeduction).
 export async function GET(request: NextRequest) {
   const admin = await getCurrentAdminSession();
   if (!admin) return new Response("Unauthorized.", { status: 401 });
@@ -39,14 +42,24 @@ export async function GET(request: NextRequest) {
 
   const { rows } = await getCombinedFinanceRowsUncached({ month, year });
 
-  // Urutkan by nama agar rapi (nomor baris gabungan tidak konsisten).
-  const sorted = [...rows].sort((a, b) => (a.name || "").localeCompare(b.name || "", "id"));
-  const total = sorted.reduce((sum, r) => sum + (r.monthlyBaseSalary || 0), 0);
+  // Kumpulkan id karyawan freelance untuk dikecualikan.
+  const [freelanceRows] = await pool.query<(RowDataPacket & { id: number })[]>(
+    `SELECT id FROM karyawan
+     WHERE LOWER(COALESCE(status_kepegawaian, '')) = 'freelance'
+        OR LOWER(COALESCE(jabatan, '')) = 'freelance'`,
+  );
+  const freelanceIds = new Set(freelanceRows.map((r) => r.id));
+
+  // Exclude freelance (by id maupun by role hasil map freelance) lalu urutkan by nama.
+  const sorted = rows
+    .filter((r) => !freelanceIds.has(r.employeeId) && (r.role || "").trim().toLowerCase() !== "freelance")
+    .sort((a, b) => (a.name || "").localeCompare(b.name || "", "id"));
+  const total = sorted.reduce((sum, r) => sum + (r.totalSalaryBeforeDeduction || 0), 0);
 
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text("LAPORAN GAJI KONTRAK", 14, 16);
+  doc.text("LAPORAN TAKE HOME PAY (SEBELUM POTONGAN)", 14, 16);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.text(`Periode: ${MONTHS[month - 1]} ${year}`, 14, 23);
@@ -54,12 +67,12 @@ export async function GET(request: NextRequest) {
 
   autoTable(doc, {
     startY: 34,
-    head: [["No", "Nama", "Departemen", "Gaji Kontrak"]],
+    head: [["No", "Nama", "Departemen", "THP Sebelum Potongan"]],
     body: sorted.map((r, i) => [
       i + 1,
       (r.name || "").toUpperCase(),
       r.department || "-",
-      rupiah(r.monthlyBaseSalary || 0),
+      rupiah(r.totalSalaryBeforeDeduction || 0),
     ]),
     foot: [["", "", "TOTAL", rupiah(total)]],
     theme: "grid",
@@ -76,7 +89,7 @@ export async function GET(request: NextRequest) {
   });
 
   const buffer = Buffer.from(doc.output("arraybuffer"));
-  const filename = `GAJI-KONTRAK-${year}-${String(month).padStart(2, "0")}.pdf`;
+  const filename = `THP-SEBELUM-POTONGAN-${year}-${String(month).padStart(2, "0")}.pdf`;
   return new Response(buffer, {
     status: 200,
     headers: {
