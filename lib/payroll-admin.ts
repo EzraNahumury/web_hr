@@ -1054,11 +1054,16 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
     const finalOvertimeBonus = isFreelance ? 0 : overtimeBonus;
     const finalHalfDayDeduction = isFreelance ? 0 : halfDayDeduction;
     const finalLateDeduction = isFreelance ? 0 : lateDeduction;
-    const finalContractCut = isFreelance ? 0 : contractCut;
+    // Freelance (by status ATAU jabatan) tidak kena potongan kontrak.
+    const isFreelanceContract =
+      isFreelance || (employee.jabatan ?? "").trim().toLowerCase() === "freelance";
+    const finalContractCut = isFreelanceContract ? 0 : contractCut;
     const finalLoanCut = isFreelance ? 0 : loanCut;
     const finalDiligenceCut = isFreelance ? 0 : diligenceCut;
-    const finalTotalPotongan = isFreelance ? 0 : totalPotongan;
-    const finalNetIncome = isFreelance ? freelancePay : netIncome;
+    // Selaraskan dengan finalContractCut: bila kontrak di-waive (jabatan freelance),
+    // keluarkan contractCut dari total potongan & kembalikan ke net income.
+    const finalTotalPotongan = isFreelance ? 0 : totalPotongan - contractCut + finalContractCut;
+    const finalNetIncome = isFreelance ? freelancePay : netIncome + contractCut - finalContractCut;
     const finalOverrideGajiPokok = isFreelance ? freelancePay : (payload.overrideGajiPokok ?? null);
 
     const [payrollResult] = await connection.query<ResultSetHeader>(

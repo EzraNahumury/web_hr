@@ -314,7 +314,7 @@ export async function listContractDeductionEmployees() {
       FROM karyawan k
       WHERE k.status_data = 'aktif'
         AND LOWER(COALESCE(k.status_kepegawaian, '')) NOT IN ('tetap', 'freelance')
-        AND LOWER(COALESCE(k.jabatan, '')) <> 'sales nasional'
+        AND LOWER(COALESCE(k.jabatan, '')) NOT IN ('freelance', 'sales nasional')
       ORDER BY k.nama ASC
     `,
   );
@@ -401,6 +401,11 @@ export async function syncContractDeductionSchedule(
     "DELETE FROM potongan_kontrak WHERE karyawan_id = ?",
     [payload.employeeId],
   );
+
+  // Freelance TIDAK kena potongan kontrak — jadwal cukup dihapus, tidak dibuat ulang.
+  if ((payload.role ?? "").trim().toLowerCase() === "freelance") {
+    return null;
+  }
 
   if (!payload.contractDate) {
     return null;

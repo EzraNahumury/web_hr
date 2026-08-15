@@ -925,6 +925,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     const otherDeductionNote = row.raw_potongan_sp2_note ?? null;
 
     const statusKepegawaianNorm = (row.status_kepegawaian ?? "").trim().toLowerCase();
+    const jabatanNorm = (row.jabatan ?? "").trim().toLowerCase();
     // Muncul di Summary Payroll Freelance? getFreelanceSheet berbasis jabatan='freelance',
     // jadi flag ini menangkap karyawan yang jabatan-nya 'freelance' meski status_kepegawaian
     // bukan 'freelance'. Slip gaji WAJIB ikut angka summary freelance untuk mereka.
@@ -1109,6 +1110,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     const isContractWaived =
       statusKepegawaianNorm === "tetap" ||
       statusKepegawaianNorm === "freelance" ||
+      jabatanNorm === "freelance" ||
       isFreelance ||
       isSalesNasional;
     // Potongan kontrak = override manual, atau jadwal dari tabel potongan_kontrak (bulan/tahun).
