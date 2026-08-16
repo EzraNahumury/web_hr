@@ -18,13 +18,16 @@ export function isAttendanceStatusCategory(v: unknown): v is AttendanceStatusCat
   return typeof v === "string" && (ATTENDANCE_STATUS_CATEGORIES as readonly string[]).includes(v);
 }
 
+// Nama kategori NETRAL (dipakai di dropdown pemetaan). Efek gaji per-KODE yang detail
+// & akurat ada di lib/attendance-code-effects.ts (describeAttendanceEffect), karena satu
+// kategori bisa berperilaku beda per kode (mis. libur LN/LP/C dibayar, L/'-' tidak).
 export const ATTENDANCE_STATUS_LABELS: Record<AttendanceStatusCategory, string> = {
-  hadir: "Hadir — gaji pokok + uang makan",
+  hadir: "Hadir",
   setengah_hari: "Setengah Hari",
   sakit: "Sakit",
   izin: "Izin",
-  alfa: "Alfa — tidak dibayar",
-  libur: "Libur — gaji pokok, tanpa uang makan",
+  alfa: "Alfa",
+  libur: "Libur",
 };
 
 export type AttendanceCodeItem = {

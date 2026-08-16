@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 
+import { describeAttendanceEffect } from "@/lib/attendance-code-effects";
+
 type Item = {
   id: number;
   code: string;
@@ -26,10 +28,6 @@ export default function AdminAttendanceCodes({ initialItems, statusOptions }: Pr
   const [busyId, setBusyId] = useState<number | "new" | null>(null);
   const [, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-
-  function statusLabel(value: string) {
-    return statusOptions.find((s) => s.value === value)?.label ?? value;
-  }
 
   function post(body: Record<string, unknown>, busy: number | "new", onOk?: () => void) {
     setMessage(null);
@@ -209,7 +207,7 @@ export default function AdminAttendanceCodes({ initialItems, statusOptions }: Pr
                     </button>
                   </div>
                   <p className="text-xs text-[#9e7467] sm:col-span-4">
-                    Kategori payroll: <span className="font-semibold">{statusLabel(it.status)}</span>
+                    Efek gaji: <span className="font-semibold">{describeAttendanceEffect(it.code, d.status)}</span>
                   </p>
                 </li>
               );
@@ -221,11 +219,17 @@ export default function AdminAttendanceCodes({ initialItems, statusOptions }: Pr
       <div className="rounded-2xl border border-[#f0dfd7] bg-[#fffaf6] px-5 py-4 text-xs leading-relaxed text-[#8a6f68]">
         <p className="font-semibold text-[#8f1d22]">Catatan penting</p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
-          <li>Mengubah label aman — payroll membaca kode &amp; kategori, bukan label.</li>
-          <li>Kategori payroll menentukan cara payroll memperlakukan kode (dibayar/tidak, uang makan, dll).</li>
+          <li>Mengubah label aman — payroll membaca <strong>kode</strong> &amp; kategori, bukan label.</li>
+          <li>Baris &ldquo;Efek gaji&rdquo; = perlakuan payroll sebenarnya untuk kode tersebut.</li>
           <li>
-            Perilaku khusus <strong>T</strong> (hitung menit telat) dan <strong>H</strong> (setengah
-            hari) melekat pada kode itu; kode baru hanya mengikuti kategori payroll-nya.
+            Kategori <strong>Libur</strong> hanya <strong>DIBAYAR</strong> untuk kode{" "}
+            <strong>LN, LP, C</strong>. Kode <strong>L</strong> &amp; <strong>&ldquo;-&rdquo;</strong>{" "}
+            TIDAK dibayar (tanpa gaji pokok maupun uang makan).
+          </li>
+          <li>
+            Perilaku khusus melekat pada kode: <strong>T</strong> (potongan telat Rp20.000/hari),{" "}
+            <strong>PA</strong> (tanpa uang makan), <strong>H</strong> (½ hari). Kode baru mengikuti
+            kategorinya (mis. &ldquo;hadir&rdquo; = seperti O; &ldquo;libur&rdquo; selain LN/LP/C = tidak dibayar).
           </li>
           <li>Menghapus kode hanya menghilangkan opsi dari dropdown; data absensi lama tidak berubah.</li>
         </ul>
