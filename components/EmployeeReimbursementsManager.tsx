@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import type { ReimbursementItem } from "@/lib/reimbursements";
+import { compressImageFile } from "@/lib/image-compress";
 
 type Props = {
   initialRows: ReimbursementItem[];
@@ -68,7 +69,7 @@ export default function EmployeeReimbursementsManager({ initialRows, defaultRequ
         formData.append("category", form.category);
         formData.append("amount", String(toNumber(digitsOnly(form.amount))));
         formData.append("description", form.description);
-        if (receipt) formData.append("receipt", receipt);
+        if (receipt) formData.append("receipt", await compressImageFile(receipt));
 
         const response = await fetch("/api/employee/reimbursements", {
           method: "POST",
@@ -93,7 +94,13 @@ export default function EmployeeReimbursementsManager({ initialRows, defaultRequ
         if (fileInputRef.current) fileInputRef.current.value = "";
         router.refresh();
       } catch (error) {
-        setMessage({ type: "error", text: error instanceof Error ? error.message : "Terjadi kesalahan." });
+        const text =
+          error instanceof TypeError
+            ? "Gagal terkirim. Cek koneksi, atau file bukti terlalu besar — coba foto/gambar yang lebih kecil."
+            : error instanceof Error
+              ? error.message
+              : "Terjadi kesalahan.";
+        setMessage({ type: "error", text });
       }
     });
   }

@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import type { BusinessTripItem } from "@/lib/business-trips";
+import { compressImageFile } from "@/lib/image-compress";
 
 type Props = {
   initialRows: BusinessTripItem[];
@@ -52,7 +53,9 @@ export default function EmployeeBusinessTripManager({ initialRows, defaultDate }
         formData.append("endDate", form.endDate);
         formData.append("note", form.note);
         if (letter) {
-          formData.append("letter", letter);
+          // Kompres gambar dulu agar body tidak melebihi batas server (hindari "Failed to fetch").
+          const compressed = await compressImageFile(letter);
+          formData.append("letter", compressed);
         }
 
         const response = await fetch("/api/employee/business-trips", {
@@ -76,7 +79,14 @@ export default function EmployeeBusinessTripManager({ initialRows, defaultDate }
         if (fileInputRef.current) fileInputRef.current.value = "";
         router.refresh();
       } catch (error) {
-        setMessage({ type: "error", text: error instanceof Error ? error.message : "Terjadi kesalahan." });
+        // TypeError "Failed to fetch" = request tak sampai (jaringan / file terlalu besar).
+        const text =
+          error instanceof TypeError
+            ? "Gagal terkirim. Cek koneksi, atau file surat terlalu besar — coba foto/gambar yang lebih kecil."
+            : error instanceof Error
+              ? error.message
+              : "Terjadi kesalahan.";
+        setMessage({ type: "error", text });
       }
     });
   }
