@@ -180,6 +180,7 @@ export default function AdminPayrollSummaryManager({
   }, [omzetPeriod]);
 
   const selectedEmployee = useMemo(() => employeeOptions.find((employee) => employee.employeeId === Number(form.employeeId)) ?? null, [employeeOptions, form.employeeId]);
+  const selectedRow = useMemo(() => (sheet?.rows ?? []).find((r) => r.employeeId === Number(form.employeeId)) ?? null, [sheet, form.employeeId]);
   const isSales = selectedEmployee?.isSales ?? false;
   const isSalesNasional = isSalesNasionalRole(selectedEmployee?.role);
   const isFreelance = (selectedEmployee?.employmentStatus ?? "").trim().toLowerCase() === "freelance";
@@ -683,6 +684,12 @@ export default function AdminPayrollSummaryManager({
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-[#b08968]">Tanggal Selesai Kontrak</p>
                     <p className="mt-0.5 font-semibold text-[#5a3a28]">{formatTanggalId(selectedEmployee.contractEndDate)}</p>
                   </div>
+                </div>
+                <div className="mt-3 border-t border-[#efe0d8] pt-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#b08968]">Terakhir Update Payroll</p>
+                  <p className="mt-0.5 font-semibold text-[#5a3a28]">
+                    {selectedRow?.lastPayrollInputAt ? `${selectedRow.lastPayrollInputAt} WIB` : "Belum pernah diupdate"}
+                  </p>
                 </div>
               </div>
             ) : null}
