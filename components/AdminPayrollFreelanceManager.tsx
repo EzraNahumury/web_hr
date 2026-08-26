@@ -719,7 +719,7 @@ function CustomItemsModal({
             <p className="font-bold text-white">{row.name}</p>
             <p className="text-xs text-[#f5c6c8]">Custom Pengerjaan</p>
           </div>
-          <button onClick={handleClose} className="text-white/70 hover:text-white text-xl leading-none">✕</button>
+          <button onClick={onClose} className="text-white/70 hover:text-white text-xl leading-none">✕</button>
         </div>
         <div className="p-5">
           <table className="w-full text-sm mb-4">
@@ -806,7 +806,7 @@ function CustomItemsModal({
 
           <div className="mt-4 flex items-center justify-end gap-2 border-t border-[#ead7ce] pt-4">
             <button
-              onClick={handleClose}
+              onClick={onClose}
               disabled={saving.saveAll}
               className="h-10 rounded-xl border border-[#ead7ce] px-5 text-sm font-semibold text-[#7c3c24] hover:bg-[#fdf7f5] disabled:opacity-50"
             >
