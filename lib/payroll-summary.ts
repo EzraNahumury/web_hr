@@ -1063,8 +1063,9 @@ export async function getAdminPayrollSummarySheet(period?: {
       (inputOverrideLembur ?? (overtimeMap.get(row.employee_id) ?? 0));
     const overtimeBonus = overtimeHours * 20000;
 
+    // Izin diperlakukan seperti alfa: ada izin -> uang kerajinan hangus.
     const kerajinanNoIssue =
-      sickCount <= 2 && sickWithoutNoteCount === 0 && alfaCount === 0;
+      sickCount <= 2 && sickWithoutNoteCount === 0 && alfaCount === 0 && leaveCount === 0;
     // Kewajiban hari kerja: kalau karyawan ada di Set Jadwal, pakai jumlah hari kerja
     // terjadwalnya. Kalau tidak ada jadwal (office/non-shift), pakai hari kerja global.
     const scheduledWorkDays = scheduledWorkDaysMap.get(row.employee_id);

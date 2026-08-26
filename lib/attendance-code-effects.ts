@@ -22,7 +22,7 @@ export function describeAttendanceEffect(code: string, status: string): string {
       if (c === "SX") return "Sakit tanpa surat — hari tidak dibayar, uang kerajinan hangus";
       return "Sakit — hari tidak dibayar (uang kerajinan aman bila ≤ 2 hari)";
     case "izin":
-      return "Izin — hari tidak dibayar";
+      return "Izin — hari tidak dibayar, uang kerajinan hangus";
     case "alfa":
       return "Alfa — hari tidak dibayar, uang kerajinan hangus";
     case "libur":
