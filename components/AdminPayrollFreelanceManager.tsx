@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import type {
   FreelanceSheet,
   FreelanceJamRow,
@@ -75,7 +76,17 @@ function JamDetailModal({
   name: string; bulan: number; tahun: number; employeeId: number;
   onClose: () => void;
 }) {
+  const router = useRouter();
   const [rows, setRows] = useState<AbsensiDetailItem[] | null>(null);
+  const [savingDate, setSavingDate] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const dirtyRef = useRef(false);
+
+  // Refresh data induk (Total Gaji + payroll) saat modal ditutup bila ada perubahan jam.
+  function handleClose() {
+    if (dirtyRef.current) router.refresh();
+    onClose();
+  }
 
   useEffect(() => {
     setRows(null);
@@ -85,16 +96,60 @@ function JamDetailModal({
       .catch(() => setRows([]));
   }, [employeeId, bulan, tahun]);
 
+  function calcMenit(masuk: string | null, pulang: string | null): number {
+    if (masuk && pulang) {
+      const m = Number(masuk.slice(0, 2)) * 60 + Number(masuk.slice(3, 5));
+      const p = Number(pulang.slice(0, 2)) * 60 + Number(pulang.slice(3, 5));
+      return Math.max(0, p - m);
+    }
+    return masuk ? 480 : 0;
+  }
+
+  function onJamChange(idx: number, field: "jam_masuk" | "jam_pulang", value: string) {
+    setRows((cur) => {
+      if (!cur) return cur;
+      const next = [...cur];
+      const r = { ...next[idx], [field]: value || null };
+      r.menit_kerja = calcMenit(r.jam_masuk, r.jam_pulang);
+      next[idx] = r;
+      return next;
+    });
+  }
+
+  async function saveRow(r: AbsensiDetailItem) {
+    setMsg(null);
+    setSavingDate(r.tanggal);
+    try {
+      const res = await fetch("/api/admin/freelance/jam", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          karyawanId: employeeId,
+          tanggal: r.tanggal,
+          jamMasuk: r.jam_masuk,
+          jamPulang: r.jam_pulang,
+        }),
+      });
+      const data = (await res.json()) as { message?: string; menitKerja?: number };
+      if (!res.ok) {
+        setMsg({ type: "error", text: data.message ?? "Gagal menyimpan." });
+        return;
+      }
+      dirtyRef.current = true;
+      setMsg({ type: "success", text: `Jam ${r.tanggal} tersimpan.` });
+    } catch {
+      setMsg({ type: "error", text: "Terjadi kesalahan jaringan." });
+    } finally {
+      setSavingDate(null);
+    }
+  }
+
   // Jumlahkan menit persis dulu, baru CEIL sekali ke total
   const totalMenitReal = (rows ?? []).reduce((s, r) => s + Number(r.menit_kerja), 0);
   const totalMenitBulat = Math.ceil(totalMenitReal / 30) * 30;
   const totalJam = Math.floor(totalMenitBulat / 60);
   const sisaMenit = totalMenitBulat % 60;
 
-  function fmt(t: string | null) {
-    if (!t) return "-";
-    return t.slice(0, 5);
-  }
   function fmtMenit(m: number) {
     const h = Math.floor(m / 60);
     const mn = m % 60;
@@ -103,14 +158,24 @@ function JamDetailModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={handleClose}>
       <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between rounded-t-2xl bg-[#8f1d22] px-5 py-4">
           <div>
             <p className="font-semibold text-white">{name}</p>
             <p className="text-xs text-[#f7c6c6]">Detail absensi periode ini</p>
           </div>
-          <button onClick={onClose} className="text-white/70 hover:text-white text-xl leading-none">✕</button>
+          <button onClick={handleClose} className="text-white/70 hover:text-white text-xl leading-none">✕</button>
+        </div>
+        <div className="flex items-center justify-between gap-2 border-b border-[#f0e2dc] bg-[#fffaf8] px-5 py-2">
+          <p className="text-[11px] text-[#9e7a72]">Klik jam masuk/pulang untuk mengubah — otomatis tersimpan.</p>
+          {msg ? (
+            <p className={`text-[11px] font-semibold ${msg.type === "success" ? "text-[#17603b]" : "text-[#b94040]"}`}>
+              {savingDate ? "Menyimpan..." : msg.text}
+            </p>
+          ) : savingDate ? (
+            <p className="text-[11px] font-semibold text-[#9e7a72]">Menyimpan...</p>
+          ) : null}
         </div>
         <div className="max-h-[60vh] overflow-y-auto">
           {rows === null ? (
@@ -133,8 +198,26 @@ function JamDetailModal({
                   <tr key={r.tanggal} className={i % 2 === 0 ? "bg-white" : "bg-[#fdf7f5]"}>
                     <td className="px-4 py-2 text-[#9e7a72]">{i + 1}</td>
                     <td className="px-4 py-2 text-[#2d1b18]">{r.tanggal}</td>
-                    <td className="px-4 py-2 text-center text-[#4a3430]">{fmt(r.jam_masuk)}</td>
-                    <td className="px-4 py-2 text-center text-[#4a3430]">{fmt(r.jam_pulang)}</td>
+                    <td className="px-2 py-1.5 text-center">
+                      <input
+                        type="time"
+                        value={r.jam_masuk ?? ""}
+                        onChange={(e) => onJamChange(i, "jam_masuk", e.target.value)}
+                        onBlur={() => saveRow(r)}
+                        disabled={savingDate === r.tanggal}
+                        className="w-24 rounded-lg border border-[#e0c8c2] bg-white px-2 py-1 text-center text-sm text-[#4a3430] outline-none focus:border-[#8f1d22] disabled:opacity-50"
+                      />
+                    </td>
+                    <td className="px-2 py-1.5 text-center">
+                      <input
+                        type="time"
+                        value={r.jam_pulang ?? ""}
+                        onChange={(e) => onJamChange(i, "jam_pulang", e.target.value)}
+                        onBlur={() => saveRow(r)}
+                        disabled={savingDate === r.tanggal}
+                        className="w-24 rounded-lg border border-[#e0c8c2] bg-white px-2 py-1 text-center text-sm text-[#4a3430] outline-none focus:border-[#8f1d22] disabled:opacity-50"
+                      />
+                    </td>
                     <td className="px-4 py-2 text-right text-[#4a3430]">{fmtMenit(Number(r.menit_kerja))}</td>
                   </tr>
                 ))}
@@ -149,7 +232,7 @@ function JamDetailModal({
           )}
         </div>
         <div className="border-t border-[#ead7ce] px-5 py-3 text-right">
-          <button onClick={onClose} className="rounded-xl border border-[#e0c8c2] px-4 py-2 text-sm font-semibold text-[#4a3430] hover:bg-[#fdf7f5]">
+          <button onClick={handleClose} className="rounded-xl border border-[#e0c8c2] px-4 py-2 text-sm font-semibold text-[#4a3430] hover:bg-[#fdf7f5]">
             Tutup
           </button>
         </div>
@@ -636,7 +719,7 @@ function CustomItemsModal({
             <p className="font-bold text-white">{row.name}</p>
             <p className="text-xs text-[#f5c6c8]">Custom Pengerjaan</p>
           </div>
-          <button onClick={onClose} className="text-white/70 hover:text-white text-xl leading-none">✕</button>
+          <button onClick={handleClose} className="text-white/70 hover:text-white text-xl leading-none">✕</button>
         </div>
         <div className="p-5">
           <table className="w-full text-sm mb-4">
@@ -723,7 +806,7 @@ function CustomItemsModal({
 
           <div className="mt-4 flex items-center justify-end gap-2 border-t border-[#ead7ce] pt-4">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               disabled={saving.saveAll}
               className="h-10 rounded-xl border border-[#ead7ce] px-5 text-sm font-semibold text-[#7c3c24] hover:bg-[#fdf7f5] disabled:opacity-50"
             >

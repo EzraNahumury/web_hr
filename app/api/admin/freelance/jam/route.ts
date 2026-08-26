@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentAdminSession } from "@/lib/auth";
 import { upsertFreelanceJam } from "@/lib/payroll-freelance";
 import { pool } from "@/lib/db";
-import { RowDataPacket } from "mysql2";
+import { RowDataPacket, ResultSetHeader } from "mysql2";
 
 type AbsensiDetailRow = RowDataPacket & {
   tanggal: string;
@@ -54,6 +54,59 @@ export async function GET(request: NextRequest) {
   );
 
   return NextResponse.json(rows);
+}
+
+const timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+// PUT — edit jam masuk / jam pulang absensi freelance (baris 'hadir') untuk 1 tanggal.
+export async function PUT(request: NextRequest) {
+  const admin = await getCurrentAdminSession();
+  if (!admin) return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
+
+  const body = (await request.json().catch(() => null)) as {
+    karyawanId?: number;
+    tanggal?: string;
+    jamMasuk?: string | null;
+    jamPulang?: string | null;
+  } | null;
+
+  const karyawanId = Number(body?.karyawanId);
+  const tanggal = typeof body?.tanggal === "string" ? body.tanggal : "";
+  if (!karyawanId || !/^\d{4}-\d{2}-\d{2}$/.test(tanggal)) {
+    return NextResponse.json({ message: "Data tidak lengkap." }, { status: 400 });
+  }
+
+  const jamMasuk = body?.jamMasuk ? String(body.jamMasuk) : null;
+  const jamPulang = body?.jamPulang ? String(body.jamPulang) : null;
+  if (jamMasuk && !timeRe.test(jamMasuk)) {
+    return NextResponse.json({ message: "Format jam masuk tidak valid (HH:MM)." }, { status: 400 });
+  }
+  if (jamPulang && !timeRe.test(jamPulang)) {
+    return NextResponse.json({ message: "Format jam pulang tidak valid (HH:MM)." }, { status: 400 });
+  }
+
+  try {
+    const [result] = await pool.query<ResultSetHeader>(
+      `UPDATE absensi
+         SET jam_masuk = ?, jam_pulang = ?
+       WHERE karyawan_id = ? AND tanggal = ? AND status_absensi = 'hadir'`,
+      [jamMasuk ? `${jamMasuk}:00` : null, jamPulang ? `${jamPulang}:00` : null, karyawanId, tanggal],
+    );
+    if (result.affectedRows === 0) {
+      return NextResponse.json({ message: "Baris absensi tidak ditemukan." }, { status: 404 });
+    }
+    const menitKerja =
+      jamMasuk && jamPulang
+        ? Math.max(0, (Number(jamPulang.slice(0, 2)) * 60 + Number(jamPulang.slice(3, 5))) -
+            (Number(jamMasuk.slice(0, 2)) * 60 + Number(jamMasuk.slice(3, 5))))
+        : jamMasuk
+          ? 480
+          : 0;
+    return NextResponse.json({ message: "Jam absensi diperbarui.", menitKerja });
+  } catch (error) {
+    console.error("update freelance jam error", error);
+    return NextResponse.json({ message: "Gagal memperbarui jam absensi." }, { status: 500 });
+  }
 }
 
 export async function POST(request: NextRequest) {
