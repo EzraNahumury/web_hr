@@ -54,6 +54,7 @@ const DEFAULT_ATTENDANCE_CODES: Array<Omit<AttendanceCodeItem, "id" | "sort">> =
   { code: "C", label: "Cuti (C)", status: "libur" },
   { code: "-", label: "Tidak Absen (-)", status: "libur" },
   { code: "CM", label: "Cuti Mandiri (CM)", status: "libur" },
+  { code: "CH", label: "Cuti Hamil (CH)", status: "libur" },
 ];
 
 function normalizeCode(raw: string): string {
@@ -106,6 +107,7 @@ export function ensureAttendanceCodeSchema(): Promise<void> {
       // ada, walau tabel sudah pernah di-seed. INSERT IGNORE = no-op bila sudah ada.
       const ENSURE_CODES: Array<{ code: string; label: string; status: string; sort: number }> = [
         { code: "CM", label: "Cuti Mandiri (CM)", status: "libur", sort: 130 },
+        { code: "CH", label: "Cuti Hamil (CH)", status: "libur", sort: 140 },
       ];
       for (const c of ENSURE_CODES) {
         await pool.query(

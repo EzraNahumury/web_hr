@@ -744,6 +744,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       holiday: number;
       alfa: number;
       cutiMandiri: number;
+      cutiHamil: number;
     }
   >();
 
@@ -759,6 +760,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       holiday: 0,
       alfa: 0,
       cutiMandiri: 0,
+      cutiHamil: 0,
     };
 
     // Setengah hari HARUS konsisten dengan kode yang tampil di rekap absensi (mapAttendanceCode
@@ -838,6 +840,12 @@ export async function getAdminPayrollSummarySheet(period?: {
     // hari kerja untuk uang kerajinan supaya kerajinan tetap aman.
     if (codeUpper === "CM") {
       current.cutiMandiri += 1;
+    }
+
+    // Cuti Hamil (CH): karyawan hanya dapat insentif kehadiran (gaji pokok) × 25 hari, tanpa
+    // komponen lain & tanpa potongan (di-override di perhitungan baris).
+    if (codeUpper === "CH") {
+      current.cutiHamil += 1;
     }
 
     attendanceMap.set(row.employee_id, current);
@@ -928,6 +936,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       holiday: 0,
       alfa: 0,
       cutiMandiri: 0,
+      cutiHamil: 0,
     };
 
     // Komponen sticky: pakai nilai carry (edit terakhir) bila ada, else nilai pei periode ini.
@@ -1084,6 +1093,8 @@ export async function getAdminPayrollSummarySheet(period?: {
     const holidayDays = attendance.holiday;
     const alfaCount = attendance.alfa;
     const cutiMandiriCount = attendance.cutiMandiri;
+    // Cuti Hamil: hanya insentif kehadiran × 25 hari; komponen & potongan lain di-nol-kan.
+    const isCutiHamil = !isFreelance && attendance.cutiHamil > 0;
     const isNewEmployee =
       !!row.tanggal_masuk_pertama &&
       row.tanggal_masuk_pertama >= range.startSql &&
@@ -1195,7 +1206,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       otherDeduction +
       contractReturn;
 
-    return {
+    const mapped: AdminPayrollSummarySheetRow = {
       id: row.payroll_id,
       employeeId: row.employee_id,
       number: index + 1,
@@ -1278,6 +1289,42 @@ export async function getAdminPayrollSummarySheet(period?: {
       inputGajiPerJam: toNumber(row.raw_gaji_pokok_per_jam),
       lastPayrollInputAt: lastPayrollUpdateMap.get(row.employee_id) ?? null,
     };
+
+    // CUTI HAMIL: hanya insentif kehadiran (gaji pokok/hari) × 25 hari. Semua komponen &
+    // potongan lain = 0. Take Home Pay = base × 25.
+    if (isCutiHamil) {
+      const chPay = dailyBaseSalary * 25;
+      mapped.totalBaseSalary = chPay;
+      mapped.positionAllowance = 0;
+      mapped.mealAllowance = 0;
+      mapped.subsidy = 0;
+      mapped.diligenceAllowance = 0;
+      mapped.bpjs = 0;
+      mapped.performanceBonus = 0;
+      mapped.omzetBonus = 0;
+      mapped.overtimeHours = 0;
+      mapped.overtimeBonus = 0;
+      mapped.incentive = 0;
+      mapped.transportAllowance = 0;
+      mapped.vehicleAllowance = 0;
+      mapped.travelReimbursement = 0;
+      mapped.halfDayDeduction = 0;
+      mapped.lateDeduction = 0;
+      mapped.fineDeduction = 0;
+      mapped.diligenceCut = 0;
+      mapped.contractDeduction = 0;
+      mapped.contractCut = 0;
+      mapped.companyLoan = 0;
+      mapped.loanCut = 0;
+      mapped.personalLoan = 0;
+      mapped.otherDeduction = 0;
+      mapped.contractReturn = 0;
+      mapped.totalSalaryBeforeDeduction = chPay;
+      mapped.totalSalary = chPay;
+      mapped.netIncome = chPay;
+    }
+
+    return mapped;
   });
 
   return {
