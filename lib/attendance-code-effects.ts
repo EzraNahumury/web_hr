@@ -14,7 +14,7 @@ export function describeAttendanceEffect(code: string, status: string): string {
   switch (status) {
     case "hadir":
       if (c === "T") return "Hadir — gaji pokok + uang makan, potongan telat Rp20.000/hari";
-      if (c === "PA") return "Hadir — gaji pokok, TANPA uang makan (pulang awal)";
+      if (c === "PA") return "Hadir — gaji pokok + uang makan (pulang awal)";
       return "Hadir — gaji pokok + uang makan";
     case "setengah_hari":
       return "Setengah hari — ½ gaji pokok, tanpa uang makan";

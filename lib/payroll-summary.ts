@@ -767,8 +767,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       if (row.kode_absensi === "T") {
         current.late += 1;
       }
-      // PA (Pulang Awal): tetap dihitung hadir (dapat gaji pokok), tapi hari PA TIDAK
-      // dapat uang makan. Dihitung terpisah lalu dikurangi dari basis uang makan.
+      // PA (Pulang Awal): dihitung hadir penuh — dapat gaji pokok DAN uang makan.
       if (codeUpper === "PA") {
         current.pa += 1;
       }
@@ -1052,12 +1051,8 @@ export async function getAdminPayrollSummarySheet(period?: {
           ? groupOmzet.bonusPool
           : (groupOmzet.bonusPool / groupEligibleCount) * roleFactor
         : 0;
-    // Uang makan hanya untuk hari hadir yang bekerja penuh — hari PA (Pulang Awal) TIDAK dapat
-    // uang makan (tetap dapat gaji pokok via presentDays di totalBaseSalary).
-    const paDays = attendance.pa;
-    const mealAllowance = isFreelance
-      ? 0
-      : fixedMealAllowance * Math.max(presentDays - paDays, 0);
+    // Uang makan untuk SEMUA hari hadir, termasuk hari PA (Pulang Awal).
+    const mealAllowance = isFreelance ? 0 : fixedMealAllowance * presentDays;
 
     const leaveCount = isFreelance ? 0 : (inputOverrideIzin ?? attendance.leave);
     const sickCount = isFreelance ? 0 : (inputOverrideSakit ?? attendance.sick);
