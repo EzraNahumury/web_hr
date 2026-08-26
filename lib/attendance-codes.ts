@@ -53,6 +53,7 @@ const DEFAULT_ATTENDANCE_CODES: Array<Omit<AttendanceCodeItem, "id" | "sort">> =
   { code: "LP", label: "Libur Perusahaan (LP)", status: "libur" },
   { code: "C", label: "Cuti (C)", status: "libur" },
   { code: "-", label: "Tidak Absen (-)", status: "libur" },
+  { code: "CM", label: "Cuti Mandiri (CM)", status: "libur" },
 ];
 
 function normalizeCode(raw: string): string {
@@ -99,6 +100,18 @@ export function ensureAttendanceCodeSchema(): Promise<void> {
           );
           sort += 10;
         }
+      }
+
+      // Kode dengan perilaku payroll khusus (di-hardcode di payroll-summary) DIPASTIKAN selalu
+      // ada, walau tabel sudah pernah di-seed. INSERT IGNORE = no-op bila sudah ada.
+      const ENSURE_CODES: Array<{ code: string; label: string; status: string; sort: number }> = [
+        { code: "CM", label: "Cuti Mandiri (CM)", status: "libur", sort: 130 },
+      ];
+      for (const c of ENSURE_CODES) {
+        await pool.query(
+          `INSERT IGNORE INTO attendance_code (code, label, status, sort) VALUES (?, ?, ?, ?)`,
+          [c.code, c.label, c.status, c.sort],
+        );
       }
     })();
   }

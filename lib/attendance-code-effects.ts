@@ -26,6 +26,8 @@ export function describeAttendanceEffect(code: string, status: string): string {
     case "alfa":
       return "Alfa — hari tidak dibayar, uang kerajinan hangus";
     case "libur":
+      if (c === "CM")
+        return "Cuti Mandiri — tanpa gaji pokok & uang makan, TAPI uang kerajinan tetap dapat";
       if (PAID_LIBUR_CODES.has(c)) return "Libur berbayar — gaji pokok, tanpa uang makan";
       return "Libur / tidak absen — TIDAK dibayar (tanpa gaji pokok & uang makan)";
     default:

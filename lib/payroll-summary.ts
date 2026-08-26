@@ -710,6 +710,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       late: number;
       holiday: number;
       alfa: number;
+      cutiMandiri: number;
     }
   >();
 
@@ -724,6 +725,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       late: 0,
       holiday: 0,
       alfa: 0,
+      cutiMandiri: 0,
     };
 
     // Setengah hari HARUS konsisten dengan kode yang tampil di rekap absensi (mapAttendanceCode
@@ -797,6 +799,12 @@ export async function getAdminPayrollSummarySheet(period?: {
 
     if (row.status_absensi === "alfa") {
       current.alfa += 1;
+    }
+
+    // Cuti Mandiri (CM): tidak dibayar (tanpa gaji pokok & uang makan), tapi DIHITUNG sebagai
+    // hari kerja untuk uang kerajinan supaya kerajinan tetap aman.
+    if (codeUpper === "CM") {
+      current.cutiMandiri += 1;
     }
 
     attendanceMap.set(row.employee_id, current);
@@ -886,6 +894,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       late: 0,
       holiday: 0,
       alfa: 0,
+      cutiMandiri: 0,
     };
 
     const inputOverrideMasuk = row.raw_override_masuk ?? null;
@@ -1027,6 +1036,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     const travelReimbursement = isFreelance ? 0 : (isSalesNasional ? (reimbursementMap.get(row.employee_id) ?? 0) : 0);
     const holidayDays = attendance.holiday;
     const alfaCount = attendance.alfa;
+    const cutiMandiriCount = attendance.cutiMandiri;
     const isNewEmployee =
       !!row.tanggal_masuk_pertama &&
       row.tanggal_masuk_pertama >= range.startSql &&
@@ -1071,7 +1081,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     const scheduledWorkDays = scheduledWorkDaysMap.get(row.employee_id);
     const effectiveWorkDays = scheduledWorkDays ?? workDays;
     const kerajinanReachesWorkDays =
-      presentDays + sickCount + halfDayCount + holidayDays >= effectiveWorkDays;
+      presentDays + sickCount + halfDayCount + holidayDays + cutiMandiriCount >= effectiveWorkDays;
     const autoDiligenceAllowance =
       workDays > 0 && kerajinanNoIssue && kerajinanReachesWorkDays
         ? fixedDiligenceAllowance
