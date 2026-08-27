@@ -446,21 +446,19 @@ export async function getPenjahitSheet(period?: {
     const telat = att?.late_count ?? 0;
     const lemburJam = row.raw_override_lembur !== null ? toNum(row.raw_override_lembur) : (overtimeMap.get(row.employee_id) ?? 0);
 
-    const liburNasional = att?.holiday_count ?? 0;
     const alfa = att?.alfa_count ?? 0;
     // Setengah hari: gaji pokok dihitung 1 hari penuh, lalu dipotong 1/2 hari
     // via potonganSetengahHari → bersih = 1/2 hari (bukan dobel potong).
     const totalGajiPokok = gajiPokokPerHari * (masuk + setengahHari);
     const uangAbsensiTotal = uangAbsensiPerHari * masuk;
-    const kerajinanNoIssue = sakit <= 2 && sakitTanpaSurat === 0 && alfa === 0;
-    const kerajinanReachesHariKerja = (masuk + sakit + setengahHari + liburNasional) >= hariKerja;
+    // Uang kerajinan hangus HANYA karena masalah kedisiplinan: sakit>2, sakit tanpa surat,
+    // alfa, atau izin. Tidak lagi digantung pada "capai hari kerja" (konsisten dgn payroll utama).
+    const kerajinanNoIssue = sakit <= 2 && sakitTanpaSurat === 0 && alfa === 0 && izin === 0;
     // Kerajinan bisa di-OVERRIDE manual per periode (klik kolom Kerajinan). null = otomatis.
     const inputOverrideKerajinan =
       row.raw_override_kerajinan !== null ? toNum(row.raw_override_kerajinan) : null;
     const kerajinanEarnedAuto =
-      hariKerja > 0 && kerajinanNoIssue && kerajinanReachesHariKerja
-        ? uangKerajinanNominal
-        : 0;
+      hariKerja > 0 && kerajinanNoIssue ? uangKerajinanNominal : 0;
     const kerajinanEarned = inputOverrideKerajinan ?? kerajinanEarnedAuto;
     const bonusLembur = lemburJam * 20000;
     const potonganSetengahHari = (gajiPokokPerHari / 2) * setengahHari;

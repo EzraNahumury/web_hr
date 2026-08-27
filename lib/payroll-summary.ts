@@ -1092,7 +1092,6 @@ export async function getAdminPayrollSummarySheet(period?: {
     const travelReimbursement = isFreelance ? 0 : (isSalesNasional ? (reimbursementMap.get(row.employee_id) ?? 0) : 0);
     const holidayDays = attendance.holiday;
     const alfaCount = attendance.alfa;
-    const cutiMandiriCount = attendance.cutiMandiri;
     // Cuti Hamil: hanya insentif kehadiran × 25 hari; komponen & potongan lain di-nol-kan.
     const isCutiHamil = !isFreelance && attendance.cutiHamil > 0;
     const isNewEmployee =
@@ -1134,16 +1133,10 @@ export async function getAdminPayrollSummarySheet(period?: {
     // Izin diperlakukan seperti alfa: ada izin -> uang kerajinan hangus.
     const kerajinanNoIssue =
       sickCount <= 2 && sickWithoutNoteCount === 0 && alfaCount === 0 && leaveCount === 0;
-    // Kewajiban hari kerja: kalau karyawan ada di Set Jadwal, pakai jumlah hari kerja
-    // terjadwalnya. Kalau tidak ada jadwal (office/non-shift), pakai hari kerja global.
-    const scheduledWorkDays = scheduledWorkDaysMap.get(row.employee_id);
-    const effectiveWorkDays = scheduledWorkDays ?? workDays;
-    const kerajinanReachesWorkDays =
-      presentDays + sickCount + halfDayCount + holidayDays + cutiMandiriCount >= effectiveWorkDays;
-    const autoDiligenceAllowance =
-      workDays > 0 && kerajinanNoIssue && kerajinanReachesWorkDays
-        ? fixedDiligenceAllowance
-        : 0;
+    // Uang kerajinan HANYA dipotong oleh masalah kedisiplinan (sakit>2, sakit tanpa surat,
+    // alfa, atau izin) — lihat kerajinanNoIssue. Tidak lagi digantung pada "capai hari kerja"
+    // (dulu menyebabkan potongan salah untuk karyawan disiplin yang kurang 1 hari, mis. sakit 2x).
+    const autoDiligenceAllowance = workDays > 0 && kerajinanNoIssue ? fixedDiligenceAllowance : 0;
     const autoDiligenceCut = Math.max(fixedDiligenceAllowance - autoDiligenceAllowance, 0);
     // Potongan absensi bisa di-override manual per-periode (null = otomatis dari sistem).
     // Override hanya berlaku di periode ini; periode lain tetap otomatis.
