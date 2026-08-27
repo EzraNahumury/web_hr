@@ -137,6 +137,7 @@ function JamDetailModal({
       }
       dirtyRef.current = true;
       setMsg({ type: "success", text: `Jam ${r.tanggal} tersimpan.` });
+      router.refresh(); // segarkan tabel induk SETELAH data tersimpan (hindari race saat tutup)
     } catch {
       setMsg({ type: "error", text: "Terjadi kesalahan jaringan." });
     } finally {
