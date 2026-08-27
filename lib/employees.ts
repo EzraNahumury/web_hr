@@ -817,6 +817,7 @@ export async function insertEmployee(payload: EmployeePayload) {
         employeeId: employeeResult.insertId,
         role: payload.role,
         contractDate: resolvedTimeline.contractDate,
+        workStatus: payload.employmentStatus,
       },
       connection,
     );
@@ -1001,6 +1002,7 @@ export async function updateEmployee(id: number, payload: EmployeePayload) {
         employeeId: id,
         role: payload.role,
         contractDate: resolvedTimeline.contractDate,
+        workStatus: payload.employmentStatus,
       },
       connection,
     );

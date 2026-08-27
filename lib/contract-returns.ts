@@ -95,6 +95,8 @@ type UsageRow = RowDataPacket & {
 
 export async function listContractReturns(): Promise<ContractReturnItem[]> {
   await ensureContractReturnTable();
+  const { cleanupIneligibleContractSchedules } = await import("@/lib/contract-deductions");
+  await cleanupIneligibleContractSchedules();
 
   const active = getActivePayrollPeriod();
   const activeYearMonth = active.year * 100 + active.month;
@@ -113,8 +115,8 @@ export async function listContractReturns(): Promise<ContractReturnItem[]> {
           DATE_FORMAT(k.tanggal_kontrak, '%Y-%m-%d') AS tanggal_kontrak
         FROM karyawan k
         WHERE k.status_data = 'aktif'
-          AND LOWER(COALESCE(k.status_kepegawaian, '')) <> 'freelance'
-          AND LOWER(COALESCE(k.jabatan, '')) <> 'freelance'
+          AND LOWER(COALESCE(k.status_kepegawaian, '')) NOT IN ('tetap', 'freelance')
+          AND LOWER(COALESCE(k.jabatan, '')) NOT IN ('freelance', 'sales nasional')
         ORDER BY k.nama ASC
       `,
     ),

@@ -10,6 +10,38 @@ import {
 import { pool } from "@/lib/db";
 import { getActivePayrollPeriod } from "@/lib/payroll-admin";
 
+// Kelayakan potongan kontrak (deposit 5 bulan). Konsisten di modul Potongan Kontrak,
+// Pengembalian Kontrak, dan pembuatan jadwal. TETAP & FREELANCE & Sales Nasional TIDAK kena.
+export function isContractDeductionEligible(
+  statusKepegawaian: string | null,
+  jabatan: string | null,
+): boolean {
+  const s = (statusKepegawaian ?? "").trim().toLowerCase();
+  const j = (jabatan ?? "").trim().toLowerCase();
+  if (s === "tetap" || s === "freelance") return false;
+  if (j === "freelance" || j === "sales nasional") return false;
+  return true;
+}
+
+let ineligibleCleanupDone = false;
+// Hapus jadwal potongan_kontrak yang terlanjur terbuat untuk karyawan TIDAK eligible
+// (mis. tetap). Idempotent, jalan sekali per proses.
+export async function cleanupIneligibleContractSchedules(): Promise<void> {
+  if (ineligibleCleanupDone) return;
+  ineligibleCleanupDone = true;
+  try {
+    await pool.query(
+      `DELETE pk FROM potongan_kontrak pk
+       INNER JOIN karyawan k ON k.id = pk.karyawan_id
+       WHERE LOWER(COALESCE(k.status_kepegawaian, '')) IN ('tetap', 'freelance')
+          OR LOWER(COALESCE(k.jabatan, '')) IN ('freelance', 'sales nasional')`,
+    );
+  } catch (err) {
+    ineligibleCleanupDone = false;
+    console.error("cleanupIneligibleContractSchedules failed", err);
+  }
+}
+
 export type ContractDeductionItem = {
   id: number;
   employeeId: number;
@@ -112,6 +144,7 @@ type ContractDeductionEmployeeRow = RowDataPacket & {
 type ContractDeductionEmployeeIdentityRow = RowDataPacket & {
   employee_id: number;
   jabatan: string;
+  status_kepegawaian: string | null;
   tanggal_kontrak: string | null;
 };
 
@@ -335,6 +368,7 @@ export async function listContractDeductionEmployees() {
 }
 
 export async function listContractDeductionPlans(options?: { activeOnly?: boolean }) {
+  await cleanupIneligibleContractSchedules();
   const [employees, rows, usages] = await Promise.all([
     listContractDeductionEmployees(),
     listContractDeductions(),
@@ -390,6 +424,7 @@ export async function syncContractDeductionSchedule(
     employeeId: number;
     role: string;
     contractDate: string | null;
+    workStatus?: string | null;
     nominalDeduction?: number | null;
     description?: string | null;
   },
@@ -402,8 +437,9 @@ export async function syncContractDeductionSchedule(
     [payload.employeeId],
   );
 
-  // Freelance TIDAK kena potongan kontrak — jadwal cukup dihapus, tidak dibuat ulang.
-  if ((payload.role ?? "").trim().toLowerCase() === "freelance") {
+  // Hanya karyawan yang ELIGIBLE potongan kontrak yang dibuatkan jadwal. Tidak eligible
+  // (freelance/tetap/sales nasional) -> jadwal cukup dihapus, tidak dibuat ulang.
+  if (!isContractDeductionEligible(payload.workStatus ?? null, payload.role)) {
     return null;
   }
 
@@ -445,6 +481,7 @@ async function getEmployeeIdentityForDeduction(employeeId: number) {
       SELECT
         k.id AS employee_id,
         k.jabatan,
+        k.status_kepegawaian,
         DATE_FORMAT(k.tanggal_kontrak, '%Y-%m-%d') AS tanggal_kontrak
       FROM karyawan k
       WHERE k.id = ?
@@ -467,6 +504,7 @@ export async function insertContractDeduction(payload: ContractDeductionPayload)
     employeeId: payload.employeeId,
     role: employee.jabatan,
     contractDate: employee.tanggal_kontrak,
+    workStatus: employee.status_kepegawaian,
     nominalDeduction: payload.nominalDeduction,
     description: payload.description,
   });
@@ -485,6 +523,7 @@ export async function updateContractDeduction(id: number, payload: ContractDeduc
     employeeId: id,
     role: employee.jabatan,
     contractDate: employee.tanggal_kontrak,
+    workStatus: employee.status_kepegawaian,
     nominalDeduction: payload.nominalDeduction,
     description: payload.description,
   });
