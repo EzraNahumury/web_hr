@@ -81,6 +81,8 @@ function JamDetailModal({
   const [savingDate, setSavingDate] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const dirtyRef = useRef(false);
+  // Selalu tahan nilai baris TERBARU — hindari stale closure saat save di onBlur.
+  const rowsRef = useRef<AbsensiDetailItem[] | null>(null);
 
   // Refresh data induk (Total Gaji + payroll) saat modal ditutup bila ada perubahan jam.
   function handleClose() {
@@ -90,10 +92,17 @@ function JamDetailModal({
 
   useEffect(() => {
     setRows(null);
+    rowsRef.current = null;
     fetch(`/api/admin/freelance/jam?karyawanId=${employeeId}&bulan=${bulan}&tahun=${tahun}`)
       .then((r) => r.json())
-      .then(setRows)
-      .catch(() => setRows([]));
+      .then((d: AbsensiDetailItem[]) => {
+        rowsRef.current = d;
+        setRows(d);
+      })
+      .catch(() => {
+        rowsRef.current = [];
+        setRows([]);
+      });
   }, [employeeId, bulan, tahun]);
 
   function calcMenit(masuk: string | null, pulang: string | null): number {
@@ -106,17 +115,19 @@ function JamDetailModal({
   }
 
   function onJamChange(idx: number, field: "jam_masuk" | "jam_pulang", value: string) {
-    setRows((cur) => {
-      if (!cur) return cur;
-      const next = [...cur];
-      const r = { ...next[idx], [field]: value || null };
-      r.menit_kerja = calcMenit(r.jam_masuk, r.jam_pulang);
-      next[idx] = r;
-      return next;
-    });
+    const cur = rowsRef.current;
+    if (!cur) return;
+    const next = [...cur];
+    const r = { ...next[idx], [field]: value || null };
+    r.menit_kerja = calcMenit(r.jam_masuk, r.jam_pulang);
+    next[idx] = r;
+    rowsRef.current = next; // sync SEBELUM render → onBlur baca nilai terbaru
+    setRows(next);
   }
 
-  async function saveRow(r: AbsensiDetailItem) {
+  async function saveRow(tanggal: string) {
+    const r = (rowsRef.current ?? []).find((x) => x.tanggal === tanggal);
+    if (!r) return;
     setMsg(null);
     setSavingDate(r.tanggal);
     try {
@@ -204,7 +215,7 @@ function JamDetailModal({
                         type="time"
                         value={r.jam_masuk ?? ""}
                         onChange={(e) => onJamChange(i, "jam_masuk", e.target.value)}
-                        onBlur={() => saveRow(r)}
+                        onBlur={() => saveRow(r.tanggal)}
                         disabled={savingDate === r.tanggal}
                         className="w-24 rounded-lg border border-[#e0c8c2] bg-white px-2 py-1 text-center text-sm text-[#4a3430] outline-none focus:border-[#8f1d22] disabled:opacity-50"
                       />
@@ -214,7 +225,7 @@ function JamDetailModal({
                         type="time"
                         value={r.jam_pulang ?? ""}
                         onChange={(e) => onJamChange(i, "jam_pulang", e.target.value)}
-                        onBlur={() => saveRow(r)}
+                        onBlur={() => saveRow(r.tanggal)}
                         disabled={savingDate === r.tanggal}
                         className="w-24 rounded-lg border border-[#e0c8c2] bg-white px-2 py-1 text-center text-sm text-[#4a3430] outline-none focus:border-[#8f1d22] disabled:opacity-50"
                       />
