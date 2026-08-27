@@ -252,8 +252,6 @@ export type AdminPayrollSummarySheetRow = {
   inputPotonganSp2: number | null;
   freelanceRateType: "per_hari" | "per_jam";
   inputGajiPerJam: number;
-  // Tanggal-jam terakhir komponen payroll karyawan ini diperbarui (null bila belum pernah).
-  lastPayrollInputAt?: string | null;
 };
 
 export type AdminPayrollSummarySheet = {
@@ -647,53 +645,22 @@ export async function getAdminPayrollSummarySheet(period?: {
   // di antara periode <= periode ini. Jadi:
   // - Periode ini belum punya override / override-nya usang -> ikut nilai yang baru diedit.
   // - Periode lampau tidak terpengaruh edit periode setelahnya (filter <= periode ini).
-  // Nilai komponen payroll yang STICKY (ikut edit terakhir, carry ke periode berikutnya):
-  // gaji pokok/hari, uang makan, subsidi, uang kerajinan, bpjs, bonus performa, override
-  // gaji pokok (Gaji Kontrak). Diambil dari baris pei DENGAN updated_at TERBARU (<= periode)
-  // agar periode yang di-clone lebih dulu tetap mengikuti edit periode sebelumnya.
-  const carriedComponentMap = new Map<
-    number,
-    {
-      gajiPokokPerHari: number;
-      uangMakanPerHari: number;
-      subsidi: number;
-      uangKerajinan: number;
-      bpjs: number;
-      bonusPerforma: number;
-    }
-  >();
   const carriedOverrideGajiPokokMap = new Map<number, number>();
-  // Tanggal terakhir komponen payroll karyawan diperbarui (pei.updated_at terbaru <= periode).
-  const lastPayrollUpdateMap = new Map<number, string>();
   {
     const [carriedRows] = await pool.query<RowDataPacket[]>(
-      `SELECT pei.karyawan_id AS employee_id,
-          pei.gaji_pokok_per_hari, pei.uang_makan_per_hari, pei.subsidi,
-          pei.uang_kerajinan, pei.bpjs, pei.bonus_performa, pei.override_gaji_pokok,
-          DATE_FORMAT(pei.updated_at, '%Y-%m-%d %H:%i') AS updated_at
+      `SELECT pei.karyawan_id AS employee_id, pei.override_gaji_pokok AS val
        FROM payroll_employee_input pei
        INNER JOIN payroll p ON p.id = pei.payroll_id
        WHERE pei.karyawan_id IN (${placeholders})
+         AND pei.override_gaji_pokok IS NOT NULL
          AND (p.periode_tahun * 100 + p.periode_bulan) <= ?
        ORDER BY pei.updated_at DESC, (p.periode_tahun * 100 + p.periode_bulan) DESC`,
       [...employeeIds, periodYear * 100 + periodMonth],
     );
-    for (const raw of carriedRows as Array<Record<string, string | number | null> & { employee_id: number }>) {
-      // ORDER BY updated_at DESC -> baris pertama per karyawan = snapshot terakhir diedit.
-      if (!carriedComponentMap.has(raw.employee_id)) {
-        if (raw.updated_at != null) lastPayrollUpdateMap.set(raw.employee_id, String(raw.updated_at));
-        carriedComponentMap.set(raw.employee_id, {
-          gajiPokokPerHari: toNumber(raw.gaji_pokok_per_hari),
-          uangMakanPerHari: toNumber(raw.uang_makan_per_hari),
-          subsidi: toNumber(raw.subsidi),
-          uangKerajinan: toNumber(raw.uang_kerajinan),
-          bpjs: toNumber(raw.bpjs),
-          bonusPerforma: toNumber(raw.bonus_performa),
-        });
-      }
-      // override_gaji_pokok (Gaji Kontrak) nullable -> ambil entri terakhir yang non-null.
-      if (raw.override_gaji_pokok != null && !carriedOverrideGajiPokokMap.has(raw.employee_id)) {
-        carriedOverrideGajiPokokMap.set(raw.employee_id, toNumber(raw.override_gaji_pokok));
+    for (const r of carriedRows as Array<{ employee_id: number; val: string | number }>) {
+      // ORDER BY updated_at DESC -> entri pertama per karyawan = override terakhir diketik.
+      if (!carriedOverrideGajiPokokMap.has(r.employee_id)) {
+        carriedOverrideGajiPokokMap.set(r.employee_id, toNumber(r.val));
       }
     }
   }
@@ -939,14 +906,14 @@ export async function getAdminPayrollSummarySheet(period?: {
       cutiHamil: 0,
     };
 
-    // Komponen sticky: pakai nilai carry (edit terakhir) bila ada, else nilai pei periode ini.
-    const carriedComp = carriedComponentMap.get(row.employee_id);
-    const compGajiPokokPerHari = carriedComp ? carriedComp.gajiPokokPerHari : toNumber(row.raw_gaji_pokok_per_hari);
-    const compUangMakan = carriedComp ? carriedComp.uangMakanPerHari : toNumber(row.raw_uang_makan_per_hari);
-    const compSubsidi = carriedComp ? carriedComp.subsidi : toNumber(row.raw_subsidi);
-    const compUangKerajinan = carriedComp ? carriedComp.uangKerajinan : toNumber(row.raw_uang_kerajinan);
-    const compBpjs = carriedComp ? carriedComp.bpjs : toNumber(row.raw_bpjs);
-    const compBonusPerforma = carriedComp ? carriedComp.bonusPerforma : toNumber(row.raw_bonus_performa);
+    // Nilai komponen dari pei periode INI (raw). (Carry-over antar periode di-nonaktifkan —
+    // sempat menyebabkan gaji seluruh karyawan salah.)
+    const compGajiPokokPerHari = toNumber(row.raw_gaji_pokok_per_hari);
+    const compUangMakan = toNumber(row.raw_uang_makan_per_hari);
+    const compSubsidi = toNumber(row.raw_subsidi);
+    const compUangKerajinan = toNumber(row.raw_uang_kerajinan);
+    const compBpjs = toNumber(row.raw_bpjs);
+    const compBonusPerforma = toNumber(row.raw_bonus_performa);
     const carriedOverrideGajiPokok = carriedOverrideGajiPokokMap.get(row.employee_id) ?? null;
 
     const inputOverrideMasuk = row.raw_override_masuk ?? null;
@@ -971,14 +938,11 @@ export async function getAdminPayrollSummarySheet(period?: {
       row.raw_override_pinjaman_pribadi !== null
         ? toNumber(row.raw_override_pinjaman_pribadi)
         : null;
-    // Form menampilkan Gaji Kontrak (override) TERAKHIR yang diedit (carry), agar periode
-    // berikutnya tidak balik ke nilai lama. Fallback ke nilai pei periode ini.
+    // Form menampilkan Gaji Kontrak (override) dari pei periode INI (raw).
     const inputOverrideGajiPokok =
-      carriedOverrideGajiPokok != null
-        ? carriedOverrideGajiPokok
-        : row.raw_override_gaji_pokok !== null
-          ? toNumber(row.raw_override_gaji_pokok)
-          : null;
+      row.raw_override_gaji_pokok !== null
+        ? toNumber(row.raw_override_gaji_pokok)
+        : null;
     const inputOverridePotonganAbsensi =
       row.raw_override_potongan_absensi !== null
         ? toNumber(row.raw_override_potongan_absensi)
@@ -1280,7 +1244,6 @@ export async function getAdminPayrollSummarySheet(period?: {
       inputPotonganSp2,
       freelanceRateType: (row.raw_freelance_rate_type ?? "per_hari") as "per_hari" | "per_jam",
       inputGajiPerJam: toNumber(row.raw_gaji_pokok_per_jam),
-      lastPayrollInputAt: lastPayrollUpdateMap.get(row.employee_id) ?? null,
     };
 
     // CUTI HAMIL: hanya insentif kehadiran (gaji pokok/hari) × 25 hari. Semua komponen &
