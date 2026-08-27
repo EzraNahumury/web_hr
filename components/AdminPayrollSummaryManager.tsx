@@ -250,7 +250,17 @@ export default function AdminPayrollSummaryManager({
   }
 
   function handleEmployeeChange(employeeId: string) {
-    setForm((current) => ({ ...current, employeeId }));
+    setPayrollMessage(null);
+    // Pre-fill form dari nilai payroll yang TERSIMPAN untuk karyawan ini (bila ada), supaya
+    // saat memilih karyawan langsung tampil komponen yang sudah pernah diisi (bukan kosong).
+    const row = (sheet?.rows ?? []).find((r) => r.employeeId === Number(employeeId));
+    if (row) {
+      setEditingPayrollId(row.id);
+      setForm(buildFormFromRow(row));
+    } else {
+      setEditingPayrollId(null);
+      setForm(emptyForm(employeeId));
+    }
   }
 
   function resetForm(nextEmployeeId?: string) {
