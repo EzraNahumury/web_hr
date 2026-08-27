@@ -90,7 +90,15 @@ export async function PUT(request: NextRequest) {
       `UPDATE absensi
          SET jam_masuk = ?, jam_pulang = ?
        WHERE karyawan_id = ? AND tanggal = ? AND status_absensi = 'hadir'`,
-      [jamMasuk ? `${jamMasuk}:00` : null, jamPulang ? `${jamPulang}:00` : null, karyawanId, tanggal],
+      // jam_masuk/jam_pulang kolom DATETIME → WAJIB tulis 'YYYY-MM-DD HH:MM:00' penuh.
+      // Kalau cuma 'HH:MM:00' (bare time), MySQL simpan zero-date '0000-00-00 00:00:00'
+      // → TIME_FORMAT render jadi '00:00' → data hilang / balik ke awal.
+      [
+        jamMasuk ? `${tanggal} ${jamMasuk}:00` : null,
+        jamPulang ? `${tanggal} ${jamPulang}:00` : null,
+        karyawanId,
+        tanggal,
+      ],
     );
     if (result.affectedRows === 0) {
       // affectedRows 0 bisa karena nilai TIDAK berubah (bukan karena baris tak ada).
