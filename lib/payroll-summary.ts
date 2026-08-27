@@ -652,9 +652,10 @@ export async function getAdminPayrollSummarySheet(period?: {
        FROM payroll_employee_input pei
        INNER JOIN payroll p ON p.id = pei.payroll_id
        WHERE pei.karyawan_id IN (${placeholders})
+         AND pei.is_manual = 1
          AND pei.override_gaji_pokok IS NOT NULL
          AND (p.periode_tahun * 100 + p.periode_bulan) <= ?
-       ORDER BY pei.updated_at DESC, (p.periode_tahun * 100 + p.periode_bulan) DESC`,
+       ORDER BY (p.periode_tahun * 100 + p.periode_bulan) DESC`,
       [...employeeIds, periodYear * 100 + periodMonth],
     );
     for (const r of carriedRows as Array<{ employee_id: number; val: string | number }>) {
@@ -914,7 +915,15 @@ export async function getAdminPayrollSummarySheet(period?: {
     const compUangKerajinan = toNumber(row.raw_uang_kerajinan);
     const compBpjs = toNumber(row.raw_bpjs);
     const compBonusPerforma = toNumber(row.raw_bonus_performa);
+    // Gaji Kontrak efektif: carry dari periode ter-EDIT terbesar (is_manual) bila ada,
+    // ELSE nilai override pei periode INI (fallback → nol regresi ke data lama).
     const carriedOverrideGajiPokok = carriedOverrideGajiPokokMap.get(row.employee_id) ?? null;
+    const effectiveOverrideGajiPokok =
+      carriedOverrideGajiPokok != null
+        ? carriedOverrideGajiPokok
+        : row.raw_override_gaji_pokok !== null
+          ? toNumber(row.raw_override_gaji_pokok)
+          : null;
 
     const inputOverrideMasuk = row.raw_override_masuk ?? null;
     const inputOverrideLembur =
@@ -938,11 +947,8 @@ export async function getAdminPayrollSummarySheet(period?: {
       row.raw_override_pinjaman_pribadi !== null
         ? toNumber(row.raw_override_pinjaman_pribadi)
         : null;
-    // Form menampilkan Gaji Kontrak (override) dari pei periode INI (raw).
-    const inputOverrideGajiPokok =
-      row.raw_override_gaji_pokok !== null
-        ? toNumber(row.raw_override_gaji_pokok)
-        : null;
+    // Form menampilkan Gaji Kontrak efektif (carry bila ada, else nilai periode ini).
+    const inputOverrideGajiPokok = effectiveOverrideGajiPokok;
     const inputOverridePotonganAbsensi =
       row.raw_override_potongan_absensi !== null
         ? toNumber(row.raw_override_potongan_absensi)
@@ -1029,8 +1035,8 @@ export async function getAdminPayrollSummarySheet(period?: {
       ? (freelanceTotalMap.get(row.employee_id) ?? 0)
       : isFreelance
         ? (freelanceMinutes / 60) * dailyBaseSalary
-        : carriedOverrideGajiPokok != null
-          ? carriedOverrideGajiPokok + monthlyRaise
+        : effectiveOverrideGajiPokok != null
+          ? effectiveOverrideGajiPokok + monthlyRaise
           : dailyBaseSalary * workDays;
 
     const positionAllowance = isFreelance ? 0 : toNumber(row.tunjangan_jabatan);

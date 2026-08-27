@@ -505,6 +505,31 @@ export async function ensurePayrollSupportTables(connection?: QueryExecutor) {
     }
   }
 
+  // is_manual = 1 bila baris ini disimpan MANUAL oleh admin (form payroll); 0 bila hasil
+  // clone antar periode. Dipakai untuk carry Gaji Kontrak ke periode berikutnya secara andal
+  // (clone tidak ikut nge-bump seperti updated_at).
+  try {
+    await executor.query(`
+      ALTER TABLE payroll_employee_input
+      ADD COLUMN is_manual TINYINT(1) NOT NULL DEFAULT 0
+    `);
+    // Kolom BARU dibuat → backfill SEKALI: tandai baris pei terakhir-diupdate per karyawan
+    // sebagai manual (asumsi = edit admin terakhir). Baris lain (clone) tetap 0. Dengan begitu
+    // carry Gaji Kontrak langsung berlaku untuk data yang sudah ada tanpa perlu re-save.
+    await executor.query(`
+      UPDATE payroll_employee_input pei
+      INNER JOIN (
+        SELECT karyawan_id, MAX(updated_at) AS mx
+        FROM payroll_employee_input GROUP BY karyawan_id
+      ) t ON t.karyawan_id = pei.karyawan_id AND t.mx = pei.updated_at
+      SET pei.is_manual = 1
+    `);
+  } catch (err: unknown) {
+    if (getMysqlErrorCode(err) !== 'ER_DUP_FIELDNAME') {
+      console.error("Migration warning for is_manual:", err);
+    }
+  }
+
   try {
     await executor.query(`
       ALTER TABLE payroll_employee_input
@@ -1188,9 +1213,11 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
           freelance_rate_type,
           gaji_pokok_per_jam,
           potongan_sp2,
-          potongan_sp2_note
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          potongan_sp2_note,
+          is_manual
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
         ON DUPLICATE KEY UPDATE
+          is_manual = 1,
           payroll_type = VALUES(payroll_type),
           gaji_pokok_per_hari = VALUES(gaji_pokok_per_hari),
           uang_makan_per_hari = VALUES(uang_makan_per_hari),
