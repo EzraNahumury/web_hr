@@ -77,11 +77,12 @@ function JamDetailModal({
   onSaved: () => void;
 }) {
   const [rows, setRows] = useState<AbsensiDetailItem[] | null>(null);
-  const [savingDate, setSavingDate] = useState<string | null>(null);
+  const [savingAll, setSavingAll] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const dirtyRef = useRef(false);
-  // Selalu tahan nilai baris TERBARU — hindari stale closure saat save di onBlur.
+  // Nilai baris TERBARU (hindari stale closure) + snapshot awal untuk tahu baris yang berubah.
   const rowsRef = useRef<AbsensiDetailItem[] | null>(null);
+  const originalRef = useRef<Record<string, { m: string | null; p: string | null }>>({});
 
   // Refresh data induk (Total Gaji + tabel) saat modal ditutup bila ada perubahan jam.
   // Induk memakai useState -> harus lewat onSaved (fetch ulang sheet), bukan router.refresh.
@@ -97,10 +98,12 @@ function JamDetailModal({
       .then((r) => r.json())
       .then((d: AbsensiDetailItem[]) => {
         rowsRef.current = d;
+        originalRef.current = Object.fromEntries(d.map((r) => [r.tanggal, { m: r.jam_masuk, p: r.jam_pulang }]));
         setRows(d);
       })
       .catch(() => {
         rowsRef.current = [];
+        originalRef.current = {};
         setRows([]);
       });
   }, [employeeId, bulan, tahun]);
@@ -125,34 +128,45 @@ function JamDetailModal({
     setRows(next);
   }
 
-  async function saveRow(tanggal: string) {
-    const r = (rowsRef.current ?? []).find((x) => x.tanggal === tanggal);
-    if (!r) return;
+  // Simpan SEMUA baris yang berubah sekaligus (tombol Simpan), lalu refresh tabel induk.
+  async function saveAll() {
+    const cur = rowsRef.current ?? [];
+    const changed = cur.filter((r) => {
+      const o = originalRef.current[r.tanggal];
+      return !o || o.m !== r.jam_masuk || o.p !== r.jam_pulang;
+    });
+    if (changed.length === 0) {
+      setMsg({ type: "success", text: "Tidak ada perubahan." });
+      return;
+    }
     setMsg(null);
-    setSavingDate(r.tanggal);
+    setSavingAll(true);
     try {
-      const res = await fetch("/api/admin/freelance/jam", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          karyawanId: employeeId,
-          tanggal: r.tanggal,
-          jamMasuk: r.jam_masuk,
-          jamPulang: r.jam_pulang,
-        }),
-      });
-      const data = (await res.json()) as { message?: string; menitKerja?: number };
-      if (!res.ok) {
-        setMsg({ type: "error", text: data.message ?? "Gagal menyimpan." });
-        return;
+      for (const r of changed) {
+        const res = await fetch("/api/admin/freelance/jam", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            karyawanId: employeeId,
+            tanggal: r.tanggal,
+            jamMasuk: r.jam_masuk,
+            jamPulang: r.jam_pulang,
+          }),
+        });
+        if (!res.ok) {
+          const data = (await res.json().catch(() => ({}))) as { message?: string };
+          setMsg({ type: "error", text: data.message ?? `Gagal menyimpan ${r.tanggal}.` });
+          return;
+        }
+        originalRef.current[r.tanggal] = { m: r.jam_masuk, p: r.jam_pulang };
       }
       dirtyRef.current = true;
-      setMsg({ type: "success", text: `Jam ${r.tanggal} tersimpan.` });
-      onSaved(); // fetch ulang sheet induk (setSheet) SETELAH data tersimpan → tabel ikut update
+      onSaved(); // fetch ulang sheet induk (setSheet) → tabel & total ikut update
+      setMsg({ type: "success", text: `${changed.length} baris tersimpan.` });
     } catch {
       setMsg({ type: "error", text: "Terjadi kesalahan jaringan." });
     } finally {
-      setSavingDate(null);
+      setSavingAll(false);
     }
   }
 
@@ -180,13 +194,13 @@ function JamDetailModal({
           <button onClick={handleClose} className="text-white/70 hover:text-white text-xl leading-none">✕</button>
         </div>
         <div className="flex items-center justify-between gap-2 border-b border-[#f0e2dc] bg-[#fffaf8] px-5 py-2">
-          <p className="text-[11px] text-[#9e7a72]">Klik jam masuk/pulang untuk mengubah — otomatis tersimpan.</p>
-          {msg ? (
-            <p className={`text-[11px] font-semibold ${msg.type === "success" ? "text-[#17603b]" : "text-[#b94040]"}`}>
-              {savingDate ? "Menyimpan..." : msg.text}
-            </p>
-          ) : savingDate ? (
+          <p className="text-[11px] text-[#9e7a72]">Ubah jam masuk/pulang, lalu klik <b>Simpan</b>.</p>
+          {savingAll ? (
             <p className="text-[11px] font-semibold text-[#9e7a72]">Menyimpan...</p>
+          ) : msg ? (
+            <p className={`text-[11px] font-semibold ${msg.type === "success" ? "text-[#17603b]" : "text-[#b94040]"}`}>
+              {msg.text}
+            </p>
           ) : null}
         </div>
         <div className="max-h-[60vh] overflow-y-auto">
@@ -215,8 +229,7 @@ function JamDetailModal({
                         type="time"
                         value={r.jam_masuk ?? ""}
                         onChange={(e) => onJamChange(i, "jam_masuk", e.target.value)}
-                        onBlur={() => saveRow(r.tanggal)}
-                        disabled={savingDate === r.tanggal}
+                        disabled={savingAll}
                         className="w-24 rounded-lg border border-[#e0c8c2] bg-white px-2 py-1 text-center text-sm text-[#4a3430] outline-none focus:border-[#8f1d22] disabled:opacity-50"
                       />
                     </td>
@@ -225,8 +238,7 @@ function JamDetailModal({
                         type="time"
                         value={r.jam_pulang ?? ""}
                         onChange={(e) => onJamChange(i, "jam_pulang", e.target.value)}
-                        onBlur={() => saveRow(r.tanggal)}
-                        disabled={savingDate === r.tanggal}
+                        disabled={savingAll}
                         className="w-24 rounded-lg border border-[#e0c8c2] bg-white px-2 py-1 text-center text-sm text-[#4a3430] outline-none focus:border-[#8f1d22] disabled:opacity-50"
                       />
                     </td>
@@ -243,9 +255,16 @@ function JamDetailModal({
             </table>
           )}
         </div>
-        <div className="border-t border-[#ead7ce] px-5 py-3 text-right">
+        <div className="flex items-center justify-end gap-2 border-t border-[#ead7ce] px-5 py-3">
           <button onClick={handleClose} className="rounded-xl border border-[#e0c8c2] px-4 py-2 text-sm font-semibold text-[#4a3430] hover:bg-[#fdf7f5]">
             Tutup
+          </button>
+          <button
+            onClick={saveAll}
+            disabled={savingAll || rows === null || rows.length === 0}
+            className="rounded-xl bg-[#8f1d22] px-5 py-2 text-sm font-semibold text-white hover:bg-[#7a1a1e] disabled:opacity-50"
+          >
+            {savingAll ? "Menyimpan..." : "Simpan"}
           </button>
         </div>
       </div>
