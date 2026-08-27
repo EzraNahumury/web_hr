@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import type {
   FreelanceSheet,
   FreelanceJamRow,
@@ -71,12 +70,12 @@ type AbsensiDetailItem = {
 };
 
 function JamDetailModal({
-  name, bulan, tahun, employeeId, onClose,
+  name, bulan, tahun, employeeId, onClose, onSaved,
 }: {
   name: string; bulan: number; tahun: number; employeeId: number;
   onClose: () => void;
+  onSaved: () => void;
 }) {
-  const router = useRouter();
   const [rows, setRows] = useState<AbsensiDetailItem[] | null>(null);
   const [savingDate, setSavingDate] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -84,9 +83,10 @@ function JamDetailModal({
   // Selalu tahan nilai baris TERBARU — hindari stale closure saat save di onBlur.
   const rowsRef = useRef<AbsensiDetailItem[] | null>(null);
 
-  // Refresh data induk (Total Gaji + payroll) saat modal ditutup bila ada perubahan jam.
+  // Refresh data induk (Total Gaji + tabel) saat modal ditutup bila ada perubahan jam.
+  // Induk memakai useState -> harus lewat onSaved (fetch ulang sheet), bukan router.refresh.
   function handleClose() {
-    if (dirtyRef.current) router.refresh();
+    if (dirtyRef.current) onSaved();
     onClose();
   }
 
@@ -148,7 +148,7 @@ function JamDetailModal({
       }
       dirtyRef.current = true;
       setMsg({ type: "success", text: `Jam ${r.tanggal} tersimpan.` });
-      router.refresh(); // segarkan tabel induk SETELAH data tersimpan (hindari race saat tutup)
+      onSaved(); // fetch ulang sheet induk (setSheet) SETELAH data tersimpan → tabel ikut update
     } catch {
       setMsg({ type: "error", text: "Terjadi kesalahan jaringan." });
     } finally {
@@ -374,6 +374,7 @@ function JamTable({
         bulan={bulan}
         tahun={tahun}
         onClose={() => setDetail(null)}
+        onSaved={onSaved}
       />
     )}
     </>
