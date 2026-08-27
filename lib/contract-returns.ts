@@ -1,7 +1,6 @@
 import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 
 import { pool } from "@/lib/db";
-import { getActivePayrollPeriod } from "@/lib/payroll-admin";
 
 // Deposit kontrak standar = 200.000 x 5 bulan.
 export const STANDARD_CONTRACT_DEPOSIT = 1_000_000;
@@ -79,29 +78,16 @@ export async function ensureContractReturnTable() {
   return returnTableReady;
 }
 
-type ScheduleRow = RowDataPacket & {
-  karyawan_id: number;
-  bulan: number;
-  tahun: number;
-  nominal_potongan: string | null;
-};
-
-type UsageRow = RowDataPacket & {
-  karyawan_id: number;
-  bulan: number;
-  tahun: number;
-  total: string | null;
-};
-
 export async function listContractReturns(): Promise<ContractReturnItem[]> {
   await ensureContractReturnTable();
-  const { cleanupIneligibleContractSchedules } = await import("@/lib/contract-deductions");
-  await cleanupIneligibleContractSchedules();
+  // SUMBER OTORITATIF: pakai plan yang SAMA PERSIS dengan modul Potongan Kontrak
+  // (buildPlan via listContractDeductionPlans). Dulu modul ini menghitung ulang
+  // "sudah terpotong" dari baris potongan_kontrak DB + periode aktif sendiri, sehingga
+  // bisa divergen (mis. Pengembalian "lunas 1jt" padahal Potongan Kontrak "terpotong 800rb").
+  // listContractDeductionPlans() sudah memanggil cleanupIneligibleContractSchedules().
+  const { listContractDeductionPlans } = await import("@/lib/contract-deductions");
 
-  const active = getActivePayrollPeriod();
-  const activeYearMonth = active.year * 100 + active.month;
-
-  const [employees, scheduleRows, usageRows, returnedRows] = await Promise.all([
+  const [employees, plans, returnedRows] = await Promise.all([
     pool.query<EmployeeRow[]>(
       `
         SELECT
@@ -120,18 +106,7 @@ export async function listContractReturns(): Promise<ContractReturnItem[]> {
         ORDER BY k.nama ASC
       `,
     ),
-    // Jadwal potongan kontrak PER PERIODE (5 bulan) — untuk tahu bulan mana yang sudah jatuh tempo.
-    pool.query<ScheduleRow[]>(
-      `SELECT karyawan_id, bulan, tahun, nominal_potongan FROM potongan_kontrak`,
-    ),
-    // Nilai potongan aktual yang tersimpan di payroll, per periode.
-    pool.query<UsageRow[]>(
-      `SELECT karyawan_id, periode_bulan AS bulan, periode_tahun AS tahun,
-              COALESCE(SUM(potongan_kontrak), 0) AS total
-       FROM payroll
-       WHERE potongan_kontrak > 0
-       GROUP BY karyawan_id, periode_bulan, periode_tahun`,
-    ),
+    listContractDeductionPlans(),
     pool.query<ReturnRow[]>(
       `SELECT karyawan_id, nominal,
               DATE_FORMAT(tanggal_pengembalian, '%Y-%m-%d') AS tanggal_pengembalian,
@@ -140,49 +115,33 @@ export async function listContractReturns(): Promise<ContractReturnItem[]> {
     ),
   ]);
 
-  // Map: karyawan -> daftar periode jadwal potongan {bulan, tahun, nominal}.
-  const scheduleByEmp = new Map<number, { month: number; year: number; nominal: number }[]>();
-  for (const r of scheduleRows[0]) {
-    const arr = scheduleByEmp.get(r.karyawan_id) ?? [];
-    arr.push({ month: r.bulan, year: r.tahun, nominal: toNumber(r.nominal_potongan) });
-    scheduleByEmp.set(r.karyawan_id, arr);
-  }
-  // Map: `karyawan:tahun:bulan` -> nominal potongan aktual di payroll.
-  const usageByKey = new Map<string, number>();
-  for (const r of usageRows[0]) {
-    usageByKey.set(`${r.karyawan_id}:${r.tahun}:${r.bulan}`, toNumber(r.total));
-  }
+  // Map: karyawan -> plan Potongan Kontrak (angka terpotong/sisa yang otoritatif).
+  const planByEmp = new Map<number, (typeof plans)[number]>();
+  for (const p of plans) planByEmp.set(p.employeeId, p);
+
   const returnedMap = new Map<number, ReturnRow>();
   for (const r of returnedRows[0]) returnedMap.set(r.karyawan_id, r);
 
   return employees[0].map((emp) => {
-    const schedule = scheduleByEmp.get(emp.id) ?? [];
-    const hasPlan = schedule.length > 0;
-    const plannedTotal = hasPlan
-      ? schedule.reduce((sum, p) => sum + p.nominal, 0)
-      : STANDARD_CONTRACT_DEPOSIT;
+    const plan = planByEmp.get(emp.id) ?? null;
+    const hasPlan = plan !== null;
 
+    let plannedTotal: number;
     let deductedTotal: number;
     let remaining: number;
     let status: "lunas" | "belum_lunas";
 
-    if (!hasPlan) {
-      // Tidak ada record potongan -> dianggap sudah lunas sebelum web ada.
+    if (!plan) {
+      // Tanpa jadwal (tak ada tanggal kontrak) -> dianggap lunas sebelum web ada.
+      plannedTotal = STANDARD_CONTRACT_DEPOSIT;
       deductedTotal = STANDARD_CONTRACT_DEPOSIT;
       remaining = 0;
       status = "lunas";
     } else {
-      // KONSISTEN dengan Potongan Kontrak (buildPlan): setiap periode yang SUDAH jatuh tempo
-      // (<= periode aktif) dihitung terpotong — pakai nilai payroll bila ada, kalau belum ada
-      // pakai nominal terjadwal (potongannya memang diterapkan live di perhitungan payroll).
-      const rawDeducted = schedule.reduce((sum, p) => {
-        const isFuture = p.year * 100 + p.month > activeYearMonth;
-        if (isFuture) return sum;
-        const usage = usageByKey.get(`${emp.id}:${p.year}:${p.month}`);
-        return sum + (usage ?? p.nominal);
-      }, 0);
-      deductedTotal = Math.min(rawDeducted, plannedTotal);
-      remaining = Math.max(plannedTotal - deductedTotal, 0);
+      // Ambil PERSIS dari plan (identik dengan tampilan Potongan Kontrak).
+      plannedTotal = toNumber(plan.totalPlannedDeduction);
+      deductedTotal = toNumber(plan.totalDeductedAmount);
+      remaining = toNumber(plan.remainingDeduction);
       status = remaining <= 0 ? "lunas" : "belum_lunas";
     }
 
