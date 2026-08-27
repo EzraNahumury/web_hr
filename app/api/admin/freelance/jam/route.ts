@@ -93,7 +93,15 @@ export async function PUT(request: NextRequest) {
       [jamMasuk ? `${jamMasuk}:00` : null, jamPulang ? `${jamPulang}:00` : null, karyawanId, tanggal],
     );
     if (result.affectedRows === 0) {
-      return NextResponse.json({ message: "Baris absensi tidak ditemukan." }, { status: 404 });
+      // affectedRows 0 bisa karena nilai TIDAK berubah (bukan karena baris tak ada).
+      // Cek keberadaan baris — kalau ada, anggap sukses.
+      const [exists] = await pool.query<RowDataPacket[]>(
+        `SELECT id FROM absensi WHERE karyawan_id = ? AND tanggal = ? AND status_absensi = 'hadir' LIMIT 1`,
+        [karyawanId, tanggal],
+      );
+      if (exists.length === 0) {
+        return NextResponse.json({ message: "Baris absensi tidak ditemukan." }, { status: 404 });
+      }
     }
     const menitKerja =
       jamMasuk && jamPulang

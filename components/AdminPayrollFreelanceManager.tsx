@@ -953,8 +953,15 @@ export default function AdminPayrollFreelanceManager({ initialSheet }: { initial
     loadSheet(month, year);
   }
 
-  const reload = useCallback(() => {
-    loadSheet(sheet.periodMonth, sheet.periodYear);
+  // Reload SILENT (tanpa toggle loading) — supaya JamTable & modal detail TIDAK unmount
+  // (yang tadinya menghapus hasil edit di modal). Tabel tetap update via setSheet.
+  const reload = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/payroll-freelance?month=${sheet.periodMonth}&year=${sheet.periodYear}`);
+      if (res.ok) setSheet(await res.json());
+    } catch {
+      /* abaikan; user bisa ganti periode untuk reload penuh */
+    }
   }, [sheet.periodMonth, sheet.periodYear]);
 
   const totalAll =
