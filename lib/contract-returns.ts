@@ -103,6 +103,7 @@ export async function listContractReturns(): Promise<ContractReturnItem[]> {
         WHERE k.status_data = 'aktif'
           AND LOWER(COALESCE(k.status_kepegawaian, '')) NOT IN ('tetap', 'freelance')
           AND LOWER(COALESCE(k.jabatan, '')) NOT IN ('freelance', 'sales nasional')
+          AND LOWER(COALESCE(k.penempatan, '')) <> 'jne'
         ORDER BY k.nama ASC
       `,
     ),

@@ -1147,7 +1147,8 @@ export async function getAdminPayrollSummarySheet(period?: {
       statusKepegawaianNorm === "freelance" ||
       jabatanNorm === "freelance" ||
       isFreelance ||
-      isSalesNasional;
+      isSalesNasional ||
+      (row.penempatan ?? "").trim().toLowerCase() === "jne";
     // Potongan kontrak = override manual, atau jadwal dari tabel potongan_kontrak (bulan/tahun).
     // TIDAK fallback ke kolom p.potongan_kontrak (snapshot lama bisa basi: jadwal berubah tapi
     // kolom payroll periode lama tak ikut ter-update → potongan hantu di bulan yang tak dijadwalkan).
