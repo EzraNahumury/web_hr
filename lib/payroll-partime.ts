@@ -287,8 +287,9 @@ export async function getPartimeSheet(period?: {
     const insentifTotal = insentifPerHari * masuk;
     const uangMakanTotal = uangMakanPerHari * masuk;
     const potonganTelat = telat * PARTIME_LATE_DEDUCTION;
-    // Lembur: jam × Rp20.000, sama seperti Summary Payroll utama. Menambah gaji.
-    const overtimeHours = overtimeMap.get(row.employee_id) ?? 0;
+    // Lembur: jam DIBULATKAN ke bilangan bulat terdekat (>=0.5 ke atas, <0.5 ke bawah;
+    // mis. 3.4 -> 3, 3.7 -> 4), lalu bonus = jam bulat × Rp20.000. Jam & bonus konsisten.
+    const overtimeHours = Math.round(overtimeMap.get(row.employee_id) ?? 0);
     const overtimeBonus = overtimeHours * 20000;
 
     const totalGajiSebelumPotongan =
