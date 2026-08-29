@@ -5,6 +5,7 @@ import {
   insertContractDeduction,
   listContractDeductionEmployees,
   listContractDeductionPlans,
+  setContractDeductionLastMonth,
   type ContractDeductionPayload,
 } from "@/lib/contract-deductions";
 
@@ -63,6 +64,32 @@ export async function POST(request: Request) {
 
   try {
     const body = (await request.json()) as Record<string, unknown>;
+
+    // Set "bulan potongan terakhir" (cap) untuk 1 karyawan (mis. karyawan resign).
+    if (body.action === "set_last_month") {
+      const employeeId = parsePositiveInt(body.employeeId);
+      if (!employeeId) {
+        return NextResponse.json({ message: "Karyawan tidak valid." }, { status: 400 });
+      }
+      let lastYm: number | null = null;
+      if (body.lastMonth != null && body.lastYear != null) {
+        const m = parsePositiveInt(body.lastMonth);
+        const y = parsePositiveInt(body.lastYear);
+        if (!m || !y || m > 12) {
+          return NextResponse.json({ message: "Bulan/tahun tidak valid." }, { status: 400 });
+        }
+        lastYm = y * 100 + m;
+      }
+      await setContractDeductionLastMonth(employeeId, lastYm);
+      const rows = await listContractDeductionPlans();
+      return NextResponse.json({
+        message: lastYm
+          ? "Bulan potongan terakhir berhasil disimpan."
+          : "Cap dihapus, jadwal potongan penuh dikembalikan.",
+        rows,
+      });
+    }
+
     const result = validatePayload(body);
 
     if ("error" in result) {

@@ -29,16 +29,54 @@ function toNumber(value: string | null) {
 }
 
 export default function AdminContractDeductionsManager({ initialRows }: Props) {
+  const [rows, setRows] = useState<ContractDeductionPlanItem[]>(initialRows);
   const [search, setSearch] = useState("");
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Set / hapus "bulan potongan terakhir" untuk satu karyawan (mis. karyawan resign).
+  async function applyLastMonth(
+    employeeId: number,
+    lastMonth: number | null,
+    lastYear: number | null,
+  ) {
+    setBusyId(employeeId);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/admin/contract-deductions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          lastMonth != null && lastYear != null
+            ? { action: "set_last_month", employeeId, lastMonth, lastYear }
+            : { action: "set_last_month", employeeId },
+        ),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        message?: string;
+        rows?: ContractDeductionPlanItem[];
+      };
+      if (!res.ok) {
+        setMsg({ type: "error", text: data.message ?? "Gagal menyimpan." });
+        return;
+      }
+      if (data.rows) setRows(data.rows);
+      setMsg({ type: "success", text: data.message ?? "Tersimpan." });
+    } catch {
+      setMsg({ type: "error", text: "Terjadi kesalahan jaringan." });
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   const filteredRows = useMemo(() => {
     const keyword = search.trim().toLowerCase();
 
     if (!keyword) {
-      return initialRows;
+      return rows;
     }
 
-    return initialRows.filter((row) =>
+    return rows.filter((row) =>
       [
         row.employeeName,
         row.nip,
@@ -51,7 +89,7 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
         .toLowerCase()
         .includes(keyword),
     );
-  }, [initialRows, search]);
+  }, [rows, search]);
 
   const summary = useMemo(
     () =>
@@ -133,6 +171,14 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
               className={`${inputClassName} xl:max-w-sm`}
             />
           </div>
+          {msg ? (
+            <p className={`mt-3 text-sm font-semibold ${msg.type === "error" ? "text-[#8f1d22]" : "text-[#17603b]"}`}>
+              {msg.text}
+            </p>
+          ) : null}
+          <p className="mt-2 text-xs text-[#9a8078]">
+            Kolom <b>Bulan Terakhir</b>: set bulan potongan terakhir bila karyawan resign — bulan setelahnya dihentikan &amp; potongan yang terlanjur tersimpan di payroll dinolkan otomatis.
+          </p>
         </div>
 
         <div className="overflow-auto max-h-[calc(100vh-260px)]">
@@ -154,6 +200,7 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
                 <th className="px-6 py-4 font-semibold text-center">3</th>
                 <th className="px-6 py-4 font-semibold text-center">4</th>
                 <th className="px-6 py-4 font-semibold text-center">5</th>
+                <th className="px-6 py-4 font-semibold">Bulan Terakhir</th>
               </tr>
             </thead>
             <tbody>
@@ -188,29 +235,36 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
                       </div>
                     </td>
                     {row.installments.map((installment) => {
+                      const stopped = installment.stopped;
                       const deductedAmount = toNumber(installment.deductedAmount);
                       const isAuto = installment.autoDeducted;
                       const hasValue = deductedAmount > 0;
-                      const bgClass = hasValue
-                        ? isAuto
-                          ? "bg-[#fff9e6]"
-                          : "bg-[#edf9f2]"
-                        : "bg-[#fff7f2]";
-                      const labelClass = hasValue
-                        ? isAuto
-                          ? "text-[#9a7b0d]"
-                          : "text-[#17603b]"
-                        : "text-[#b1948d]";
-                      const labelText = hasValue
-                        ? isAuto
-                          ? `Otomatis: ${formatMoney(installment.deductedAmount)}`
-                          : `Payroll: ${formatMoney(installment.deductedAmount)}`
-                        : "Belum dipotong";
+                      const bgClass = stopped
+                        ? "bg-[#f2eeec]"
+                        : hasValue
+                          ? isAuto
+                            ? "bg-[#fff9e6]"
+                            : "bg-[#edf9f2]"
+                          : "bg-[#fff7f2]";
+                      const labelClass = stopped
+                        ? "text-[#a3908a]"
+                        : hasValue
+                          ? isAuto
+                            ? "text-[#9a7b0d]"
+                            : "text-[#17603b]"
+                          : "text-[#b1948d]";
+                      const labelText = stopped
+                        ? "Dihentikan"
+                        : hasValue
+                          ? isAuto
+                            ? `Otomatis: ${formatMoney(installment.deductedAmount)}`
+                            : `Payroll: ${formatMoney(installment.deductedAmount)}`
+                          : "Belum dipotong";
 
                       return (
                         <td key={`${row.employeeId}-${installment.sequence}`} className="px-4 py-4">
                           <div className={`min-w-[128px] rounded-2xl px-3 py-2 text-center ${bgClass}`}>
-                            <div className="font-semibold text-[#241716]">
+                            <div className={`font-semibold ${stopped ? "text-[#a3908a] line-through" : "text-[#241716]"}`}>
                               {formatMoney(installment.nominalDeduction)}
                             </div>
                             <div className="mt-1 text-xs text-[#7a6059]">
@@ -223,11 +277,41 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
                         </td>
                       );
                     })}
+                    <td className="px-4 py-4">
+                      <select
+                        value={row.lastDeductionYm != null ? String(row.lastDeductionYm) : ""}
+                        disabled={busyId === row.employeeId}
+                        onChange={(event) => {
+                          const v = event.target.value;
+                          if (!v) {
+                            applyLastMonth(row.employeeId, null, null);
+                            return;
+                          }
+                          const ym = Number(v);
+                          applyLastMonth(row.employeeId, ym % 100, Math.floor(ym / 100));
+                        }}
+                        className="min-w-[160px] rounded-xl border border-[#ead7ce] bg-white px-3 py-2 text-sm text-[#241716] outline-none focus:border-[#c8716d] disabled:opacity-50"
+                        title="Potongan kontrak berhenti setelah bulan ini (mis. karyawan resign)"
+                      >
+                        <option value="">Semua (penuh)</option>
+                        {row.installments.map((inst) => (
+                          <option
+                            key={inst.sequence}
+                            value={String((inst.year ?? 0) * 100 + (inst.month ?? 0))}
+                          >
+                            s/d {inst.monthLabel}
+                          </option>
+                        ))}
+                      </select>
+                      {busyId === row.employeeId ? (
+                        <span className="ml-2 text-xs text-[#7a6059]">menyimpan...</span>
+                      ) : null}
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={15} className="px-6 py-16 text-center">
+                  <td colSpan={16} className="px-6 py-16 text-center">
                     <p className="text-base font-semibold text-[#3b2723]">
                       Belum ada potongan kontrak aktif
                     </p>

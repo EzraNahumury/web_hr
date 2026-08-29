@@ -47,6 +47,27 @@ export async function cleanupIneligibleContractSchedules(): Promise<void> {
   }
 }
 
+let contractColumnsReady: Promise<void> | null = null;
+// Kolom "bulan potongan terakhir" (cap) di karyawan. YYYYMM; null = penuh 5 bulan.
+export async function ensureContractDeductionColumns(): Promise<void> {
+  if (!contractColumnsReady) {
+    contractColumnsReady = (async () => {
+      try {
+        await pool.query(
+          `ALTER TABLE karyawan ADD COLUMN potongan_kontrak_stop_ym INT NULL DEFAULT NULL`,
+        );
+      } catch (err) {
+        const code = (err as { code?: string }).code;
+        if (code !== "ER_DUP_FIELDNAME") {
+          contractColumnsReady = null;
+          console.error("ensureContractDeductionColumns failed", err);
+        }
+      }
+    })();
+  }
+  return contractColumnsReady;
+}
+
 export type ContractDeductionItem = {
   id: number;
   employeeId: number;
@@ -75,6 +96,8 @@ export type ContractDeductionEmployeeOption = {
   contractEndDate: string | null;
   annualRaise: string;
   workStatus?: string;
+  // Bulan potongan terakhir (YYYYMM). null = penuh 5 bulan (tanpa cap).
+  lastDeductionYm?: number | null;
 };
 
 export type ContractDeductionPayload = {
@@ -92,6 +115,8 @@ export type ContractDeductionInstallment = {
   nominalDeduction: string | null;
   deductedAmount: string | null;
   autoDeducted: boolean;
+  // true = bulan ini di luar batas "potongan terakhir" -> dihentikan (tidak dipotong).
+  stopped: boolean;
 };
 
 export type ContractDeductionPlanItem = {
@@ -113,6 +138,8 @@ export type ContractDeductionPlanItem = {
   annualRaise: string;
   description: string | null;
   isActive: boolean;
+  // Bulan potongan terakhir (YYYYMM) yang di-set admin. null = penuh 5 bulan.
+  lastDeductionYm: number | null;
   installments: ContractDeductionInstallment[];
 };
 
@@ -144,6 +171,7 @@ type ContractDeductionEmployeeRow = RowDataPacket & {
   tanggal_selesai_kontrak: string | null;
   kenaikan_tiap_tahun: string;
   status_kerja: string;
+  potongan_kontrak_stop_ym: number | null;
 };
 
 type ContractDeductionEmployeeIdentityRow = RowDataPacket & {
@@ -224,12 +252,17 @@ function buildPlan(
   const isFuturePeriod = (month: number, year: number) =>
     year * 100 + month > activeYearMonth;
 
+  // Bulan potongan terakhir (cap). Periode SETELAH cap = dihentikan (tidak dipotong).
+  const stopYm = employee.lastDeductionYm ?? null;
+
   const installments = periods.map((period) => {
+    const periodYm = period.year * 100 + period.month;
+    const stopped = stopYm != null && periodYm > stopYm;
     const future = isFuturePeriod(period.month, period.year);
     const matched = employeeRows.find(
       (row) => row.month === period.month && row.year === period.year,
     );
-    const usage = future
+    const usage = future || stopped
       ? undefined
       : employeeUsages.find(
           (item) => item.month === period.month && item.year === period.year,
@@ -239,7 +272,8 @@ function buildPlan(
     // Periode jatuh tempo (<= aktif) selalu dianggap terpotong di payroll
     // (potongannya memang sudah diterapkan di perhitungan payroll live).
     const autoDeducted = false;
-    const effectiveDeducted = future ? null : (actualDeducted ?? planned);
+    // Bulan yang dihentikan -> tidak dipotong (deductedAmount null).
+    const effectiveDeducted = stopped ? null : (future ? null : (actualDeducted ?? planned));
 
     return {
       id: matched?.id ?? null,
@@ -250,11 +284,13 @@ function buildPlan(
       nominalDeduction: planned,
       deductedAmount: effectiveDeducted,
       autoDeducted,
+      stopped,
     } satisfies ContractDeductionInstallment;
   });
 
+  // Total & sisa hanya menghitung bulan yang TIDAK dihentikan.
   const totalPlannedDeduction = installments.reduce(
-    (total, installment) => total + toNumber(installment.nominalDeduction),
+    (total, installment) => total + (installment.stopped ? 0 : toNumber(installment.nominalDeduction)),
     0,
   );
   const totalDeductedAmount = installments.reduce(
@@ -283,6 +319,7 @@ function buildPlan(
     annualRaise: employee.annualRaise,
     description: employeeRows[0]?.description ?? null,
     isActive: isContractDeductionActive(employee.contractDate),
+    lastDeductionYm: stopYm,
     installments,
   } satisfies ContractDeductionPlanItem;
 }
@@ -336,6 +373,7 @@ async function listContractDeductionUsages() {
 }
 
 export async function listContractDeductionEmployees() {
+  await ensureContractDeductionColumns();
   const [rows] = await pool.query<ContractDeductionEmployeeRow[]>(
     `
       SELECT
@@ -349,7 +387,8 @@ export async function listContractDeductionEmployees() {
         DATE_FORMAT(k.tanggal_kontrak, '%Y-%m-%d') AS tanggal_kontrak,
         DATE_FORMAT(k.tanggal_selesai_kontrak, '%Y-%m-%d') AS tanggal_selesai_kontrak,
         k.kenaikan_tiap_tahun,
-        k.status_kerja
+        k.status_kerja,
+        k.potongan_kontrak_stop_ym
       FROM karyawan k
       WHERE k.status_data = 'aktif'
         AND LOWER(COALESCE(k.status_kepegawaian, '')) NOT IN ('tetap', 'freelance')
@@ -371,10 +410,12 @@ export async function listContractDeductionEmployees() {
     contractEndDate: row.tanggal_selesai_kontrak,
     annualRaise: row.kenaikan_tiap_tahun,
     workStatus: row.status_kerja,
+    lastDeductionYm: row.potongan_kontrak_stop_ym ?? null,
   }));
 }
 
 export async function listContractDeductionPlans(options?: { activeOnly?: boolean }) {
+  await ensureContractDeductionColumns();
   await cleanupIneligibleContractSchedules();
   const [employees, rows, usages] = await Promise.all([
     listContractDeductionEmployees(),
@@ -455,7 +496,22 @@ export async function syncContractDeductionSchedule(
     return null;
   }
 
-  const periods = getFirstFiveContractPeriods(payload.contractDate);
+  // Hormati cap "bulan potongan terakhir": jadwal tidak dibuat untuk bulan setelah cap.
+  // Defensif — kalau kolom belum ada, anggap tanpa cap.
+  let stopYm: number | null = null;
+  try {
+    const [capRows] = await executor.query<(RowDataPacket & { ym: number | null })[]>(
+      "SELECT potongan_kontrak_stop_ym AS ym FROM karyawan WHERE id = ? LIMIT 1",
+      [payload.employeeId],
+    );
+    stopYm = capRows[0]?.ym ?? null;
+  } catch {
+    stopYm = null;
+  }
+
+  const periods = getFirstFiveContractPeriods(payload.contractDate).filter(
+    (p) => stopYm == null || p.year * 100 + p.month <= stopYm,
+  );
   const nominalDeduction =
     payload.nominalDeduction ?? getContractDeductionNominalByRole(payload.role);
 
@@ -520,6 +576,49 @@ export async function insertContractDeduction(payload: ContractDeductionPayload)
   });
 
   return getContractDeductionPlanByEmployeeId(payload.employeeId);
+}
+
+// Set "bulan potongan terakhir" (cap) untuk 1 karyawan. lastYm = YYYYMM, atau null untuk hapus cap.
+// Efek: (1) simpan cap di karyawan; (2) jadwal potongan_kontrak untuk bulan SETELAH cap dihapus;
+// (3) potongan kontrak yang SUDAH tersimpan di payroll untuk bulan SETELAH cap di-nol-kan
+// (auto-reverse, mis. September yang terlanjur terpotong); (4) kalau cap dihapus (null),
+// jadwal 5 bulan penuh dibangun ulang.
+export async function setContractDeductionLastMonth(
+  employeeId: number,
+  lastYm: number | null,
+) {
+  await ensureContractDeductionColumns();
+
+  await pool.query("UPDATE karyawan SET potongan_kontrak_stop_ym = ? WHERE id = ?", [
+    lastYm,
+    employeeId,
+  ]);
+
+  if (lastYm != null) {
+    await pool.query(
+      "DELETE FROM potongan_kontrak WHERE karyawan_id = ? AND (tahun * 100 + bulan) > ?",
+      [employeeId, lastYm],
+    );
+    await pool.query(
+      `UPDATE payroll SET potongan_kontrak = 0
+       WHERE karyawan_id = ? AND (periode_tahun * 100 + periode_bulan) > ? AND potongan_kontrak > 0`,
+      [employeeId, lastYm],
+    );
+  } else {
+    // Cap dihapus -> bangun ulang jadwal 5 bulan penuh (sync membaca stop_ym = null).
+    const employee = await getEmployeeIdentityForDeduction(employeeId);
+    if (employee?.tanggal_kontrak) {
+      await syncContractDeductionSchedule({
+        employeeId,
+        role: employee.jabatan,
+        contractDate: employee.tanggal_kontrak,
+        workStatus: employee.status_kepegawaian,
+        penempatan: employee.penempatan,
+      });
+    }
+  }
+
+  return getContractDeductionPlanByEmployeeId(employeeId);
 }
 
 export async function updateContractDeduction(id: number, payload: ContractDeductionPayload) {
