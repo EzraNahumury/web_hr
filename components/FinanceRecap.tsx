@@ -90,9 +90,21 @@ export default function FinanceRecap({
 
   return (
     <>
-      {/* ── PERIOD SELECTOR ── */}
-      <div className="mb-6 flex items-center gap-3">
+      {/* ── PERIOD SELECTOR + DOWNLOAD FINANCE ── */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <FinancePeriodSelector options={periodOptions} selectedMonth={selectedMonth} selectedYear={selectedYear} />
+        {/* Download Finance: Excel yang SAMA dengan tombol di Summary Payroll (server-generated). */}
+        <a
+          href={`/api/admin/payroll-summary/finance-export?month=${selectedMonth}&year=${selectedYear}`}
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#0d7f86] px-6 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(13,127,134,0.22)] transition hover:-translate-y-0.5 hover:bg-[#0a6a70]"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 3v12" />
+            <path d="m7 10 5 5 5-5" />
+            <path d="M5 21h14" />
+          </svg>
+          Download Finance
+        </a>
       </div>
 
       {/* ── LEMBUR CUSTOM (hanya editable/admin) ── */}
