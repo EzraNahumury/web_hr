@@ -1068,8 +1068,16 @@ export async function getAdminPayrollSummarySheet(period?: {
       !!row.tanggal_masuk_pertama &&
       row.tanggal_masuk_pertama >= range.startSql &&
       row.tanggal_masuk_pertama <= range.endSql;
+    // Gaji pokok = insentif kehadiran (gaji/hari) × (hari masuk + libur BERBAYAR + ½hari),
+    // aturan UNIVERSAL — termasuk karyawan baru. Karyawan baru dengan rate harian (mis.
+    // insentif 20.000/hari) TIDAK lagi diprorata dari Gaji Kontrak bulanan: dulu jalur prorate
+    // (monthlyBaseSalary/25 × masuk) memakai override Gaji Kontrak (mis. 1.500.000, bahkan
+    // untuk kontrak yang belum mulai) sehingga gaji pokok membengkak (8 hari → 480.000)
+    // padahal seharusnya 20.000 × (8 masuk + 1 libur nasional) = 180.000.
+    // Prorate lama HANYA dipakai sebagai fallback untuk karyawan baru yang tidak punya rate
+    // harian sama sekali (dailyBaseSalary <= 0) agar gaji pokoknya tidak menjadi nol.
     const isNewEmployeeBelow15 = isNewEmployee && presentDays < 15;
-    const prorateBase = isNewEmployeeBelow15
+    const prorateBase = isNewEmployeeBelow15 && dailyBaseSalary <= 0
       ? (monthlyBaseSalary / 25) * (presentDays + halfDayCount)
       : null;
     const totalBaseSalary = isFreelance
