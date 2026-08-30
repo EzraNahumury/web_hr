@@ -1030,6 +1030,7 @@ export type PencairanGajiByUnit = {
   uangKontrak: number;
   pengembalianKontrak: number;
   potonganTerlambat: number;
+  potonganSetengahHari: number;
   potonganLain: number;
   potonganKerajinan: number;
   hutangPerusahaan: number;
@@ -1130,6 +1131,7 @@ export async function listFinancePencairanGaji(period?: {
       uangKontrak: 0,
       pengembalianKontrak: 0,
       potonganTerlambat: 0,
+      potonganSetengahHari: 0,
       potonganLain: 0,
       potonganKerajinan: 0,
       hutangPerusahaan: 0,
@@ -1144,6 +1146,10 @@ export async function listFinancePencairanGaji(period?: {
     u.uangKontrak += row.contractDeduction;
     u.pengembalianKontrak += row.contractReturn;
     u.potonganTerlambat += row.lateDeduction;
+    // Potongan 1/2 hari — sebelumnya TIDAK ikut dijumlahkan sehingga "Total Gaji sebelum
+    // dipotong" di Pencairan lebih kecil dari Total tabel unit (yang pakai fineDeduction =
+    // 1/2 hari + telat + kerajinan). Kini konsisten.
+    u.potonganSetengahHari += row.halfDayDeduction;
     u.potonganLain += row.otherDeduction;
     u.potonganKerajinan += row.diligenceCut;
     u.hutangPerusahaan += row.companyLoan;
@@ -1163,6 +1169,7 @@ export async function listFinancePencairanGaji(period?: {
           uangKontrak: 0,
           pengembalianKontrak: 0,
           potonganTerlambat: 0,
+          potonganSetengahHari: 0,
           potonganLain: 0,
           potonganKerajinan: 0,
           hutangPerusahaan: 0,

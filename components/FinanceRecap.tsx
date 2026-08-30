@@ -272,6 +272,7 @@ export default function FinanceRecap({
               (d?.totalBersih ?? 0) +
               (d?.uangKontrak ?? 0) +
               (d?.potonganTerlambat ?? 0) +
+              (d?.potonganSetengahHari ?? 0) +
               (d?.potonganLain ?? 0) +
               (d?.potonganKerajinan ?? 0) +
               (d?.hutangPerusahaan ?? 0) +
@@ -289,6 +290,7 @@ export default function FinanceRecap({
             { label: "Total bersih (sudah potongan)", key: "totalBersih" },
             { label: "Uang kontrak", key: "uangKontrak" },
             { label: "Potongan uang terlambat", key: "potonganTerlambat" },
+            { label: "Potongan setengah hari", key: "potonganSetengahHari" },
             { label: "Potongan lain-lain", key: "potonganLain" },
             { label: "Potongan uang kerajinan", key: "potonganKerajinan" },
             { label: "Hutang ke perusahaan", key: "hutangPerusahaan" },
@@ -333,6 +335,7 @@ export default function FinanceRecap({
                           (d?.totalBersih ?? 0) +
                           (d?.uangKontrak ?? 0) +
                           (d?.potonganTerlambat ?? 0) +
+                          (d?.potonganSetengahHari ?? 0) +
                           (d?.potonganLain ?? 0) +
                           (d?.potonganKerajinan ?? 0) +
                           (d?.hutangPerusahaan ?? 0) +
