@@ -57,7 +57,13 @@ export function mapPenjahitRow(row: PenjahitComputedRow): AdminPayrollSummaryShe
     fineDeduction: row.potonganDenda,
     contractCut: row.potonganKontrak,
     loanCut: row.potonganPinjaman + row.potonganLainLain,
-    diligenceCut: row.uangKerajinanNominal - row.kerajinanEarned,
+    // diligenceCut (kerajinan hangus) diturunkan dari potonganDenda AKTUAL, bukan dari
+    // (uangKerajinanNominal - kerajinanEarned) auto. Sebab: bila denda penjahit di-OVERRIDE
+    // manual, potonganDenda (fineDeduction) berubah tapi komponen auto tidak, sehingga
+    // Pencairan (telat+1/2hari+kerajinan) ≠ Pembagian (fineDeduction) -> tabel tidak balance.
+    // Dengan rumus ini telat + 1/2hari + kerajinan = potonganDenda selalu (saat auto = kerajinan
+    // hangus asli; saat override = kerajinan menyerap selisih). Kedua tabel konsisten.
+    diligenceCut: row.potonganDenda - row.potonganSetengahHari - row.potonganTelat,
     otherDeduction: 0,
     otherDeductionNote: null,
     netIncome: row.penerimaanBersih,
