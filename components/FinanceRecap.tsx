@@ -266,19 +266,12 @@ export default function FinanceRecap({
       {/* ── PENCAIRAN GAJI + TOTAL GAJI PER UNIT ── */}
       {pencairan.units.length > 0 &&
         (() => {
-          const unitTotal = (unit: string) => {
-            const d = pencairan.byUnit[unit];
-            return (
-              (d?.totalBersih ?? 0) +
-              (d?.uangKontrak ?? 0) +
-              (d?.potonganTerlambat ?? 0) +
-              (d?.potonganSetengahHari ?? 0) +
-              (d?.potonganLain ?? 0) +
-              (d?.potonganKerajinan ?? 0) +
-              (d?.hutangPerusahaan ?? 0) +
-              (d?.lemburTambahan ?? 0)
-            );
-          };
+          // Box "Total Take Home Pay per unit" = penerimaan bersih (net) yang benar-benar
+          // ditransfer ke karyawan — SAMA dengan export Excel "Take Home Pay".
+          // Sebelumnya box ini menjumlahkan gross (net + semua potongan ditambah balik),
+          // sehingga membengkak (mis. 228jt) & tidak balance dengan export (210jt).
+          // Gross tetap tersedia di baris "Total Gaji (sebelum dipotong)" tabel Pencairan.
+          const unitTotal = (unit: string) => pencairan.byUnit[unit]?.totalBersih ?? 0;
           const avaTotal = unitTotal("AVA Sportivo");
           const ayresTotal = unitTotal("Ayres Apparel");
           const ayresSoloTotal = unitTotal("Ayres Solo");
@@ -354,7 +347,7 @@ export default function FinanceRecap({
                   <thead>
                     <tr>
                       <th colSpan={2} className="border border-[#e0ccc5] bg-[#f5e8e4] px-4 py-3 text-center text-sm font-bold uppercase tracking-widest text-[#7a3828]">
-                        TOTAL GAJI PER UNIT
+                        TOTAL TAKE HOME PAY PER UNIT
                         {periodLabel && <span className="ml-2 text-xs font-medium text-[#9e7467]">— {periodLabel}</span>}
                       </th>
                     </tr>
