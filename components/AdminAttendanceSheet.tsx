@@ -700,7 +700,7 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                   );
                 })}
                 <td className="border-l-2 border-[#efe0d8] bg-[#f6fbf7] px-3 py-4 text-center text-base font-bold text-[#1e7a3a]">
-                  {Object.values(row.daily).filter((d) => d.status === "hadir" || d.code === "PA").length}
+                  {Object.values(row.daily).filter((d) => d.status === "hadir" || d.code === "PA" || (d.code === "O" && d.isEarlyLeave)).length}
                 </td>
                 <td className="bg-[#fdf4f4] px-3 py-4 text-center text-base font-bold text-[#c0392b]">
                   {Object.values(row.daily).filter((d) => d.code === "T").length}

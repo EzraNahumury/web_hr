@@ -1564,7 +1564,10 @@ export async function getEmployeeOverview(employeeId: number) {
   };
 }
 
-export async function getEmployeeAttendanceHistory(employeeId: number) {
+export async function getEmployeeAttendanceHistory(
+  employeeId: number,
+  range?: { startSql: string; endSql: string },
+) {
   const [rows] = await pool.query<EmployeeAttendanceHistoryRow[]>(
     `
       SELECT
@@ -1575,9 +1578,10 @@ export async function getEmployeeAttendanceHistory(employeeId: number) {
         terlambat_menit
       FROM absensi
       WHERE karyawan_id = ?
-      ORDER BY tanggal DESC
+        ${range ? "AND tanggal BETWEEN ? AND ?" : ""}
+      ORDER BY tanggal ASC
     `,
-    [employeeId],
+    range ? [employeeId, range.startSql, range.endSql] : [employeeId],
   );
 
   return rows;
