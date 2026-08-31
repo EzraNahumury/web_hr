@@ -387,7 +387,10 @@ export async function getPenjahitSheet(period?: {
       cur.alfa_count += 1;
     } else if (isHalf) {
       cur.half_day_count += 1;
-    } else if (r.status_absensi === "hadir") {
+    } else if (r.status_absensi === "hadir" || r.status_absensi === "setengah_hari") {
+      // Post 5 Juli 2026 aturan setengah hari NONAKTIF. Record 'setengah_hari' yang tidak
+      // tertangkap isHalf (di atas) dihitung MASUK penuh (hari attended) — konsisten dengan
+      // rekap absensi. Setengah hari lama (pre-5-Juli) tetap ke half_day_count via isHalf.
       cur.present_count += 1;
       if (r.terlambat_menit > 0) {
         cur.late_count += 1;

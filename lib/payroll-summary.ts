@@ -767,10 +767,15 @@ export async function getAdminPayrollSummarySheet(period?: {
       current.alfa += 1;
     } else if (isHalf) {
       current.halfDay += 1;
-    } else if (row.status_absensi === "hadir" || codeUpper === "PA") {
-      // PA (Pulang Awal) SELALU dihitung hadir penuh (gaji pokok + uang makan), termasuk bila
-      // record-nya tersimpan dengan status_absensi ≠ 'hadir' (data anomali dari path lama) —
-      // supaya konsisten dengan rekap absensi & tidak mengurangi hari masuk.
+    } else if (
+      row.status_absensi === "hadir" ||
+      codeUpper === "PA" ||
+      row.status_absensi === "setengah_hari"
+    ) {
+      // PA (Pulang Awal) & setengah_hari (post 5 Juli 2026, aturan setengah hari nonaktif dan
+      // tidak tertangkap isHalf di atas) SELALU dihitung hadir penuh (gaji pokok + uang makan) —
+      // konsisten dengan rekap absensi & tidak mengurangi hari masuk. Setengah hari lama
+      // (pre-5-Juli) tetap masuk halfDay via isHalf yang dicek lebih dulu.
       current.present += 1;
       if (row.kode_absensi === "T") {
         current.late += 1;
