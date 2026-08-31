@@ -767,12 +767,14 @@ export async function getAdminPayrollSummarySheet(period?: {
       current.alfa += 1;
     } else if (isHalf) {
       current.halfDay += 1;
-    } else if (row.status_absensi === "hadir") {
+    } else if (row.status_absensi === "hadir" || codeUpper === "PA") {
+      // PA (Pulang Awal) SELALU dihitung hadir penuh (gaji pokok + uang makan), termasuk bila
+      // record-nya tersimpan dengan status_absensi ≠ 'hadir' (data anomali dari path lama) —
+      // supaya konsisten dengan rekap absensi & tidak mengurangi hari masuk.
       current.present += 1;
       if (row.kode_absensi === "T") {
         current.late += 1;
       }
-      // PA (Pulang Awal): dihitung hadir penuh — dapat gaji pokok DAN uang makan.
       if (codeUpper === "PA") {
         current.pa += 1;
       }
