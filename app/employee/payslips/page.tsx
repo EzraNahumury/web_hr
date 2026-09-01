@@ -7,11 +7,12 @@ import { requireEmployeeSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
 import { getEmployeeByUserId } from "@/lib/hris";
 import { getPenjahitSheet } from "@/lib/payroll-penjahit";
+import { getPartimeSheet } from "@/lib/payroll-partime";
 import {
   getAdminPayrollSummarySheet,
   type AdminPayrollSummarySheetRow,
 } from "@/lib/payroll-summary";
-import { mapPenjahitRow } from "@/lib/payslip-row";
+import { mapPenjahitRow, mapPartimeRow } from "@/lib/payslip-row";
 
 type DistributedPeriodRow = RowDataPacket & {
   month: number;
@@ -86,6 +87,7 @@ export default async function EmployeePayslipsPage({
     : false;
 
   const isPenjahit = (employee.sub_divisi ?? "").trim().toLowerCase() === "penjahit";
+  const isPartime = (employee.status_kepegawaian ?? "").trim().toLowerCase() === "partime";
 
   const payslipRow: AdminPayrollSummarySheetRow | null = await (async () => {
     if (!selectedPeriod || !isSelectedDistributed) return null;
@@ -94,6 +96,12 @@ export default async function EmployeePayslipsPage({
       const sheet = await getPenjahitSheet({ month: selectedPeriod.month, year: selectedPeriod.year });
       const found = sheet?.rows.find((r) => r.employeeId === employee.id);
       return found ? mapPenjahitRow(found) : null;
+    }
+
+    if (isPartime) {
+      const sheet = await getPartimeSheet({ month: selectedPeriod.month, year: selectedPeriod.year });
+      const found = sheet?.rows.find((r) => r.employeeId === employee.id);
+      return found ? mapPartimeRow(found) : null;
     }
 
     const sheet = await getAdminPayrollSummarySheet({ month: selectedPeriod.month, year: selectedPeriod.year });

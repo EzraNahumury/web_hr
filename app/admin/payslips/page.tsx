@@ -3,7 +3,8 @@ import AdminShell from "@/components/AdminShell";
 import { requireAdminSession } from "@/lib/auth";
 import { getActivePayrollPeriod, listPayrollPeriods } from "@/lib/payroll-admin";
 import { getPenjahitSheet, type PenjahitComputedRow } from "@/lib/payroll-penjahit";
-import { mapPenjahitRow } from "@/lib/payslip-row";
+import { getPartimeSheet, type PartimeComputedRow } from "@/lib/payroll-partime";
+import { mapPenjahitRow, mapPartimeRow } from "@/lib/payslip-row";
 import {
   getAdminPayrollSummarySheet,
   type AdminPayrollSummarySheet,
@@ -21,14 +22,18 @@ function parsePositiveInt(value: string | string[] | undefined) {
 function mergeWithPenjahit(
   sheet: AdminPayrollSummarySheet | null,
   penjahitRows: PenjahitComputedRow[],
+  partimeRows: PartimeComputedRow[],
   fallbackPeriodMonth?: number,
   fallbackPeriodYear?: number,
   fallbackPeriodLabel?: string,
   fallbackRangeLabel?: string,
 ): AdminPayrollSummarySheet | null {
-  if (!sheet && penjahitRows.length === 0) return sheet;
+  if (!sheet && penjahitRows.length === 0 && partimeRows.length === 0) return sheet;
 
-  const mappedPenjahit = penjahitRows.map(mapPenjahitRow);
+  const mappedPenjahit = [
+    ...penjahitRows.map(mapPenjahitRow),
+    ...partimeRows.map(mapPartimeRow),
+  ];
 
   if (!sheet) {
     if (
@@ -76,18 +81,21 @@ export default async function AdminPayslipsPage({
 
   const loadCombinedSheet = async () => {
     const tryPeriod = async (month: number, year: number) => {
-      const [sheet, penjahit] = await Promise.all([
+      const [sheet, penjahit, partime] = await Promise.all([
         getAdminPayrollSummarySheet({ month, year }),
         getPenjahitSheet({ month, year }),
+        getPartimeSheet({ month, year }),
       ]);
       const penjahitRows = penjahit?.rows ?? [];
+      const partimeRows = partime?.rows ?? [];
       return mergeWithPenjahit(
         sheet,
         penjahitRows,
-        penjahit?.periodMonth ?? sheet?.periodMonth,
-        penjahit?.periodYear ?? sheet?.periodYear,
-        penjahit?.periodLabel ?? sheet?.periodLabel,
-        penjahit?.rangeLabel ?? sheet?.rangeLabel,
+        partimeRows,
+        penjahit?.periodMonth ?? partime?.periodMonth ?? sheet?.periodMonth,
+        penjahit?.periodYear ?? partime?.periodYear ?? sheet?.periodYear,
+        penjahit?.periodLabel ?? partime?.periodLabel ?? sheet?.periodLabel,
+        penjahit?.rangeLabel ?? partime?.rangeLabel ?? sheet?.rangeLabel,
       );
     };
 
