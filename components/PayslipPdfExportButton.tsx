@@ -34,7 +34,7 @@ type PayslipPdfExportButtonProps = {
   pdfData: PayslipPdfPayload;
 };
 
-const OWNER_NAME = "Arya Rahadyan";
+const OWNER_NAME = "Arya Chandratama Rahadhyan";
 const assetCache = new Map<string, Promise<string>>();
 
 function formatCurrency(value: number) {

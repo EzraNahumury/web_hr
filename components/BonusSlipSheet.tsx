@@ -20,7 +20,7 @@ type Props = {
   periodLabel: string;
 };
 
-const OWNER_NAME = "Arya Rahadyan";
+const OWNER_NAME = "Arya Chandratama Rahadhyan";
 const HR_COORDINATOR_NAME = "Elnida Rahma Dian";
 const OWNER_SIGNATURE_IMAGE = "/ttd/image-removebg-preview.png";
 const HR_SIGNATURE_IMAGE = "/ttd/hr-ttd-removebg-preview.png";

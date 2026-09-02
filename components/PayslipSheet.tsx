@@ -30,7 +30,7 @@ type PrintLineItemProps = {
   value: number;
 };
 
-const OWNER_NAME = "Arya Rahadyan";
+const OWNER_NAME = "Arya Chandratama Rahadhyan";
 const OWNER_SIGNATURE_IMAGE = "/ttd/image-removebg-preview.png";
 const PRIVACY_NOTE =
   "Slip gaji ini bersifat pribadi dan hanya diberikan kepada karyawan yang bersangkutan.";
