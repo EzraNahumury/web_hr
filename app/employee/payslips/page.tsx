@@ -3,9 +3,11 @@ import type { RowDataPacket } from "mysql2";
 import EmployeeShell from "@/components/EmployeeShell";
 import EmployeePayslipPeriodPicker from "@/components/EmployeePayslipPeriodPicker";
 import PayslipSheet from "@/components/PayslipSheet";
+import FreelancePayslipSheet from "@/components/FreelancePayslipSheet";
 import { requireEmployeeSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
 import { getEmployeeByUserId } from "@/lib/hris";
+import { getActivePayrollPeriod } from "@/lib/payroll-admin";
 import { getPenjahitSheet } from "@/lib/payroll-penjahit";
 import { getPartimeSheet } from "@/lib/payroll-partime";
 import {
@@ -13,6 +15,7 @@ import {
   type AdminPayrollSummarySheetRow,
 } from "@/lib/payroll-summary";
 import { mapPenjahitRow, mapPartimeRow } from "@/lib/payslip-row";
+import { getFreelanceSlipForEmployee } from "@/lib/payslip-freelance";
 
 type DistributedPeriodRow = RowDataPacket & {
   month: number;
@@ -71,10 +74,60 @@ export default async function EmployeePayslipsPage({
     return <main className="p-10">Data karyawan tidak ditemukan.</main>;
   }
 
-  const periods = await getDistributedPeriods(employee.id);
   const resolvedSearchParams = (await searchParams) ?? {};
   const requestedMonth = parsePositiveInt(resolvedSearchParams.month);
   const requestedYear = parsePositiveInt(resolvedSearchParams.year);
+
+  const isFreelance =
+    (employee.jabatan ?? "").trim().toLowerCase() === "freelance" ||
+    (employee.status_kepegawaian ?? "").trim().toLowerCase() === "freelance";
+
+  // Freelance tidak punya baris payroll/slip_gaji -> slip dihitung LIVE dari pekerjaan mereka
+  // (jam/pengerjaan/harian/custom) dan langsung bisa dilihat tanpa distribusi.
+  if (isFreelance) {
+    const active = getActivePayrollPeriod();
+    const month = requestedMonth ?? active.month;
+    const year = requestedYear ?? active.year;
+    const slip = await getFreelanceSlipForEmployee(employee.id, month, year);
+    const periodLabel = formatPeriodLabel(month, year);
+    const start = new Date(year, month - 2, 26);
+    const end = new Date(year, month - 1, 25);
+    const fmt = new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "long", year: "numeric", timeZone: "Asia/Jakarta" });
+    const freelanceRangeLabel = `${fmt.format(start)} - ${fmt.format(end)}`;
+    return (
+      <EmployeeShell
+        title="Slip Gaji"
+        description="Slip gaji freelance dihitung dari pekerjaan Anda pada periode terpilih."
+        employeeName={employee.nama}
+        employeeMeta={`${employee.no_karyawan} • ${employee.jabatan}`}
+        currentPath="/employee/payslips"
+        employeeRole={employee.jabatan}
+        employeeDepartment={employee.departemen}
+      >
+        <div className="space-y-6">
+          <section className="rounded-[28px] border border-[#ead7ce] bg-[linear-gradient(180deg,#fffdfb_0%,#fff5ef_100%)] px-5 py-5 shadow-[0_18px_40px_rgba(96,45,34,0.06)] sm:px-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#a16f63]">Periode Slip</p>
+                <h2 className="mt-2 text-xl font-semibold text-[#241716] sm:text-2xl">{periodLabel}</h2>
+                <p className="mt-1 text-sm text-[#7b665d]">Pilih bulan untuk melihat slip periode lain.</p>
+              </div>
+              <EmployeePayslipPeriodPicker value={`${year}-${String(month).padStart(2, "0")}`} />
+            </div>
+          </section>
+          {slip ? (
+            <FreelancePayslipSheet slip={slip} periodLabel={periodLabel} rangeLabel={freelanceRangeLabel} />
+          ) : (
+            <div className="rounded-[28px] border border-[#ead7ce] bg-white px-6 py-10 text-sm text-[#7a6059]">
+              Belum ada pekerjaan freelance pada periode ini.
+            </div>
+          )}
+        </div>
+      </EmployeeShell>
+    );
+  }
+
+  const periods = await getDistributedPeriods(employee.id);
 
   const fallbackPeriod = periods[0] ?? null;
   // Calendar bebas pilih bulan; slip hanya tampil utk periode yang sudah DIDISTRIBUSI.
