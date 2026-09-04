@@ -4,23 +4,28 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import PayslipSheet from "@/components/PayslipSheet";
+import FreelancePayslipSheet from "@/components/FreelancePayslipSheet";
 import type { AdminPayrollSummarySheetRow } from "@/lib/payroll-summary";
+import type { FreelanceSlip } from "@/lib/payslip-freelance";
 
 type Props = {
   periodLabel: string;
   rangeLabel: string;
   rows: AdminPayrollSummarySheetRow[];
+  freelanceSlips?: FreelanceSlip[];
   selectedEmployeeId: number | null;
   periodMonth: number;
   periodYear: number;
 };
+
+type Pick = { employeeId: number; label: string; kind: "row" | "freelance" };
 
 function buildEmployeeLabel(row: AdminPayrollSummarySheetRow) {
   const typeLabel = row.payrollType === "sales" ? "Sales" : row.payrollType === "penjahit" ? "Penjahit" : "Non Sales";
   return `${row.name.toUpperCase()} / ${row.role} / ${typeLabel}`;
 }
 
-export default function AdminPayslipBuilder({ periodLabel, rangeLabel, rows, selectedEmployeeId, periodMonth, periodYear }: Props) {
+export default function AdminPayslipBuilder({ periodLabel, rangeLabel, rows, freelanceSlips = [], selectedEmployeeId, periodMonth, periodYear }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -41,17 +46,26 @@ export default function AdminPayslipBuilder({ periodLabel, rangeLabel, rows, sel
     });
   }
 
-  const defaultEmployeeId = useMemo(() => {
-    if (!rows.length) {
-      return 0;
-    }
+  // Daftar pilihan gabungan: karyawan payroll (row) + freelance.
+  const picks = useMemo<Pick[]>(
+    () => [
+      ...rows.map((r) => ({ employeeId: r.employeeId, label: buildEmployeeLabel(r), kind: "row" as const })),
+      ...freelanceSlips.map((f) => ({
+        employeeId: f.employeeId,
+        label: `${f.name.toUpperCase()} / ${f.role} / Freelance`,
+        kind: "freelance" as const,
+      })),
+    ],
+    [rows, freelanceSlips],
+  );
 
-    if (selectedEmployeeId && rows.some((row) => row.employeeId === selectedEmployeeId)) {
+  const defaultEmployeeId = useMemo(() => {
+    if (!picks.length) return 0;
+    if (selectedEmployeeId && picks.some((p) => p.employeeId === selectedEmployeeId)) {
       return selectedEmployeeId;
     }
-
-    return rows[0].employeeId;
-  }, [rows, selectedEmployeeId]);
+    return picks[0].employeeId;
+  }, [picks, selectedEmployeeId]);
 
   const [currentEmployeeId, setCurrentEmployeeId] = useState(defaultEmployeeId);
   const [search, setSearch] = useState("");
@@ -72,15 +86,23 @@ export default function AdminPayslipBuilder({ periodLabel, rangeLabel, rows, sel
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const filteredRows = useMemo(() => {
-    if (!search.trim()) return rows;
+  const filteredPicks = useMemo(() => {
+    if (!search.trim()) return picks;
     const q = search.trim().toLowerCase();
-    return rows.filter((r) => buildEmployeeLabel(r).toLowerCase().includes(q));
-  }, [rows, search]);
+    return picks.filter((p) => p.label.toLowerCase().includes(q));
+  }, [picks, search]);
 
+  const selectedPick = useMemo(
+    () => picks.find((p) => p.employeeId === currentEmployeeId) ?? picks[0] ?? null,
+    [currentEmployeeId, picks],
+  );
   const selectedRow = useMemo(
-    () => rows.find((row) => row.employeeId === currentEmployeeId) ?? rows[0] ?? null,
+    () => rows.find((row) => row.employeeId === currentEmployeeId) ?? null,
     [currentEmployeeId, rows],
+  );
+  const selectedFreelance = useMemo(
+    () => freelanceSlips.find((f) => f.employeeId === currentEmployeeId) ?? null,
+    [currentEmployeeId, freelanceSlips],
   );
 
   function handleEmployeeChange(nextEmployeeId: number) {
@@ -93,13 +115,28 @@ export default function AdminPayslipBuilder({ periodLabel, rangeLabel, rows, sel
     });
   }
 
-  if (!rows.length) {
+  if (!picks.length) {
     return (
       <div className="rounded-[32px] border border-[#ead7ce] bg-white px-6 py-10 text-sm text-[#7a6059]">
         Belum ada payroll yang siap dijadikan slip gaji untuk periode ini.
       </div>
     );
   }
+
+  const badge = selectedFreelance
+    ? "Freelance"
+    : selectedRow?.payrollType === "sales"
+      ? "Sales"
+      : selectedRow?.payrollType === "penjahit"
+        ? "Penjahit"
+        : "Non Sales";
+  const badgeClass = selectedFreelance
+    ? "border-[#cdbce9] bg-[#f4eefd] text-[#5b3f8a]"
+    : selectedRow?.payrollType === "penjahit"
+      ? "border-[#e3d5a8] bg-[#fff7d6] text-[#7c5b00]"
+      : selectedRow?.payrollType === "sales"
+        ? "border-[#c8d8ca] bg-[#eef6ef] text-[#4b6d51]"
+        : "border-[#ead7ce] bg-[#fff7f2] text-[#8a5d52]";
 
   return (
     <div className="space-y-6">
@@ -124,7 +161,8 @@ export default function AdminPayslipBuilder({ periodLabel, rangeLabel, rows, sel
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#4f7d73]">Aturan Slip</p>
           <p className="mt-3 text-sm leading-7 text-[#35585b]">
             Uang makan, BPJS, bonus omzet, uang kerajinan, dan subsidi tidak ditampilkan terpisah di slip.
-            Semua komponen tersebut sudah digabung ke dalam Tunjangan Lain-Lain.
+            Semua komponen tersebut sudah digabung ke dalam Tunjangan Lain-Lain. Slip freelance memakai
+            rincian pekerjaan (jam/pengerjaan/harian/custom).
           </p>
         </article>
       </div>
@@ -136,7 +174,7 @@ export default function AdminPayslipBuilder({ periodLabel, rangeLabel, rows, sel
             <div ref={dropdownRef} className="relative">
               <input
                 type="text"
-                value={dropdownOpen ? search : (selectedRow ? buildEmployeeLabel(selectedRow) : "")}
+                value={dropdownOpen ? search : (selectedPick ? selectedPick.label : "")}
                 onChange={(e) => { setSearch(e.target.value); setDropdownOpen(true); }}
                 onFocus={() => { setSearch(""); setDropdownOpen(true); }}
                 placeholder="Cari nama karyawan..."
@@ -148,16 +186,16 @@ export default function AdminPayslipBuilder({ periodLabel, rangeLabel, rows, sel
               </svg>
               {dropdownOpen && (
                 <div className="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-2xl border border-[#d9cbc5] bg-white shadow-xl">
-                  {filteredRows.length === 0 ? (
+                  {filteredPicks.length === 0 ? (
                     <p className="px-4 py-3 text-sm text-[#9e7a72]">Tidak ditemukan.</p>
-                  ) : filteredRows.map((row) => (
+                  ) : filteredPicks.map((p) => (
                     <button
-                      key={row.employeeId}
+                      key={`${p.kind}-${p.employeeId}`}
                       type="button"
-                      onClick={() => { handleEmployeeChange(row.employeeId); setDropdownOpen(false); setSearch(""); }}
-                      className={`w-full px-4 py-2.5 text-left text-sm hover:bg-[#fff0e8] ${row.employeeId === currentEmployeeId ? "bg-[#fff0e8] font-semibold text-[#8f1d22]" : "text-[#241716]"}`}
+                      onClick={() => { handleEmployeeChange(p.employeeId); setDropdownOpen(false); setSearch(""); }}
+                      className={`w-full px-4 py-2.5 text-left text-sm hover:bg-[#fff0e8] ${p.employeeId === currentEmployeeId ? "bg-[#fff0e8] font-semibold text-[#8f1d22]" : "text-[#241716]"}`}
                     >
-                      {buildEmployeeLabel(row)}
+                      {p.label}
                     </button>
                   ))}
                 </div>
@@ -165,15 +203,19 @@ export default function AdminPayslipBuilder({ periodLabel, rangeLabel, rows, sel
             </div>
           </div>
 
-          {selectedRow ? (
-            <div className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] ${selectedRow.payrollType === "penjahit" ? "border-[#e3d5a8] bg-[#fff7d6] text-[#7c5b00]" : selectedRow.payrollType === "sales" ? "border-[#c8d8ca] bg-[#eef6ef] text-[#4b6d51]" : "border-[#ead7ce] bg-[#fff7f2] text-[#8a5d52]"}`}>
-              {selectedRow.payrollType === "sales" ? "Sales" : selectedRow.payrollType === "penjahit" ? "Penjahit" : "Non Sales"}
+          {selectedPick ? (
+            <div className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] ${badgeClass}`}>
+              {badge}
             </div>
           ) : null}
         </div>
       </section>
 
-      {selectedRow ? <PayslipSheet row={selectedRow} periodLabel={periodLabel} rangeLabel={rangeLabel} /> : null}
+      {selectedFreelance ? (
+        <FreelancePayslipSheet slip={selectedFreelance} periodLabel={periodLabel} rangeLabel={rangeLabel} />
+      ) : selectedRow ? (
+        <PayslipSheet row={selectedRow} periodLabel={periodLabel} rangeLabel={rangeLabel} />
+      ) : null}
     </div>
   );
 }

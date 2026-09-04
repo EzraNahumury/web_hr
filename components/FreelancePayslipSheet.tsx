@@ -4,6 +4,15 @@ function formatRp(n: number) {
   return `Rp${Math.round(n).toLocaleString("id-ID")}`;
 }
 
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 py-1">
+      <span className="text-xs uppercase tracking-[0.14em] text-[#a16f63]">{label}</span>
+      <span className="text-sm font-medium text-[#241716]">{value || "-"}</span>
+    </div>
+  );
+}
+
 export default function FreelancePayslipSheet({
   slip,
   periodLabel,
@@ -22,6 +31,15 @@ export default function FreelancePayslipSheet({
           Periode {periodLabel}
           {rangeLabel ? ` · ${rangeLabel}` : ""}
         </p>
+      </div>
+
+      {/* Info karyawan */}
+      <div className="grid grid-cols-1 gap-x-8 gap-y-1 border-b border-[#f0e2dc] px-6 py-4 sm:grid-cols-2">
+        <InfoRow label="NIP" value={slip.nip} />
+        <InfoRow label="Jabatan" value={slip.role} />
+        <InfoRow label="Departemen" value={slip.department} />
+        <InfoRow label="Bank" value={slip.bank} />
+        <InfoRow label="No. Rekening" value={slip.accountNumber} />
       </div>
 
       <div className="overflow-x-auto">
@@ -53,6 +71,13 @@ export default function FreelancePayslipSheet({
             </tr>
           </tfoot>
         </table>
+      </div>
+
+      <div className="border-t border-[#f0e2dc] px-6 py-4">
+        <p className="text-[11px] italic text-[#9e7467]">
+          Take home pay dibayarkan pada akhir periode (Tgl 25). Slip gaji ini bersifat pribadi dan hanya
+          diberikan kepada karyawan yang bersangkutan.
+        </p>
       </div>
     </div>
   );

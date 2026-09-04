@@ -1,10 +1,16 @@
 import AdminPayslipBuilder from "@/components/AdminPayslipBuilder";
 import AdminShell from "@/components/AdminShell";
 import { requireAdminSession } from "@/lib/auth";
-import { getActivePayrollPeriod, listPayrollPeriods } from "@/lib/payroll-admin";
+import {
+  getActivePayrollPeriod,
+  getPayrollDateRange,
+  formatPayrollPeriodLabel,
+  listPayrollPeriods,
+} from "@/lib/payroll-admin";
 import { getPenjahitSheet, type PenjahitComputedRow } from "@/lib/payroll-penjahit";
 import { getPartimeSheet, type PartimeComputedRow } from "@/lib/payroll-partime";
 import { mapPenjahitRow, mapPartimeRow } from "@/lib/payslip-row";
+import { getFreelanceSlipsForPeriod } from "@/lib/payslip-freelance";
 import {
   getAdminPayrollSummarySheet,
   type AdminPayrollSummarySheet,
@@ -123,22 +129,35 @@ export default async function AdminPayslipsPage({
 
   const [admin, sheet] = await Promise.all([adminPromise, loadCombinedSheet()]);
 
+  // Periode final mengikuti sheet bila ada; kalau tidak, pakai periode yang diminta / aktif.
+  const active = getActivePayrollPeriod();
+  const fMonth = sheet?.periodMonth ?? requestedMonth ?? active.month;
+  const fYear = sheet?.periodYear ?? requestedYear ?? active.year;
+  // Freelance tidak punya baris payroll -> slip dihitung live, ditambahkan ke daftar builder.
+  const freelanceSlips = await getFreelanceSlipsForPeriod(fMonth, fYear);
+
+  const showBuilder = !!sheet || freelanceSlips.length > 0;
+  const range = getPayrollDateRange(fMonth, fYear);
+  const periodLabel = sheet?.periodLabel ?? formatPayrollPeriodLabel(fMonth, fYear);
+  const rangeLabel = sheet?.rangeLabel ?? `${range.startSql} - ${range.endSql}`;
+
   return (
     <AdminShell
       title="Slip Gaji"
-      description="Pilih karyawan untuk menampilkan slip gaji normal atau sales dari hasil hitung payroll aktif."
+      description="Pilih karyawan untuk menampilkan slip gaji normal, sales, atau freelance dari hasil hitung payroll aktif."
       adminName={admin.fullName}
       adminEmail={admin.email}
       currentPath="/admin/payslips"
     >
-      {sheet ? (
+      {showBuilder ? (
         <AdminPayslipBuilder
-          periodLabel={sheet.periodLabel}
-          rangeLabel={sheet.rangeLabel}
-          rows={sheet.rows}
+          periodLabel={periodLabel}
+          rangeLabel={rangeLabel}
+          rows={sheet?.rows ?? []}
+          freelanceSlips={freelanceSlips}
           selectedEmployeeId={selectedEmployeeId}
-          periodMonth={sheet.periodMonth}
-          periodYear={sheet.periodYear}
+          periodMonth={fMonth}
+          periodYear={fYear}
         />
       ) : (
         <div className="rounded-[32px] border border-[#ead7ce] bg-white px-6 py-10 text-sm text-[#7a6059]">
