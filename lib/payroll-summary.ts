@@ -666,6 +666,28 @@ export async function getAdminPayrollSummarySheet(period?: {
     }
   }
 
+  // Tunjangan Jabatan = nominal TETAP (disimpan di kolom payroll.tunjangan_jabatan, bukan pei).
+  // Clone antar periode dulu men-set 0, sehingga tunjangan jabatan hilang di periode berikutnya.
+  // Carry: ambil nilai tunjangan_jabatan TERAKHIR (> 0) dari periode <= periode ini per karyawan,
+  // dipakai bila periode ini masih 0. Membuatnya konsisten seperti nominal tetap lainnya.
+  const carriedTunjanganJabatanMap = new Map<number, number>();
+  {
+    const [carriedRows] = await pool.query<RowDataPacket[]>(
+      `SELECT p.karyawan_id AS employee_id, p.tunjangan_jabatan AS val
+       FROM payroll p
+       WHERE p.karyawan_id IN (${placeholders})
+         AND p.tunjangan_jabatan > 0
+         AND (p.periode_tahun * 100 + p.periode_bulan) <= ?
+       ORDER BY (p.periode_tahun * 100 + p.periode_bulan) DESC`,
+      [...employeeIds, periodYear * 100 + periodMonth],
+    );
+    for (const r of carriedRows as Array<{ employee_id: number; val: string | number }>) {
+      if (!carriedTunjanganJabatanMap.has(r.employee_id)) {
+        carriedTunjanganJabatanMap.set(r.employee_id, toNumber(r.val));
+      }
+    }
+  }
+
   const contractReturnMap = new Map<number, number>();
   for (const row of contractReturnResult[0] as Array<{ employee_id: number; nominal: number | string }>) {
     contractReturnMap.set(row.employee_id, toNumber(row.nominal));
@@ -1046,7 +1068,14 @@ export async function getAdminPayrollSummarySheet(period?: {
           ? effectiveOverrideGajiPokok + monthlyRaise
           : dailyBaseSalary * workDays;
 
-    const positionAllowance = isFreelance ? 0 : toNumber(row.tunjangan_jabatan);
+    // Tunjangan jabatan efektif: pakai nilai periode ini bila > 0, kalau tidak carry dari
+    // periode terakhir yang terisi (menutup kasus clone yang men-set 0).
+    const currentTunjanganJabatan = toNumber(row.tunjangan_jabatan);
+    const effectiveTunjanganJabatan =
+      currentTunjanganJabatan > 0
+        ? currentTunjanganJabatan
+        : (carriedTunjanganJabatanMap.get(row.employee_id) ?? 0);
+    const positionAllowance = isFreelance ? 0 : effectiveTunjanganJabatan;
     const fixedMealAllowance = isFreelance ? 0 :
       (compUangMakan ||
       (presentDays > 0 ? toNumber(row.uang_makan) / presentDays : 0));
@@ -1242,7 +1271,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       contractReturn,
       netIncome,
       inputGajiPerDay: compGajiPokokPerHari,
-      inputTunjanganJabatan: toNumber(row.tunjangan_jabatan),
+      inputTunjanganJabatan: effectiveTunjanganJabatan,
       inputUangMakan: compUangMakan,
       inputSubsidi: compSubsidi,
       inputUangKerajinan: compUangKerajinan,

@@ -686,7 +686,7 @@ async function ensurePayrollPeriodClonedImpl(
         SELECT
           p.karyawan_id, ?, ?,
           ?, 0, 0, 0, 0,
-          0, 0, 0, 0, 0,
+          0, p.tunjangan_jabatan, 0, 0, 0,
           0, 0, 0, 0,
           0, 0, 0,
           0, 0, 0, 0, 'draft'
