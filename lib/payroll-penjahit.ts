@@ -186,6 +186,14 @@ export async function getPenjahitSheet(period?: {
   year?: number;
 }): Promise<PenjahitPayrollSummarySheet | null> {
   await Promise.all([ensurePayrollSupportTables(), ensureLoanSupportTables(), ensureContractReturnTable()]);
+  // Bersihkan jadwal potongan_kontrak yang tidak eligible / di luar window kontrak (stale),
+  // agar potongan kontrak penjahit konsisten dengan modul Potongan Kontrak.
+  try {
+    const { cleanupIneligibleContractSchedules } = await import("@/lib/contract-deductions");
+    await cleanupIneligibleContractSchedules();
+  } catch (err) {
+    console.error("[penjahit] cleanup contract schedules gagal:", err);
+  }
 
   const activePeriod = {
     month: period?.month ?? getActivePayrollPeriod().month,

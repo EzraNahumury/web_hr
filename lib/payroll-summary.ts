@@ -343,6 +343,14 @@ export async function getAdminPayrollSummarySheet(period?: {
   const placementFilter = options?.placementFilter?.trim();
   const excludePlacement = options?.excludePlacement?.trim();
   await Promise.all([ensurePayrollSupportTables(), ensureLoanSupportTables(), ensureReimbursementSchema(), ensureContractReturnTable()]);
+  // Bersihkan jadwal potongan_kontrak tidak eligible / di luar window kontrak (stale) supaya
+  // potongan kontrak di summary konsisten dengan modul Potongan Kontrak.
+  try {
+    const { cleanupIneligibleContractSchedules } = await import("@/lib/contract-deductions");
+    await cleanupIneligibleContractSchedules();
+  } catch (err) {
+    console.error("[summary] cleanup contract schedules gagal:", err);
+  }
   const activePeriod = {
     month: period?.month ?? getActivePayrollPeriod().month,
     year: period?.year ?? getActivePayrollPeriod().year,

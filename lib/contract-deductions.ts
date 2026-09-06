@@ -28,8 +28,11 @@ export function isContractDeductionEligible(
 }
 
 let ineligibleCleanupDone = false;
-// Hapus jadwal potongan_kontrak yang terlanjur terbuat untuk karyawan TIDAK eligible
-// (mis. tetap). Idempotent, jalan sekali per proses.
+// Bersihkan jadwal potongan_kontrak yang tidak valid. Idempotent, jalan sekali per proses.
+// (1) Karyawan TIDAK eligible (tetap/freelance/sales nasional/penempatan JNE).
+// (2) Baris DI LUAR window 5 bulan berdasarkan tanggal_kontrak (bulan kontrak + 1 .. + 5).
+//     Ini menghapus baris STALE dari tanggal_kontrak lama yang tidak ter-regenerate — mis.
+//     karyawan kontrak Agustus punya baris Agustus (harusnya mulai September). ym = tahun*12+bulan.
 export async function cleanupIneligibleContractSchedules(): Promise<void> {
   if (ineligibleCleanupDone) return;
   ineligibleCleanupDone = true;
@@ -40,6 +43,14 @@ export async function cleanupIneligibleContractSchedules(): Promise<void> {
        WHERE LOWER(COALESCE(k.status_kepegawaian, '')) IN ('tetap', 'freelance')
           OR LOWER(COALESCE(k.jabatan, '')) IN ('freelance', 'sales nasional')
           OR LOWER(COALESCE(k.penempatan, '')) = 'jne'`,
+    );
+    await pool.query(
+      `DELETE pk FROM potongan_kontrak pk
+       INNER JOIN karyawan k ON k.id = pk.karyawan_id
+       WHERE k.tanggal_kontrak IS NOT NULL
+         AND (pk.tahun * 12 + pk.bulan) NOT BETWEEN
+             (YEAR(k.tanggal_kontrak) * 12 + MONTH(k.tanggal_kontrak) + 1)
+             AND (YEAR(k.tanggal_kontrak) * 12 + MONTH(k.tanggal_kontrak) + 5)`,
     );
   } catch (err) {
     ineligibleCleanupDone = false;
