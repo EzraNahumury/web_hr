@@ -6,6 +6,7 @@ import {
   listContractDeductionEmployees,
   listContractDeductionPlans,
   setContractDeductionLastMonth,
+  setContractDeductionStartMonth,
   type ContractDeductionPayload,
 } from "@/lib/contract-deductions";
 
@@ -86,6 +87,31 @@ export async function POST(request: Request) {
         message: lastYm
           ? "Bulan potongan terakhir berhasil disimpan."
           : "Cap dihapus, jadwal potongan penuh dikembalikan.",
+        rows,
+      });
+    }
+
+    // Set "bulan potongan MULAI" (start override) untuk 1 karyawan (mis. payroll sudah jalan).
+    if (body.action === "set_start_month") {
+      const employeeId = parsePositiveInt(body.employeeId);
+      if (!employeeId) {
+        return NextResponse.json({ message: "Karyawan tidak valid." }, { status: 400 });
+      }
+      let startYm: number | null = null;
+      if (body.startMonth != null && body.startYear != null) {
+        const m = parsePositiveInt(body.startMonth);
+        const y = parsePositiveInt(body.startYear);
+        if (!m || !y || m > 12) {
+          return NextResponse.json({ message: "Bulan/tahun tidak valid." }, { status: 400 });
+        }
+        startYm = y * 100 + m;
+      }
+      await setContractDeductionStartMonth(employeeId, startYm);
+      const rows = await listContractDeductionPlans();
+      return NextResponse.json({
+        message: startYm
+          ? "Bulan potongan mulai berhasil disimpan."
+          : "Bulan mulai dikembalikan ke default (bulan kontrak + 1).",
         rows,
       });
     }

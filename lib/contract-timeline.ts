@@ -185,6 +185,48 @@ export function getFirstFiveContractPeriods(contractDate: string) {
   });
 }
 
+// 5 periode potongan mulai dari bulan tertentu (YYYYMM). Berbeda dgn getFirstFiveContractPeriods
+// (yang mulai bulan kontrak + 1), fungsi ini mulai TEPAT dari startYm — dipakai bila admin
+// meng-override "bulan mulai" potongan (mis. karyawan yang sudah terlanjur dipotong di payroll
+// dari bulan berbeda). sequence 1 = startYm itu sendiri.
+export function getContractPeriodsFromYm(startYm: number) {
+  const startYear = Math.floor(startYm / 100);
+  const startMonth = startYm % 100;
+  if (!startYear || startMonth < 1 || startMonth > 12) {
+    return [] satisfies ContractDeductionPeriod[];
+  }
+  return Array.from({ length: CONTRACT_DEDUCTION_DURATION_MONTHS }, (_, index) => {
+    const yearMonth = addMonthsToIsoDate(
+      `${startYear}-${`${startMonth}`.padStart(2, "0")}-01`,
+      index,
+    );
+    if (!yearMonth) {
+      throw new Error("Periode potongan kontrak tidak valid.");
+    }
+    const period = parseIsoDate(yearMonth);
+    if (!period) {
+      throw new Error("Periode potongan kontrak tidak valid.");
+    }
+    return {
+      sequence: index + 1,
+      month: period.month,
+      year: period.year,
+      monthLabel: new Intl.DateTimeFormat("id-ID", {
+        month: "long",
+        year: "numeric",
+        timeZone: "Asia/Jakarta",
+      }).format(new Date(Date.UTC(period.year, period.month - 1, 1))),
+    } satisfies ContractDeductionPeriod;
+  });
+}
+
+// Periode potongan efektif: bila startYm di-override -> mulai dari situ; kalau tidak -> default
+// (bulan kontrak + 1). Dipakai buildPlan & sync agar konsisten.
+export function getContractDeductionPeriods(contractDate: string, startYm?: number | null) {
+  if (startYm != null) return getContractPeriodsFromYm(startYm);
+  return getFirstFiveContractPeriods(contractDate);
+}
+
 export function isContractDeductionActive(
   contractDate: string,
   currentDate = getTodayInJakarta(),

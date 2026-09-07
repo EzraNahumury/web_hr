@@ -69,6 +69,42 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
     }
   }
 
+  // Set / hapus "bulan potongan MULAI" untuk satu karyawan (mis. payroll sudah jalan dari
+  // bulan berbeda). null = kembali ke default (bulan kontrak + 1).
+  async function applyStartMonth(
+    employeeId: number,
+    startMonth: number | null,
+    startYear: number | null,
+  ) {
+    setBusyId(employeeId);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/admin/contract-deductions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          startMonth != null && startYear != null
+            ? { action: "set_start_month", employeeId, startMonth, startYear }
+            : { action: "set_start_month", employeeId },
+        ),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        message?: string;
+        rows?: ContractDeductionPlanItem[];
+      };
+      if (!res.ok) {
+        setMsg({ type: "error", text: data.message ?? "Gagal menyimpan." });
+        return;
+      }
+      if (data.rows) setRows(data.rows);
+      setMsg({ type: "success", text: data.message ?? "Tersimpan." });
+    } catch {
+      setMsg({ type: "error", text: "Terjadi kesalahan jaringan." });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   const filteredRows = useMemo(() => {
     const keyword = search.trim().toLowerCase();
 
@@ -177,7 +213,8 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
             </p>
           ) : null}
           <p className="mt-2 text-xs text-[#9a8078]">
-            Kolom <b>Bulan Terakhir</b>: set bulan potongan terakhir bila karyawan resign — bulan setelahnya dihentikan &amp; potongan yang terlanjur tersimpan di payroll dinolkan otomatis.
+            Kolom <b>Bulan Mulai</b>: set bulan mulai dipotong (default = bulan kontrak + 1) — untuk kasus payroll yang sudah jalan dari bulan berbeda; jadwal 5 bulan digeser ke window itu.
+            {" "}Kolom <b>Bulan Terakhir</b>: set bulan potongan terakhir bila karyawan resign — bulan setelahnya dihentikan &amp; potongan yang terlanjur tersimpan di payroll dinolkan otomatis.
           </p>
         </div>
 
@@ -200,6 +237,7 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
                 <th className="px-6 py-4 font-semibold text-center">3</th>
                 <th className="px-6 py-4 font-semibold text-center">4</th>
                 <th className="px-6 py-4 font-semibold text-center">5</th>
+                <th className="px-6 py-4 font-semibold">Bulan Mulai</th>
                 <th className="px-6 py-4 font-semibold">Bulan Terakhir</th>
               </tr>
             </thead>
@@ -278,6 +316,44 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
                       );
                     })}
                     <td className="px-4 py-4">
+                      {(() => {
+                        const cd = row.contractDate ? new Date(`${row.contractDate}T00:00:00`) : null;
+                        if (!cd || Number.isNaN(cd.getTime())) {
+                          return <span className="text-xs text-[#b1948d]">-</span>;
+                        }
+                        const startOpts = Array.from({ length: 6 }, (_, i) => {
+                          const d = new Date(cd.getFullYear(), cd.getMonth() + i, 1);
+                          const ym = d.getFullYear() * 100 + (d.getMonth() + 1);
+                          const label = new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(d);
+                          return { ym, label };
+                        });
+                        return (
+                          <select
+                            value={row.firstDeductionYm != null ? String(row.firstDeductionYm) : ""}
+                            disabled={busyId === row.employeeId}
+                            onChange={(event) => {
+                              const v = event.target.value;
+                              if (!v) {
+                                applyStartMonth(row.employeeId, null, null);
+                                return;
+                              }
+                              const ym = Number(v);
+                              applyStartMonth(row.employeeId, ym % 100, Math.floor(ym / 100));
+                            }}
+                            className="min-w-[160px] rounded-xl border border-[#ead7ce] bg-white px-3 py-2 text-sm text-[#241716] outline-none focus:border-[#c8716d] disabled:opacity-50"
+                            title="Bulan mulai potongan kontrak (default: bulan kontrak + 1). Untuk kasus payroll yang sudah jalan dari bulan berbeda."
+                          >
+                            <option value="">Default (kontrak + 1)</option>
+                            {startOpts.map((o) => (
+                              <option key={o.ym} value={String(o.ym)}>
+                                mulai {o.label}
+                              </option>
+                            ))}
+                          </select>
+                        );
+                      })()}
+                    </td>
+                    <td className="px-4 py-4">
                       <select
                         value={row.lastDeductionYm != null ? String(row.lastDeductionYm) : ""}
                         disabled={busyId === row.employeeId}
@@ -311,7 +387,7 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={16} className="px-6 py-16 text-center">
+                  <td colSpan={17} className="px-6 py-16 text-center">
                     <p className="text-base font-semibold text-[#3b2723]">
                       Belum ada potongan kontrak aktif
                     </p>
