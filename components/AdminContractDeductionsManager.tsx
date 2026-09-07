@@ -316,42 +316,27 @@ export default function AdminContractDeductionsManager({ initialRows }: Props) {
                       );
                     })}
                     <td className="px-4 py-4">
-                      {(() => {
-                        const cd = row.contractDate ? new Date(`${row.contractDate}T00:00:00`) : null;
-                        if (!cd || Number.isNaN(cd.getTime())) {
-                          return <span className="text-xs text-[#b1948d]">-</span>;
+                      <input
+                        type="month"
+                        value={
+                          row.firstDeductionYm != null
+                            ? `${Math.floor(row.firstDeductionYm / 100)}-${String(row.firstDeductionYm % 100).padStart(2, "0")}`
+                            : ""
                         }
-                        const startOpts = Array.from({ length: 6 }, (_, i) => {
-                          const d = new Date(cd.getFullYear(), cd.getMonth() + i, 1);
-                          const ym = d.getFullYear() * 100 + (d.getMonth() + 1);
-                          const label = new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(d);
-                          return { ym, label };
-                        });
-                        return (
-                          <select
-                            value={row.firstDeductionYm != null ? String(row.firstDeductionYm) : ""}
-                            disabled={busyId === row.employeeId}
-                            onChange={(event) => {
-                              const v = event.target.value;
-                              if (!v) {
-                                applyStartMonth(row.employeeId, null, null);
-                                return;
-                              }
-                              const ym = Number(v);
-                              applyStartMonth(row.employeeId, ym % 100, Math.floor(ym / 100));
-                            }}
-                            className="min-w-[160px] rounded-xl border border-[#ead7ce] bg-white px-3 py-2 text-sm text-[#241716] outline-none focus:border-[#c8716d] disabled:opacity-50"
-                            title="Bulan mulai potongan kontrak (default: bulan kontrak + 1). Untuk kasus payroll yang sudah jalan dari bulan berbeda."
-                          >
-                            <option value="">Default (kontrak + 1)</option>
-                            {startOpts.map((o) => (
-                              <option key={o.ym} value={String(o.ym)}>
-                                mulai {o.label}
-                              </option>
-                            ))}
-                          </select>
-                        );
-                      })()}
+                        disabled={busyId === row.employeeId}
+                        onChange={(event) => {
+                          const v = event.target.value; // "YYYY-MM" atau "" (dihapus = default)
+                          if (!v) {
+                            applyStartMonth(row.employeeId, null, null);
+                            return;
+                          }
+                          const [y, m] = v.split("-").map(Number);
+                          if (y && m) applyStartMonth(row.employeeId, m, y);
+                        }}
+                        className="min-w-[160px] rounded-xl border border-[#ead7ce] bg-white px-3 py-2 text-sm text-[#241716] outline-none focus:border-[#c8716d] disabled:opacity-50"
+                        title="Bulan mulai potongan kontrak. Kosongkan (Hapus) = default: bulan kontrak + 1."
+                      />
+                      <div className="mt-1 text-[11px] text-[#9a8078]">Kosong = default (kontrak + 1)</div>
                     </td>
                     <td className="px-4 py-4">
                       <select
