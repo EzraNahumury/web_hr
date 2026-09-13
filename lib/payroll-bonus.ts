@@ -45,7 +45,8 @@ export type PayrollBonusType =
   | "host_live"
   | "marketplace"
   | "marketing"
-  | "advertiser";
+  | "advertiser"
+  | "umum";
 
 export type PayrollBonusEmployeeOption = {
   employeeId: number;
@@ -147,14 +148,21 @@ function inferBonusTypeFromSubDivision(
   return null;
 }
 
+// Payroll bonus kini berlaku untuk SEMUA karyawan aktif. Type spesifik (host_live, cs, dst)
+// dipakai sebagai kategori/divisi bila role/sub_divisi cocok; kalau tidak cocok jatuh ke
+// "umum" agar setiap karyawan aktif tetap punya divisi bonus (tidak pernah null lagi).
 function inferBonusType(
   role: string | null | undefined,
   subDivision: string | null | undefined,
-): PayrollBonusType | null {
-  return inferBonusTypeFromSubDivision(subDivision) ?? inferBonusTypeFromRole(role);
+): PayrollBonusType {
+  return (
+    inferBonusTypeFromSubDivision(subDivision) ??
+    inferBonusTypeFromRole(role) ??
+    "umum"
+  );
 }
 
-function getBonusTypeLabel(type: PayrollBonusType) {
+export function getBonusTypeLabel(type: PayrollBonusType) {
   switch (type) {
     case "sales":
       return "Sales";
@@ -172,6 +180,8 @@ function getBonusTypeLabel(type: PayrollBonusType) {
       return "Media Marketing";
     case "advertiser":
       return "Advertiser";
+    case "umum":
+      return "Umum";
     default:
       return type;
   }
@@ -196,7 +206,7 @@ export async function ensurePayrollBonusTable() {
           karyawan_id BIGINT UNSIGNED NOT NULL,
           periode_bulan TINYINT UNSIGNED NOT NULL,
           periode_tahun SMALLINT UNSIGNED NOT NULL,
-          bonus_type ENUM('sales', 'spv', 'manager', 'cs', 'host_live', 'marketplace', 'marketing', 'advertiser') NOT NULL,
+          bonus_type ENUM('sales', 'spv', 'manager', 'cs', 'host_live', 'marketplace', 'marketing', 'advertiser', 'umum') NOT NULL,
           nominal_bonus DECIMAL(14,2) NOT NULL DEFAULT 0.00,
           catatan VARCHAR(255) NULL,
           created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -217,7 +227,7 @@ export async function ensurePayrollBonusTable() {
   try {
     await pool.query(`
       ALTER TABLE payroll_bonus
-      MODIFY COLUMN bonus_type ENUM('sales', 'spv', 'manager', 'cs', 'host_live', 'marketplace', 'marketing', 'advertiser') NOT NULL
+      MODIFY COLUMN bonus_type ENUM('sales', 'spv', 'manager', 'cs', 'host_live', 'marketplace', 'marketing', 'advertiser', 'umum') NOT NULL
     `);
   } catch (error) {
     console.error("Migration warning payroll_bonus.bonus_type:", error);
@@ -240,22 +250,17 @@ export async function listPayrollBonusEmployeeOptions() {
     ORDER BY k.nama ASC
   `);
 
-  return rows
-    .map((row) => {
-      const bonusType = inferBonusType(row.jabatan, row.sub_divisi);
-      if (!bonusType) return null;
-
-      return {
-        employeeId: row.employee_id,
-        name: row.nama,
-        role: row.jabatan,
-        division: row.divisi,
-        department: row.departemen,
-        unit: row.unit,
-        bonusType,
-      } satisfies PayrollBonusEmployeeOption;
-    })
-    .filter(Boolean) as PayrollBonusEmployeeOption[];
+  // Semua karyawan aktif eligible payroll bonus. bonusType = kategori/divisi (umum bila
+  // role/sub_divisi tidak cocok kategori khusus).
+  return rows.map<PayrollBonusEmployeeOption>((row) => ({
+    employeeId: row.employee_id,
+    name: row.nama,
+    role: row.jabatan,
+    division: row.divisi,
+    department: row.departemen,
+    unit: row.unit,
+    bonusType: inferBonusType(row.jabatan, row.sub_divisi),
+  }));
 }
 
 export async function listPayrollBonusSheet(period?: PayrollBonusPeriodInput): Promise<PayrollBonusSheet | null> {
@@ -366,11 +371,8 @@ export async function upsertPayrollBonus(input: UpsertPayrollBonusInput, period?
     throw new Error("Karyawan tidak ditemukan.");
   }
 
-  const inferredType = inferBonusType(employee.jabatan, employee.sub_divisi);
-  const bonusType = input.bonusType ?? inferredType;
-  if (!bonusType) {
-    throw new Error("Karyawan ini tidak termasuk role payroll bonus.");
-  }
+  // Semua karyawan aktif eligible; type = kategori (umum bila tidak cocok kategori khusus).
+  const bonusType = input.bonusType ?? inferBonusType(employee.jabatan, employee.sub_divisi);
 
   await pool.query<ResultSetHeader>(
     `

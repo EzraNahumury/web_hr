@@ -38,7 +38,7 @@ export default async function AdminPayrollBonusPage({
   return (
     <AdminShell
       title="Payroll Bonus"
-      description="Kelola payroll bonus untuk Sales, SPV, Manager, CS, Host Live, Marketplace, Media Marketing, dan Advertiser. Data bonus ini terpisah dari payroll utama dan tidak masuk perhitungan finance."
+      description="Kelola payroll bonus untuk semua karyawan aktif. Tipe bonus terisi otomatis per divisi (Sales, SPV, Manager, CS, Host Live, Marketplace, Media Marketing, Advertiser, atau Umum). Data bonus ini terpisah dari payroll utama dan tidak masuk perhitungan finance."
       adminName={admin.fullName}
       adminEmail={admin.email}
       currentPath="/admin/payroll-bonus"

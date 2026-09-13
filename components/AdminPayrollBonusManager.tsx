@@ -204,7 +204,7 @@ export default function AdminPayrollBonusManager({
             />
           </label>
           <div className="rounded-[22px] bg-[#f5fbfb] px-4 py-3 text-sm text-[#47696b]">
-            Payroll bonus ini untuk Sales, SPV, Manager, CS, Host Live, Marketplace, Media Marketing, dan Advertiser, serta tidak ikut perhitungan finance.
+            Payroll bonus ini berlaku untuk semua karyawan aktif (tipe/divisi bonus terisi otomatis), serta tidak ikut perhitungan finance.
           </div>
         </div>
       </section>
@@ -224,7 +224,7 @@ export default function AdminPayrollBonusManager({
 
           <div className="mt-6 space-y-5">
             <label className="block space-y-2">
-              <span className="block text-[13px] font-semibold text-[#466668]">Nama Karyawan (Sales/SPV/Manager/CS/Host Live)</span>
+              <span className="block text-[13px] font-semibold text-[#466668]">Nama Karyawan (semua karyawan aktif)</span>
               <select
                 value={form.employeeId}
                 onChange={(event) => updateField("employeeId", event.target.value)}

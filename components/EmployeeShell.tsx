@@ -49,7 +49,7 @@ const baseMenuItems: MenuItem[] = [
   { label: "Status Pinjaman", href: "/employee/loans", description: "Sisa pinjaman dan cicilan" },
   { label: "Informasi Kontrak", href: "/employee/contract", description: "Kontrak dan potongan kerja" },
   { label: "Slip Gaji", href: "/employee/payslips", description: "Daftar slip gaji pribadi" },
-  { label: "Slip Bonus", href: "/employee/bonus-slips", description: "Daftar slip bonus pribadi" },
+  { label: "Slip Payroll Bonus", href: "/employee/bonus-slips", description: "Daftar slip payroll bonus pribadi" },
   { label: "Pengajuan Reimburse", href: "/employee/reimbursements", description: "Upload nota reimbursement" },
 ];
 

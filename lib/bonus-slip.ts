@@ -3,25 +3,9 @@ import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
 import {
   ensurePayrollBonusTable,
+  getBonusTypeLabel,
   type PayrollBonusType,
 } from "@/lib/payroll-bonus";
-
-function getBonusTypeLabel(type: PayrollBonusType) {
-  switch (type) {
-    case "sales":
-      return "Sales";
-    case "spv":
-      return "SPV";
-    case "manager":
-      return "Manager";
-    case "cs":
-      return "CS";
-    case "host_live":
-      return "Host Live";
-    default:
-      return type;
-  }
-}
 
 function toNumber(value: string | number | null | undefined) {
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
