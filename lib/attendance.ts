@@ -92,13 +92,28 @@ const SHIFT_START: Record<string, number> = {
 // built-in dari penimpaan saat merge shift custom.
 const BUILTIN_SHIFT_CODES = new Set(Object.keys(SHIFT_START));
 
-// Toleransi keterlambatan per shift. Jika lateMinutes <= tolerance maka dianggap tepat waktu.
-const SHIFT_TOLERANCE_MINUTES: Partial<Record<string, number>> = {
-  jne_pagi: 10,
-  jne_siang: 10,
-  jne_minggu: 10,
-  partime: 5, // toleransi 5 menit → telat bila masuk > 17:05
-};
+// Toleransi keterlambatan.
+// ATURAN (per permintaan): HANYA shift PAGI (semua varian yang mulai 08:30) yang dapat
+// toleransi keterlambatan, yaitu 2 menit. Semua shift lain (siang, lembur, JNE, partime,
+// ayres_siang, setengah_1, siang_sore, DAN semua shift custom) = 0 menit (telat begitu
+// masuk lewat jam mulai shift).
+// getShiftToleranceMinutes adalah SATU-SATUNYA sumber toleransi untuk perhitungan telat.
+const PAGI_TOLERANCE_SHIFTS = new Set<string>([
+  "pagi",
+  "pagi_full",
+  "pagi_short",
+  "setengah_2",
+]);
+const PAGI_TOLERANCE_MINUTES = 2;
+
+export function getShiftToleranceMinutes(shift: string | null | undefined): number {
+  return shift && PAGI_TOLERANCE_SHIFTS.has(shift) ? PAGI_TOLERANCE_MINUTES : 0;
+}
+
+// (Deprecated untuk perhitungan) Map lama per-shift — dipertahankan hanya agar merge shift
+// custom di ensureShiftDefsLoaded tidak berubah struktur. TIDAK lagi dipakai untuk hitung
+// telat; otoritas toleransi = getShiftToleranceMinutes.
+const SHIFT_TOLERANCE_MINUTES: Partial<Record<string, number>> = {};
 
 type Range = readonly [number, number];
 
@@ -261,7 +276,7 @@ export function isDurationUnderMinutes(
 export function isCheckInWithinOnTimeWindow(
   checkInTime: string | null | undefined,
   knownShift?: string | null,
-  toleranceMinutes = 5,
+  toleranceMinutes?: number,
 ): boolean {
   if (!checkInTime) return false;
   const candidate = knownShift && knownShift in SHIFT_START
@@ -270,7 +285,9 @@ export function isCheckInWithinOnTimeWindow(
   if (!candidate) return false;
   const mins = timeToMinutes(checkInTime);
   const start = SHIFT_START[candidate];
-  return mins > start && mins <= start + toleranceMinutes;
+  // Toleransi ikut aturan per-shift (pagi 2 menit, lainnya 0) kecuali dioverride eksplisit.
+  const tol = toleranceMinutes ?? getShiftToleranceMinutes(candidate);
+  return mins > start && mins <= start + tol;
 }
 
 // Shift pagi: kalau jam masuk sudah lewat 11:30, otomatis dihitung SETENGAH HARI
@@ -292,8 +309,8 @@ export function getShiftLateMinutes(time: string, shift: AttendanceShift): numbe
   if (start === undefined) return 0; // shift custom belum ter-load → jangan hitung telat asal
   const mins = timeToMinutes(time);
   const lateRaw = Math.max(mins - start, 0);
-  // Default toleransi 5 menit untuk semua shift; JNE tetap 10 menit lewat SHIFT_TOLERANCE_MINUTES override.
-  const tolerance = SHIFT_TOLERANCE_MINUTES[shift] ?? 5;
+  // Hanya shift pagi yang dapat toleransi (2 menit); shift lain 0 (telat begitu lewat jam mulai).
+  const tolerance = getShiftToleranceMinutes(shift);
   return lateRaw <= tolerance ? 0 : lateRaw;
 }
 
