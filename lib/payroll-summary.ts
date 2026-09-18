@@ -773,7 +773,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     // Aturan baru per 5 Juli 2026: telat/pulang-awal belum di-approve -> dianggap tidak bekerja (alfa).
     const unapproved =
       isAttendanceApprovalRuleActive(row.tanggal_iso) &&
-      row.butuh_approval === 1 &&
+      (row.butuh_approval === 1 || row.approval_status != null) &&
       row.approval_status !== "approved";
     // Setengah hari hanya berlaku untuk tanggal SEBELUM aturan baru (tanggal lama dibiarkan).
     const halfDayAllowed = isHalfDayRuleActive(row.tanggal_iso);

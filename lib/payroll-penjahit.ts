@@ -383,7 +383,7 @@ export async function getPenjahitSheet(period?: {
     // Telat/pulang-awal belum di-approve (per 5 Juli 2026) -> dianggap tidak bekerja (alfa).
     const unapproved =
       isAttendanceApprovalRuleActive(r.tanggal_iso) &&
-      r.butuh_approval === 1 &&
+      (r.butuh_approval === 1 || r.approval_status != null) &&
       r.approval_status !== "approved";
     // Setengah hari hanya berlaku untuk tanggal sebelum aturan baru (5 Juli 2026).
     const isHalf =

@@ -237,7 +237,7 @@ export async function getPartimeSheet(period?: {
     const codeUpper = (r.kode_absensi ?? "").trim().toUpperCase();
     const unapproved =
       isAttendanceApprovalRuleActive(r.tanggal_iso) &&
-      r.butuh_approval === 1 &&
+      (r.butuh_approval === 1 || r.approval_status != null) &&
       r.approval_status !== "approved";
     const halfDayAllowed = isHalfDayRuleActive(r.tanggal_iso);
     const timeHalf = isHalfDayByTime(

@@ -337,9 +337,12 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
           !row.jam_pulang &&
           (row.status_absensi === "hadir" || row.status_absensi === "setengah_hari"),
         recovered: Number(row.absen_dipulihkan ?? 0) === 1,
+        // Belum di-approve = tidak dihitung bekerja. Pakai approval_status sebagai sumber
+        // kebenaran (sama dgn modal detail); butuh_approval dipertahankan utk record legacy
+        // yang approval_status-nya masih NULL. Ini mencegah rekap & modal saling beda.
         needsApproval:
           isAttendanceApprovalRuleActive(row.attendance_date) &&
-          Number(row.butuh_approval ?? 0) === 1 &&
+          (Number(row.butuh_approval ?? 0) === 1 || row.approval_status != null) &&
           row.approval_status !== "approved",
         approvalStatus: row.approval_status ?? null,
         approvalJenis: row.approval_jenis ?? null,
