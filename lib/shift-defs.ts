@@ -150,9 +150,27 @@ export async function listShiftDefs(): Promise<ShiftDef[]> {
 }
 
 // Shift yang boleh dipilih untuk mengisi dropdown grup (built-in selectable + custom).
-export async function getSelectableShifts(): Promise<{ code: string; label: string }[]> {
+// Menyertakan jam (startMin/checkoutStartMin) supaya UI bisa menampilkan JAM LIVE dari
+// definisi shift — bukan hanya label teks yang jam-nya bisa basi.
+export type SelectableShift = {
+  code: string;
+  label: string;
+  startMin: number;
+  checkoutStartMin: number;
+  isLibur: boolean;
+};
+
+export async function getSelectableShifts(): Promise<SelectableShift[]> {
   const defs = await listShiftDefs();
-  return defs.filter((d) => d.isSelectable).map((d) => ({ code: d.code, label: d.label }));
+  return defs
+    .filter((d) => d.isSelectable)
+    .map((d) => ({
+      code: d.code,
+      label: d.label,
+      startMin: d.startMin,
+      checkoutStartMin: d.checkoutStartMin,
+      isLibur: d.isLibur,
+    }));
 }
 
 export async function getShiftLabelMap(): Promise<Map<string, string>> {

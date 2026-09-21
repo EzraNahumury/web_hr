@@ -24,14 +24,35 @@ type Group = {
   memberIds: number[];
 };
 
+type SelectableShift = {
+  code: string;
+  label: string;
+  startMin: number;
+  checkoutStartMin: number;
+  isLibur: boolean;
+};
+
 type Props = {
   initialGroups: Group[];
   roster: Roster[];
-  selectableShifts: { code: string; label: string }[];
+  selectableShifts: SelectableShift[];
   jabatanOptions: string[];
   departemenOptions: string[];
   penempatanOptions: string[];
 };
+
+function toTime(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+// Rentang jam LIVE dari definisi shift (mis. "13:00–21:00"). Kosong utk libur / jam belum diisi.
+function shiftTimeRange(s: SelectableShift | undefined): string {
+  if (!s || s.isLibur) return "";
+  if (!s.startMin && !s.checkoutStartMin) return "";
+  return `${toTime(s.startMin)}–${toTime(s.checkoutStartMin)}`;
+}
 
 type FormState = {
   id: number | null;
@@ -59,8 +80,8 @@ export default function AdminShiftGroups({
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const shiftLabel = useMemo(
-    () => new Map(selectableShifts.map((s) => [s.code, s.label] as const)),
+  const shiftByCode = useMemo(
+    () => new Map(selectableShifts.map((s) => [s.code, s] as const)),
     [selectableShifts],
   );
 
@@ -308,14 +329,19 @@ export default function AdminShiftGroups({
                     {targetLabel(g)}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    {g.shiftCodes.map((c) => (
-                      <span
-                        key={c}
-                        className="rounded-full border border-[#e2cfc7] bg-[#fff7f3] px-3 py-1 text-xs font-semibold text-[#7a6059]"
-                      >
-                        {shiftLabel.get(c) ?? c}
-                      </span>
-                    ))}
+                    {g.shiftCodes.map((c) => {
+                      const sc = shiftByCode.get(c);
+                      const range = shiftTimeRange(sc);
+                      return (
+                        <span
+                          key={c}
+                          className="rounded-full border border-[#e2cfc7] bg-[#fff7f3] px-3 py-1 text-xs font-semibold text-[#7a6059]"
+                        >
+                          {sc?.label ?? c}
+                          {range ? <span className="ml-1 font-normal text-[#a58a80]">· {range}</span> : null}
+                        </span>
+                      );
+                    })}
                   </div>
                   <p className="mt-2 text-xs text-[#9e7467]">
                     {g.targetType === "custom"
@@ -416,7 +442,12 @@ export default function AdminShiftGroups({
                       checked={form.shiftCodes.includes(s.code)}
                       onChange={() => toggleShift(s.code)}
                     />
-                    {s.label}
+                    <span>
+                      {s.label}
+                      {shiftTimeRange(s) ? (
+                        <span className="ml-1 text-[#a58a80]">· {shiftTimeRange(s)}</span>
+                      ) : null}
+                    </span>
                   </label>
                 ))}
               </div>
