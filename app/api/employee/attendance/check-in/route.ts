@@ -35,6 +35,7 @@ type AttendanceRow = RowDataPacket & {
   id: number;
   jam_masuk: Date | null;
   status_absensi: string | null;
+  foto_masuk: string | null;
 };
 
 type AttendanceRequestStatus =
@@ -161,15 +162,27 @@ export async function POST(request: Request) {
     }
 
     const [existingRows] = await pool.query<AttendanceRow[]>(
-      "SELECT id, jam_masuk, status_absensi FROM absensi WHERE karyawan_id = ? AND tanggal = ? LIMIT 1",
+      "SELECT id, jam_masuk, status_absensi, foto_masuk FROM absensi WHERE karyawan_id = ? AND tanggal = ? LIMIT 1",
       [employee.id, attendanceDate],
     );
 
-    if (existingRows[0]) {
+    const existing = existingRows[0];
+    // Placeholder "hadir" tanpa jam_masuk & tanpa foto (mis. dibuat admin lewat "Ubah Kode -> O",
+    // atau baris perjalanan dinas) membuat karyawan TER-KUNCI: check-in ditolak 409 dan check-out
+    // bilang "masuk belum tercatat". Baris kosong seperti ini boleh DILENGKAPI oleh check-in
+    // (di-UPDATE) selama karyawan lolos geofence + rentang shift. Baris nyata (ada jam/foto) atau
+    // status sakit/izin tetap diblokir.
+    const isCompletablePlaceholder =
+      !!existing &&
+      existing.status_absensi === "hadir" &&
+      !existing.jam_masuk &&
+      !existing.foto_masuk;
+
+    if (existing && !isCompletablePlaceholder) {
       return NextResponse.json(
         {
           message:
-            existingRows[0].status_absensi === "sakit"
+            existing.status_absensi === "sakit"
               ? "Laporan sakit hari ini sudah tercatat. Presensi masuk tidak bisa dilakukan lagi."
               : "Presensi hari ini sudah tercatat dan tidak bisa diubah lagi.",
         },
@@ -312,46 +325,86 @@ export async function POST(request: Request) {
       assignedApproverUserId = approver.assignedApproverUserId;
     }
 
-    await pool.query(
-      `
-        INSERT INTO absensi (
-          karyawan_id,
-          tanggal,
-          jam_masuk,
-          status_absensi,
-          kode_absensi,
-          shift,
-          foto_masuk,
-          latitude_masuk,
-          longitude_masuk,
-          terlambat_menit,
-          setengah_hari,
-          lembur_jam,
+    if (isCompletablePlaceholder && existing) {
+      // Lengkapi baris placeholder (dinas / kode-O manual) dengan data check-in nyata.
+      await pool.query(
+        `
+          UPDATE absensi SET
+            jam_masuk = ?,
+            status_absensi = ?,
+            kode_absensi = ?,
+            shift = ?,
+            foto_masuk = ?,
+            latitude_masuk = ?,
+            longitude_masuk = ?,
+            terlambat_menit = ?,
+            setengah_hari = 0,
+            keterangan = ?,
+            butuh_approval = ?,
+            approval_status = ?,
+            approval_jenis = ?,
+            assigned_approver_user_id = ?
+          WHERE id = ?
+        `,
+        [
+          attendanceTime,
+          attendanceStatus,
+          attendanceCode,
+          detectedShift,
+          photoPath,
+          attendanceLatitude,
+          attendanceLongitude,
+          lateMinutes,
           keterangan,
-          butuh_approval,
-          approval_status,
-          approval_jenis,
-          assigned_approver_user_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?)
-      `,
-      [
-        employee.id,
-        attendanceDate,
-        attendanceTime,
-        attendanceStatus,
-        attendanceCode,
-        detectedShift,
-        photoPath,
-        attendanceLatitude,
-        attendanceLongitude,
-        lateMinutes,
-        keterangan,
-        butuhApproval,
-        approvalStatus,
-        approvalJenis,
-        assignedApproverUserId,
-      ],
-    );
+          butuhApproval,
+          approvalStatus,
+          approvalJenis,
+          assignedApproverUserId,
+          existing.id,
+        ],
+      );
+    } else {
+      await pool.query(
+        `
+          INSERT INTO absensi (
+            karyawan_id,
+            tanggal,
+            jam_masuk,
+            status_absensi,
+            kode_absensi,
+            shift,
+            foto_masuk,
+            latitude_masuk,
+            longitude_masuk,
+            terlambat_menit,
+            setengah_hari,
+            lembur_jam,
+            keterangan,
+            butuh_approval,
+            approval_status,
+            approval_jenis,
+            assigned_approver_user_id
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?)
+        `,
+        [
+          employee.id,
+          attendanceDate,
+          attendanceTime,
+          attendanceStatus,
+          attendanceCode,
+          detectedShift,
+          photoPath,
+          attendanceLatitude,
+          attendanceLongitude,
+          lateMinutes,
+          keterangan,
+          butuhApproval,
+          approvalStatus,
+          approvalJenis,
+          assignedApproverUserId,
+        ],
+      );
+    }
 
     if (needsLateApproval) {
       return NextResponse.json({
