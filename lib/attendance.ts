@@ -93,21 +93,11 @@ const SHIFT_START: Record<string, number> = {
 const BUILTIN_SHIFT_CODES = new Set(Object.keys(SHIFT_START));
 
 // Toleransi keterlambatan.
-// ATURAN (per permintaan): HANYA shift PAGI (semua varian yang mulai 08:30) yang dapat
-// toleransi keterlambatan, yaitu 2 menit. Semua shift lain (siang, lembur, JNE, partime,
-// ayres_siang, setengah_1, siang_sore, DAN semua shift custom) = 0 menit (telat begitu
-// masuk lewat jam mulai shift).
+// ATURAN (per permintaan): TIDAK ADA toleransi untuk shift apa pun. Telat dihitung begitu
+// masuk lewat jam mulai shift (semua shift = 0 menit).
 // getShiftToleranceMinutes adalah SATU-SATUNYA sumber toleransi untuk perhitungan telat.
-const PAGI_TOLERANCE_SHIFTS = new Set<string>([
-  "pagi",
-  "pagi_full",
-  "pagi_short",
-  "setengah_2",
-]);
-const PAGI_TOLERANCE_MINUTES = 2;
-
-export function getShiftToleranceMinutes(shift: string | null | undefined): number {
-  return shift && PAGI_TOLERANCE_SHIFTS.has(shift) ? PAGI_TOLERANCE_MINUTES : 0;
+export function getShiftToleranceMinutes(_shift: string | null | undefined): number {
+  return 0;
 }
 
 // (Deprecated untuk perhitungan) Map lama per-shift — dipertahankan hanya agar merge shift
