@@ -1337,6 +1337,15 @@ export async function getAdminPayrollSummarySheet(period?: {
       mapped.totalSalaryBeforeDeduction = chPay;
       mapped.totalSalary = chPay;
       mapped.netIncome = chPay;
+    } else if (isSalesNasional) {
+      // Sales Nasional: gaji PENUH per bulan (TIDAK diprorata absensi). Karena mereka tidak
+      // presensi, presentDays = 0 -> totalBaseSalary (berbasis absensi) = 0, sehingga
+      // totalSalaryBeforeDeduction hanya berisi komponen non-base (mis. kendaraan saja).
+      // Samakan ke salesNasionalGross (gaji pokok + transport + bpjs + kendaraan + bonus),
+      // konsisten dengan Summary Sales Nasional & netIncome, agar Finance/THP export benar.
+      mapped.totalBaseSalary = monthlyBaseSalary;
+      mapped.totalSalaryBeforeDeduction = salesNasionalGross;
+      mapped.totalSalary = salesNasionalGross;
     }
 
     return mapped;
