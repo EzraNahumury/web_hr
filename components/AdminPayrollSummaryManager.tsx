@@ -218,6 +218,45 @@ export default function AdminPayrollSummaryManager({
     );
   }, [sheet, searchQuery]);
 
+  // Summary payroll dikelompokkan per UNIT lalu DIVISI (mulai 1 Okt 2026) agar mudah dibaca:
+  // tiap grup diawali baris header "UNIT — DIVISI", lalu staff di bawahnya (urut nama).
+  const groupedRows = useMemo(() => {
+    const norm = (v: string | null | undefined) => (v ?? "").toString().trim();
+    const sorted = [...filteredRows].sort((a, b) => {
+      const ua = norm(a.unit).toLowerCase();
+      const ub = norm(b.unit).toLowerCase();
+      if (ua !== ub) {
+        if (!ua) return 1;
+        if (!ub) return -1;
+        return ua.localeCompare(ub, "id");
+      }
+      const da = norm(a.division).toLowerCase();
+      const db = norm(b.division).toLowerCase();
+      if (da !== db) {
+        if (!da) return 1;
+        if (!db) return -1;
+        return da.localeCompare(db, "id");
+      }
+      return norm(a.name).localeCompare(norm(b.name), "id");
+    });
+    const out: (
+      | { type: "header"; key: string; unitLabel: string; divLabel: string }
+      | { type: "row"; row: AdminPayrollSummarySheetRow }
+    )[] = [];
+    let curKey: string | null = null;
+    for (const row of sorted) {
+      const unitLabel = norm(row.unit) || "Tanpa Unit";
+      const divLabel = norm(row.division) || "Tanpa Divisi";
+      const key = `${unitLabel}||${divLabel}`;
+      if (key !== curKey) {
+        out.push({ type: "header", key, unitLabel, divLabel });
+        curKey = key;
+      }
+      out.push({ type: "row", row });
+    }
+    return out;
+  }, [filteredRows]);
+
   const savedEmployeeIds = useMemo(
     () => new Set(sheet?.rows.map((row) => row.employeeId) ?? []),
     [sheet],
@@ -955,7 +994,18 @@ export default function AdminPayrollSummaryManager({
                 <tbody>
                   {filteredRows.length === 0 ? (
                     <tr><td colSpan={99} className="px-6 py-8 text-center text-sm text-[#87a6a8]">Tidak ada data yang cocok dengan pencarian.</td></tr>
-                  ) : filteredRows.map((row) => (
+                  ) : groupedRows.map((item) => {
+                    if (item.type === "header") {
+                      return (
+                        <tr key={`grp-${item.key}`} className="bg-[#eafafb]">
+                          <td colSpan={99} className="sticky left-0 z-10 border border-[#d7ecee] bg-[#eafafb] px-3 py-2.5 text-left text-[13px] font-bold uppercase tracking-[0.08em] text-[#0d7f86]">
+                            {item.unitLabel} — {item.divLabel}
+                          </td>
+                        </tr>
+                      );
+                    }
+                    const row = item.row;
+                    return (
                     <tr key={row.id} className="text-[#3a2b27] odd:bg-white even:bg-[#fcfefe]">
                       <td className="border border-[#d7ecee] px-3 py-3 text-center">{row.number}</td>
                       <td className="sticky left-0 z-10 border border-[#d7ecee] bg-white px-3 py-3 font-semibold uppercase text-[#241716]">{row.name}</td>
@@ -1045,7 +1095,8 @@ export default function AdminPayrollSummaryManager({
                         )}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

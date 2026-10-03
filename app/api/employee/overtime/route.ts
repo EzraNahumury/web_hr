@@ -84,6 +84,36 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Tidak boleh apply lembur yang BERTUMPUK waktunya dengan lembur lain di tanggal yang sama
+  // (kecuali yang sudah ditolak). Harus selesaikan lembur sebelumnya dulu; lembur lanjutan yang
+  // tidak overlap (mis. 17:00-23:00 lalu 23:00-24:00) tetap boleh. Overlap = mulai < akhirBaru
+  // DAN selesai > mulaiBaru (adjacency tepat di batas jam tidak dihitung overlap).
+  const newStartDt = toDateTimeString(tanggal, jamMulai);
+  const newEndDt = toDateTimeString(tanggal, jamSelesai);
+  const [overlapRows] = await pool.query<RowDataPacket[]>(
+    `
+      SELECT DATE_FORMAT(jam_mulai, '%H:%i') AS hm, DATE_FORMAT(jam_selesai, '%H:%i') AS hs
+      FROM lembur
+      WHERE karyawan_id = ?
+        AND tanggal = ?
+        AND status_approval <> 'rejected'
+        AND jam_mulai < ?
+        AND jam_selesai > ?
+      ORDER BY jam_mulai ASC
+      LIMIT 1
+    `,
+    [karyawanId, tanggal, newEndDt, newStartDt],
+  );
+  if (overlapRows[0]) {
+    const ex = overlapRows[0] as RowDataPacket & { hm: string; hs: string };
+    return NextResponse.json(
+      {
+        error: `Lembur bertumpuk dengan pengajuan sebelumnya (${ex.hm}-${ex.hs}) di tanggal yang sama. Selesaikan dulu lembur sebelumnya; lembur lanjutan hanya boleh setelah jam ${ex.hs}.`,
+      },
+      { status: 409 },
+    );
+  }
+
   const [employeeRows] = await pool.query<RowDataPacket[]>(
     "SELECT id, jabatan, divisi FROM karyawan WHERE id = ? LIMIT 1",
     [karyawanId],

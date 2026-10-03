@@ -1,9 +1,11 @@
 import { RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
-import { ensureAttendanceShiftSupport, isAttendanceApprovalRuleActive, isCheckInWithinOnTimeWindow, isDurationUnderMinutes, isEarlyLeaveByTime, isHalfDayByTime, isHalfDayRuleActive, PARTIME_MIN_WORK_MINUTES } from "@/lib/attendance";
+import { ensureAttendanceShiftSupport, getJakartaDate, isAttendanceApprovalRuleActive, isCheckInWithinOnTimeWindow, isDurationUnderMinutes, isEarlyLeaveByTime, isHalfDayByTime, isHalfDayRuleActive, PARTIME_MIN_WORK_MINUTES } from "@/lib/attendance";
 import { getEmployeeRemainingLoanTotal } from "@/lib/loans";
 import { getCombinedFinanceRows } from "@/lib/finance-rows";
 import { getAttendanceCodeStatusMap } from "@/lib/attendance-codes";
+import { computeAutoAlfaDates, enumerateDates } from "@/lib/auto-alfa";
+import { isSalesNasionalRole } from "@/lib/sales-roles";
 import {
   ensureJadwalKaryawanSchema,
   JADWAL_EFFECTIVE_FROM,
@@ -43,6 +45,8 @@ type AttendanceRow = RowDataPacket & {
   sub_divisi: string | null;
   departemen: string;
   status_kepegawaian: string | null;
+  is_shift: number | null;
+  tanggal_masuk_pertama: string | null;
   email: string;
   attendance_date: string | null;
   status_absensi: string | null;
@@ -102,6 +106,9 @@ type AttendanceSheetRow = {
   department: string;
   email: string;
   passwordLabel: string;
+  statusKepegawaian: string | null;
+  isShift: boolean;
+  joinDate: string | null;
   daily: Record<number, AttendanceDayDetail>;
 };
 
@@ -233,6 +240,8 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         k.sub_divisi,
         k.departemen,
         k.status_kepegawaian,
+        k.is_shift,
+        DATE_FORMAT(k.tanggal_masuk_pertama, '%Y-%m-%d') AS tanggal_masuk_pertama,
         u.email,
         DATE_FORMAT(a.tanggal, '%Y-%m-%d') AS attendance_date,
         a.status_absensi,
@@ -293,6 +302,9 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         department: row.departemen,
         email: row.email,
         passwordLabel: "Tersimpan",
+        statusKepegawaian: row.status_kepegawaian,
+        isShift: Number(row.is_shift ?? 0) === 1,
+        joinDate: row.tanggal_masuk_pertama,
         daily: {},
       });
     }
@@ -353,6 +365,8 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
   // Kumpulan (karyawan:hari) yang PUNYA jadwal di hari itu — dipakai agar hari Minggu
   // hanya auto-libur untuk karyawan yang TIDAK dijadwalkan (mis. JNE bisa kerja Minggu).
   const scheduledDays = new Set<string>();
+  // Map jadwal per karyawan (tanggal -> shift) utk hitung Auto-Alfa (hari kerja terjadwal absen).
+  const jadwalShiftByEmp = new Map<number, Map<string, string>>();
   if (endDate >= JADWAL_EFFECTIVE_FROM) {
     await ensureJadwalKaryawanSchema();
     const [jadwalRows] = await pool.query<
@@ -376,6 +390,12 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
       if (!row) continue;
       const day = Number(j.tanggal.split("-")[2]);
       scheduledDays.add(`${j.karyawan_id}:${day}`);
+      let jm = jadwalShiftByEmp.get(j.karyawan_id);
+      if (!jm) {
+        jm = new Map<string, string>();
+        jadwalShiftByEmp.set(j.karyawan_id, jm);
+      }
+      jm.set(j.tanggal, j.shift);
       if (j.shift === "libur" && !row.daily[day]) {
         row.daily[day] = {
           code: "L",
@@ -430,6 +450,64 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
           longitudeOut: null,
           lateMinutes: 0,
           note: "Libur (Minggu)",
+          isEarlyLeave: false,
+          isOnTimeWindow: false,
+          missingCheckout: false,
+          recovered: false,
+          needsApproval: false,
+          approvalStatus: null,
+          approvalJenis: null,
+        };
+      }
+    }
+  }
+
+  // Auto-Alfa (revisi per 1 Okt 2026): hari KERJA yang sudah lewat & tidak terisi absensi
+  // ditandai Alfa (A). Dikecualikan role non-presensi harian: freelance, sales nasional, partime.
+  // Konsisten dengan perhitungan payroll (lib/auto-alfa.ts dipakai di dua tempat).
+  {
+    const todayIso = getJakartaDate();
+    const periodDates = enumerateDates(startDate, endDate);
+    for (const row of byEmployee.values()) {
+      const statusKep = (row.statusKepegawaian ?? "").trim().toLowerCase();
+      const roleLower = (row.role ?? "").trim().toLowerCase();
+      const isExcludedRole =
+        statusKep === "freelance" ||
+        statusKep === "partime" ||
+        roleLower === "freelance" ||
+        isSalesNasionalRole(row.role);
+      if (isExcludedRole) continue;
+
+      const existing = new Set<string>();
+      for (const key of Object.keys(row.daily)) {
+        const dd = row.daily[Number(key)];
+        if (dd?.date) existing.add(dd.date);
+      }
+      const alfaDates = computeAutoAlfaDates({
+        periodDays: periodDates,
+        today: todayIso,
+        joinDate: row.joinDate,
+        isShift: row.isShift,
+        existingDates: existing,
+        jadwalShiftByDate: jadwalShiftByEmp.get(row.employeeId) ?? new Map<string, string>(),
+      });
+      for (const dIso of alfaDates) {
+        const day = Number(dIso.split("-")[2]);
+        if (row.daily[day]) continue;
+        row.daily[day] = {
+          code: "A",
+          date: dIso,
+          status: "alfa",
+          timeIn: null,
+          timeOut: null,
+          photoIn: null,
+          photoOut: null,
+          latitudeIn: null,
+          longitudeIn: null,
+          latitudeOut: null,
+          longitudeOut: null,
+          lateMinutes: 0,
+          note: "Alfa otomatis: tidak presensi",
           isEarlyLeave: false,
           isOnTimeWindow: false,
           missingCheckout: false,

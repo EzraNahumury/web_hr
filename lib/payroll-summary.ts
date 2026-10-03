@@ -31,7 +31,8 @@ import {
   ensureLoanSupportTables,
   getLoanDeductionRowsForPeriod,
 } from "@/lib/loans";
-import { isAttendanceApprovalRuleActive, isHalfDayByTime, isHalfDayRuleActive } from "@/lib/attendance";
+import { getJakartaDate, isAttendanceApprovalRuleActive, isHalfDayByTime, isHalfDayRuleActive } from "@/lib/attendance";
+import { computeAutoAlfaDates, enumerateDates } from "@/lib/auto-alfa";
 import {
   ensurePayrollPeriodCloned,
   ensurePayrollSupportTables,
@@ -61,6 +62,7 @@ type PayrollSheetBaseRow = RowDataPacket & {
   jabatan: string;
   divisi: string;
   sub_divisi: string | null;
+  is_shift: number | null;
   unit: string | null;
   departemen: string;
   pembagian_rekapan: string | null;
@@ -446,6 +448,7 @@ export async function getAdminPayrollSummarySheet(period?: {
         pei.gaji_pokok_per_jam AS raw_gaji_pokok_per_jam,
         NULL AS total_omzet_global,
         k.status_kepegawaian,
+        k.is_shift,
         k.kenaikan_tiap_tahun,
         DATE_FORMAT(k.tanggal_masuk_pertama, '%Y-%m-%d') AS tanggal_masuk_pertama
       FROM payroll p
@@ -728,6 +731,59 @@ export async function getAdminPayrollSummarySheet(period?: {
   for (const r of freelanceSheet.pengerjaan) addFreelanceTotal(r.employeeId, r.total);
   for (const r of freelanceSheet.harian) addFreelanceTotal(r.employeeId, r.total);
   for (const r of freelanceSheet.custom) addFreelanceTotal(r.employeeId, r.grandTotal);
+
+  // Auto-Alfa (revisi per 1 Okt 2026): hari kerja lewat tanpa absensi dihitung Alfa → uang
+  // kerajinan hangus. Konsisten dgn rekap absensi (lib/auto-alfa.ts). Freelance & sales nasional
+  // dikecualikan; partime & penjahit sudah tereksklusi dari query summary ini.
+  const [periodJadwalRows] = await pool.query<
+    (RowDataPacket & { employee_id: number; d: string; shift: string })[]
+  >(
+    `
+      SELECT karyawan_id AS employee_id, DATE_FORMAT(tanggal, '%Y-%m-%d') AS d, shift
+      FROM jadwal_karyawan
+      WHERE karyawan_id IN (${placeholders}) AND tanggal BETWEEN ? AND ?
+    `,
+    [...employeeIds, range.startSql, range.endSql],
+  );
+  const jadwalByEmp = new Map<number, Map<string, string>>();
+  for (const j of periodJadwalRows) {
+    let m = jadwalByEmp.get(j.employee_id);
+    if (!m) {
+      m = new Map<string, string>();
+      jadwalByEmp.set(j.employee_id, m);
+    }
+    m.set(j.d, j.shift);
+  }
+  const existingDatesByEmp = new Map<number, Set<string>>();
+  for (const r of attendanceResult[0]) {
+    let s = existingDatesByEmp.get(r.employee_id);
+    if (!s) {
+      s = new Set<string>();
+      existingDatesByEmp.set(r.employee_id, s);
+    }
+    s.add(r.tanggal_iso);
+  }
+  const autoAlfaByEmp = new Map<number, number>();
+  {
+    const todayIso = getJakartaDate();
+    const periodDates = enumerateDates(range.startSql, range.endSql);
+    for (const r of rows) {
+      const statusKep = (r.status_kepegawaian ?? "").trim().toLowerCase();
+      const roleLower = (r.jabatan ?? "").trim().toLowerCase();
+      if (statusKep === "freelance" || roleLower === "freelance" || isSalesNasionalRole(r.jabatan)) {
+        continue;
+      }
+      const alfa = computeAutoAlfaDates({
+        periodDays: periodDates,
+        today: todayIso,
+        joinDate: r.tanggal_masuk_pertama,
+        isShift: Number(r.is_shift ?? 0) === 1,
+        existingDates: existingDatesByEmp.get(r.employee_id) ?? new Set<string>(),
+        jadwalShiftByDate: jadwalByEmp.get(r.employee_id) ?? new Map<string, string>(),
+      });
+      if (alfa.length) autoAlfaByEmp.set(r.employee_id, alfa.length);
+    }
+  }
 
   const attendanceMap = new Map<
     number,
@@ -1105,7 +1161,7 @@ export async function getAdminPayrollSummarySheet(period?: {
     const vehicleAllowance = isFreelance ? 0 : (isSalesNasional ? toNumber(row.raw_kendaraan) : 0);
     const travelReimbursement = isFreelance ? 0 : (isSalesNasional ? (reimbursementMap.get(row.employee_id) ?? 0) : 0);
     const holidayDays = attendance.holiday;
-    const alfaCount = attendance.alfa;
+    const alfaCount = attendance.alfa + (autoAlfaByEmp.get(row.employee_id) ?? 0);
     // Cuti Hamil: hanya insentif kehadiran × 25 hari; komponen & potongan lain di-nol-kan.
     const isCutiHamil = !isFreelance && attendance.cutiHamil > 0;
     const isNewEmployee =
