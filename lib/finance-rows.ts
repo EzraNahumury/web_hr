@@ -278,6 +278,15 @@ async function computeCombinedFinanceRows(period?: {
     for (const pr of penjahitSheet.rows) {
       const meta = metaMap.get(pr.employeeId);
       const mapped = mapPenjahitRow(pr);
+      // Penjahit MINGGUAN: minggu 1-3 sudah dicairkan mingguan; nominal REAL yang dibayar
+      // Finance di akhir bulan = SISA (minggu4). Jadi THP/Finance/PDF pakai minggu4, bukan
+      // total sebulan. (Summary Penjahit sendiri tetap tampil rincian penuh.)
+      if (pr.tipePayroll === "mingguan" && pr.pencairan) {
+        const sisa = pr.pencairan.minggu4;
+        mapped.totalSalaryBeforeDeduction = sisa;
+        mapped.totalSalary = sisa;
+        mapped.netIncome = sisa;
+      }
       rows.push({
         ...mapped,
         unit: meta?.unit ?? mapped.unit,

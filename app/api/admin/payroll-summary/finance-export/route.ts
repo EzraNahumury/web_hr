@@ -96,15 +96,20 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Penjahit — penerimaan bersih.
+  // Penjahit — penerimaan bersih. Khusus penjahit MINGGUAN: minggu 1-3 sudah dicairkan
+  // mingguan, jadi nominal REAL yang dibayar Finance di akhir bulan = SISA (minggu4).
   if (penjahitSheet) {
     for (const r of penjahitSheet.rows) {
       if (seen.has(r.employeeId)) continue;
+      const takeHome =
+        r.tipePayroll === "mingguan" && r.pencairan
+          ? r.pencairan.minggu4
+          : r.penerimaanBersih;
       finance.push({
         name: r.nama,
         bank: r.bank || "-",
         accountNumber: r.noRekening || "-",
-        takeHome: Math.max(0, r.penerimaanBersih),
+        takeHome: Math.max(0, takeHome),
       });
       seen.add(r.employeeId);
     }
