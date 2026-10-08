@@ -289,6 +289,18 @@ export async function POST(request: Request) {
     const attendanceLatitude = requiresSelfie ? latitude : null;
     const attendanceLongitude = requiresSelfie ? longitude : null;
 
+    // Telat WAJIB isi keterangan (alasan) sebelum absen bisa dikirim — berlaku untuk SEMUA
+    // kasus telat (apa pun role & tanggal). Tanpa keterangan, presensi masuk ditolak.
+    if (lateMinutes > 0 && !keterangan?.trim()) {
+      return NextResponse.json(
+        {
+          message: "Kamu datang terlambat. Wajib mengisi keterangan (alasan) sebelum submit.",
+          needApproval: true,
+        },
+        { status: 400 },
+      );
+    }
+
     // ── Approval telat (aturan baru per 5 Juli 2026) ──
     // Kalau karyawan (non-freelance) datang TELAT pada tanggal >= aturan baru, maka
     // WAJIB isi keterangan (alasan) + pilih atasan tujuan. Record tersimpan pending;

@@ -9,6 +9,17 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
 
 ---
 
+## 9 Oktober 2026
+
+### Keterangan telat wajib diisi sebelum absen terkirim
+- Jika karyawan datang **terlambat** dan **tidak mengisi keterangan (alasan)**, presensi
+  masuk **ditolak** (tidak bisa dikirim) — harus isi keterangan dulu.
+- Berlaku untuk **semua** kasus telat (apa pun role & tanggal), sebagai guard tegas di
+  samping aturan approval telat yang sudah ada.
+- File: `app/api/employee/attendance/check-in/route.ts`.
+
+---
+
 ## 8 Oktober 2026
 
 ### 1. Auto-Alfa — pengecualian & guard resign
@@ -122,6 +133,7 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
 | Periode payroll | 26 bulan sebelumnya s/d 25 bulan terpilih | — |
 | Toleransi telat | 0 menit (semua shift) | 24 Sep 2026 |
 | Telat/pulang-awal | wajib approval atasan; belum approve = tidak dihitung bekerja | 5 Jul 2026 |
+| Keterangan telat | wajib diisi; tanpa keterangan, absen telat tidak bisa dikirim | 9 Okt 2026 |
 | Setengah hari | dihapus (tanggal lama dibiarkan) | 5 Jul 2026 |
 | Auto-Alfa | hari kerja lewat tanpa absensi = Alfa (dgn pengecualian) | 1 Okt 2026 |
 | Penjahit mingguan di Finance | minggu4 (sisa), minggu 1-3 dicairkan mingguan | 8 Okt 2026 |
