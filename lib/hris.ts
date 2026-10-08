@@ -4,7 +4,7 @@ import { ensureAttendanceShiftSupport, getJakartaDate, isAttendanceApprovalRuleA
 import { getEmployeeRemainingLoanTotal } from "@/lib/loans";
 import { getCombinedFinanceRows } from "@/lib/finance-rows";
 import { getAttendanceCodeStatusMap } from "@/lib/attendance-codes";
-import { computeAutoAlfaDates, enumerateDates } from "@/lib/auto-alfa";
+import { computeAutoAlfaDates, enumerateDates, isAutoAlfaExcludedNip } from "@/lib/auto-alfa";
 import { isSalesNasionalRole } from "@/lib/sales-roles";
 import {
   ensureJadwalKaryawanSchema,
@@ -47,6 +47,7 @@ type AttendanceRow = RowDataPacket & {
   status_kepegawaian: string | null;
   is_shift: number | null;
   tanggal_masuk_pertama: string | null;
+  tanggal_nonaktif: string | null;
   email: string;
   attendance_date: string | null;
   status_absensi: string | null;
@@ -109,6 +110,7 @@ type AttendanceSheetRow = {
   statusKepegawaian: string | null;
   isShift: boolean;
   joinDate: string | null;
+  resignDate: string | null;
   daily: Record<number, AttendanceDayDetail>;
 };
 
@@ -242,6 +244,7 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         k.status_kepegawaian,
         k.is_shift,
         DATE_FORMAT(k.tanggal_masuk_pertama, '%Y-%m-%d') AS tanggal_masuk_pertama,
+        DATE_FORMAT(k.tanggal_nonaktif, '%Y-%m-%d') AS tanggal_nonaktif,
         u.email,
         DATE_FORMAT(a.tanggal, '%Y-%m-%d') AS attendance_date,
         a.status_absensi,
@@ -305,6 +308,7 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         statusKepegawaian: row.status_kepegawaian,
         isShift: Number(row.is_shift ?? 0) === 1,
         joinDate: row.tanggal_masuk_pertama,
+        resignDate: row.tanggal_nonaktif,
         daily: {},
       });
     }
@@ -477,6 +481,7 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         roleLower === "freelance" ||
         isSalesNasionalRole(row.role);
       if (isExcludedRole) continue;
+      if (isAutoAlfaExcludedNip(row.nip)) continue; // owner & gaji per-kedatangan
 
       const existing = new Set<string>();
       for (const key of Object.keys(row.daily)) {
@@ -487,6 +492,7 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
         periodDays: periodDates,
         today: todayIso,
         joinDate: row.joinDate,
+        resignDate: row.resignDate,
         isShift: row.isShift,
         existingDates: existing,
         jadwalShiftByDate: jadwalShiftByEmp.get(row.employeeId) ?? new Map<string, string>(),

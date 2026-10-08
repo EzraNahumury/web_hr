@@ -17,6 +17,17 @@
 
 export const AUTO_ALFA_EFFECTIVE_FROM = "2026-10-01";
 
+// Karyawan yang DIKECUALIKAN dari auto-alfa (by NIP/no_karyawan) — mis. owner & karyawan yang
+// gajinya per kedatangan, yang memang tidak wajib hadir harian.
+export const AUTO_ALFA_EXCLUDED_NIPS = new Set<string>([
+  "EKS.MM.2026.0001", // Ezra Kristanto Nahumury
+  "FC.FC.2026.0001", // Rimansyah Rahadhyan
+]);
+
+export function isAutoAlfaExcludedNip(nip: string | null | undefined): boolean {
+  return !!nip && AUTO_ALFA_EXCLUDED_NIPS.has(nip.trim());
+}
+
 export function enumerateDates(startIso: string, endIso: string): string[] {
   const out: string[] = [];
   const start = Date.parse(`${startIso}T00:00:00Z`);
@@ -32,18 +43,20 @@ export type AutoAlfaParams = {
   periodDays: string[]; // daftar tanggal 'YYYY-MM-DD' dalam periode payroll
   today: string; // 'YYYY-MM-DD' (Asia/Jakarta)
   joinDate?: string | null; // tanggal masuk pertama 'YYYY-MM-DD'
+  resignDate?: string | null; // tanggal nonaktif/resign 'YYYY-MM-DD' (opsional)
   isShift: boolean; // karyawan berbasis shift (jadwal) atau tidak
   existingDates: Set<string>; // tanggal yang SUDAH ada record/daily entry
   jadwalShiftByDate: Map<string, string>; // tanggal -> shift terjadwal (termasuk 'libur')
 };
 
 export function computeAutoAlfaDates(params: AutoAlfaParams): string[] {
-  const { periodDays, today, joinDate, isShift, existingDates, jadwalShiftByDate } = params;
+  const { periodDays, today, joinDate, resignDate, isShift, existingDates, jadwalShiftByDate } = params;
   const out: string[] = [];
   for (const d of periodDays) {
     if (d < AUTO_ALFA_EFFECTIVE_FROM) continue; // belum berlaku
     if (d >= today) continue; // hanya hari yang sudah lewat
     if (joinDate && d < joinDate) continue; // sebelum masuk kerja
+    if (resignDate && d >= resignDate) continue; // pada/sesudah tgl nonaktif/resign
     if (existingDates.has(d)) continue; // sudah ada record (hadir/izin/sakit/libur/alfa/dll)
 
     const scheduled = jadwalShiftByDate.get(d);

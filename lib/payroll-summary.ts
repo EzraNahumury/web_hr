@@ -32,7 +32,7 @@ import {
   getLoanDeductionRowsForPeriod,
 } from "@/lib/loans";
 import { getJakartaDate, isAttendanceApprovalRuleActive, isHalfDayByTime, isHalfDayRuleActive } from "@/lib/attendance";
-import { computeAutoAlfaDates, enumerateDates } from "@/lib/auto-alfa";
+import { computeAutoAlfaDates, enumerateDates, isAutoAlfaExcludedNip } from "@/lib/auto-alfa";
 import {
   ensurePayrollPeriodCloned,
   ensurePayrollSupportTables,
@@ -63,6 +63,8 @@ type PayrollSheetBaseRow = RowDataPacket & {
   divisi: string;
   sub_divisi: string | null;
   is_shift: number | null;
+  no_karyawan: string | null;
+  tanggal_nonaktif: string | null;
   unit: string | null;
   departemen: string;
   pembagian_rekapan: string | null;
@@ -449,8 +451,10 @@ export async function getAdminPayrollSummarySheet(period?: {
         NULL AS total_omzet_global,
         k.status_kepegawaian,
         k.is_shift,
+        k.no_karyawan,
         k.kenaikan_tiap_tahun,
-        DATE_FORMAT(k.tanggal_masuk_pertama, '%Y-%m-%d') AS tanggal_masuk_pertama
+        DATE_FORMAT(k.tanggal_masuk_pertama, '%Y-%m-%d') AS tanggal_masuk_pertama,
+        DATE_FORMAT(k.tanggal_nonaktif, '%Y-%m-%d') AS tanggal_nonaktif
       FROM payroll p
       INNER JOIN karyawan k ON k.id = p.karyawan_id
       LEFT JOIN payroll_employee_input pei ON pei.payroll_id = p.id
@@ -773,10 +777,12 @@ export async function getAdminPayrollSummarySheet(period?: {
       if (statusKep === "freelance" || roleLower === "freelance" || isSalesNasionalRole(r.jabatan)) {
         continue;
       }
+      if (isAutoAlfaExcludedNip(r.no_karyawan)) continue; // owner & gaji per-kedatangan
       const alfa = computeAutoAlfaDates({
         periodDays: periodDates,
         today: todayIso,
         joinDate: r.tanggal_masuk_pertama,
+        resignDate: r.tanggal_nonaktif,
         isShift: Number(r.is_shift ?? 0) === 1,
         existingDates: existingDatesByEmp.get(r.employee_id) ?? new Set<string>(),
         jadwalShiftByDate: jadwalByEmp.get(r.employee_id) ?? new Map<string, string>(),
