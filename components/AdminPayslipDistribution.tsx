@@ -39,6 +39,11 @@ export default function AdminPayslipDistribution({ pending, logs, periodMonth, p
   const [isUndoing, setIsUndoing] = useState(false);
   const [selectedLogIds, setSelectedLogIds] = useState<Set<number>>(new Set());
   const currentMonthInputValue = `${periodYear}-${String(periodMonth).padStart(2, "0")}`;
+  const MONTHS = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+  ];
+  const periodLabel = `${MONTHS[periodMonth - 1] ?? ""} ${periodYear}`.trim();
 
   function handlePeriodChange(value: string) {
     const match = /^(\d{4})-(\d{2})$/.exec(value);
@@ -93,9 +98,9 @@ export default function AdminPayslipDistribution({ pending, logs, periodMonth, p
     }
 
     const ok = await confirm({
-      title: "Distribusikan slip gaji?",
-      description: `Slip gaji ${payrollIds.length} karyawan akan dikirim ke akun masing-masing dan bisa mereka lihat. Lanjutkan?`,
-      confirmLabel: "Ya, Distribusikan",
+      title: `Distribusikan slip gaji Periode ${periodLabel}?`,
+      description: `Slip gaji PERIODE ${periodLabel.toUpperCase()} untuk ${payrollIds.length} karyawan akan dikirim ke akun masing-masing dan bisa mereka lihat. Pastikan bulan sudah benar. Lanjutkan?`,
+      confirmLabel: `Ya, Distribusikan ${periodLabel}`,
       cancelLabel: "Batal",
     });
     if (!ok) return;

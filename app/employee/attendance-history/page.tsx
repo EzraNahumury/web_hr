@@ -64,12 +64,14 @@ export default async function EmployeeAttendanceHistoryPage({
               <th className="px-6 py-4">Jam Pulang</th>
               <th className="px-6 py-4">Status</th>
               <th className="px-6 py-4">Terlambat</th>
+              <th className="px-6 py-4">Keterangan</th>
+              <th className="px-6 py-4">Catatan Atasan</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-sm text-[#9e7467]">
+                <td colSpan={7} className="px-6 py-12 text-center text-sm text-[#9e7467]">
                   Belum ada absensi pada periode ini.
                 </td>
               </tr>
@@ -81,6 +83,16 @@ export default async function EmployeeAttendanceHistoryPage({
                   <td className="px-6 py-4">{row.jam_pulang || "-"}</td>
                   <td className="px-6 py-4">{row.status_absensi}</td>
                   <td className="px-6 py-4">{row.terlambat_menit ? `${row.terlambat_menit} menit` : "-"}</td>
+                  <td className="px-6 py-4 max-w-[220px] text-[#6b4f48]">{row.keterangan?.trim() || "-"}</td>
+                  <td className="px-6 py-4 max-w-[220px] text-[#6b4f48]">
+                    {row.catatan_atasan?.trim()
+                      ? row.catatan_atasan
+                      : row.approval_status === "approved"
+                        ? "Disetujui"
+                        : row.approval_status === "rejected"
+                          ? "Ditolak"
+                          : "-"}
+                  </td>
                 </tr>
               ))
             )}

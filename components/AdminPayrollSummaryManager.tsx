@@ -218,18 +218,11 @@ export default function AdminPayrollSummaryManager({
     );
   }, [sheet, searchQuery]);
 
-  // Summary payroll dikelompokkan per UNIT lalu DIVISI (mulai 1 Okt 2026) agar mudah dibaca:
-  // tiap grup diawali baris header "UNIT — DIVISI", lalu staff di bawahnya (urut nama).
+  // Summary payroll dikelompokkan per DIVISI (tanpa dibedakan unit ava/ayres): tiap grup
+  // diawali baris header nama divisi, lalu staff di bawahnya (urut nama).
   const groupedRows = useMemo(() => {
     const norm = (v: string | null | undefined) => (v ?? "").toString().trim();
     const sorted = [...filteredRows].sort((a, b) => {
-      const ua = norm(a.unit).toLowerCase();
-      const ub = norm(b.unit).toLowerCase();
-      if (ua !== ub) {
-        if (!ua) return 1;
-        if (!ub) return -1;
-        return ua.localeCompare(ub, "id");
-      }
       const da = norm(a.division).toLowerCase();
       const db = norm(b.division).toLowerCase();
       if (da !== db) {
@@ -240,16 +233,15 @@ export default function AdminPayrollSummaryManager({
       return norm(a.name).localeCompare(norm(b.name), "id");
     });
     const out: (
-      | { type: "header"; key: string; unitLabel: string; divLabel: string }
+      | { type: "header"; key: string; divLabel: string }
       | { type: "row"; row: AdminPayrollSummarySheetRow }
     )[] = [];
     let curKey: string | null = null;
     for (const row of sorted) {
-      const unitLabel = norm(row.unit) || "Tanpa Unit";
       const divLabel = norm(row.division) || "Tanpa Divisi";
-      const key = `${unitLabel}||${divLabel}`;
+      const key = divLabel.toLowerCase();
       if (key !== curKey) {
-        out.push({ type: "header", key, unitLabel, divLabel });
+        out.push({ type: "header", key, divLabel });
         curKey = key;
       }
       out.push({ type: "row", row });
@@ -999,7 +991,7 @@ export default function AdminPayrollSummaryManager({
                       return (
                         <tr key={`grp-${item.key}`} className="bg-[#eafafb]">
                           <td colSpan={99} className="sticky left-0 z-10 border border-[#d7ecee] bg-[#eafafb] px-3 py-2.5 text-left text-[13px] font-bold uppercase tracking-[0.08em] text-[#0d7f86]">
-                            {item.unitLabel} — {item.divLabel}
+                            {item.divLabel}
                           </td>
                         </tr>
                       );

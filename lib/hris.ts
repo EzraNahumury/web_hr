@@ -1619,6 +1619,9 @@ type EmployeeAttendanceHistoryRow = RowDataPacket & {
   jam_pulang: string | null;
   status_absensi: string;
   terlambat_menit: number;
+  keterangan: string | null;
+  catatan_atasan: string | null;
+  approval_status: string | null;
 };
 
 type EmployeeTodayAttendanceRow = RowDataPacket & {
@@ -1668,7 +1671,10 @@ export async function getEmployeeAttendanceHistory(
         DATE_FORMAT(jam_masuk, '%H:%i') AS jam_masuk,
         DATE_FORMAT(jam_pulang, '%H:%i') AS jam_pulang,
         status_absensi,
-        terlambat_menit
+        terlambat_menit,
+        keterangan,
+        catatan_atasan,
+        approval_status
       FROM absensi
       WHERE karyawan_id = ?
         ${range ? "AND tanggal BETWEEN ? AND ?" : ""}

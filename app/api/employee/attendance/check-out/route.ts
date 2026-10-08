@@ -247,7 +247,7 @@ export async function POST(request: Request) {
             latitude_pulang = ?,
             longitude_pulang = ?,
             shift = ?,
-            keterangan = ?
+            keterangan = COALESCE(NULLIF(?, ''), keterangan)
           WHERE id = ?
         `,
         [
@@ -269,7 +269,7 @@ export async function POST(request: Request) {
             foto_pulang = ?,
             latitude_pulang = ?,
             longitude_pulang = ?,
-            keterangan = ?
+            keterangan = COALESCE(NULLIF(?, ''), keterangan)
           WHERE id = ?
         `,
         [attendanceDateTime, photoPath, body.latitude, body.longitude, keterangan, attendance.id],
