@@ -473,6 +473,40 @@ export async function getAttendanceSheet(options: AttendanceSheetOptions = {}) {
     const todayIso = getJakartaDate();
     const periodDates = enumerateDates(startDate, endDate);
     for (const row of byEmployee.values()) {
+      // Karyawan KELUAR/resign (punya tanggal_nonaktif): hari pada/sesudah tanggal nonaktif
+      // ditandai kode "K" (Keluar) — BUKAN Alfa. Juga tidak ikut auto-alfa sama sekali
+      // (hari sebelum resign yang kosong dibiarkan "-", tidak dihukum alfa).
+      if (row.resignDate && row.resignDate <= endDate) {
+        for (const dIso of periodDates) {
+          if (dIso < row.resignDate) continue;
+          const day = Number(dIso.split("-")[2]);
+          if (row.daily[day]) continue; // sudah ada record nyata
+          row.daily[day] = {
+            code: "K",
+            date: dIso,
+            status: "keluar",
+            timeIn: null,
+            timeOut: null,
+            photoIn: null,
+            photoOut: null,
+            latitudeIn: null,
+            longitudeIn: null,
+            latitudeOut: null,
+            longitudeOut: null,
+            lateMinutes: 0,
+            note: "Karyawan keluar / nonaktif",
+            isEarlyLeave: false,
+            isOnTimeWindow: false,
+            missingCheckout: false,
+            recovered: false,
+            needsApproval: false,
+            approvalStatus: null,
+            approvalJenis: null,
+          };
+        }
+        continue;
+      }
+
       const statusKep = (row.statusKepegawaian ?? "").trim().toLowerCase();
       const roleLower = (row.role ?? "").trim().toLowerCase();
       const isExcludedRole =
@@ -549,6 +583,7 @@ export const ADMIN_ATTENDANCE_CODE_OPTIONS = [
   { code: "SX", label: "Sakit Tanpa Surat (SX)" },
   { code: "I", label: "Izin (I)" },
   { code: "A", label: "Alfa (A)" },
+  { code: "K", label: "Keluar (K)" },
   { code: "L", label: "Libur (L)" },
   { code: "LN", label: "Libur Nasional (LN)" },
   { code: "LP", label: "Libur Perusahaan (LP)" },

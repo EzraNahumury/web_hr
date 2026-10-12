@@ -778,6 +778,8 @@ export async function getAdminPayrollSummarySheet(period?: {
         continue;
       }
       if (isAutoAlfaExcludedNip(r.no_karyawan)) continue; // owner & gaji per-kedatangan
+      // Karyawan keluar/resign dalam periode ini: tidak di-auto-alfa (hari >= resign = "Keluar").
+      if (r.tanggal_nonaktif && r.tanggal_nonaktif <= range.endSql) continue;
       const alfa = computeAutoAlfaDates({
         periodDays: periodDates,
         today: todayIso,
