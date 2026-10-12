@@ -9,6 +9,36 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
 
 ---
 
+## 12 Oktober 2026
+
+### 1. Karyawan keluar/resign → kode "K" (Keluar), bukan Alfa
+- Rekap absensi: karyawan dengan `tanggal_nonaktif` (resign) dalam periode ini, hari
+  pada/sesudah tanggal nonaktif ditandai kode **"K" (Keluar)** — bukan Alfa, bukan "-".
+  Hari sebelum resign yang kosong tidak lagi di-auto-alfa.
+- Payroll: karyawan resign dalam periode dikecualikan dari auto-alfa (tidak kena potong
+  kerajinan dari auto-alfa). Tambah opsi kode "K" (Keluar) di daftar kode absensi.
+- **Penting:** penanda keluar diambil dari `tanggal_nonaktif` — set tanggal resign di Data
+  Karyawan agar kode "K" muncul.
+- File: `lib/hris.ts`, `lib/payroll-summary.ts`.
+
+### 2. Jabatan "bisa approve" via Master Jabatan (Leader approve lembur & absensi)
+- Di **Master Jabatan** ada tombol **"Jadikan approver"** per jabatan. Jabatan yang ditandai
+  (mis. Leader) boleh **approve lembur & absensi** — muncul sebagai pilihan atasan saat
+  karyawan apply, bisa buka menu & halaman Approval Lembur/Absensi, dan memproses approval
+  yang ditujukan padanya.
+- SPV/Manager tetap bisa approve seperti biasa (tidak berubah). Izin ini **tidak** memberi
+  akses Set Jadwal.
+- Teknis: kolom `can_approve` di `master_lookup` (self-migrating) + helper
+  `canApproveRequests()` dipakai seragam di route processing, halaman approval, menu
+  (EmployeeShell), serta daftar/validasi atasan (lembur & absensi).
+- File: `lib/master-lookup.ts`, `lib/approval-access.ts`, `components/AdminMasterLookup.tsx`,
+  `app/api/admin/master/route.ts`, `lib/attendance-approver.ts`, `lib/overtime.ts`,
+  `app/api/employee/overtime/route.ts`, `app/api/employee/{attendance,overtime}-approvals/[id]/route.ts`,
+  `app/employee/{attendance,overtime}-approvals/page.tsx`, `app/employee/layout.tsx`,
+  `components/EmployeeShell.tsx`, `components/EmployeeJadwalAccessContext.tsx`.
+
+---
+
 ## 9 Oktober 2026
 
 ### Keterangan telat wajib diisi sebelum absen terkirim

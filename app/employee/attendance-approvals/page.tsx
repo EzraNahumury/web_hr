@@ -5,7 +5,7 @@ import AttendanceApprovalManager from "@/components/AttendanceApprovalManager";
 import { requireEmployeeSession } from "@/lib/auth";
 import { getEmployeeByUserId } from "@/lib/hris";
 import { listAttendanceApprovalsForApprover } from "@/lib/attendance-approval";
-import { canSetSchedule } from "@/lib/scheduler-roles";
+import { canApproveRequests } from "@/lib/approval-access";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ export default async function EmployeeAttendanceApprovalsPage() {
   if (!employee) {
     return <main className="p-10">Data karyawan tidak ditemukan.</main>;
   }
-  if (!canSetSchedule(employee.jabatan)) {
+  if (!(await canApproveRequests(employee.jabatan))) {
     redirect("/employee");
   }
 

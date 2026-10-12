@@ -5,8 +5,8 @@ import { useEffect, useState } from "react";
 import LogoutButton from "@/components/LogoutButton";
 import PayrollGreetingModal from "@/components/PayrollGreetingModal";
 import { isSalesFieldRole } from "@/lib/sales-roles";
-import { canSetSchedule, isManager, isFinanceDept } from "@/lib/scheduler-roles";
-import { useEmployeeJadwalAccess } from "@/components/EmployeeJadwalAccessContext";
+import { isManager, isFinanceDept } from "@/lib/scheduler-roles";
+import { useEmployeeJadwalAccess, useEmployeeCanApprove } from "@/components/EmployeeJadwalAccessContext";
 
 type Props = {
   title: string;
@@ -111,6 +111,7 @@ function buildMenuItems(
   employeeName: string | undefined,
   canEditJadwal: boolean,
   department: string | null | undefined,
+  canApprove: boolean,
 ): MenuItem[] {
   let result: MenuItem[] = baseMenuItems;
 
@@ -131,8 +132,8 @@ function buildMenuItems(
   if (canEditJadwal || (employeeName && isJadwalWhitelistedByName(employeeName))) {
     extras.push(setJadwalMenu);
   }
-  // Approval hanya untuk atasan (supervisor/manager).
-  if (canSetSchedule(role)) {
+  // Approval untuk atasan (supervisor/manager) atau jabatan yang ditandai bisa approve (Leader).
+  if (canApprove) {
     extras.push(overtimeApprovalsMenu, attendanceApprovalsMenu);
   }
   // History Lembur (read-only, semua karyawan) khusus manager.
@@ -237,7 +238,8 @@ export default function EmployeeShell({
   children,
 }: Props) {
   const canEditJadwal = useEmployeeJadwalAccess();
-  const menuItems = buildMenuItems(employeeRole, employeeName, canEditJadwal, employeeDepartment);
+  const canApprove = useEmployeeCanApprove();
+  const menuItems = buildMenuItems(employeeRole, employeeName, canEditJadwal, employeeDepartment, canApprove);
   const initiallyOpen = menuItems.reduce<Record<string, boolean>>((acc, item) => {
     if (item.children) {
       acc[item.label] = item.children.some((sub) => sub.href === currentPath);

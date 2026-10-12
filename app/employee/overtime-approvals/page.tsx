@@ -5,7 +5,7 @@ import OvertimeApproverManager from "@/components/OvertimeApproverManager";
 import { requireEmployeeSession } from "@/lib/auth";
 import { getEmployeeByUserId } from "@/lib/hris";
 import { listOvertimeForApprover } from "@/lib/overtime";
-import { canSetSchedule } from "@/lib/scheduler-roles";
+import { canApproveRequests } from "@/lib/approval-access";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,7 @@ export default async function EmployeeOvertimeApprovalsPage() {
     return <main className="p-10">Data karyawan tidak ditemukan.</main>;
   }
 
-  if (!canSetSchedule(employee.jabatan)) {
+  if (!(await canApproveRequests(employee.jabatan))) {
     redirect("/employee");
   }
 

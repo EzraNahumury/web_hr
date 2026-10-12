@@ -2,14 +2,24 @@
 
 import { createContext, useContext } from "react";
 
-// True kalau karyawan yang login diberi izin akses Set Jadwal (jadwal_editor).
-const EmployeeJadwalAccessContext = createContext<boolean>(false);
+type EmployeeAccess = {
+  // True kalau karyawan yang login diberi izin akses Set Jadwal (jadwal_editor).
+  canEditJadwal: boolean;
+  // True kalau karyawan boleh approve lembur & absensi (SPV/Manager atau jabatan
+  // yang ditandai "bisa approve" di Master Jabatan, mis. Leader).
+  canApprove: boolean;
+};
+
+const EmployeeJadwalAccessContext = createContext<EmployeeAccess>({
+  canEditJadwal: false,
+  canApprove: false,
+});
 
 export function EmployeeJadwalAccessProvider({
   value,
   children,
 }: {
-  value: boolean;
+  value: EmployeeAccess;
   children: React.ReactNode;
 }) {
   return (
@@ -20,5 +30,9 @@ export function EmployeeJadwalAccessProvider({
 }
 
 export function useEmployeeJadwalAccess() {
-  return useContext(EmployeeJadwalAccessContext);
+  return useContext(EmployeeJadwalAccessContext).canEditJadwal;
+}
+
+export function useEmployeeCanApprove() {
+  return useContext(EmployeeJadwalAccessContext).canApprove;
 }

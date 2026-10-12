@@ -3,6 +3,7 @@ import { ResultSetHeader, RowDataPacket } from "mysql2";
 import { pool } from "@/lib/db";
 import { saveUploadedFile } from "@/lib/uploads";
 import { ensureOvertimeSchema, shouldRouteToAdmin } from "@/lib/overtime";
+import { getApprovalJabatanSet } from "@/lib/master-lookup";
 import { getCurrentEmployeeSession } from "@/lib/auth";
 import { getEmployeeByUserId, getEmployeeOvertime } from "@/lib/hris";
 import { jsonNoStore } from "@/lib/api-json";
@@ -163,7 +164,10 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    // Validate approver + dapatkan role-nya (untuk tentukan approval_flow)
+    // Validate approver + dapatkan role-nya (untuk tentukan approval_flow).
+    // Jabatan yang boleh approve (Master Jabatan, mis. Leader) + manager/supervisor bawaan.
+    const approvalRoles = [...(await getApprovalJabatanSet()), "manager", "supervisor"];
+    const rolePlaceholders = approvalRoles.map(() => "?").join(", ");
     const [approverRows] = await pool.query<RowDataPacket[]>(
       `
         SELECT
@@ -177,11 +181,11 @@ export async function POST(request: NextRequest) {
           AND (
             u.role = 'admin'
             OR u.role = 'spv'
-            OR (k.status_data = 'aktif' AND LOWER(COALESCE(k.jabatan, '')) IN ('manager', 'supervisor'))
+            OR (k.status_data = 'aktif' AND LOWER(COALESCE(k.jabatan, '')) IN (${rolePlaceholders}))
           )
         LIMIT 1
       `,
-      [assignedApproverUserId],
+      [assignedApproverUserId, ...approvalRoles],
     );
     if (!approverRows[0]) {
       return NextResponse.json(

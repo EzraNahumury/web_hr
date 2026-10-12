@@ -36,11 +36,21 @@ function ensureMasterLookupSchema(): Promise<void> {
           category VARCHAR(32) NOT NULL,
           value VARCHAR(150) NOT NULL,
           sort INT NOT NULL DEFAULT 0,
+          can_approve TINYINT(1) NOT NULL DEFAULT 0,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           UNIQUE KEY uq_master_cat_value (category, value),
           INDEX idx_master_category (category)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
+
+      // Kolom can_approve (jabatan yang boleh approve lembur & absensi) — tambah bila belum ada.
+      try {
+        await pool.query(
+          `ALTER TABLE master_lookup ADD COLUMN can_approve TINYINT(1) NOT NULL DEFAULT 0`,
+        );
+      } catch {
+        // kolom sudah ada — abaikan.
+      }
 
       // Seed per kategori bila kosong (agar dropdown tidak hilang di instalasi lama).
       for (const [category, cfg] of Object.entries(MASTER_CATEGORIES)) {
@@ -64,15 +74,37 @@ function ensureMasterLookupSchema(): Promise<void> {
   return masterSchemaReady;
 }
 
-export type MasterLookupItem = { id: number; value: string };
+export type MasterLookupItem = { id: number; value: string; canApprove: boolean };
 
 export async function listMasterLookup(category: MasterCategory): Promise<MasterLookupItem[]> {
   await ensureMasterLookupSchema();
-  const [rows] = await pool.query<(RowDataPacket & { id: number; value: string })[]>(
-    `SELECT id, value FROM master_lookup WHERE category = ? ORDER BY sort ASC, id ASC`,
+  const [rows] = await pool.query<(RowDataPacket & { id: number; value: string; can_approve: number })[]>(
+    `SELECT id, value, can_approve FROM master_lookup WHERE category = ? ORDER BY sort ASC, id ASC`,
     [category],
   );
-  return rows.map((r) => ({ id: r.id, value: r.value }));
+  return rows.map((r) => ({ id: r.id, value: r.value, canApprove: Number(r.can_approve ?? 0) === 1 }));
+}
+
+// Set jabatan (lowercase) yang boleh approve lembur & absensi (can_approve = 1).
+export async function getApprovalJabatanSet(): Promise<Set<string>> {
+  await ensureMasterLookupSchema();
+  const [rows] = await pool.query<(RowDataPacket & { value: string })[]>(
+    `SELECT value FROM master_lookup WHERE category = 'jabatan' AND can_approve = 1`,
+  );
+  return new Set(rows.map((r) => (r.value ?? "").trim().toLowerCase()));
+}
+
+// Toggle izin approve untuk 1 jabatan.
+export async function setMasterLookupApprove(
+  category: MasterCategory,
+  id: number,
+  canApprove: boolean,
+): Promise<void> {
+  await ensureMasterLookupSchema();
+  await pool.query<ResultSetHeader>(
+    `UPDATE master_lookup SET can_approve = ? WHERE id = ? AND category = ?`,
+    [canApprove ? 1 : 0, id, category],
+  );
 }
 
 // Semua opsi 5 kategori untuk getEmployeeLookups (fallback ke seed bila kosong).

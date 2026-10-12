@@ -6,6 +6,7 @@ import {
   deleteMasterLookup,
   isMasterCategory,
   listMasterLookup,
+  setMasterLookupApprove,
 } from "@/lib/master-lookup";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,7 @@ export async function POST(request: Request) {
       category?: unknown;
       value?: unknown;
       id?: unknown;
+      canApprove?: unknown;
     };
 
     const category = body.category;
@@ -36,6 +38,18 @@ export async function POST(request: Request) {
         return NextResponse.json({ message: "Item tidak valid." }, { status: 400 });
       }
       await deleteMasterLookup(category, id);
+    } else if (body.action === "set_approve") {
+      if (category !== "jabatan") {
+        return NextResponse.json(
+          { message: "Izin approve hanya untuk kategori Jabatan." },
+          { status: 400 },
+        );
+      }
+      const id = Number(body.id);
+      if (!Number.isInteger(id) || id <= 0) {
+        return NextResponse.json({ message: "Item tidak valid." }, { status: 400 });
+      }
+      await setMasterLookupApprove(category, id, body.canApprove === true);
     } else {
       return NextResponse.json({ message: "Aksi tidak dikenal." }, { status: 400 });
     }

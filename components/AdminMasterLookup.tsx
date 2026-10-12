@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 
-type Item = { id: number; value: string };
+type Item = { id: number; value: string; canApprove: boolean };
 
 type Props = {
   category: string;
@@ -108,15 +108,37 @@ export default function AdminMasterLookup({ category, categoryLabel, initialItem
                 <span className="text-sm text-[#241716]">
                   <span className="mr-3 text-[#b49a90]">{i + 1}.</span>
                   {it.value}
+                  {category === "jabatan" && it.canApprove ? (
+                    <span className="ml-2 rounded-full bg-[#def8eb] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#17603b]">
+                      Bisa approve
+                    </span>
+                  ) : null}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => post({ action: "delete", id: it.id })}
-                  disabled={isPending}
-                  className="rounded-full border border-[#f1c0c0] px-3 py-1.5 text-xs font-semibold text-[#b94040] transition hover:bg-[#fff2f0] disabled:opacity-50"
-                >
-                  Hapus
-                </button>
+                <div className="flex items-center gap-2">
+                  {category === "jabatan" ? (
+                    <button
+                      type="button"
+                      onClick={() => post({ action: "set_approve", id: it.id, canApprove: !it.canApprove })}
+                      disabled={isPending}
+                      title="Izinkan jabatan ini approve lembur & absensi"
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
+                        it.canApprove
+                          ? "border-[#0d7f86] bg-[#e6fbfb] text-[#0d7f86] hover:bg-[#d4f5f5]"
+                          : "border-[#e2cfc7] text-[#7a6059] hover:bg-[#fff2ec]"
+                      }`}
+                    >
+                      {it.canApprove ? "✓ Approve aktif" : "Jadikan approver"}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => post({ action: "delete", id: it.id })}
+                    disabled={isPending}
+                    className="rounded-full border border-[#f1c0c0] px-3 py-1.5 text-xs font-semibold text-[#b94040] transition hover:bg-[#fff2f0] disabled:opacity-50"
+                  >
+                    Hapus
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

@@ -1,6 +1,7 @@
 import type { RowDataPacket } from "mysql2";
 
 import { pool } from "@/lib/db";
+import { getApprovalJabatanSet } from "@/lib/master-lookup";
 
 let overtimeSchemaReady: Promise<void> | null = null;
 
@@ -140,7 +141,27 @@ export async function listEligibleApprovers(submitterRole?: string | null): Prom
     }));
   }
 
-  // Staff ajukan ke SPV, Supervisor, atau Admin
+  // Staff ajukan ke SPV, Supervisor, Admin, atau jabatan yang ditandai "bisa approve" di
+  // Master Jabatan (mis. Leader). Supervisor sudah punya klausa sendiri -> dikeluarkan dari daftar.
+  const approvalRoles = [...(await getApprovalJabatanSet())].filter(
+    (r) => r !== "supervisor" && r !== "manager",
+  );
+  const approvalClause = approvalRoles.length
+    ? `
+      UNION ALL
+
+      SELECT
+        u.id AS user_id,
+        u.nama,
+        k.jabatan AS role,
+        'karyawan' AS source
+      FROM karyawan k
+      INNER JOIN users u ON u.id = k.user_id
+      WHERE k.status_data = 'aktif'
+        AND u.status_aktif = 1
+        AND LOWER(COALESCE(k.jabatan, '')) IN (${approvalRoles.map(() => "?").join(", ")})
+    `
+    : "";
   const [rows] = await pool.query<ApproverRow[]>(
     `
       SELECT
@@ -167,9 +188,11 @@ export async function listEligibleApprovers(submitterRole?: string | null): Prom
       UNION ALL
 
       ${adminSelect}
+      ${approvalClause}
 
       ORDER BY nama ASC
     `,
+    approvalRoles,
   );
   return rows.map((row) => ({
     userId: row.user_id,
