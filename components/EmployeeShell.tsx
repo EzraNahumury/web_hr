@@ -47,6 +47,7 @@ const baseMenuItems: MenuItem[] = [
   { label: "Perjalanan Dinas", href: "/employee/business-trips", description: "Pengajuan dinas luar kota" },
   { label: "Data Lembur", href: "/employee/overtime", description: "Pengajuan dan status lembur" },
   { label: "Status Pinjaman", href: "/employee/loans", description: "Sisa pinjaman dan cicilan" },
+  { label: "Barang Dipinjam", href: "/employee/my-item-loans", description: "Barang perusahaan yang Anda pinjam" },
   { label: "Informasi Kontrak", href: "/employee/contract", description: "Kontrak dan potongan kerja" },
   { label: "Slip Gaji", href: "/employee/payslips", description: "Daftar slip gaji pribadi" },
   { label: "Slip Payroll Bonus", href: "/employee/bonus-slips", description: "Daftar slip payroll bonus pribadi" },
