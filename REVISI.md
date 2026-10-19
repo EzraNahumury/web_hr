@@ -9,6 +9,21 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
 
 ---
 
+## 19 Oktober 2026
+
+### Menu "Barang Dipinjam" di akun karyawan (hanya barang sendiri)
+- Karyawan kini bisa lihat daftar barang/aset perusahaan yang sedang **dia pinjam**
+  langsung di akun masing-masing (read-only), lewat menu baru **"Barang Dipinjam"**.
+- **Hanya** menampilkan record di mana karyawan tsb termasuk peminjam — **tidak** ada
+  barang yang dipinjam orang lain. Kolom "Dipinjam Bersama" menampilkan rekan yang
+  meminjam di record yang sama (bila pinjam bareng).
+- Menu lama **"Peminjaman Barang"** (daftar semua karyawan, read-only) tetap khusus
+  dept Finance; tidak berubah.
+- File: `app/employee/my-item-loans/page.tsx` (baru), `components/EmployeeShell.tsx`
+  (menu), pakai helper `listItemLoansByEmployee` di `lib/item-loans.ts`.
+
+---
+
 ## 12 Oktober 2026
 
 ### 1. Karyawan keluar/resign → kode "K" (Keluar), bukan Alfa
