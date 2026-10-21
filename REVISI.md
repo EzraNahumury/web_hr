@@ -9,6 +9,19 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
 
 ---
 
+## 21 Oktober 2026
+
+### Download Excel daftar Peminjaman Barang (admin)
+- Tombol **"Download Excel"** di header tabel halaman admin **Peminjaman Barang**
+  mengekspor seluruh catatan ke file `.xlsx` (kolom: No, Nama, NIP, Barang Dipinjam,
+  Tgl Peminjaman, Keterangan). Multi-karyawan & multi-barang per baris ditampilkan
+  multiline di dalam sel.
+- Tombol hanya muncul untuk **admin** (tidak di view read-only Finance).
+- File: `app/api/admin/item-loans/export/route.ts` (baru, ExcelJS),
+  `components/AdminItemLoansManager.tsx` (tombol).
+
+---
+
 ## 19 Oktober 2026
 
 ### Menu "Barang Dipinjam" di akun karyawan (hanya barang sendiri)
