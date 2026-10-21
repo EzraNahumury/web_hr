@@ -298,6 +298,19 @@ export default function AdminItemLoansManager({ initialRows, employees, readOnly
 
       {/* Table */}
       <section className="overflow-hidden rounded-[28px] border border-[#ead7ce] bg-white shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#efe0d8] bg-[#fff8f4] px-5 py-4">
+          <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-[#9e7467]">
+            Daftar Peminjaman ({rows.length})
+          </h3>
+          {!readOnly ? (
+            <a
+              href="/api/admin/item-loans/export"
+              className="inline-flex h-10 items-center gap-2 rounded-full bg-[#1f7a4d] px-5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(31,122,77,0.22)] transition hover:bg-[#1a6942]"
+            >
+              ⬇ Download Excel
+            </a>
+          ) : null}
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead>
