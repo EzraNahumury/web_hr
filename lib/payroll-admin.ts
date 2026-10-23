@@ -553,6 +553,48 @@ export async function ensurePayrollSupportTables(connection?: QueryExecutor) {
       console.error("Migration warning for freelance columns:", err);
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // Migrasi DATA satu-kali (ledger-guarded). `schema_migrations` memastikan tiap
+  // migrasi DML hanya dijalankan SEKALI (tidak di-rerun tiap boot), sehingga nilai
+  // yang di-set ulang secara manual setelah migrasi tidak akan ditimpa lagi.
+  // ---------------------------------------------------------------------------
+  await executor.query(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      mig_key VARCHAR(120) NOT NULL,
+      applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (mig_key)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `);
+
+  const runOnceMigration = async (key: string, run: () => Promise<void>) => {
+    const [rows] = await executor.query<RowDataPacket[]>(
+      `SELECT 1 FROM schema_migrations WHERE mig_key = ? LIMIT 1`,
+      [key],
+    );
+    if (rows.length > 0) return;
+    await run();
+    await executor.query(`INSERT IGNORE INTO schema_migrations (mig_key) VALUES (?)`, [key]);
+  };
+
+  // 2026-10-23: BPJS 25.000 -> 35.000 untuk SEMUA karyawan, periode >= Oktober 2026.
+  // Hanya baris yang BPJS-nya TEPAT 25.000; periode lama (<= Sep 2026) tidak diubah.
+  // Satu kolom pei.bpjs dipakai bareng Summary utama, Penjahit, dan Partime.
+  await runOnceMigration("bpjs-25k-to-35k-2026-10", async () => {
+    await executor.query(`
+      UPDATE payroll_employee_input pei
+      JOIN payroll p ON p.id = pei.payroll_id
+      SET pei.bpjs = 35000.00
+      WHERE pei.bpjs = 25000.00
+        AND (p.periode_tahun > 2026 OR (p.periode_tahun = 2026 AND p.periode_bulan >= 10))
+    `);
+    await executor.query(`
+      UPDATE payroll p
+      SET p.bpjs = 35000.00
+      WHERE p.bpjs = 25000.00
+        AND (p.periode_tahun > 2026 OR (p.periode_tahun = 2026 AND p.periode_bulan >= 10))
+    `);
+  });
 }
 
 export async function listPayrollEmployeeOptions(options?: {

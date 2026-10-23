@@ -11,17 +11,22 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
 
 ## 23 Oktober 2026
 
-### BPJS 25.000 → 35.000 untuk semua karyawan (data, bukan kode)
+### BPJS 25.000 → 35.000 untuk semua karyawan (migrasi otomatis)
 - Nilai BPJS **25.000 diubah jadi 35.000** untuk semua karyawan, mulai periode
-  **Oktober 2026 & ke depan** (periode lama tidak diubah).
+  **Oktober 2026 & ke depan** (periode lama ≤ Sep 2026 tidak diubah).
+- **Dijalankan otomatis saat deploy** — migrasi DML satu-kali (ledger-guarded) di
+  `ensurePayrollSupportTables`. Tabel `schema_migrations` memastikan migrasi hanya
+  jalan **sekali** (key `bpjs-25k-to-35k-2026-10`), jadi nilai yang di-set ulang
+  manual setelahnya tidak akan ditimpa.
 - **Penting:** BPJS disimpan sebagai **data per-karyawan per-periode** di DB
-  (`payroll_employee_input.bpjs`, fallback `payroll.bpjs`) — **bukan konstanta kode**,
-  jadi perubahan dilakukan via **UPDATE SQL di DB produksi**, bukan deploy aplikasi.
-  Satu kolom ini dipakai bareng oleh Summary utama, Penjahit, dan Partime.
+  (`payroll_employee_input.bpjs` + `payroll.bpjs`), bukan konstanta kode. Satu kolom
+  `pei.bpjs` dipakai bareng Summary utama, Penjahit, dan Partime → sekali migrasi,
+  ketiganya ikut.
+- Hanya baris yang BPJS-nya **tepat 25.000** yang diubah (custom/beda tak tersentuh).
 - Periode baru (via "+Tambah Payroll") otomatis clone nilai periode sebelumnya →
   setelah Okt 2026 = 35.000, bulan berikutnya ikut 35.000 otomatis.
-- Script: `db/migrations/2026-10-23-bpjs-25k-to-35k.sql` (preview → update transaksi →
-  verifikasi; hanya ubah baris yang BPJS-nya tepat 25.000).
+- File: `lib/payroll-admin.ts` (migrasi + ledger). Script SQL manual setara juga ada
+  di `db/migrations/2026-10-23-bpjs-25k-to-35k.sql` (referensi/cadangan).
 
 ---
 
