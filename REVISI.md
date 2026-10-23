@@ -9,6 +9,22 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
 
 ---
 
+## 23 Oktober 2026
+
+### BPJS 25.000 → 35.000 untuk semua karyawan (data, bukan kode)
+- Nilai BPJS **25.000 diubah jadi 35.000** untuk semua karyawan, mulai periode
+  **Oktober 2026 & ke depan** (periode lama tidak diubah).
+- **Penting:** BPJS disimpan sebagai **data per-karyawan per-periode** di DB
+  (`payroll_employee_input.bpjs`, fallback `payroll.bpjs`) — **bukan konstanta kode**,
+  jadi perubahan dilakukan via **UPDATE SQL di DB produksi**, bukan deploy aplikasi.
+  Satu kolom ini dipakai bareng oleh Summary utama, Penjahit, dan Partime.
+- Periode baru (via "+Tambah Payroll") otomatis clone nilai periode sebelumnya →
+  setelah Okt 2026 = 35.000, bulan berikutnya ikut 35.000 otomatis.
+- Script: `db/migrations/2026-10-23-bpjs-25k-to-35k.sql` (preview → update transaksi →
+  verifikasi; hanya ubah baris yang BPJS-nya tepat 25.000).
+
+---
+
 ## 21 Oktober 2026
 
 ### Download Excel daftar Peminjaman Barang (admin)
