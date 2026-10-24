@@ -9,6 +9,27 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
 
 ---
 
+## 24 Oktober 2026
+
+### Fix: Tunjangan Jabatan 0 di Summary Penjahit & Partime (carry tidak konsisten)
+- **Bug:** Summary **Penjahit** & **Partime** membaca `payroll.tunjangan_jabatan` apa adanya.
+  Kalau periode berjalan ter-set 0 (akibat clone lama / simpan form dengan field kosong),
+  tunjangan jabatan tampil **Rp 0** padahal periode sebelumnya ada nilainya. Summary utama
+  sudah punya "carry" (ambil nilai terakhir > 0) tapi Penjahit & Partime belum → **tidak
+  konsisten**, dan ikut salah di total gaji (karena tunjangan masuk perhitungan).
+- **Fix:** helper tunggal `getCarriedTunjanganJabatanMap()` di `lib/payroll-admin.ts` —
+  ambil `tunjangan_jabatan` TERAKHIR (> 0) dari periode ≤ periode ini per karyawan, dipakai
+  sebagai fallback bila periode ini 0. Dipakai **seragam** di Summary utama, Penjahit, dan
+  Partime (sumber kebenaran satu). Nilai efektif ini juga mengisi form edit
+  (`inputTunjanganJabatan`) → simpan ulang otomatis "menyembuhkan" data periode berjalan.
+- **Catatan penting:** kalau suatu karyawan **memang tidak pernah** punya tunjangan jabatan
+  di periode mana pun, tetap **Rp 0** (itu benar, bukan bug). Mis. di Summary utama FAISAL/
+  FARA/PIPIN/WARISAH = 0 karena memang tidak ada tunjangan jabatan — bukan bug.
+- File: `lib/payroll-admin.ts` (helper), `lib/payroll-summary.ts`, `lib/payroll-penjahit.ts`,
+  `lib/payroll-partime.ts`.
+
+---
+
 ## 23 Oktober 2026
 
 ### BPJS 25.000 → 35.000 untuk semua karyawan (migrasi otomatis)

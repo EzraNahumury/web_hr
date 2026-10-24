@@ -10,6 +10,7 @@ import {
   ensurePayrollPeriodCloned,
   ensurePayrollSupportTables,
   getActivePayrollPeriod,
+  getCarriedTunjanganJabatanMap,
   getPayrollDateRange,
 } from "@/lib/payroll-admin";
 
@@ -180,6 +181,13 @@ export async function getPartimeSheet(period?: {
   const employeeIds = rows.map((r) => r.employee_id);
   const placeholders = employeeIds.map(() => "?").join(",");
 
+  // Fallback tunjangan jabatan (ambil nilai terakhir > 0) — konsisten dgn Summary utama.
+  const carriedTunjanganJabatanMap = await getCarriedTunjanganJabatanMap(
+    employeeIds,
+    periodYear,
+    periodMonth,
+  );
+
   const [attendanceRows] = await pool.query<AttendanceRawRow[]>(
     `SELECT a.karyawan_id AS employee_id,
         DATE_FORMAT(a.tanggal, '%Y-%m-%d') AS tanggal_iso,
@@ -276,7 +284,8 @@ export async function getPartimeSheet(period?: {
       toNum(row.raw_gaji_per_hari) ||
       (toNum(row.gaji_pokok) > 0 ? toNum(row.gaji_pokok) / PARTIME_FIXED_DAYS : 0);
     const uangMakanPerHari = toNum(row.raw_uang_makan_per_hari);
-    const tunjanganJabatan = toNum(row.tunjangan_jabatan);
+    const tunjanganJabatan =
+      toNum(row.tunjangan_jabatan) || (carriedTunjanganJabatanMap.get(row.employee_id) ?? 0);
     const subsidi = toNum(row.raw_subsidi) || toNum(row.tunjangan_lain);
     const bpjs = toNum(row.raw_bpjs) || toNum(row.bpjs);
 

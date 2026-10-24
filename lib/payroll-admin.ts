@@ -597,6 +597,37 @@ export async function ensurePayrollSupportTables(connection?: QueryExecutor) {
   });
 }
 
+// Tunjangan Jabatan = nominal TETAP yang disimpan di kolom `payroll.tunjangan_jabatan`
+// (BUKAN di payroll_employee_input). Clone antar periode / simpan form dengan field kosong
+// bisa men-set 0 di periode berjalan, sehingga tunjangan "hilang". Helper ini mengambil
+// nilai tunjangan_jabatan TERAKHIR (> 0) dari periode <= periode ini per karyawan, dipakai
+// sebagai fallback bila periode ini bernilai 0. Dipakai SERAGAM oleh Summary utama,
+// Summary Penjahit, dan Summary Partime agar perilakunya identik (tidak ada yang 0 sendiri).
+export async function getCarriedTunjanganJabatanMap(
+  employeeIds: number[],
+  periodYear: number,
+  periodMonth: number,
+): Promise<Map<number, number>> {
+  const map = new Map<number, number>();
+  const ids = [...new Set(employeeIds.filter((n) => Number.isInteger(n) && n > 0))];
+  if (ids.length === 0) return map;
+  const placeholders = ids.map(() => "?").join(",");
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT p.karyawan_id AS employee_id, p.tunjangan_jabatan AS val
+     FROM payroll p
+     WHERE p.karyawan_id IN (${placeholders})
+       AND p.tunjangan_jabatan > 0
+       AND (p.periode_tahun * 100 + p.periode_bulan) <= ?
+     ORDER BY (p.periode_tahun * 100 + p.periode_bulan) DESC`,
+    [...ids, periodYear * 100 + periodMonth],
+  );
+  for (const r of rows as Array<{ employee_id: number; val: string | number }>) {
+    const id = Number(r.employee_id);
+    if (!map.has(id)) map.set(id, Number(r.val) || 0);
+  }
+  return map;
+}
+
 export async function listPayrollEmployeeOptions(options?: {
   placementFilter?: string;
   excludePlacement?: string;

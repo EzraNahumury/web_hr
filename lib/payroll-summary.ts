@@ -37,6 +37,7 @@ import {
   ensurePayrollPeriodCloned,
   ensurePayrollSupportTables,
   getActivePayrollPeriod,
+  getCarriedTunjanganJabatanMap,
   getOmzetGroupKeyForUnit,
   getPayrollDateRange,
   isSalesEmployeeFromValues,
@@ -682,26 +683,14 @@ export async function getAdminPayrollSummarySheet(period?: {
   }
 
   // Tunjangan Jabatan = nominal TETAP (disimpan di kolom payroll.tunjangan_jabatan, bukan pei).
-  // Clone antar periode dulu men-set 0, sehingga tunjangan jabatan hilang di periode berikutnya.
-  // Carry: ambil nilai tunjangan_jabatan TERAKHIR (> 0) dari periode <= periode ini per karyawan,
-  // dipakai bila periode ini masih 0. Membuatnya konsisten seperti nominal tetap lainnya.
-  const carriedTunjanganJabatanMap = new Map<number, number>();
-  {
-    const [carriedRows] = await pool.query<RowDataPacket[]>(
-      `SELECT p.karyawan_id AS employee_id, p.tunjangan_jabatan AS val
-       FROM payroll p
-       WHERE p.karyawan_id IN (${placeholders})
-         AND p.tunjangan_jabatan > 0
-         AND (p.periode_tahun * 100 + p.periode_bulan) <= ?
-       ORDER BY (p.periode_tahun * 100 + p.periode_bulan) DESC`,
-      [...employeeIds, periodYear * 100 + periodMonth],
-    );
-    for (const r of carriedRows as Array<{ employee_id: number; val: string | number }>) {
-      if (!carriedTunjanganJabatanMap.has(r.employee_id)) {
-        carriedTunjanganJabatanMap.set(r.employee_id, toNumber(r.val));
-      }
-    }
-  }
+  // Clone antar periode / simpan form kosong bisa men-set 0 → tunjangan hilang di periode ini.
+  // Carry: ambil nilai TERAKHIR (> 0) dari periode <= periode ini per karyawan, dipakai bila
+  // periode ini masih 0. Helper dipakai seragam di Summary utama, Penjahit, dan Partime.
+  const carriedTunjanganJabatanMap = await getCarriedTunjanganJabatanMap(
+    employeeIds,
+    periodYear,
+    periodMonth,
+  );
 
   const contractReturnMap = new Map<number, number>();
   for (const row of contractReturnResult[0] as Array<{ employee_id: number; nominal: number | string }>) {

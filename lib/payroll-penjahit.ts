@@ -22,6 +22,7 @@ import {
   ensurePayrollPeriodCloned,
   ensurePayrollSupportTables,
   getActivePayrollPeriod,
+  getCarriedTunjanganJabatanMap,
   getPayrollDateRange,
 } from "@/lib/payroll-admin";
 import { ensureContractReturnTable } from "@/lib/contract-returns";
@@ -260,6 +261,13 @@ export async function getPenjahitSheet(period?: {
     [periodMonth, periodYear, periodYear, periodMonth],
   );
 
+  // Fallback tunjangan jabatan (ambil nilai terakhir > 0) — konsisten dgn Summary utama.
+  const carriedTunjanganJabatanMap = await getCarriedTunjanganJabatanMap(
+    rows.map((r) => r.employee_id),
+    periodYear,
+    periodMonth,
+  );
+
   const periodLabel = new Intl.DateTimeFormat("id-ID", {
     month: "long",
     year: "numeric",
@@ -443,7 +451,8 @@ export async function getPenjahitSheet(period?: {
 
     const gajiPokokPerHari = toNum(row.raw_gaji_per_hari) || (hariKerja > 0 ? toNum(row.gaji_pokok) / hariKerja : 0);
     const gajiPokokMonthly = toNum(row.raw_override_gaji_pokok) || toNum(row.gaji_pokok) || gajiPokokPerHari * hariKerja;
-    const tunjanganJabatan = toNum(row.tunjangan_jabatan);
+    const tunjanganJabatan =
+      toNum(row.tunjangan_jabatan) || (carriedTunjanganJabatanMap.get(row.employee_id) ?? 0);
     const uangAbsensiPerHari = toNum(row.raw_uang_makan_per_hari);
     const uangKerajinanNominal = toNum(row.raw_uang_kerajinan) || Math.round(gajiPokokMonthly * 0.1);
     const bpjs = toNum(row.raw_bpjs);
