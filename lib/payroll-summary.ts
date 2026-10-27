@@ -1148,8 +1148,11 @@ export async function getAdminPayrollSummarySheet(period?: {
       (presentDays > 0 ? toNumber(row.uang_makan) / presentDays : 0));
     const subsidy = isFreelance ? 0 : (compSubsidi || toNumber(row.tunjangan_lain));
     // Uang kerajinan = OTOMATIS 10% gaji bulanan (gaji pokok bulanan), seperti Summary Penjahit.
-    // Dipaksa 10% (input manual uang_kerajinan diabaikan) untuk semua karyawan non-freelance.
-    const fixedDiligenceAllowance = isFreelance ? 0 : Math.round(monthlyBaseSalary * 0.1);
+    // Dipaksa 10% (input manual uang_kerajinan diabaikan) untuk karyawan non-freelance.
+    // KECUALI penempatan JNE: JNE TIDAK dapat uang kerajinan (= 0).
+    const isJnePlacement = (row.penempatan ?? "").trim().toLowerCase() === "jne";
+    const fixedDiligenceAllowance =
+      isFreelance || isJnePlacement ? 0 : Math.round(monthlyBaseSalary * 0.1);
     const bpjs = isFreelance ? 0 : (compBpjs || toNumber(row.bpjs));
     const performanceBonus = isFreelance ? 0 :
       (payrollType === "sales" && !isSalesNasional

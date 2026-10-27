@@ -11,6 +11,12 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
 
 ## 27 Oktober 2026
 
+### JNE TIDAK dapat uang kerajinan
+- Penempatan **JNE** dikecualikan dari uang kerajinan di Summary utama (= **0**), sama
+  seperti JNE juga tidak kena potongan kontrak. Aturan kerajinan 10% tetap berlaku untuk
+  non-freelance lain.
+- File: `lib/payroll-summary.ts` (`fixedDiligenceAllowance`, cek `isJnePlacement`).
+
 ### Partime TIDAK kena potongan kontrak (konsistenkan modul dengan Summary Partime)
 - **Bug:** karyawan **partime** muncul di modul **Potongan Kontrak** (dan Pengembalian
   Kontrak) dan dibuatkan jadwal potongan, padahal **Summary Partime tidak pernah memotong
