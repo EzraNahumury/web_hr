@@ -9,6 +9,24 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
 
 ---
 
+## 27 Oktober 2026
+
+### Bonus omzet: PIC = SPV, Leader = Staff
+- **Aturan baru:** faktor bonus omzet per jabatan — jabatan **PIC** (mis. "PIC RnD & QA")
+  mendapat faktor **sama dengan SPV (0.5)**; jabatan **Leader** (Leader Finishing/Sewing/
+  Production/Printing & Cutting, dll) mendapat faktor **sama dengan Staff (0.25)**.
+- Sebelumnya PIC & Leader tidak cocok tier mana pun → faktor 0 (tidak dapat bonus omzet).
+- **Tidak mengurangi bonus karyawan lain:** `omzetBonus = (bonusPool / jumlah karyawan
+  eligible) × faktor`. PIC & Leader sudah ikut dihitung di pembagi (karyawan aktif),
+  jadi memberi mereka faktor hanya menambah bagian mereka — bagian orang lain tetap.
+- **PPIC sengaja TIDAK termasuk** "PIC" (dibedakan via batas kata `\bpic\b`), karena PPIC
+  jabatan berbeda dan tidak disebut.
+- Hanya memengaruhi **Summary Payroll utama** (kolom Omzet). Modul "Payroll Bonus"
+  (slip terpisah) tidak berubah.
+- File: `lib/payroll-summary.ts` (`getOmzetFactor`).
+
+---
+
 ## 24 Oktober 2026
 
 ### Fix: Tunjangan Jabatan 0 di Summary Penjahit & Partime (carry tidak konsisten)

@@ -320,15 +320,24 @@ function getOmzetFactor(role: string | null | undefined, employmentStatus?: stri
     return 0.7;
   }
 
+  // Jabatan PIC (mis. "PIC RnD & QA") = faktor bonus omzet SAMA dengan SPV (0.5).
+  // Pakai batas kata \bpic\b agar "PPIC" (Production Planning) TIDAK ikut tertangkap.
   if (
     normalized.includes("supervisor") ||
     normalized.includes("admin") ||
-    normalized.includes("sales area")
+    normalized.includes("sales area") ||
+    /\bpic\b/.test(normalized)
   ) {
     return 0.5;
   }
 
-  if (normalized.includes("staff") || normalized.includes("staf")) {
+  // Jabatan Leader (Finishing/Sewing/Production/Printing & Cutting, dll) = faktor bonus
+  // omzet SAMA dengan Staff (0.25).
+  if (
+    normalized.includes("staff") ||
+    normalized.includes("staf") ||
+    normalized.includes("leader")
+  ) {
     return 0.25;
   }
 
