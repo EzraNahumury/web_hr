@@ -11,6 +11,38 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
 
 ## 27 Oktober 2026
 
+### Summary Payroll: urutkan Nama (Abjad / Divisi)
+- Tombol **"Urut: Divisi | Abjad (A–Z)"** di bar pencarian Summary Payroll utama.
+- **Divisi** (default): dikelompokkan per divisi (header per divisi, lalu urut nama) —
+  perilaku lama.
+- **Abjad (A–Z)**: daftar rata urut nama A–Z tanpa header divisi.
+- File: `components/AdminPayrollSummaryManager.tsx`.
+
+### Kenaikan gaji tahunan: anniversary tepat tanggal efektif = baseline
+- **Perbaikan aturan:** program kenaikan gaji tahunan (efektif 1 Jun 2026) kini hanya
+  menaikkan anniversary yang jatuh **SESUDAH** tanggal efektif. Anniversary **TEPAT** pada
+  1 Jun 2026 (mis. VINA AULIA ROZANI, masuk 1 Jun) = **baseline** → 2026 tetap gaji lama,
+  naik pertama Jun 2027.
+- Sebelumnya anniversary 1 Jun 2026 ikut naik di 2026 (cutoff baseline H-1 / 31 Mei) →
+  Vina tampil 3.400.000 padahal harusnya 3.300.000.
+- Fix: `raiseBaselineCutoff = RAISE_EFFECTIVE_FROM` (inklusif tanggal efektif). Memengaruhi
+  **gaji kontrak & insentif kehadiran** (keduanya kembali ke baseline untuk anniversary
+  1 Jun). Hanya karyawan ber-anniversary **tepat 1 Jun** yang terpengaruh; yang lain tetap.
+- File: `lib/payroll-summary.ts` (`raiseBaselineCutoff`).
+
+### Uang kerajinan Summary utama = 10% gaji bulanan (otomatis, dipaksa)
+- **Aturan baru:** di **Summary Payroll utama**, uang kerajinan dihitung **otomatis =
+  10% gaji bulanan** (gaji pokok bulanan), seperti Summary Penjahit.
+- **Dipaksa 10%** — input manual uang kerajinan (`pei.uang_kerajinan`) **diabaikan**.
+  Berlaku untuk **semua karyawan non-freelance** di summary ini.
+- Nominal kerajinan = `round(gaji_bulanan × 0.1)`. Uang kerajinan yang benar-benar
+  **dibayar** tetap bisa hangus bila ada masalah kedisiplinan (alfa/izin/sakit>2/sakit
+  tanpa surat) — aturan potongan absensi tidak berubah.
+- **Catatan dampak:** sales reguler (non-nasional) ikut dapat kerajinan 10% → THP bisa
+  naik. Sales **Nasional** THP-nya pakai gross tersendiri (tidak terpengaruh). Freelance
+  tidak dapat (tetap 0).
+- File: `lib/payroll-summary.ts` (`fixedDiligenceAllowance`).
+
 ### Koreksi uang makan/hari Humbelina 25.000 → 35.000 (migrasi otomatis)
 - Uang makan/hari **Humbelina Febriani Imlana Putri** (NIP `FC.FC.2024.0001`) dikoreksi
   **25.000 → 35.000**, periode **Oktober 2026 & ke depan**.

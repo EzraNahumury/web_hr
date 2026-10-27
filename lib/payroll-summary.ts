@@ -1011,7 +1011,6 @@ export async function getAdminPayrollSummarySheet(period?: {
     const compGajiPokokPerHari = toNumber(row.raw_gaji_pokok_per_hari);
     const compUangMakan = toNumber(row.raw_uang_makan_per_hari);
     const compSubsidi = toNumber(row.raw_subsidi);
-    const compUangKerajinan = toNumber(row.raw_uang_kerajinan);
     const compBpjs = toNumber(row.raw_bpjs);
     const compBonusPerforma = toNumber(row.raw_bonus_performa);
     // Gaji Kontrak efektif: carry dari periode ter-EDIT terbesar (is_manual) bila ada,
@@ -1091,20 +1090,18 @@ export async function getAdminPayrollSummarySheet(period?: {
     // EFEKTIF sejak RAISE_EFFECTIVE_FROM (1 Juni 2026) & pakai ANNIVERSARY ASLI (tanggal masuk):
     // completedYears = jumlah anniversary yang jatuh SESUDAH tanggal efektif, sampai AKHIR periode
     // (range.endSql). Anniversary pada/sebelum tanggal efektif = baseline (dikurangi), jadi:
-    //   - Anniversary Jan–Mei → 2026 masih baseline (TETAP), naik pertama 2027.
-    //   - Anniversary Jun–Des → naik mulai 2026 di bulan anniversary-nya.
+    //   - Anniversary 1 Jan – 1 Jun → 2026 masih baseline (TETAP), naik pertama 2027.
+    //     (Anniversary TEPAT 1 Jun = sama dgn tgl efektif → BASELINE, belum naik 2026.)
+    //   - Anniversary 2 Jun – 31 Des → naik mulai 2026 di bulan anniversary-nya.
     // Contoh: NARENDRA masuk 1 Sep 2023 → naik Sep 2026. Vina masuk 1 Jun 2024 → 2026 TETAP,
     // naik Jun 2027. Masuk Mar 2025 → 2026 TETAP, naik Mar 2027.
     const annualRaisePerYear = toNumber(row.kenaikan_tiap_tahun);
     const joinDate = row.tanggal_masuk_pertama;
-    // Baseline = anniversary yang jatuh SEBELUM tanggal efektif. Anniversary TEPAT pada tanggal
-    // efektif (mis. Vina masuk 1 Jun, efektif 1 Jun 2026) IKUT naik — jadi baseline dihitung
-    // sampai H-1 (mis. 31 Mei 2026).
-    const raiseBaselineCutoff = (() => {
-      const d = new Date(`${RAISE_EFFECTIVE_FROM}T00:00:00Z`);
-      d.setUTCDate(d.getUTCDate() - 1);
-      return d.toISOString().slice(0, 10);
-    })();
+    // Baseline = anniversary yang jatuh PADA ATAU SEBELUM tanggal efektif. Hanya anniversary
+    // SESUDAH (>) tanggal efektif yang naik. Anniversary TEPAT pada tanggal efektif (mis. Vina
+    // masuk 1 Jun, efektif 1 Jun 2026) = BASELINE: 2026 TETAP gaji lama, naik pertama di
+    // anniversary berikutnya (Jun 2027). Jadi cutoff baseline = tanggal efektif itu sendiri.
+    const raiseBaselineCutoff = RAISE_EFFECTIVE_FROM;
     const raiseBaselineYears = joinDate ? countCompletedYears(joinDate, raiseBaselineCutoff) : 0;
     const completedYears = joinDate
       ? Math.max(0, countCompletedYears(joinDate, range.endSql) - raiseBaselineYears)
@@ -1150,7 +1147,9 @@ export async function getAdminPayrollSummarySheet(period?: {
       (compUangMakan ||
       (presentDays > 0 ? toNumber(row.uang_makan) / presentDays : 0));
     const subsidy = isFreelance ? 0 : (compSubsidi || toNumber(row.tunjangan_lain));
-    const fixedDiligenceAllowance = isFreelance ? 0 : compUangKerajinan;
+    // Uang kerajinan = OTOMATIS 10% gaji bulanan (gaji pokok bulanan), seperti Summary Penjahit.
+    // Dipaksa 10% (input manual uang_kerajinan diabaikan) untuk semua karyawan non-freelance.
+    const fixedDiligenceAllowance = isFreelance ? 0 : Math.round(monthlyBaseSalary * 0.1);
     const bpjs = isFreelance ? 0 : (compBpjs || toNumber(row.bpjs));
     const performanceBonus = isFreelance ? 0 :
       (payrollType === "sales" && !isSalesNasional
@@ -1344,7 +1343,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       inputTunjanganJabatan: effectiveTunjanganJabatan,
       inputUangMakan: compUangMakan,
       inputSubsidi: compSubsidi,
-      inputUangKerajinan: compUangKerajinan,
+      inputUangKerajinan: fixedDiligenceAllowance,
       inputBpjs: compBpjs,
       inputBonusPerforma: compBonusPerforma,
       inputInsentif: toNumber(row.raw_insentif),

@@ -153,6 +153,7 @@ export default function AdminPayrollSummaryManager({
   );
   const [form, setForm] = useState<FormState>(emptyForm(""));
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortMode, setSortMode] = useState<"divisi" | "abjad">("divisi");
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingFinance, setIsExportingFinance] = useState(false);
   const [isExportingGaji, setIsExportingGaji] = useState(false);
@@ -218,10 +219,23 @@ export default function AdminPayrollSummaryManager({
     );
   }, [sheet, searchQuery]);
 
-  // Summary payroll dikelompokkan per DIVISI (tanpa dibedakan unit ava/ayres): tiap grup
-  // diawali baris header nama divisi, lalu staff di bawahnya (urut nama).
+  // Urutan baris: "divisi" = dikelompokkan per DIVISI (header per divisi, lalu urut nama),
+  // "abjad" = daftar rata urut nama A–Z (tanpa header divisi).
   const groupedRows = useMemo(() => {
     const norm = (v: string | null | undefined) => (v ?? "").toString().trim();
+    const out: (
+      | { type: "header"; key: string; divLabel: string }
+      | { type: "row"; row: AdminPayrollSummarySheetRow }
+    )[] = [];
+
+    if (sortMode === "abjad") {
+      const sorted = [...filteredRows].sort((a, b) =>
+        norm(a.name).localeCompare(norm(b.name), "id"),
+      );
+      for (const row of sorted) out.push({ type: "row", row });
+      return out;
+    }
+
     const sorted = [...filteredRows].sort((a, b) => {
       const da = norm(a.division).toLowerCase();
       const db = norm(b.division).toLowerCase();
@@ -232,10 +246,6 @@ export default function AdminPayrollSummaryManager({
       }
       return norm(a.name).localeCompare(norm(b.name), "id");
     });
-    const out: (
-      | { type: "header"; key: string; divLabel: string }
-      | { type: "row"; row: AdminPayrollSummarySheetRow }
-    )[] = [];
     let curKey: string | null = null;
     for (const row of sorted) {
       const divLabel = norm(row.division) || "Tanpa Divisi";
@@ -247,7 +257,7 @@ export default function AdminPayrollSummaryManager({
       out.push({ type: "row", row });
     }
     return out;
-  }, [filteredRows]);
+  }, [filteredRows, sortMode]);
 
   const savedEmployeeIds = useMemo(
     () => new Set(sheet?.rows.map((row) => row.employeeId) ?? []),
@@ -918,6 +928,23 @@ export default function AdminPayrollSummaryManager({
                 className="w-full bg-transparent text-sm text-[#1d3f42] outline-none placeholder:text-[#87a6a8]"
               />
               {searchQuery ? <button type="button" onClick={() => setSearchQuery("")} className="shrink-0 text-xs font-semibold text-[#a16f63] hover:text-[#7a3f35]">Hapus</button> : null}
+              <div className="ml-auto flex shrink-0 items-center gap-1 rounded-full border border-[#cdeef0] bg-[#f2fbfc] p-0.5 text-xs font-semibold">
+                <span className="px-2 text-[#5f8f93]">Urut:</span>
+                <button
+                  type="button"
+                  onClick={() => setSortMode("divisi")}
+                  className={`rounded-full px-3 py-1.5 transition ${sortMode === "divisi" ? "bg-[#19d7df] text-[#062e31] shadow-sm" : "text-[#4a7a7e] hover:bg-[#e3f6f7]"}`}
+                >
+                  Divisi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSortMode("abjad")}
+                  className={`rounded-full px-3 py-1.5 transition ${sortMode === "abjad" ? "bg-[#19d7df] text-[#062e31] shadow-sm" : "text-[#4a7a7e] hover:bg-[#e3f6f7]"}`}
+                >
+                  Abjad (A–Z)
+                </button>
+              </div>
             </div>
             <div className="overflow-auto [-webkit-overflow-scrolling:touch] max-h-[calc(100dvh-200px)] lg:max-h-none lg:min-h-0 lg:flex-1">
               <table className="min-w-[3960px] border-collapse text-left text-sm text-[#1d1d1d]">
