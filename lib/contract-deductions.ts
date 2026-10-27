@@ -11,8 +11,9 @@ import { pool } from "@/lib/db";
 import { getActivePayrollPeriod } from "@/lib/payroll-admin";
 
 // Kelayakan potongan kontrak (deposit 5 bulan). Konsisten di modul Potongan Kontrak,
-// Pengembalian Kontrak, dan pembuatan jadwal. TETAP & FREELANCE & Sales Nasional &
-// penempatan JNE TIDAK kena.
+// Pengembalian Kontrak, dan pembuatan jadwal. TETAP & FREELANCE & PARTIME & Sales Nasional &
+// penempatan JNE TIDAK kena. (Partime: Summary Partime tidak pernah memotong kontrak, jadi
+// modul ini juga tidak boleh menjadwalkan potongan kontrak untuk partime — konsisten.)
 export function isContractDeductionEligible(
   statusKepegawaian: string | null,
   jabatan: string | null,
@@ -21,7 +22,7 @@ export function isContractDeductionEligible(
   const s = (statusKepegawaian ?? "").trim().toLowerCase();
   const j = (jabatan ?? "").trim().toLowerCase();
   const p = (penempatan ?? "").trim().toLowerCase();
-  if (s === "tetap" || s === "freelance") return false;
+  if (s === "tetap" || s === "freelance" || s === "partime") return false;
   if (j === "freelance" || j === "sales nasional") return false;
   if (p === "jne") return false;
   return true;
@@ -29,7 +30,7 @@ export function isContractDeductionEligible(
 
 let ineligibleCleanupDone = false;
 // Bersihkan jadwal potongan_kontrak yang tidak valid. Idempotent, jalan sekali per proses.
-// (1) Karyawan TIDAK eligible (tetap/freelance/sales nasional/penempatan JNE).
+// (1) Karyawan TIDAK eligible (tetap/freelance/partime/sales nasional/penempatan JNE).
 // (2) Baris DI LUAR window 5 bulan berdasarkan tanggal_kontrak (bulan kontrak + 1 .. + 5).
 //     Ini menghapus baris STALE dari tanggal_kontrak lama yang tidak ter-regenerate — mis.
 //     karyawan kontrak Agustus punya baris Agustus (harusnya mulai September). ym = tahun*12+bulan.
@@ -41,7 +42,7 @@ export async function cleanupIneligibleContractSchedules(): Promise<void> {
     await pool.query(
       `DELETE pk FROM potongan_kontrak pk
        INNER JOIN karyawan k ON k.id = pk.karyawan_id
-       WHERE LOWER(COALESCE(k.status_kepegawaian, '')) IN ('tetap', 'freelance')
+       WHERE LOWER(COALESCE(k.status_kepegawaian, '')) IN ('tetap', 'freelance', 'partime')
           OR LOWER(COALESCE(k.jabatan, '')) IN ('freelance', 'sales nasional')
           OR LOWER(COALESCE(k.penempatan, '')) = 'jne'`,
     );
@@ -424,7 +425,7 @@ export async function listContractDeductionEmployees() {
         k.potongan_kontrak_start_ym
       FROM karyawan k
       WHERE k.status_data = 'aktif'
-        AND LOWER(COALESCE(k.status_kepegawaian, '')) NOT IN ('tetap', 'freelance')
+        AND LOWER(COALESCE(k.status_kepegawaian, '')) NOT IN ('tetap', 'freelance', 'partime')
         AND LOWER(COALESCE(k.jabatan, '')) NOT IN ('freelance', 'sales nasional')
         AND LOWER(COALESCE(k.penempatan, '')) <> 'jne'
       ORDER BY k.nama ASC

@@ -11,6 +11,19 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
 
 ## 27 Oktober 2026
 
+### Partime TIDAK kena potongan kontrak (konsistenkan modul dengan Summary Partime)
+- **Bug:** karyawan **partime** muncul di modul **Potongan Kontrak** (dan Pengembalian
+  Kontrak) dan dibuatkan jadwal potongan, padahal **Summary Partime tidak pernah memotong
+  kontrak** (partime hanya potong telat Rp5.000). Jadi modul & summary tidak konsisten.
+- **Fix:** partime ditambahkan ke daftar **tidak eligible** potongan kontrak — sejajar
+  tetap/freelance/sales nasional/JNE. Berlaku di: `isContractDeductionEligible`, query
+  daftar karyawan modul, pembersihan jadwal (`cleanupIneligibleContractSchedules`
+  otomatis menghapus jadwal partime yang terlanjur ada saat deploy), dan Pengembalian
+  Kontrak.
+- Tidak ada uang yang salah terpotong sebelumnya (Summary Partime memang tidak memotong);
+  ini memperbaiki tampilan modul agar konsisten.
+- File: `lib/contract-deductions.ts`, `lib/contract-returns.ts`.
+
 ### Summary Payroll: urutkan Nama (Abjad / Divisi)
 - Tombol **"Urut: Divisi | Abjad (A–Z)"** di bar pencarian Summary Payroll utama.
 - **Divisi** (default): dikelompokkan per divisi (header per divisi, lalu urut nama) —

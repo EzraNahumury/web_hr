@@ -101,7 +101,7 @@ export async function listContractReturns(): Promise<ContractReturnItem[]> {
           DATE_FORMAT(k.tanggal_kontrak, '%Y-%m-%d') AS tanggal_kontrak
         FROM karyawan k
         WHERE k.status_data = 'aktif'
-          AND LOWER(COALESCE(k.status_kepegawaian, '')) NOT IN ('tetap', 'freelance')
+          AND LOWER(COALESCE(k.status_kepegawaian, '')) NOT IN ('tetap', 'freelance', 'partime')
           AND LOWER(COALESCE(k.jabatan, '')) NOT IN ('freelance', 'sales nasional')
           AND LOWER(COALESCE(k.penempatan, '')) <> 'jne'
         ORDER BY k.nama ASC
