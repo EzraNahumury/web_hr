@@ -595,6 +595,21 @@ export async function ensurePayrollSupportTables(connection?: QueryExecutor) {
         AND (p.periode_tahun > 2026 OR (p.periode_tahun = 2026 AND p.periode_bulan >= 10))
     `);
   });
+
+  // 2026-10-27: Koreksi UANG MAKAN/HARI Humbelina (NIP FC.FC.2024.0001) 25.000 -> 35.000,
+  // periode >= Oktober 2026. Hanya baris yang NILAINYA TEPAT 25.000 (tidak menimpa nilai lain);
+  // periode lama tidak diubah. Periode berikutnya otomatis ikut 35.000 via clone.
+  await runOnceMigration("humbelina-uangmakan-25k-to-35k-2026-10", async () => {
+    await executor.query(`
+      UPDATE payroll_employee_input pei
+      JOIN payroll p ON p.id = pei.payroll_id
+      JOIN karyawan k ON k.id = p.karyawan_id
+      SET pei.uang_makan_per_hari = 35000.00
+      WHERE k.no_karyawan = 'FC.FC.2024.0001'
+        AND pei.uang_makan_per_hari = 25000.00
+        AND (p.periode_tahun > 2026 OR (p.periode_tahun = 2026 AND p.periode_bulan >= 10))
+    `);
+  });
 }
 
 // Tunjangan Jabatan = nominal TETAP yang disimpan di kolom `payroll.tunjangan_jabatan`

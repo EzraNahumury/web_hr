@@ -11,6 +11,18 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
 
 ## 27 Oktober 2026
 
+### Koreksi uang makan/hari Humbelina 25.000 → 35.000 (migrasi otomatis)
+- Uang makan/hari **Humbelina Febriani Imlana Putri** (NIP `FC.FC.2024.0001`) dikoreksi
+  **25.000 → 35.000**, periode **Oktober 2026 & ke depan**.
+- **Bukan bug kode:** uang makan disimpan apa adanya di `pei.uang_makan_per_hari` dan
+  ditampilkan langsung (sudah diaudit — tak ada migrasi/perhitungan yang mengubahnya;
+  migrasi BPJS kemarin hanya menyentuh kolom `bpjs`). Ini **koreksi data**.
+- Dijalankan **otomatis saat deploy** (ledger-guarded, key
+  `humbelina-uangmakan-25k-to-35k-2026-10`). Hanya baris yang nilainya **tepat 25.000**;
+  periode lama tak diubah; periode berikutnya ikut 35.000 via clone.
+- File: `lib/payroll-admin.ts` (migrasi), `db/migrations/2026-10-27-humbelina-uangmakan-35k.sql`
+  (referensi manual).
+
 ### Bonus omzet: PIC = SPV, Leader = Staff
 - **Aturan baru:** faktor bonus omzet per jabatan — jabatan **PIC** (mis. "PIC RnD & QA")
   mendapat faktor **sama dengan SPV (0.5)**; jabatan **Leader** (Leader Finishing/Sewing/
