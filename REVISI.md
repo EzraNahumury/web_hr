@@ -11,6 +11,23 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
 
 ## 27 Oktober 2026
 
+### Fix tampilan "THP sebelum dipotong" (konsisten dengan total potongan)
+- **Bug tampilan (bukan salah hitung THP):** "THP sebelum dipotong" menampilkan gaji
+  dengan uang kerajinan SUDAH dikurangi potongan absensi, tapi kolom "Total Potongan"
+  juga memuat potongan absensi tsb → `THP sebelum − total potongan ≠ THP` (mis. Milenia
+  1.000.000 − 185.000 ≠ 940.000). THP akhir 940.000 **sudah benar** (kerajinan hangus =
+  tidak diterima, dihitung sekali).
+- **Fix:** "THP sebelum dipotong" kini = **gross dengan kerajinan PENUH** (mis. 1.125.000),
+  sehingga `gross − total potongan = THP` konsisten. Nilai THP (netIncome) & Total Gaji
+  TIDAK berubah; hanya kolom "THP sebelum dipotong" yang kini menampilkan gross sebenarnya.
+- File: `lib/payroll-summary.ts` (`totalSalaryBeforeDeduction` pakai `fixedDiligenceAllowance`,
+  `totalSalary` dikurangi `diligenceCut`).
+
+### Penjahit mingguan: pencairan minggu 1-3 = Rp500.000 (minggu 4 = sisa)
+- Pencairan mingguan penjahit: minggu 1-3 **Rp500.000** (sebelumnya 800.000), minggu 4 =
+  sisa (penerimaan bersih − 3 minggu pertama). Mis. gaji 2.500.000 → **500/500/500/1.000**.
+- File: `lib/payroll-penjahit.ts` (`weeklyBase`).
+
 ### JNE TIDAK dapat uang kerajinan
 - Penempatan **JNE** dikecualikan dari uang kerajinan di Summary utama (= **0**), sama
   seperti JNE juga tidak kena potongan kontrak. Aturan kerajinan 10% tetap berlaku untuk

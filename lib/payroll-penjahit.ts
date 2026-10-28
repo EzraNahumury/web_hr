@@ -513,7 +513,9 @@ export async function getPenjahitSheet(period?: {
 
     let pencairan: PenjahitComputedRow["pencairan"] = null;
     if (tipePayroll === "mingguan") {
-      const weeklyBase = 800_000;
+      // Pencairan mingguan penjahit: minggu 1-3 dicairkan tetap Rp500.000, minggu 4 = SISA
+      // (penerimaan bersih dikurangi 3 minggu pertama). Mis. gaji 2.500.000 -> 500/500/500/1.000.
+      const weeklyBase = 500_000;
       // Cicilan per minggu: kalau pinjaman punya jadwal MINGGUAN, pakai nominal tiap minggu
       // (minggu tanpa cicilan = 0). Kalau tidak ada jadwal mingguan (pinjaman lama bulanan),
       // bagi rata potongan bulan /4 seperti perilaku lama.

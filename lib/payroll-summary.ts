@@ -1234,13 +1234,17 @@ export async function getAdminPayrollSummarySheet(period?: {
     const halfDayDeduction = isFreelance ? 0 : (dailyBaseSalary / 2) * halfDayCount;
     const lateCount = isFreelance ? 0 : attendance.late;
     const lateDeduction = isFreelance ? 0 : lateCount * 20000;
+    // "THP sebelum dipotong" = GROSS dengan uang kerajinan PENUH (fixedDiligenceAllowance),
+    // supaya konsisten: gross - total potongan (yang sudah termasuk potongan absensi/kerajinan
+    // hangus) = THP. Kerajinan yang hangus tetap dihitung SEKALI (lewat diligenceCut di potongan),
+    // jadi netIncome tidak berubah.
     const totalSalaryBeforeDeduction =
       totalBaseSalary +
       positionAllowance +
       mealAllowance +
       subsidy +
       performanceBonus +
-      diligenceAllowance +
+      fixedDiligenceAllowance +
       bpjs +
       overtimeBonus +
       omzetBonus +
@@ -1249,7 +1253,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       vehicleAllowance +
       travelReimbursement;
     const totalSalary =
-      totalSalaryBeforeDeduction - halfDayDeduction - lateDeduction;
+      totalSalaryBeforeDeduction - halfDayDeduction - lateDeduction - diligenceCut;
     const isContractWaived =
       statusKepegawaianNorm === "tetap" ||
       statusKepegawaianNorm === "freelance" ||
