@@ -52,6 +52,11 @@ export type FreelanceCustomRow = {
   grandTotal: number;
 };
 
+export type FreelanceUnassignedRow = {
+  employeeId: number;
+  name: string;
+};
+
 export type FreelanceSheet = {
   periodMonth: number;
   periodYear: number;
@@ -59,6 +64,9 @@ export type FreelanceSheet = {
   pengerjaan: FreelancePengerjaanRow[];
   harian: FreelanceHarianRow[];
   custom: FreelanceCustomRow[];
+  // Freelance aktif yang BELUM di-set tipe-nya (tipe_freelance NULL) -> tidak masuk 4 tabel di
+  // atas. Ditampilkan terpisah agar tidak hilang diam-diam; admin set tipe di Data Karyawan.
+  unassigned: FreelanceUnassignedRow[];
 };
 
 // ─── DB row types ─────────────────────────────────────────────────────────────
@@ -375,7 +383,12 @@ export async function getFreelanceSheet(period?: {
     customRows = [...byEmployee.values()].sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  return { periodMonth, periodYear, jam: jamRows, pengerjaan: pengerjaanRows, harian: harianRows, custom: customRows };
+  // ── Freelance belum di-set tipe (tipe_freelance NULL) ───────────────────────
+  const unassigned: FreelanceUnassignedRow[] = allFreelance
+    .filter((r) => r.tipe_freelance == null)
+    .map((r) => ({ employeeId: r.id, name: r.nama }));
+
+  return { periodMonth, periodYear, jam: jamRows, pengerjaan: pengerjaanRows, harian: harianRows, custom: customRows, unassigned };
 }
 
 // ─── CRUD: Pengerjaan ─────────────────────────────────────────────────────────

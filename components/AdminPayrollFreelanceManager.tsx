@@ -988,6 +988,23 @@ export default function AdminPayrollFreelanceManager({ initialSheet }: { initial
           <PengerjaanTable rows={sheet.pengerjaan} bulan={sheet.periodMonth} tahun={sheet.periodYear} onSaved={reload} />
           <HarianTable rows={sheet.harian} bulan={sheet.periodMonth} tahun={sheet.periodYear} onSaved={reload} />
           <CustomTable rows={sheet.custom} bulan={sheet.periodMonth} tahun={sheet.periodYear} onSaved={reload} />
+          {sheet.unassigned && sheet.unassigned.length > 0 && (
+            <SectionCard
+              title="Freelance Belum Di-set Tipe"
+              subtitle="Set tipe freelance (jam / pengerjaan / harian / custom) di Data Karyawan agar karyawan ini masuk ke salah satu tabel di atas"
+            >
+              <ul className="divide-y divide-[#f1e5de]">
+                {sheet.unassigned.map((r) => (
+                  <li key={r.employeeId} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+                    <span className="font-semibold text-[#241716]">{r.name}</span>
+                    <span className="shrink-0 rounded-full bg-[#fff0e8] px-3 py-1 text-xs font-semibold text-[#8f1d22]">
+                      Tipe belum di-set
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </SectionCard>
+          )}
         </div>
       )}
     </div>

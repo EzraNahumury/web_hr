@@ -11,6 +11,21 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
 
 ## 27 Oktober 2026
 
+### Freelance belum di-set tipe kini tampil di Summary Freelance
+- **Bug:** karyawan jabatan Freelance yang `tipe_freelance`-nya **belum di-set** (NULL)
+  tidak muncul di tabel mana pun (Jam/Pengerjaan/Harian/Custom) → hilang diam-diam
+  (mis. Nashuha magang).
+- **Fix:** tambah bagian **"Freelance Belum Di-set Tipe"** di Summary Payroll Freelance
+  yang mendaftar freelance aktif tanpa tipe, agar admin tahu & set tipe di Data Karyawan.
+- File: `lib/payroll-freelance.ts` (`unassigned`), `components/AdminPayrollFreelanceManager.tsx`.
+
+### Karyawan baru masuk penuh kini DAPAT omzet/insentif
+- **Perubahan:** karyawan **baru** (masuk di periode berjalan) sebelumnya selalu
+  dikecualikan dari omzet. Kini kalau dia **masuk penuh** (hadir di semua hari kerja
+  periode, termasuk libur berbayar) tetap **dapat omzet penuh** (mis. Handika Dian anak
+  Solo, masuk 25/25). Yang masuk sebagian tetap tidak dapat (bulan pertama parsial).
+- File: `lib/payroll-summary.ts` (`workedFullPeriod` di perhitungan `omzetBonus`).
+
 ### Fix tampilan "THP sebelum dipotong" (konsisten dengan total potongan)
 - **Bug tampilan (bukan salah hitung THP):** "THP sebelum dipotong" menampilkan gaji
   dengan uang kerajinan SUDAH dikurangi potongan absensi, tapi kolom "Total Potongan"

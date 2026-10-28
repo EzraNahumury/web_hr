@@ -1195,8 +1195,12 @@ export async function getAdminPayrollSummarySheet(period?: {
     const employeeGroupKey = getOmzetGroupKeyForUnit(row.unit);
     const groupOmzet = employeeGroupKey ? omzetByGroup.get(employeeGroupKey) : undefined;
     const groupEligibleCount = employeeGroupKey ? (employeeCountByGroup.get(employeeGroupKey) ?? 0) : 0;
+    // Karyawan BARU (masuk di periode ini) dikecualikan dari omzet KECUALI dia MASUK PENUH
+    // (hadir di semua hari kerja periode, termasuk libur berbayar) — mis. yang masuk tepat di
+    // awal periode & hadir penuh tetap dapat omzet penuh.
+    const workedFullPeriod = workDays > 0 && presentDays + holidayDays >= workDays;
     const omzetBonus =
-      !isNewEmployee &&
+      (!isNewEmployee || workedFullPeriod) &&
       isOmzetEligible(row.jabatan, row.status_kepegawaian) &&
       groupOmzet &&
       groupEligibleCount > 0
