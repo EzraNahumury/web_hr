@@ -2,12 +2,14 @@ import type { NextRequest } from "next/server";
 import type { RowDataPacket } from "mysql2";
 import ExcelJS from "exceljs";
 
-import { getCurrentAdminSession } from "@/lib/auth";
+import { getCurrentAdminSession, getCurrentEmployeeSession } from "@/lib/auth";
 import { pool } from "@/lib/db";
+import { getEmployeeByUserId } from "@/lib/hris";
 import { getAdminPayrollSummarySheet } from "@/lib/payroll-summary";
 import { getPenjahitSheet } from "@/lib/payroll-penjahit";
 import { getFreelanceSheet } from "@/lib/payroll-freelance";
 import { getPartimeSheet } from "@/lib/payroll-partime";
+import { isFinanceDept } from "@/lib/scheduler-roles";
 
 export const dynamic = "force-dynamic";
 
@@ -20,8 +22,20 @@ function parsePositiveInt(value: string | null) {
 type FinanceRow = { name: string; bank: string; accountNumber: string; takeHome: number };
 
 export async function GET(request: NextRequest) {
+  // Boleh diakses ADMIN, atau karyawan departemen FINANCE (halaman Finance read-only punya
+  // tombol Download Finance — sebelumnya 401 karena route ini admin-only).
   const admin = await getCurrentAdminSession();
-  if (!admin) {
+  let authorized = !!admin;
+  if (!authorized) {
+    const emp = await getCurrentEmployeeSession();
+    if (emp) {
+      const employee = await getEmployeeByUserId(emp.userId);
+      if (employee && isFinanceDept(employee.departemen)) {
+        authorized = true;
+      }
+    }
+  }
+  if (!authorized) {
     return new Response("Unauthorized.", { status: 401 });
   }
 

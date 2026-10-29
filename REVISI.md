@@ -11,6 +11,13 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
 
 ## 27 Oktober 2026
 
+### Finance (dept) kini bisa Download Finance Take Home Pay
+- **Bug:** halaman Finance read-only (karyawan departemen Finance) punya tombol
+  "Download Finance", tapi route `/api/admin/payroll-summary/finance-export` **admin-only**
+  → karyawan Finance kena 401, tidak bisa download.
+- **Fix:** route finance-export kini boleh diakses **admin ATAU karyawan departemen Finance**.
+- File: `app/api/admin/payroll-summary/finance-export/route.ts`.
+
 ### Freelance belum di-set tipe kini tampil di Summary Freelance
 - **Bug:** karyawan jabatan Freelance yang `tipe_freelance`-nya **belum di-set** (NULL)
   tidak muncul di tabel mana pun (Jam/Pengerjaan/Harian/Custom) → hilang diam-diam
