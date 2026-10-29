@@ -47,7 +47,10 @@ export default async function AdminSoloPayrollSummaryPage({
   };
 
   const [sheet, employeeOptions, omzetPeriod, periodOptions] = await Promise.all([
-    getAdminPayrollSummarySheet(period, { placementFilter: SOLO_PLACEMENT }),
+    getAdminPayrollSummarySheet(period, {
+      placementFilter: SOLO_PLACEMENT,
+      omzetGroupKeyForAll: SOLO_OMZET_GROUPS[0].key,
+    }),
     listPayrollEmployeeOptions({ placementFilter: SOLO_PLACEMENT }),
     getPayrollOmzetPeriod(period, { groups: SOLO_OMZET_GROUPS, includeOtherSaved: false }),
     listPayrollPeriods(),

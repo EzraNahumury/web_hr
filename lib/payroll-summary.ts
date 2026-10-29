@@ -353,9 +353,13 @@ function isOmzetEligible(role: string | null | undefined, employmentStatus?: str
 export async function getAdminPayrollSummarySheet(period?: {
   month?: number;
   year?: number;
-}, options?: { placementFilter?: string; excludePlacement?: string }) {
+}, options?: { placementFilter?: string; excludePlacement?: string; omzetGroupKeyForAll?: string }) {
   const placementFilter = options?.placementFilter?.trim();
   const excludePlacement = options?.excludePlacement?.trim();
+  // Khusus sub-summary per penempatan (mis. Solo): SEMUA karyawan di sheet ini masuk ke SATU
+  // grup omzet (mis. "Toko Solo"), apa pun unit-nya — supaya omzet yang diinput di halaman itu
+  // benar-benar dipakai (bukan ikut grup unit global AVA+Ayres/JNE).
+  const omzetGroupKeyForAll = options?.omzetGroupKeyForAll?.trim() || null;
   await Promise.all([ensurePayrollSupportTables(), ensureLoanSupportTables(), ensureReimbursementSchema(), ensureContractReturnTable()]);
   // Bersihkan jadwal potongan_kontrak tidak eligible / di luar window kontrak (stale) supaya
   // potongan kontrak di summary konsisten dengan modul Potongan Kontrak.
@@ -988,6 +992,14 @@ export async function getAdminPayrollSummarySheet(period?: {
     totalEligibleEmployees = toNumber(totalEmployeeResult[0]?.[0]?.total) || rows.length;
   }
 
+  // Jumlah karyawan eligible omzet di sheet ini — dipakai bila omzetGroupKeyForAll aktif
+  // (sub-summary per penempatan, mis. Solo), supaya pembagi omzet = karyawan Solo di sheet,
+  // bukan hitungan grup unit global. (Untuk Toko Solo yang custom-bonus, pembagi tidak dipakai;
+  // tapi tetap harus > 0 agar omzet masuk.)
+  const omzetOverrideEligibleCount = omzetGroupKeyForAll
+    ? rows.filter((r) => isOmzetEligible(r.jabatan, r.status_kepegawaian)).length
+    : 0;
+
   const totalOmzet = totalOmzetAll;
   const totalBonusOmzet = totalBonusOmzetAll;
 
@@ -1192,9 +1204,12 @@ export async function getAdminPayrollSummarySheet(period?: {
       ? monthlyBaseSalary
       : (prorateBase ?? dailyBaseSalary * (presentDays + holidayDays + halfDayCount));
     const roleFactor = getOmzetFactor(row.jabatan, row.status_kepegawaian);
-    const employeeGroupKey = getOmzetGroupKeyForUnit(row.unit);
+    // Sub-summary per penempatan (Solo): paksa SEMUA karyawan ke satu grup omzet (mis. "Toko Solo").
+    const employeeGroupKey = omzetGroupKeyForAll ?? getOmzetGroupKeyForUnit(row.unit);
     const groupOmzet = employeeGroupKey ? omzetByGroup.get(employeeGroupKey) : undefined;
-    const groupEligibleCount = employeeGroupKey ? (employeeCountByGroup.get(employeeGroupKey) ?? 0) : 0;
+    const groupEligibleCount = omzetGroupKeyForAll
+      ? omzetOverrideEligibleCount
+      : (employeeGroupKey ? (employeeCountByGroup.get(employeeGroupKey) ?? 0) : 0);
     // Karyawan BARU (masuk di periode ini) dikecualikan dari omzet KECUALI dia MASUK PENUH
     // (hadir di semua hari kerja periode, termasuk libur berbayar) — mis. yang masuk tepat di
     // awal periode & hadir penuh tetap dapat omzet penuh.
