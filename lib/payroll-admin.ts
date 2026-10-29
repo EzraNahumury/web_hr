@@ -145,7 +145,9 @@ export const OMZET_GROUPS: OmzetGroupConfig[] = [
   {
     key: "AVA+Ayres",
     label: "AVA + Ayres",
-    units: ["AVA Sportivo", "Ayres Apparel"],
+    // "Ayres Solo" (toko Solo) ikut pool omzet AVA+Ayres — omzet Solo mengikuti Summary Payroll
+    // utama, jadi karyawan Solo (unit "Ayres Solo") ikut pembagian omzet grup ini.
+    units: ["AVA Sportivo", "Ayres Apparel", "Ayres Solo"],
     defaultCustomBonus: false,
   },
   {

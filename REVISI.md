@@ -11,18 +11,18 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
 
 ## 27 Oktober 2026
 
-### Summary Payroll Solo: omzet pakai input "Toko Solo" untuk SEMUA karyawan Solo
-- **Bug:** omzet dikelompokkan per `unit` lewat `OMZET_GROUPS` (hanya AVA+Ayres & JNE).
-  Karyawan Solo dengan unit "Ayres Solo" (mis. Handika Dian) tidak masuk grup mana pun →
-  omzet 0. Yang lain (Michael/Laras) dapat dari grup AVA+Ayres karena unit-nya kebetulan
-  cocok. Omzet **"Toko Solo"** yang diinput di halaman Solo **tidak terpakai** (orphan).
-- **Fix:** `getAdminPayrollSummarySheet` menerima opsi **`omzetGroupKeyForAll`**. Halaman
-  Solo mengirim `"Toko Solo"`, sehingga **semua** karyawan penempatan Toko Solo masuk ke
-  grup omzet "Toko Solo" dan memakai omzet yang diinput di halaman Solo (custom bonus =
-  nominal langsung per karyawan), apa pun nilai `unit` mereka.
-- **Catatan:** omzet "Toko Solo" **harus diinput** di halaman Summary Solo agar muncul.
-  Michael/Laras kini pakai basis Toko Solo (bukan lagi AVA+Ayres) — angka bisa berubah.
-- File: `lib/payroll-summary.ts`, `app/admin/payroll-summary/solo/page.tsx`.
+### Omzet karyawan Solo (unit "Ayres Solo") ikut pembagian AVA+Ayres
+- **Bug:** omzet dikelompokkan per `unit` lewat `OMZET_GROUPS` (AVA+Ayres [AVA Sportivo,
+  Ayres Apparel] & JNE). Karyawan Solo dengan unit **"Ayres Solo"** (mis. Handika Dian)
+  tidak masuk grup mana pun → tidak ikut pembagian omzet → **omzet 0**, di Summary Payroll
+  utama maupun Solo.
+- **Fix:** **"Ayres Solo"** ditambahkan ke daftar unit grup **AVA+Ayres**. Omzet Solo
+  mengikuti Summary Payroll utama (pool AVA+Ayres), jadi karyawan Solo ikut pembagian pool
+  itu per kepala × faktor jabatan — sama seperti karyawan AVA/Ayres lain.
+- **Dampak pembagian:** karyawan Solo kini ikut dihitung di pembagi grup AVA+Ayres, jadi
+  bagian per kepala grup ini sedikit berubah (lebih banyak orang di pool). Omzet diinput di
+  halaman Summary Payroll utama (grup AVA+Ayres).
+- File: `lib/payroll-admin.ts` (`OMZET_GROUPS`).
 
 ### Finance (dept) kini bisa Download Finance Take Home Pay
 - **Bug:** halaman Finance read-only (karyawan departemen Finance) punya tombol
