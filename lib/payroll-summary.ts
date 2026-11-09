@@ -1221,8 +1221,12 @@ export async function getAdminPayrollSummarySheet(period?: {
     const overtimeBonus = overtimeHours * 20000;
 
     // Izin diperlakukan seperti alfa: ada izin -> uang kerajinan hangus.
+    // Pengaman: kalau MASUK PENUH (hadir di semua hari kerja periode, termasuk libur berbayar)
+    // uang kerajinan OTOMATIS tidak dipotong, apa pun deteksi lain.
+    const fullAttendanceNoCut = workDays > 0 && presentDays + holidayDays >= workDays;
     const kerajinanNoIssue =
-      sickCount <= 2 && sickWithoutNoteCount === 0 && alfaCount === 0 && leaveCount === 0;
+      fullAttendanceNoCut ||
+      (sickCount <= 2 && sickWithoutNoteCount === 0 && alfaCount === 0 && leaveCount === 0);
     // Uang kerajinan HANYA dipotong oleh masalah kedisiplinan (sakit>2, sakit tanpa surat,
     // alfa, atau izin) — lihat kerajinanNoIssue. Tidak lagi digantung pada "capai hari kerja"
     // (dulu menyebabkan potongan salah untuk karyawan disiplin yang kurang 1 hari, mis. sakit 2x).

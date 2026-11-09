@@ -11,6 +11,17 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
 
 ## 27 Oktober 2026
 
+### Data Karyawan: pencarian bisa pakai NIK
+- Kotak cari di Data Karyawan kini juga mencari **NIK** (sebelumnya hanya nama/NIP/unit/
+  jabatan/departemen/divisi). Placeholder diperbarui.
+- File: `components/AdminEmployeesManager.tsx`.
+
+### Uang kerajinan: MASUK PENUH otomatis tidak dipotong
+- Kalau karyawan **hadir penuh** (masuk di semua hari kerja periode, termasuk libur
+  berbayar), uang kerajinan **otomatis tidak dipotong** — pengaman di atas deteksi
+  sakit/izin/alfa. Berlaku di Summary utama & Summary Penjahit.
+- File: `lib/payroll-summary.ts`, `lib/payroll-penjahit.ts`.
+
 ### Omzet karyawan Solo (unit "Ayres Solo") ikut pembagian AVA+Ayres
 - **Bug:** omzet dikelompokkan per `unit` lewat `OMZET_GROUPS` (AVA+Ayres [AVA Sportivo,
   Ayres Apparel] & JNE). Karyawan Solo dengan unit **"Ayres Solo"** (mis. Handika Dian)

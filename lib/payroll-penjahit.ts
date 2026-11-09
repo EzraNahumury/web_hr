@@ -473,7 +473,10 @@ export async function getPenjahitSheet(period?: {
     const uangAbsensiTotal = uangAbsensiPerHari * masuk;
     // Uang kerajinan hangus HANYA karena masalah kedisiplinan: sakit>2, sakit tanpa surat,
     // alfa, atau izin. Tidak lagi digantung pada "capai hari kerja" (konsisten dgn payroll utama).
-    const kerajinanNoIssue = sakit <= 2 && sakitTanpaSurat === 0 && alfa === 0 && izin === 0;
+    // Pengaman: MASUK PENUH (hadir di semua hari kerja periode) -> kerajinan otomatis tidak dipotong.
+    const fullAttendanceNoCut = hariKerja > 0 && masuk >= hariKerja;
+    const kerajinanNoIssue =
+      fullAttendanceNoCut || (sakit <= 2 && sakitTanpaSurat === 0 && alfa === 0 && izin === 0);
     // Kerajinan bisa di-OVERRIDE manual per periode (klik kolom Kerajinan). null = otomatis.
     const inputOverrideKerajinan =
       row.raw_override_kerajinan !== null ? toNum(row.raw_override_kerajinan) : null;

@@ -353,6 +353,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
       [
         employee.name,
         employee.nip,
+        employee.nik ?? "",
         employee.unit ?? "",
         employee.role,
         employee.department,
@@ -879,7 +880,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                 </h3>
               </div>
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-                <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama, NIP, unit, jabatan..." className={`${inputClassName} xl:max-w-sm`} />
+                <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama, NIP, NIK, unit, jabatan..." className={`${inputClassName} xl:max-w-sm`} />
                 <div className="flex shrink-0 flex-col gap-2">
                   {!isFormOpen && (
                     <button
