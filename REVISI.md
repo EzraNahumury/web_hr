@@ -11,6 +11,19 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
 
 ## 27 Oktober 2026
 
+### Summary Bonus (scaffold) — Personal / Team / Company
+- Halaman baru **Summary Bonus** (`/admin/bonus-summary`): input **omzet** per periode
+  (AVA Sportivo / Ayres / Gabungan), lalu tabel karyawan per **tim (divisi)** dengan:
+  - **Personal**: syarat cair otomatis dinilai — **telat ≤ 1×** DAN **masuk penuh**
+    (hadir semua hari kerja). Badge "Layak cair" / "Tidak".
+  - **Team & Company**: centang penilaian **HR** (seperti distribusi slip). Team bisa
+    di-centang **se-tim (per divisi)** sekaligus, bukan per orang.
+- **Nominal/RUMUS belum ada** ("rumus menyusul") — kolom bonus sementara Rp 0; tinggal
+  diisi rumus saat diberikan.
+- File: `lib/bonus-summary.ts` (tabel `bonus_omzet_input` + `bonus_distribution`),
+  `app/api/admin/bonus-summary/route.ts`, `app/admin/bonus-summary/page.tsx`,
+  `components/AdminBonusSummaryManager.tsx`, menu di `components/AdminShell.tsx`.
+
 ### Terblokir (lupa absen pulang) → boleh absen, ditandai telat + note
 - **Perubahan:** karyawan yang **terblokir** (ada hari lampau hadir tapi belum absen pulang,
   belum dipulihkan admin) **tidak lagi ditolak keras**. Kini boleh absen masuk, TAPI otomatis
