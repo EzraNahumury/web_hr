@@ -11,6 +11,15 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
 
 ## 27 Oktober 2026
 
+### Terblokir (lupa absen pulang) → boleh absen, ditandai telat + note
+- **Perubahan:** karyawan yang **terblokir** (ada hari lampau hadir tapi belum absen pulang,
+  belum dipulihkan admin) **tidak lagi ditolak keras**. Kini boleh absen masuk, TAPI otomatis
+  ditandai **TELAT (butuh approval atasan)** dengan catatan **"Harap absen ulang di jam 10.00"**.
+  Kehadiran dihitung setelah di-approve.
+- Tidak berlaku untuk freelance/partime. Alur sama seperti telat biasa (pilih atasan +
+  keterangan), catatan ditambahkan otomatis.
+- File: `app/api/employee/attendance/check-in/route.ts`.
+
 ### Data Karyawan: pencarian bisa pakai NIK
 - Kotak cari di Data Karyawan kini juga mencari **NIK** (sebelumnya hanya nama/NIP/unit/
   jabatan/departemen/divisi). Placeholder diperbarui.

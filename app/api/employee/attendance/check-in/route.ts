@@ -148,18 +148,13 @@ export async function POST(request: Request) {
     const attendanceDateTime = getJakartaDateTime();
     const currentTime = attendanceDateTime.split(" ")[1];
 
-    // Blokir: kalau ada hari lampau yang HADIR tapi belum absen pulang & belum dipulihkan admin.
+    // Terblokir: ada hari lampau yang HADIR tapi belum absen pulang & belum dipulihkan admin.
+    // Tidak lagi ditolak keras. Karyawan TETAP boleh absen, TAPI otomatis ditandai TELAT (butuh
+    // approval) dengan catatan "Harap absen ulang di jam 10.00". Kehadiran dihitung setelah
+    // di-approve atasan.
     const blockingDate = await getBlockingMissingCheckout(employee.id, attendanceDate);
-    if (blockingDate) {
-      return NextResponse.json(
-        {
-          message:
-            "Mohon maaf, kamu diblokir dari absensi hari ini karena belum melakukan presensi pulang di hari sebelumnya. Silakan hubungi admin untuk memulihkan akun Anda.",
-          blocked: true,
-        },
-        { status: 403 },
-      );
-    }
+    const isBlockedCheckin = !!blockingDate;
+    const BLOCKED_LATE_NOTE = "Harap absen ulang di jam 10.00";
 
     const [existingRows] = await pool.query<AttendanceRow[]>(
       "SELECT id, jam_masuk, status_absensi, foto_masuk FROM absensi WHERE karyawan_id = ? AND tanggal = ? LIMIT 1",
@@ -265,10 +260,16 @@ export async function POST(request: Request) {
     // pakai jam kerja standar "pagi" (masuk 08:30). Freelance dikecualikan.
     const lateShift: AttendanceShift | null =
       detectedShift ?? (!isFreelance ? "pagi" : null);
-    const lateMinutes =
+    const baseLateMinutes =
       requiresSelfie && lateShift && effectiveRequestStatus === "hadir" && !isPartime
         ? getShiftLateMinutes(currentTime, lateShift)
         : 0;
+    // Terblokir (lupa absen pulang kemarin) -> dipaksa dianggap TELAT (butuh approval) walau tepat
+    // waktu, dengan catatan "Harap absen ulang di jam 10.00". Tidak berlaku untuk freelance/partime.
+    const lateMinutes =
+      isBlockedCheckin && effectiveRequestStatus === "hadir" && !isFreelance && !isPartime
+        ? Math.max(baseLateMinutes, 1)
+        : baseLateMinutes;
     const attendanceStatus =
       effectiveRequestStatus === "izin"
         ? "izin"
@@ -289,9 +290,16 @@ export async function POST(request: Request) {
     const attendanceLatitude = requiresSelfie ? latitude : null;
     const attendanceLongitude = requiresSelfie ? longitude : null;
 
+    // Keterangan efektif: untuk kasus TERBLOKIR, catatan "Harap absen ulang di jam 10.00"
+    // otomatis ditambahkan (digabung dengan alasan yang diisi karyawan, bila ada).
+    const effectiveKeterangan = isBlockedCheckin
+      ? [keterangan?.trim(), BLOCKED_LATE_NOTE].filter(Boolean).join(" — ")
+      : keterangan;
+
     // Telat WAJIB isi keterangan (alasan) sebelum absen bisa dikirim — berlaku untuk SEMUA
     // kasus telat (apa pun role & tanggal). Tanpa keterangan, presensi masuk ditolak.
-    if (lateMinutes > 0 && !keterangan?.trim()) {
+    // (Kasus terblokir sudah otomatis punya catatan, jadi lolos guard ini.)
+    if (lateMinutes > 0 && !effectiveKeterangan?.trim()) {
       return NextResponse.json(
         {
           message: "Kamu datang terlambat. Wajib mengisi keterangan (alasan) sebelum submit.",
@@ -317,7 +325,7 @@ export async function POST(request: Request) {
     let assignedApproverUserId: number | null = null;
 
     if (needsLateApproval) {
-      if (!keterangan?.trim()) {
+      if (!effectiveKeterangan?.trim()) {
         return NextResponse.json(
           { message: "Kamu datang terlambat. Wajib mengisi keterangan (alasan) sebelum submit.", needApproval: true },
           { status: 400 },
@@ -329,7 +337,15 @@ export async function POST(request: Request) {
           : null,
       );
       if (!approver.ok) {
-        return NextResponse.json({ message: approver.error, needApproval: true }, { status: 400 });
+        return NextResponse.json(
+          {
+            message: isBlockedCheckin
+              ? `Kamu belum absen pulang kemarin, jadi presensi hari ini ditandai TELAT & butuh approval. ${BLOCKED_LATE_NOTE}. Pilih atasan tujuan approval lalu submit lagi.`
+              : approver.error,
+            needApproval: true,
+          },
+          { status: 400 },
+        );
       }
       butuhApproval = 1;
       approvalStatus = "pending";
@@ -367,7 +383,7 @@ export async function POST(request: Request) {
           attendanceLatitude,
           attendanceLongitude,
           lateMinutes,
-          keterangan,
+          effectiveKeterangan,
           butuhApproval,
           approvalStatus,
           approvalJenis,
@@ -409,7 +425,7 @@ export async function POST(request: Request) {
           attendanceLatitude,
           attendanceLongitude,
           lateMinutes,
-          keterangan,
+          effectiveKeterangan,
           butuhApproval,
           approvalStatus,
           approvalJenis,
