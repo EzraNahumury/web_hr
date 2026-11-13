@@ -17,10 +17,21 @@ import {
 
 export type BonusUnitOmzet = { avaSportivo: number; ayres: number; gabungan: number };
 
+export type BonusGroup = "ava" | "ayres" | "operasional";
+
+export const BONUS_GROUP_LABEL: Record<string, string> = {
+  ava: "AVA Sportivo",
+  ayres: "Ayres",
+  operasional: "Operasional (Gabungan)",
+  "": "Belum di-set golongan bonus",
+};
+
 export type BonusSummaryRow = {
   employeeId: number;
   name: string;
   nip: string;
+  // Golongan bonus (ava/ayres/operasional) — dasar pembagian bonus. "" = belum di-set.
+  bonusGroup: string;
   division: string;
   department: string;
   lateCount: number;
@@ -121,14 +132,15 @@ export async function getBonusSummarySheet(period?: {
 
   // Karyawan aktif (semua dapat bonus; syarat dicek per jenis). Freelance dikecualikan.
   const [empRows] = await pool.query<(RowDataPacket & {
-    id: number; nama: string; no_karyawan: string | null; divisi: string | null; departemen: string | null;
+    id: number; nama: string; no_karyawan: string | null; bonus_group: string | null;
+    divisi: string | null; departemen: string | null;
   })[]>(
-    `SELECT k.id, k.nama, k.no_karyawan, k.divisi, k.departemen
+    `SELECT k.id, k.nama, k.no_karyawan, k.bonus_group, k.divisi, k.departemen
      FROM karyawan k
      WHERE k.status_data = 'aktif'
        AND COALESCE(LOWER(k.jabatan), '') <> 'freelance'
        AND COALESCE(LOWER(k.status_kepegawaian), '') <> 'freelance'
-     ORDER BY k.divisi ASC, k.nama ASC`,
+     ORDER BY FIELD(k.bonus_group, 'ava', 'ayres', 'operasional'), k.nama ASC`,
   );
   const employeeIds = empRows.map((r) => r.id);
 
@@ -181,6 +193,7 @@ export async function getBonusSummarySheet(period?: {
       employeeId: e.id,
       name: e.nama,
       nip: e.no_karyawan || "-",
+      bonusGroup: e.bonus_group || "",
       division: e.divisi || "-",
       department: e.departemen || "-",
       lateCount,
@@ -235,10 +248,10 @@ export async function setBonusDistribution(
   );
 }
 
-// Approve bonus TEAM per TIM (divisi) sekaligus — bukan per orang.
-export async function setBonusDistributionByDivision(
+// Approve bonus per GOLONGAN BONUS (ava/ayres/operasional) sekaligus — bukan per orang.
+export async function setBonusDistributionByGroup(
   period: { month: number; year: number },
-  division: string,
+  bonusGroup: string,
   field: "team" | "company",
   value: boolean,
 ): Promise<void> {
@@ -249,8 +262,8 @@ export async function setBonusDistributionByDivision(
      WHERE status_data = 'aktif'
        AND COALESCE(LOWER(jabatan), '') <> 'freelance'
        AND COALESCE(LOWER(status_kepegawaian), '') <> 'freelance'
-       AND COALESCE(divisi, '') = ?`,
-    [division],
+       AND COALESCE(bonus_group, '') = ?`,
+    [bonusGroup],
   );
   for (const e of empRows) {
     await pool.query<ResultSetHeader>(

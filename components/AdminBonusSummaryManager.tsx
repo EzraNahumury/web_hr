@@ -4,6 +4,13 @@ import { Fragment, useMemo, useState, useTransition } from "react";
 
 import type { BonusSummarySheet, BonusSummaryRow } from "@/lib/bonus-summary";
 
+const BONUS_GROUP_LABEL: Record<string, string> = {
+  ava: "AVA Sportivo",
+  ayres: "Ayres",
+  operasional: "Operasional (Gabungan)",
+  "": "Belum di-set golongan bonus",
+};
+
 type PeriodOption = { month: number; year: number; label: string };
 
 function formatRupiah(n: number) {
@@ -95,25 +102,25 @@ export default function AdminBonusSummaryManager({
     });
   }
 
-  function toggleDivision(division: string, field: "team" | "company", value: boolean) {
+  function toggleGroup(group: string, field: "team" | "company", value: boolean) {
     startTransition(async () => {
       try {
-        await post({ action: "set_division_distribution", division, field, value });
-        flash("success", `${field === "team" ? "Team" : "Company"} se-tim "${division}" diperbarui.`);
+        await post({ action: "set_group_distribution", division: group, field, value });
+        flash("success", `${field === "team" ? "Team" : "Company"} golongan "${BONUS_GROUP_LABEL[group] ?? group}" diperbarui.`);
       } catch (e) {
         flash("error", e instanceof Error ? e.message : "Gagal.");
       }
     });
   }
 
-  // Grup per divisi (tim).
+  // Grup per GOLONGAN BONUS (ava/ayres/operasional).
   const grouped = useMemo(() => {
-    const out: { division: string; rows: BonusSummaryRow[] }[] = [];
+    const out: { group: string; rows: BonusSummaryRow[] }[] = [];
     let cur: string | null = null;
     for (const r of sheet.rows) {
-      if (r.division !== cur) {
-        out.push({ division: r.division, rows: [] });
-        cur = r.division;
+      if (r.bonusGroup !== cur) {
+        out.push({ group: r.bonusGroup, rows: [] });
+        cur = r.bonusGroup;
       }
       out[out.length - 1].rows.push(r);
     }
@@ -211,22 +218,26 @@ export default function AdminBonusSummaryManager({
                   const allTeam = g.rows.every((r) => r.teamApproved);
                   const allCompany = g.rows.every((r) => r.companyApproved);
                   return (
-                    <Fragment key={`grp-${g.division}`}>
+                    <Fragment key={`grp-${g.group || "none"}`}>
                       <tr className="bg-[#eafafb] align-middle">
                         <td colSpan={5} className="px-4 py-2.5 text-[13px] font-bold uppercase tracking-wide text-[#0d7f86]">
-                          Tim: {g.division}
+                          Golongan: {BONUS_GROUP_LABEL[g.group] ?? g.group}
                         </td>
                         <td className="px-2 py-2 text-center">
-                          <button type="button" onClick={() => toggleDivision(g.division, "team", !allTeam)} disabled={isPending}
-                            className="rounded-full border border-[#0d7f86] px-2 py-1 text-[11px] font-semibold text-[#0d7f86] disabled:opacity-50">
-                            {allTeam ? "Batal team" : "Centang team se-tim"}
-                          </button>
+                          {g.group ? (
+                            <button type="button" onClick={() => toggleGroup(g.group, "team", !allTeam)} disabled={isPending}
+                              className="rounded-full border border-[#0d7f86] px-2 py-1 text-[11px] font-semibold text-[#0d7f86] disabled:opacity-50">
+                              {allTeam ? "Batal team" : "Centang team se-golongan"}
+                            </button>
+                          ) : null}
                         </td>
                         <td className="px-2 py-2 text-center">
-                          <button type="button" onClick={() => toggleDivision(g.division, "company", !allCompany)} disabled={isPending}
-                            className="rounded-full border border-[#0d7f86] px-2 py-1 text-[11px] font-semibold text-[#0d7f86] disabled:opacity-50">
-                            {allCompany ? "Batal company" : "Centang company se-tim"}
-                          </button>
+                          {g.group ? (
+                            <button type="button" onClick={() => toggleGroup(g.group, "company", !allCompany)} disabled={isPending}
+                              className="rounded-full border border-[#0d7f86] px-2 py-1 text-[11px] font-semibold text-[#0d7f86] disabled:opacity-50">
+                              {allCompany ? "Batal company" : "Centang company se-golongan"}
+                            </button>
+                          ) : null}
                         </td>
                         <td colSpan={3} />
                       </tr>

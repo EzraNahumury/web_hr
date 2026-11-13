@@ -145,6 +145,11 @@ async function validatePayload(body: Record<string, unknown>) {
       )
         ? (body.csType as "selling" | "order" | "grosir" | "marketplace")
         : null,
+      bonusGroup: (["ava", "ayres", "operasional"] as const).includes(
+        body.bonusGroup as "ava" | "ayres" | "operasional",
+      )
+        ? (body.bonusGroup as "ava" | "ayres" | "operasional")
+        : null,
       freelanceTipePayroll: (["jam", "pengerjaan", "custom_pengerjaan", "harian"] as const).includes(
         body.freelanceTipePayroll as "jam" | "pengerjaan" | "custom_pengerjaan" | "harian",
       )

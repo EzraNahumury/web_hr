@@ -52,6 +52,7 @@ type FormState = {
   isShift: boolean;
   penjahitPayrollType: "mingguan" | "bulanan" | "";
   csType: "selling" | "order" | "grosir" | "marketplace" | "";
+  bonusGroup: "ava" | "ayres" | "operasional" | "";
   freelanceTipePayroll: "jam" | "pengerjaan" | "custom_pengerjaan" | "harian" | "";
 };
 
@@ -75,6 +76,7 @@ const emptyForm: FormState = {
   isShift: false,
   penjahitPayrollType: "",
   csType: "",
+  bonusGroup: "",
   freelanceTipePayroll: "",
 };
 
@@ -209,6 +211,7 @@ function toFormState(employee: EmployeeListItem): FormState {
     isShift: employee.isShift,
     penjahitPayrollType: employee.penjahitPayrollType ?? "",
     csType: employee.csType ?? "",
+    bonusGroup: employee.bonusGroup ?? "",
     freelanceTipePayroll: employee.freelanceTipePayroll ?? "",
   };
 }
@@ -462,6 +465,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
         isShift: form.isShift,
         penjahitPayrollType: form.penjahitPayrollType || null,
         csType: form.csType || null,
+        bonusGroup: form.bonusGroup || null,
         freelanceTipePayroll: form.freelanceTipePayroll || null,
       };
 
@@ -747,6 +751,7 @@ export default function AdminEmployeesManager({ initialEmployees, lookups, stats
                 )}
               </div>
               <Field label="Pembebanan"><select value={form.costAllocation} onChange={(event) => updateField("costAllocation", event.target.value)} className={selectClassName}><option value="">Pilih pembebanan</option>{lookups.costAllocations.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+              <Field label="Golongan Bonus"><select value={form.bonusGroup} onChange={(event) => updateField("bonusGroup", event.target.value as FormState["bonusGroup"])} className={selectClassName}><option value="">Pilih golongan bonus</option><option value="ava">AVA Sportivo</option><option value="ayres">Ayres</option><option value="operasional">Operasional (gabungan)</option></select></Field>
             </div>
 
             {form.subDivision.toLowerCase() === "penjahit" ? (

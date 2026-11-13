@@ -29,6 +29,17 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
   Catatan diperjelas agar approver paham kenapa muncul.
 - File: `app/api/employee/attendance/check-in/route.ts`.
 
+### Golongan Bonus (AVA / Ayres / Operasional) di Data Karyawan → Summary Bonus
+- **Data Karyawan** kini punya pilihan **Golongan Bonus**: `AVA Sportivo`, `Ayres`,
+  `Operasional (gabungan)` (kolom baru `bonus_group`, self-migrating).
+- Ini dasar pembagian bonus: omzet **AVA** → karyawan golongan AVA, omzet **Ayres** →
+  golongan Ayres, omzet **Gabungan** → golongan **Operasional**.
+- **Summary Bonus** sekarang mengelompokkan karyawan **per golongan bonus** (bukan divisi).
+  Centang Team/Company bisa per-golongan sekaligus.
+- File: `lib/employees.ts`, `app/api/admin/employees/route.ts` + `[id]/route.ts`,
+  `components/AdminEmployeesManager.tsx`, `lib/bonus-summary.ts`,
+  `components/AdminBonusSummaryManager.tsx`, `app/api/admin/bonus-summary/route.ts`.
+
 ### Summary Bonus (scaffold) — Personal / Team / Company
 - Halaman baru **Summary Bonus** (`/admin/bonus-summary`): input **omzet** per periode
   (AVA Sportivo / Ayres / Gabungan), lalu tabel karyawan per **tim (divisi)** dengan:

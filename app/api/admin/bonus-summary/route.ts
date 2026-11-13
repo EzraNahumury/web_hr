@@ -4,7 +4,7 @@ import { getCurrentAdminSession } from "@/lib/auth";
 import {
   getBonusSummarySheet,
   setBonusDistribution,
-  setBonusDistributionByDivision,
+  setBonusDistributionByGroup,
   upsertBonusOmzet,
 } from "@/lib/bonus-summary";
 
@@ -67,11 +67,11 @@ export async function POST(request: Request) {
       const field = body.field === "company" ? "company" : "team";
       if (!id) return NextResponse.json({ message: "Karyawan tidak valid." }, { status: 400 });
       await setBonusDistribution(period, id, field, body.value === true);
-    } else if (body.action === "set_division_distribution") {
-      const division = typeof body.division === "string" ? body.division : "";
+    } else if (body.action === "set_group_distribution") {
+      const group = typeof body.division === "string" ? body.division : "";
       const field = body.field === "company" ? "company" : "team";
-      if (!division) return NextResponse.json({ message: "Divisi/tim tidak valid." }, { status: 400 });
-      await setBonusDistributionByDivision(period, division, field, body.value === true);
+      if (!group) return NextResponse.json({ message: "Golongan bonus tidak valid." }, { status: 400 });
+      await setBonusDistributionByGroup(period, group, field, body.value === true);
     } else {
       return NextResponse.json({ message: "Aksi tidak dikenal." }, { status: 400 });
     }
