@@ -209,7 +209,13 @@ export async function POST(request: Request) {
 
     if (earlyLeaveFlagged && !keterangan) {
       return NextResponse.json(
-        { message: "Kamu pulang lebih awal dari jadwal. Wajib mengisi keterangan (alasan) sebelum submit.", needApproval: needsEarlyApproval },
+        {
+          message: "Kamu pulang lebih awal dari jadwal. Wajib mengisi keterangan (alasan) sebelum submit.",
+          needApproval: needsEarlyApproval,
+          // Penanda server: ini kasus PULANG AWAL → frontend wajib menampilkan kolom keterangan
+          // (deteksi pulang-awal di client bisa meleset untuk shift tertentu).
+          earlyLeave: true,
+        },
         { status: 400 },
       );
     }

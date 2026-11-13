@@ -154,7 +154,7 @@ export async function POST(request: Request) {
     // di-approve atasan.
     const blockingDate = await getBlockingMissingCheckout(employee.id, attendanceDate);
     const isBlockedCheckin = !!blockingDate;
-    const BLOCKED_LATE_NOTE = "Harap absen ulang di jam 10.00";
+    const BLOCKED_LATE_NOTE = "Terblokir (belum absen pulang kemarin) — harap absen ulang jam 10.00";
 
     const [existingRows] = await pool.query<AttendanceRow[]>(
       "SELECT id, jam_masuk, status_absensi, foto_masuk FROM absensi WHERE karyawan_id = ? AND tanggal = ? LIMIT 1",
@@ -260,16 +260,12 @@ export async function POST(request: Request) {
     // pakai jam kerja standar "pagi" (masuk 08:30). Freelance dikecualikan.
     const lateShift: AttendanceShift | null =
       detectedShift ?? (!isFreelance ? "pagi" : null);
-    const baseLateMinutes =
+    // Keterlambatan dihitung APA ADANYA (tidak dipaksa). Terblokir (lupa absen pulang) tidak lagi
+    // memalsukan "1 menit terlambat" — kalau datang tepat waktu tetap kode O, hanya diberi catatan.
+    const lateMinutes =
       requiresSelfie && lateShift && effectiveRequestStatus === "hadir" && !isPartime
         ? getShiftLateMinutes(currentTime, lateShift)
         : 0;
-    // Terblokir (lupa absen pulang kemarin) -> dipaksa dianggap TELAT (butuh approval) walau tepat
-    // waktu, dengan catatan "Harap absen ulang di jam 10.00". Tidak berlaku untuk freelance/partime.
-    const lateMinutes =
-      isBlockedCheckin && effectiveRequestStatus === "hadir" && !isFreelance && !isPartime
-        ? Math.max(baseLateMinutes, 1)
-        : baseLateMinutes;
     const attendanceStatus =
       effectiveRequestStatus === "izin"
         ? "izin"
@@ -340,7 +336,7 @@ export async function POST(request: Request) {
         return NextResponse.json(
           {
             message: isBlockedCheckin
-              ? `Kamu belum absen pulang kemarin, jadi presensi hari ini ditandai TELAT & butuh approval. ${BLOCKED_LATE_NOTE}. Pilih atasan tujuan approval lalu submit lagi.`
+              ? "Kamu datang terlambat (dan belum absen pulang kemarin). Isi keterangan & pilih atasan tujuan approval lalu submit lagi."
               : approver.error,
             needApproval: true,
           },

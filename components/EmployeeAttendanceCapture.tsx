@@ -461,6 +461,7 @@ export default function EmployeeAttendanceCapture({
         message?: string;
         blocked?: boolean;
         needApproval?: boolean;
+        earlyLeave?: boolean;
         geofence?: {
           reason: string | null;
           distanceMeters: number | null;
@@ -471,12 +472,14 @@ export default function EmployeeAttendanceCapture({
       };
 
       if (!response.ok) {
-        if (result.needApproval) {
-          // Perlu keterangan + atasan tujuan (telat / pulang awal). Tampilkan field-nya.
+        if (result.needApproval || result.earlyLeave) {
+          // Perlu keterangan (+ atasan bila perlu approval). Untuk pulang-awal, server menandai
+          // earlyLeave agar kolom keterangan PASTI muncul walau deteksi client meleset.
           setShowApprovalFields(true);
           setErrorMessage(
             result.message ||
-              "Kamu terlambat / pulang lebih awal. Isi keterangan dan pilih atasan tujuan approval, lalu submit lagi.",
+              "Kamu terlambat / pulang lebih awal. Isi keterangan" +
+                " (dan pilih atasan bila diminta), lalu submit lagi.",
           );
         } else if (response.status === 403 && result.blocked) {
           setBlockedPopup(
@@ -893,8 +896,9 @@ export default function EmployeeAttendanceCapture({
               </button>
             </div>
 
-            {/* Early leave note (check-out only) */}
-            {isEarlyLeaveNow ? (
+            {/* Early leave note (check-out only). Muncul bila deteksi client ATAU server
+                menandai pulang-awal (showApprovalFields di-set dari response earlyLeave). */}
+            {!isCheckIn && (isEarlyLeaveNow || showApprovalFields) ? (
               <div className="mt-5 space-y-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:p-5">
                 <div className="flex items-start gap-2 text-[13px] leading-5 text-amber-700">
                   <svg viewBox="0 0 20 20" fill="currentColor" className="mt-0.5 h-4 w-4 flex-none opacity-80" aria-hidden="true">

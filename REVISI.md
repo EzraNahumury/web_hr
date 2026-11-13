@@ -11,6 +11,24 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
 
 ## 27 Oktober 2026
 
+### Fix: pulang awal — kolom keterangan kini selalu muncul
+- **Bug:** saat pulang awal (check-out), server menolak minta keterangan tapi **kolom
+  keterangan tidak muncul** untuk shift tertentu (deteksi pulang-awal di client meleset).
+  Karyawan jadi tak bisa submit.
+- **Fix:** server kirim penanda `earlyLeave`; frontend menampilkan kolom keterangan
+  (+ atasan bila perlu approval) begitu server menandai pulang awal — tak lagi bergantung
+  tebakan client.
+- File: `app/api/employee/attendance/check-out/route.ts`, `components/EmployeeAttendanceCapture.tsx`.
+
+### Fix: terblokir tidak lagi memalsukan "1 menit terlambat"
+- **Bug (dari revisi sebelumnya):** karyawan terblokir yang datang TEPAT WAKTU tetap muncul
+  "Terlambat 1 menit" + kode T (mis. Yakobus 08:28). Memalsukan telat → membingungkan.
+- **Fix:** keterlambatan dihitung **apa adanya**. Terblokir + tepat waktu → kode **O** (bukan
+  telat), hanya diberi **catatan** "Terblokir (belum absen pulang kemarin) — harap absen ulang
+  jam 10.00". Terblokir + benar-benar telat → alur telat normal (butuh approval) + catatan itu.
+  Catatan diperjelas agar approver paham kenapa muncul.
+- File: `app/api/employee/attendance/check-in/route.ts`.
+
 ### Summary Bonus (scaffold) — Personal / Team / Company
 - Halaman baru **Summary Bonus** (`/admin/bonus-summary`): input **omzet** per periode
   (AVA Sportivo / Ayres / Gabungan), lalu tabel karyawan per **tim (divisi)** dengan:
