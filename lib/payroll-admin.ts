@@ -97,6 +97,9 @@ export type PayrollEmployeeOption = {
 export type PayrollFormPayload = {
   employeeId: number;
   payrollType: "non_sales" | "sales";
+  // D3 (optimistic concurrency): updated_at pei yang dimuat admin. Kalau berbeda dengan DB saat
+  // simpan -> ada orang lain yang sudah mengubah -> tolak supaya tidak saling timpa diam-diam.
+  expectedInputUpdatedAt?: string | null;
   gajiPerDay: number;
   tunjanganJabatan: number;
   uangMakan: number;
@@ -1040,6 +1043,25 @@ export async function upsertPayrollFromForm(payload: PayrollFormPayload, period?
     const resolved = resolvePayrollPeriod(period);
     const range = getPayrollDateRange(resolved.month, resolved.year);
     const workDays = countWorkDays(range.start, range.end);
+
+    // D3: cek optimistic concurrency. Kalau client mengirim expectedInputUpdatedAt dan baris pei
+    // di DB SUDAH berubah (updated_at beda) sejak halaman dimuat -> tolak (mencegah lost update).
+    if (payload.expectedInputUpdatedAt) {
+      const [curRows] = await connection.query<(RowDataPacket & { updated_at: string | null })[]>(
+        `SELECT DATE_FORMAT(pei.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at
+         FROM payroll_employee_input pei
+         INNER JOIN payroll p ON p.id = pei.payroll_id
+         WHERE p.karyawan_id = ? AND p.periode_bulan = ? AND p.periode_tahun = ?
+         LIMIT 1`,
+        [payload.employeeId, resolved.month, resolved.year],
+      );
+      const currentUpdatedAt = curRows[0]?.updated_at ?? null;
+      if (currentUpdatedAt && currentUpdatedAt !== payload.expectedInputUpdatedAt) {
+        throw new Error(
+          "Data payroll karyawan ini sudah diubah dari tempat lain sejak halaman dimuat. Muat ulang halaman, lalu simpan lagi.",
+        );
+      }
+    }
 
     const [attendanceRows] = await connection.query<AttendanceAggregateRow[]>(
       `

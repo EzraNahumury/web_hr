@@ -87,6 +87,7 @@ export function mapPartimeRow(r: PartimeComputedRow): AdminPayrollSummarySheetRo
     inputPotonganSp2: null,
     freelanceRateType: "per_hari",
     inputGajiPerJam: 0,
+    inputUpdatedAt: null,
   };
 }
 
@@ -182,5 +183,6 @@ export function mapPenjahitRow(row: PenjahitComputedRow): AdminPayrollSummaryShe
     contractReturn: row.contractReturn,
     freelanceRateType: "per_hari",
     inputGajiPerJam: 0,
+    inputUpdatedAt: null,
   };
 }

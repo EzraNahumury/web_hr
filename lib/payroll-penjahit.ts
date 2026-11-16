@@ -200,7 +200,13 @@ export async function getPenjahitSheet(period?: {
     month: period?.month ?? getActivePayrollPeriod().month,
     year: period?.year ?? getActivePayrollPeriod().year,
   };
-  await ensurePayrollPeriodCloned(activePeriod.month, activePeriod.year);
+  // D2: clone hanya untuk periode <= periode aktif (jangan buat data periode masa depan saat dilihat).
+  {
+    const trueActive = getActivePayrollPeriod();
+    if (activePeriod.year * 100 + activePeriod.month <= trueActive.year * 100 + trueActive.month) {
+      await ensurePayrollPeriodCloned(activePeriod.month, activePeriod.year);
+    }
+  }
 
   const [latestRows] = await pool.query<RowDataPacket[]>(
     `SELECT periode_bulan, periode_tahun FROM payroll WHERE periode_bulan = ? AND periode_tahun = ? LIMIT 1`,

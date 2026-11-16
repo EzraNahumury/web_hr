@@ -87,6 +87,10 @@ function validatePayrollPayload(body: Record<string, unknown>) {
   const payload: PayrollFormPayload = {
     employeeId,
     payrollType: "non_sales",
+    expectedInputUpdatedAt:
+      typeof body.expectedInputUpdatedAt === "string" && body.expectedInputUpdatedAt
+        ? body.expectedInputUpdatedAt
+        : null,
     gajiPerDay: values.gajiPerDay ?? 0,
     tunjanganJabatan: values.tunjanganJabatan ?? 0,
     uangMakan: values.uangMakan ?? 0,

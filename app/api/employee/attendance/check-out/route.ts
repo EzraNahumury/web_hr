@@ -240,66 +240,75 @@ export async function POST(request: Request) {
 
     const photoPath = await saveAttendancePhoto(body.photoDataUrl, employee.id, "out");
 
-    if (isShiftEligible && attendance.jam_masuk_str) {
-      const finalShift =
-        effectiveScheduledShift ??
-        detectTokoGudangShiftFinal(attendance.jam_masuk_str, checkOutTime);
+    // D1: tulis presensi pulang + approval pulang-awal dalam SATU transaksi (atomik), supaya
+    // tidak pernah ada kondisi "jam pulang tersimpan tapi flag approval gagal tertulis".
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
 
-      await pool.query(
-        `
-          UPDATE absensi
-          SET
-            jam_pulang = ?,
-            foto_pulang = ?,
-            latitude_pulang = ?,
-            longitude_pulang = ?,
-            shift = ?,
-            keterangan = COALESCE(NULLIF(?, ''), keterangan)
-          WHERE id = ?
-        `,
-        [
-          attendanceDateTime,
-          photoPath,
-          body.latitude,
-          body.longitude,
-          finalShift,
-          keterangan,
-          attendance.id,
-        ],
-      );
-    } else {
-      await pool.query(
-        `
-          UPDATE absensi
-          SET
-            jam_pulang = ?,
-            foto_pulang = ?,
-            latitude_pulang = ?,
-            longitude_pulang = ?,
-            keterangan = COALESCE(NULLIF(?, ''), keterangan)
-          WHERE id = ?
-        `,
-        [attendanceDateTime, photoPath, body.latitude, body.longitude, keterangan, attendance.id],
-      );
+      if (isShiftEligible && attendance.jam_masuk_str) {
+        const finalShift =
+          effectiveScheduledShift ??
+          detectTokoGudangShiftFinal(attendance.jam_masuk_str, checkOutTime);
+
+        await connection.query(
+          `
+            UPDATE absensi
+            SET
+              jam_pulang = ?,
+              foto_pulang = ?,
+              latitude_pulang = ?,
+              longitude_pulang = ?,
+              shift = ?,
+              keterangan = COALESCE(NULLIF(?, ''), keterangan)
+            WHERE id = ?
+          `,
+          [attendanceDateTime, photoPath, body.latitude, body.longitude, finalShift, keterangan, attendance.id],
+        );
+      } else {
+        await connection.query(
+          `
+            UPDATE absensi
+            SET
+              jam_pulang = ?,
+              foto_pulang = ?,
+              latitude_pulang = ?,
+              longitude_pulang = ?,
+              keterangan = COALESCE(NULLIF(?, ''), keterangan)
+            WHERE id = ?
+          `,
+          [attendanceDateTime, photoPath, body.latitude, body.longitude, keterangan, attendance.id],
+        );
+      }
+
+      // Tulis/gabung approval pulang awal bila perlu (masih dalam transaksi yang sama).
+      if (needsEarlyApproval) {
+        if (earlyButuhApproval !== null) {
+          // Belum ada approval sebelumnya → set baru (pulang awal).
+          await connection.query(
+            `UPDATE absensi
+               SET butuh_approval = ?, approval_status = ?, approval_jenis = ?, assigned_approver_user_id = ?
+             WHERE id = ?`,
+            [earlyButuhApproval, earlyApprovalStatus, earlyApprovalJenis, earlyAssignedApprover, attendance.id],
+          );
+        } else if (earlyApprovalJenis) {
+          // Sudah ada approval telat pending → gabung jenis jadi telat_pulang_awal.
+          await connection.query(`UPDATE absensi SET approval_jenis = ? WHERE id = ?`, [
+            earlyApprovalJenis,
+            attendance.id,
+          ]);
+        }
+      }
+
+      await connection.commit();
+    } catch (txError) {
+      await connection.rollback();
+      throw txError;
+    } finally {
+      connection.release();
     }
 
-    // Tulis/gabung approval pulang awal bila perlu.
     if (needsEarlyApproval) {
-      if (earlyButuhApproval !== null) {
-        // Belum ada approval sebelumnya → set baru (pulang awal).
-        await pool.query(
-          `UPDATE absensi
-             SET butuh_approval = ?, approval_status = ?, approval_jenis = ?, assigned_approver_user_id = ?
-           WHERE id = ?`,
-          [earlyButuhApproval, earlyApprovalStatus, earlyApprovalJenis, earlyAssignedApprover, attendance.id],
-        );
-      } else if (earlyApprovalJenis) {
-        // Sudah ada approval telat pending → gabung jenis jadi telat_pulang_awal.
-        await pool.query(`UPDATE absensi SET approval_jenis = ? WHERE id = ?`, [
-          earlyApprovalJenis,
-          attendance.id,
-        ]);
-      }
       return NextResponse.json({
         message:
           "Presensi pulang tercatat, tapi karena pulang lebih awal perlu approval atasan. Kehadiran dihitung setelah di-approve.",

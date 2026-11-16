@@ -354,6 +354,8 @@ export default function AdminPayrollSummaryManager({
     setPayrollMessage(null);
     const payload = {
       action: "save_payroll", month: periodMonth, year: periodYear, employeeId: Number(form.employeeId),
+      // D3: kirim updated_at pei yang dimuat (optimistic concurrency) — hanya saat edit baris tersimpan.
+      expectedInputUpdatedAt: editingRow?.inputUpdatedAt ?? null,
       gajiPerDay: isFreelance
         ? (form.freelanceRateType === "per_hari" ? parseNumber(form.gajiPerDay) : 0)
         : (isSalesNasionalSummary ? 0 : parseNumber(form.gajiPerDay)),

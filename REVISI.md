@@ -38,6 +38,20 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
   tak bisa mengubah. Modal Set Libur juga di-gate (defensif).
 - File: `components/SpvJadwalManager.tsx`.
 
+### Audit hardening D1/D2/D3 (atomicity, write-on-read, concurrency)
+- **D1 — Check-out atomik:** penulisan `jam_pulang` + flag approval pulang-awal kini dalam
+  **satu transaksi** (`getConnection` + begin/commit/rollback). Tak ada lagi kondisi "jam
+  pulang tersimpan tapi approval gagal tertulis". File: `check-out/route.ts`.
+- **D2 — Tak buat data periode masa depan saat dilihat:** clone periode (`ensurePayrollPeriodCloned`)
+  kini hanya untuk periode **≤ periode aktif**. Melihat periode masa depan tak lagi otomatis
+  membuat baris payroll (write-on-read). File: `payroll-summary.ts`, `payroll-penjahit.ts`,
+  `payroll-partime.ts`.
+- **D3 — Optimistic concurrency (anti lost-update):** simpan form payroll kini membandingkan
+  `pei.updated_at` yang dimuat admin dengan DB. Kalau sudah diubah orang lain → **ditolak**
+  dengan pesan "muat ulang halaman". Mencegah dua admin saling timpa diam-diam. File:
+  `payroll-admin.ts` (`upsertPayrollFromForm`), `payroll-summary.ts` (expose `inputUpdatedAt`),
+  `app/api/admin/payroll-summary/route.ts`, `components/AdminPayrollSummaryManager.tsx`.
+
 ### Fix: geofence presensi pakai toleransi akurasi GPS
 - **Bug:** presensi ditolak di 51m (padahal radius 50m) karena HP salah posisi beberapa
   meter — server cek jarak **mentah** tanpa memperhitungkan **akurasi GPS**.

@@ -107,6 +107,7 @@ function mapPartimeFinanceRow(r: PartimeComputedRow, meta?: KaryawanMeta): Admin
     inputPotonganSp2: null,
     freelanceRateType: "per_hari",
     inputGajiPerJam: 0,
+    inputUpdatedAt: null,
   };
 }
 
@@ -199,6 +200,7 @@ function mapFreelanceFinanceRow(
     inputPotonganSp2: null,
     freelanceRateType: "per_hari",
     inputGajiPerJam: 0,
+    inputUpdatedAt: null,
   };
 }
 

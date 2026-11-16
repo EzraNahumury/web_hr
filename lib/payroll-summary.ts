@@ -116,6 +116,7 @@ type PayrollSheetBaseRow = RowDataPacket & {
   raw_potongan_sp2_note: string | null;
   raw_freelance_rate_type: "per_hari" | "per_jam" | null;
   raw_gaji_pokok_per_jam: string | null;
+  raw_input_updated_at: string | null;
   total_omzet_global: string | null;
   status_kepegawaian: string | null;
   tanggal_masuk_pertama: string | null;
@@ -257,6 +258,8 @@ export type AdminPayrollSummarySheetRow = {
   inputPotonganSp2: number | null;
   freelanceRateType: "per_hari" | "per_jam";
   inputGajiPerJam: number;
+  // D3: updated_at pei (untuk optimistic concurrency saat simpan form payroll).
+  inputUpdatedAt: string | null;
 };
 
 export type AdminPayrollSummarySheet = {
@@ -369,7 +372,15 @@ export async function getAdminPayrollSummarySheet(period?: {
     month: period?.month ?? getActivePayrollPeriod().month,
     year: period?.year ?? getActivePayrollPeriod().year,
   };
-  await ensurePayrollPeriodCloned(activePeriod.month, activePeriod.year);
+  // D2: JANGAN membuat data periode MASA DEPAN hanya karena admin "melihat"-nya (write-on-read).
+  // Clone hanya untuk periode berjalan/lampau (<= periode aktif). Periode masa depan ditampilkan
+  // apa adanya (kosong) sampai benar-benar jadi periode aktif.
+  {
+    const trueActive = getActivePayrollPeriod();
+    if (activePeriod.year * 100 + activePeriod.month <= trueActive.year * 100 + trueActive.month) {
+      await ensurePayrollPeriodCloned(activePeriod.month, activePeriod.year);
+    }
+  }
   const [latestRows] = await pool.query<LatestPeriodRow[]>(
     `
       SELECT periode_bulan, periode_tahun
@@ -458,6 +469,7 @@ export async function getAdminPayrollSummarySheet(period?: {
         pei.potongan_sp2_note AS raw_potongan_sp2_note,
         pei.freelance_rate_type AS raw_freelance_rate_type,
         pei.gaji_pokok_per_jam AS raw_gaji_pokok_per_jam,
+        DATE_FORMAT(pei.updated_at, '%Y-%m-%d %H:%i:%s') AS raw_input_updated_at,
         NULL AS total_omzet_global,
         k.status_kepegawaian,
         k.is_shift,
@@ -1379,6 +1391,7 @@ export async function getAdminPayrollSummarySheet(period?: {
       inputPotonganSp2,
       freelanceRateType: (row.raw_freelance_rate_type ?? "per_hari") as "per_hari" | "per_jam",
       inputGajiPerJam: toNumber(row.raw_gaji_pokok_per_jam),
+      inputUpdatedAt: row.raw_input_updated_at ?? null,
     };
 
     // CUTI HAMIL: hanya insentif kehadiran (gaji pokok/hari) × 25 hari. Semua komponen &
