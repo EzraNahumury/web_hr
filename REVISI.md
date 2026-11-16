@@ -29,11 +29,13 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
   Catatan diperjelas agar approver paham kenapa muncul.
 - File: `app/api/employee/attendance/check-in/route.ts`.
 
-### Fix: Set Jadwal — "Set Libur Nasional" tak lagi gampang ke-klik tak sengaja
-- **Masalah:** di grid Set Jadwal, **seluruh header tanggal** adalah tombol yang membuka
-  "Set Libur Nasional" → SPV sering tak sengaja memicunya saat mau atur jadwal per karyawan.
-- **Fix:** label tanggal kini **teks biasa** (tak diklik). Set Libur hanya lewat **tombol
-  kecil "Libur"** di bawah tanggal. Tip diperbarui.
+### Set Jadwal: Set Libur Nasional HANYA admin (SPV tak bisa)
+- **Aturan:** "Set Libur Nasional" (isi satu tanggal Libur untuk SEMUA karyawan) kini
+  **hanya untuk admin** (`/admin/jadwal`). **SPV/leader** (`/spv/jadwal`, `/employee/jadwal`)
+  **tidak lagi** punya tombol itu — cuma bisa atur jadwal/libur **per karyawan** lewat sel.
+- Label tanggal jadi teks biasa (tak diklik). Admin set libur lewat tombol kecil "Libur" di
+  header. Non-admin tetap bisa **melihat** tanda "Libur" pada tanggal yang sudah libur, tapi
+  tak bisa mengubah. Modal Set Libur juga di-gate (defensif).
 - File: `components/SpvJadwalManager.tsx`.
 
 ### Fix: geofence presensi pakai toleransi akurasi GPS

@@ -96,6 +96,9 @@ export default function SpvJadwalManager({
     : pathname?.startsWith("/employee")
       ? "/employee/jadwal"
       : "/spv/jadwal";
+  // HANYA ADMIN yang boleh Set Libur Nasional (isi satu tanggal Libur untuk SEMUA karyawan).
+  // SPV / leader (akses jadwal) cuma boleh atur jadwal/libur per karyawan lewat sel.
+  const canSetHoliday = pathname?.startsWith("/admin") ?? false;
   const confirm = useConfirm();
   const [year, setYear] = useState(initialYear);
   const [month, setMonth] = useState(initialMonth);
@@ -493,18 +496,24 @@ export default function SpvJadwalManager({
                         <div className="text-[10px] tracking-[0.06em]">{dayShort}</div>
                         <div className="text-sm">{pd.day}</div>
                         <div className="text-[9px] text-[#a16f63]">{MONTH_LABELS[pd.month - 1].slice(0, 3)}</div>
-                        <button
-                          type="button"
-                          onClick={() => openHolidayDialog(pd)}
-                          title={isHolidayFilled ? "Tanggal ini sudah diisi Libur — klik untuk ubah" : "Set Libur Nasional untuk kolom tanggal ini"}
-                          className={`mt-1 flex h-5 w-full items-center justify-center rounded-md text-[9px] font-semibold transition ${
-                            isHolidayFilled
-                              ? "bg-[#fde2dd] text-[#8f1d22] hover:bg-[#fdcfc7]"
-                              : "border border-[#f0d6cc] text-[#b08b80] hover:bg-[#fdebda] hover:text-[#8f1d22]"
-                          }`}
-                        >
-                          {isHolidayFilled ? "✓ Libur" : "Libur"}
-                        </button>
+                        {canSetHoliday ? (
+                          <button
+                            type="button"
+                            onClick={() => openHolidayDialog(pd)}
+                            title={isHolidayFilled ? "Tanggal ini sudah diisi Libur — klik untuk ubah" : "Set Libur Nasional untuk kolom tanggal ini (admin)"}
+                            className={`mt-1 flex h-5 w-full items-center justify-center rounded-md text-[9px] font-semibold transition ${
+                              isHolidayFilled
+                                ? "bg-[#fde2dd] text-[#8f1d22] hover:bg-[#fdcfc7]"
+                                : "border border-[#f0d6cc] text-[#b08b80] hover:bg-[#fdebda] hover:text-[#8f1d22]"
+                            }`}
+                          >
+                            {isHolidayFilled ? "✓ Libur" : "Libur"}
+                          </button>
+                        ) : isHolidayFilled ? (
+                          <div className="mt-1 flex h-5 w-full items-center justify-center rounded-md bg-[#fde2dd] text-[9px] font-semibold text-[#8f1d22]">
+                            Libur
+                          </div>
+                        ) : null}
                       </div>
                     </th>
                   );
@@ -596,11 +605,13 @@ export default function SpvJadwalManager({
 
       <p className="text-center text-xs text-[#8a6f68]">
         Tip: gunakan kolom <span className="font-semibold">Quick Fill</span> untuk mengisi seluruh
-        periode dengan shift yang sama. Untuk menjadikan satu tanggal Libur (semua karyawan),
-        klik tombol kecil <span className="font-semibold">Libur</span> di header tanggal.
+        periode dengan shift yang sama.{canSetHoliday ? (
+          <> Untuk menjadikan satu tanggal Libur (semua karyawan), klik tombol kecil{" "}
+          <span className="font-semibold">Libur</span> di header tanggal.</>
+        ) : null}
       </p>
 
-      {holidayTarget ? (
+      {canSetHoliday && holidayTarget ? (
         <div
           className="fixed inset-0 z-[2000] flex items-center justify-center px-4 py-6"
           role="dialog"
