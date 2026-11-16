@@ -54,6 +54,7 @@ export async function POST(request: Request) {
       photoDataUrl?: string;
       latitude?: number;
       longitude?: number;
+      accuracy?: number;
       keterangan?: string;
       assignedApproverUserId?: string;
     };
@@ -83,7 +84,7 @@ export async function POST(request: Request) {
       ...(employee.penempatan_extra ? employee.penempatan_extra.split(",").map((s) => s.trim()) : []),
     ].filter(Boolean) as string[];
 
-    const geofence = checkGeofence(allPlacements, body.latitude, body.longitude);
+    const geofence = checkGeofence(allPlacements, body.latitude, body.longitude, body.accuracy);
     if (!geofence.valid) {
       return NextResponse.json(
         {

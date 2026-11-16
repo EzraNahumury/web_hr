@@ -434,6 +434,7 @@ export default function EmployeeAttendanceCapture({
                 formData.append("photoDataUrl", photoDataUrl ?? "");
                 formData.append("latitude", String(location?.latitude ?? ""));
                 formData.append("longitude", String(location?.longitude ?? ""));
+                formData.append("accuracy", String(locationAccuracy ?? ""));
               } else if (sickFile) {
                 formData.append("sickProof", sickFile);
               }
@@ -452,6 +453,7 @@ export default function EmployeeAttendanceCapture({
                 photoDataUrl,
                 latitude: location?.latitude,
                 longitude: location?.longitude,
+                accuracy: locationAccuracy ?? undefined,
                 keterangan: earlyLeaveNote.trim() || undefined,
                 assignedApproverUserId: assignedApprover || undefined,
               }),

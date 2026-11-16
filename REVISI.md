@@ -29,6 +29,17 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
   Catatan diperjelas agar approver paham kenapa muncul.
 - File: `app/api/employee/attendance/check-in/route.ts`.
 
+### Fix: geofence presensi pakai toleransi akurasi GPS
+- **Bug:** presensi ditolak di 51m (padahal radius 50m) karena HP salah posisi beberapa
+  meter — server cek jarak **mentah** tanpa memperhitungkan **akurasi GPS**.
+- **Fix:** valid bila `jarak ≤ radius + min(akurasi_GPS, 40m)`. Akurasi GPS (yang sudah
+  ditangkap client) kini **dikirim ke server** & dipakai. Di-**cap 40m** supaya fix GPS
+  sangat buruk (mis. akurasi 200m+) tidak otomatis lolos.
+- Efek: kasus 51m (drift kecil) kini **lolos**. Kasus jarak jauh / fix sangat buruk (mis.
+  283m) tetap ditolak — karyawan perlu menunggu GPS lebih akurat / ke area terbuka.
+- File: `lib/geofence.ts`, `app/api/employee/attendance/check-in/route.ts`,
+  `app/api/employee/attendance/check-out/route.ts`, `components/EmployeeAttendanceCapture.tsx`.
+
 ### Golongan Bonus (AVA / Ayres / Operasional) di Data Karyawan → Summary Bonus
 - **Data Karyawan** kini punya pilihan **Golongan Bonus**: `AVA Sportivo`, `Ayres`,
   `Operasional (gabungan)` (kolom baru `bonus_group`, self-migrating).

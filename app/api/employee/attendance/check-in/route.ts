@@ -65,6 +65,7 @@ export async function POST(request: Request) {
       typeof formData.get("photoDataUrl") === "string" ? String(formData.get("photoDataUrl")) : "";
     const latitude = Number(formData.get("latitude"));
     const longitude = Number(formData.get("longitude"));
+    const gpsAccuracy = Number(formData.get("accuracy"));
 
     if (
       status !== "hadir" &&
@@ -124,7 +125,7 @@ export async function POST(request: Request) {
     ].filter(Boolean) as string[];
 
     if (requiresSelfie) {
-      const geofence = checkGeofence(allPlacements, latitude, longitude);
+      const geofence = checkGeofence(allPlacements, latitude, longitude, gpsAccuracy);
       if (!geofence.valid) {
         return NextResponse.json(
           {
@@ -191,7 +192,7 @@ export async function POST(request: Request) {
         ? await saveUploadedFile(sickProof as File, "attendance")
         : null;
     const detectedPlacement = requiresSelfie
-      ? (checkGeofence(allPlacements, latitude, longitude).placement ?? employee.penempatan)
+      ? (checkGeofence(allPlacements, latitude, longitude, gpsAccuracy).placement ?? employee.penempatan)
       : employee.penempatan;
     const subDivLower = (employee.sub_divisi ?? "").trim().toLowerCase();
     const isMedia = subDivLower === "media";

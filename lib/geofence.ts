@@ -1,5 +1,10 @@
 export const MAX_GEOFENCE_RADIUS_METERS = 25;
 
+// Toleransi tambahan berbasis AKURASI GPS (meter). HP sering salah posisi puluhan meter
+// walau fisik di lokasi. Karyawan dianggap valid bila jarak <= radius + min(akurasi, CAP).
+// Di-cap supaya fix GPS yang sangat buruk (mis. akurasi 200m+) TIDAK otomatis lolos.
+export const GEOFENCE_ACCURACY_TOLERANCE_CAP = 40;
+
 export type WorkLocation = {
   label: string;
   latitude: number;
@@ -132,7 +137,13 @@ export function checkGeofence(
   placementInput: string | string[] | null | undefined,
   latitude: number,
   longitude: number,
+  accuracyMeters?: number | null,
 ): GeofenceResult {
+  // Toleransi akurasi GPS (dibatasi CAP). Fix buruk (akurasi besar) hanya menambah sampai CAP.
+  const accuracyTolerance = Math.min(
+    Math.max(Number.isFinite(accuracyMeters as number) ? (accuracyMeters as number) : 0, 0),
+    GEOFENCE_ACCURACY_TOLERANCE_CAP,
+  );
   const placements = Array.isArray(placementInput)
     ? placementInput.filter(Boolean)
     : placementInput
@@ -174,7 +185,7 @@ export function checkGeofence(
 
     for (const loc of locations) {
       const d = haversineDistanceMeters(latitude, longitude, loc.latitude, loc.longitude);
-      const radius = getLocationRadius(loc);
+      const radius = getLocationRadius(loc) + accuracyTolerance;
       if (d <= radius) {
         if (!bestValid || d < bestValid.distance) {
           bestValid = { placement, location: loc, distance: d };
