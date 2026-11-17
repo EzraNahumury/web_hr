@@ -38,6 +38,14 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
   tak bisa mengubah. Modal Set Libur juga di-gate (defensif).
 - File: `components/SpvJadwalManager.tsx`.
 
+### Freelance jam: belum absen pulang = 0 jam (bukan auto 8 jam)
+- **Perubahan:** freelance tipe JAM yang **belum absen pulang** kini dihitung **0 jam**
+  (sebelumnya otomatis fallback **8 jam / 480 menit** → bisa overpay). Hanya hari dengan
+  jam masuk **dan** pulang lengkap yang dihitung (selisih waktu asli).
+- Admin tetap bisa isi Jam Pulang di modal detail → total langsung terhitung.
+- File: `lib/payroll-freelance.ts`, `app/api/admin/freelance/jam/route.ts`,
+  `lib/payroll-admin.ts`, `lib/payroll-summary.ts`. (Ambang lembur `-480` = 8 jam tidak diubah.)
+
 ### Audit hardening D1/D2/D3 (atomicity, write-on-read, concurrency)
 - **D1 — Check-out atomik:** penulisan `jam_pulang` + flag approval pulang-awal kini dalam
   **satu transaksi** (`getConnection` + begin/commit/rollback). Tak ada lagi kondisi "jam

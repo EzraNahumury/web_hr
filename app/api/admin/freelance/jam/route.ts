@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
        CASE
          WHEN a.jam_masuk IS NOT NULL AND a.jam_pulang IS NOT NULL
            THEN GREATEST(TIMESTAMPDIFF(MINUTE, a.jam_masuk, a.jam_pulang), 0)
-         WHEN a.jam_masuk IS NOT NULL THEN 480
+         -- Belum absen pulang -> 0 (tidak lagi fallback 8 jam, hindari overpay).
          ELSE 0
        END AS menit_kerja
      FROM absensi a

@@ -638,8 +638,7 @@ export async function getAdminPayrollSummarySheet(period?: {
                 CASE
                   WHEN jam_masuk IS NOT NULL AND jam_pulang IS NOT NULL
                     THEN FLOOR(TIMESTAMPDIFF(MINUTE, jam_masuk, jam_pulang) / 30) * 30
-                  WHEN jam_masuk IS NOT NULL
-                    THEN 480
+                  -- Belum absen pulang -> 0 (tidak lagi fallback 8 jam, hindari overpay freelance).
                   ELSE 0
                 END
               ), 0) AS total_menit
