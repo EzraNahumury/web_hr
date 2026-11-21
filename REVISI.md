@@ -38,6 +38,14 @@ memengaruhi absensi & payroll (sensitif uang). Urut dari terbaru.
   tak bisa mengubah. Modal Set Libur juga di-gate (defensif).
 - File: `components/SpvJadwalManager.tsx`.
 
+### Terblokir (lupa absen pulang) = DIANGGAP TELAT + note (final)
+- Karyawan yang **lupa absen pulang** kemarin: hari ini **tetap boleh absen** TAPI otomatis
+  **dianggap TELAT (butuh approval atasan)** dengan catatan **"Harap absen ulang di jam 10.00 WIB"**.
+  (Mengembalikan perilaku "ditandai telat" sesuai permintaan — sebelumnya sempat dibuat kode O.)
+- Pesan di akun staff menyebut alasan + instruksi absen ulang jam 10. Banner admin "Belum absen
+  pulang" diperjelas (presensi berikutnya ditandai telat + perlu approval; Pulihkan membebaskan).
+- File: `app/api/employee/attendance/check-in/route.ts`, `components/AdminAttendanceSheet.tsx`.
+
 ### Freelance jam: belum absen pulang = 0 jam (bukan auto 8 jam)
 - **Perubahan:** freelance tipe JAM yang **belum absen pulang** kini dihitung **0 jam**
   (sebelumnya otomatis fallback **8 jam / 480 menit** → bisa overpay). Hanya hari dengan

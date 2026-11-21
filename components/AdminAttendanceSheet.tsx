@@ -244,7 +244,7 @@ function AttendanceDetailModal({
                   <p className="mt-0.5 text-xs text-[#a06a3a]">
                     {selected.detail.recovered
                       ? "Sudah dipulihkan. Karyawan bisa absen seperti biasa."
-                      : "Karyawan diblokir dari absensi sampai dipulihkan. Klik Pulihkan agar bisa absen lagi."}
+                      : "Belum dipulihkan. Presensi masuk berikutnya otomatis ditandai TELAT (perlu approval atasan) dengan catatan “absen ulang jam 10.00 WIB”. Klik Pulihkan untuk membebaskan dari tanda telat."}
                   </p>
                 </div>
                 {selected.detail.recovered ? (
@@ -608,7 +608,7 @@ export default function AdminAttendanceSheet({ days, rows, month, year, holidayM
                   const cellTitle = needsApproval
                     ? `Belum di-approve atasan (${detail?.approvalStatus === "rejected" ? "ditolak" : "menunggu"}) — dihitung tidak bekerja`
                     : missingCheckout
-                    ? "Belum presensi pulang (diblokir — klik untuk Pulihkan)"
+                    ? "Belum presensi pulang (presensi berikutnya ditandai telat — klik untuk Pulihkan)"
                     : recoveredMissing
                     ? "Belum presensi pulang (sudah dipulihkan)"
                     : earlyLeave

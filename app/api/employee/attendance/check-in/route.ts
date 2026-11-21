@@ -150,12 +150,11 @@ export async function POST(request: Request) {
     const currentTime = attendanceDateTime.split(" ")[1];
 
     // Terblokir: ada hari lampau yang HADIR tapi belum absen pulang & belum dipulihkan admin.
-    // Tidak lagi ditolak keras. Karyawan TETAP boleh absen, TAPI otomatis ditandai TELAT (butuh
-    // approval) dengan catatan "Harap absen ulang di jam 10.00". Kehadiran dihitung setelah
-    // di-approve atasan.
+    // Karyawan TETAP boleh absen, TAPI otomatis dianggap TELAT (butuh approval atasan) dengan
+    // catatan "Harap absen ulang di jam 10.00 WIB". Kehadiran dihitung setelah di-approve.
     const blockingDate = await getBlockingMissingCheckout(employee.id, attendanceDate);
     const isBlockedCheckin = !!blockingDate;
-    const BLOCKED_LATE_NOTE = "Terblokir (belum absen pulang kemarin) — harap absen ulang jam 10.00";
+    const BLOCKED_LATE_NOTE = "Harap absen ulang di jam 10.00 WIB (kemarin belum absen pulang).";
 
     const [existingRows] = await pool.query<AttendanceRow[]>(
       "SELECT id, jam_masuk, status_absensi, foto_masuk FROM absensi WHERE karyawan_id = ? AND tanggal = ? LIMIT 1",
@@ -261,12 +260,16 @@ export async function POST(request: Request) {
     // pakai jam kerja standar "pagi" (masuk 08:30). Freelance dikecualikan.
     const lateShift: AttendanceShift | null =
       detectedShift ?? (!isFreelance ? "pagi" : null);
-    // Keterlambatan dihitung APA ADANYA (tidak dipaksa). Terblokir (lupa absen pulang) tidak lagi
-    // memalsukan "1 menit terlambat" — kalau datang tepat waktu tetap kode O, hanya diberi catatan.
-    const lateMinutes =
+    const baseLateMinutes =
       requiresSelfie && lateShift && effectiveRequestStatus === "hadir" && !isPartime
         ? getShiftLateMinutes(currentTime, lateShift)
         : 0;
+    // Terblokir (lupa absen pulang kemarin) -> DIANGGAP TELAT (butuh approval) + catatan "absen
+    // ulang jam 10.00 WIB", walau datang tepat waktu. Tidak berlaku untuk freelance/partime.
+    const lateMinutes =
+      isBlockedCheckin && effectiveRequestStatus === "hadir" && !isFreelance && !isPartime
+        ? Math.max(baseLateMinutes, 1)
+        : baseLateMinutes;
     const attendanceStatus =
       effectiveRequestStatus === "izin"
         ? "izin"
@@ -337,7 +340,7 @@ export async function POST(request: Request) {
         return NextResponse.json(
           {
             message: isBlockedCheckin
-              ? "Kamu datang terlambat (dan belum absen pulang kemarin). Isi keterangan & pilih atasan tujuan approval lalu submit lagi."
+              ? "Kemarin kamu belum absen pulang, jadi presensi hari ini dianggap TELAT. Harap absen ulang di jam 10.00 WIB, pilih atasan tujuan approval, lalu submit lagi."
               : approver.error,
             needApproval: true,
           },
